@@ -108,7 +108,7 @@ class PluginManager:
                 entries.append({**entry, "service_key": service_name})
         return entries
 
-    def create_gryd_service(self, service_name: str, service_module : str, main_task: str, num_threads = None):
+    def create_gryd_service(self, service_name: str, service_module : str, main_task: str, num_threads = None, duplicate_module_suffix = None, service_variable_name  = None):
 
         """"
         Dynamically create a gryd service module with the given name and main task.
@@ -119,7 +119,7 @@ class PluginManager:
         """
 
         logger.info(f"Creating gryd service: service_name={service_name}, service_module={service_module}, main_task={main_task}, num_threads={num_threads}")
-        variable_name = f"AUTOCRM_{service_name.upper()}_SERVICE_NAME"
+        variable_name = service_variable_name or f"AUTOCRM_{service_name.upper()}_SERVICE_NAME"
         logger.debug(f"Constructed config variable name: {variable_name}")
         if not hasattr(config, variable_name):
             logger.error(f"Config variable '{variable_name}' not found for service '{service_name}'")
@@ -134,7 +134,7 @@ class PluginManager:
             logger.info(f"Duplicate service detected for '{service_name}', iteration={iteration}, new_variable_name={new_variable_name}")
 
         new_service_name_value = f"{getattr(config, variable_name)}-{iteration}"
-        self.new_module_name = service_name + "_" + str(iteration)
+        self.new_module_name = service_name + (f"_{duplicate_module_suffix}" if duplicate_module_suffix else "") + "_" + str(iteration)
 
         new_entry = {
             "variable_name": new_variable_name,
@@ -204,7 +204,7 @@ class PluginManager:
         logger.info(f"Generated dynamic module code for service '{service_name}' with task '{main_task}'")
         logger.info(f"code: {json.dumps(code, indent=4)}")
 
-        return self.create_plugin(name=self.new_module_name, code=code, folder=service_name)
+        return self.create_plugin(name=self.new_module_name, code=code, folder=service_name )
     
 
 
@@ -223,7 +223,8 @@ if __name__ == "__main__":
     p_create.add_argument("--main-task", required=True, help="Main task function name")
     p_create.add_argument("--num-threads", type=int, default=None, help="Number of parallel threads (optional)")
     p_create.add_argument("--num-modules", type=int, default=1, help="Number of modules to create (default: 1)")
-
+    p_create.add_argument("--duplicate-module-suffix", help="Suffix for duplicate module names (optional)")
+    p_create.add_argument("--service-variable-name", help="Config variable name for the service (optional, default is AUTOCRM_{SERVICE_NAME}_SERVICE_NAME)")
     # delete
     p_delete = subparsers.add_parser("delete", help="Delete a gryd service plugin by module name or all modules for a service")
     p_delete.add_argument("--module-name", help="Module name as registered (e.g. campaign_1)")
@@ -243,6 +244,8 @@ if __name__ == "__main__":
                 service_module=args.service_module,
                 main_task=args.main_task,
                 num_threads=args.num_threads,
+                duplicate_module_suffix=args.duplicate_module_suffix,
+                service_variable_name=args.service_variable_name
             )
             print(f"Module {i + 1}/{args.num_modules}: Service '{args.service_name}' created successfully.")
 

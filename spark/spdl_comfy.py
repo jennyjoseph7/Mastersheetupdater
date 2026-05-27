@@ -58,12 +58,32 @@ THREADS_PER_SESSION = 0.3
 gryd.set_queue_manager()
 
 # -------------------- HELPERS --------------------
+def _normalize_workflow(workflow):
+    if isinstance(workflow, list):
+        normalized = {}
+        for node in workflow:
+            node_id = node.get("id") or node.get("node_id")
+            if node_id is None:
+                raise ValueError("Workflow node missing id field")
+            normalized[str(node_id)] = node
+        return normalized
+    if isinstance(workflow, dict):
+        return {str(k): v for k, v in workflow.items()}
+    raise ValueError(f"Unsupported workflow format: {type(workflow)}")
+
 def load_workflow():
     mlogger.info(f"Loading workflow from: {WORKFLOW_PATH}")
-    with open(WORKFLOW_PATH, "r") as f:
+    with open(WORKFLOW_PATH, "r", encoding="utf-8") as f:
         workflow = json.load(f)
+    workflow = _normalize_workflow(workflow)
     mlogger.info(f"Workflow loaded successfully with {len(workflow)} nodes")
     return workflow
+
+def get_workflow_node(workflow, node_id):
+    node_id = str(node_id)
+    if node_id not in workflow:
+        raise KeyError(f"Workflow node {node_id} not found")
+    return workflow[node_id]
 
 def download_image(url, save_path):
     start = time.time()
@@ -104,6 +124,7 @@ def wait_for_completion(prompt_id, timeout=300):
     while True:
         r = requests.get(f"{COMFY_HOST}/history/{prompt_id}", timeout=30)
         history = r.json()
+        mlogger.debug(f"Comfy history response: {history}")
         if prompt_id in history:
             mlogger.info(f"Comfy execution completed in {time.time() - start:.2f} sec")
             return history[prompt_id]
@@ -111,13 +132,36 @@ def wait_for_completion(prompt_id, timeout=300):
             raise TimeoutError("ComfyUI execution timed out")
         time.sleep(1)
 
-def extract_saveimage_outputs(history, save_node_id="105"):
+def extract_saveimage_outputs(history, save_node_id="36"):
     mlogger.info(f"Extracting images from node_id={save_node_id}")
     images = []
-    outputs = history.get("outputs", {})
-    if save_node_id in outputs:
-        images.extend(outputs[save_node_id].get("images", []))
+
+    def collect_images(obj):
+        if isinstance(obj, dict):
+            if "images" in obj and isinstance(obj["images"], list):
+                images.extend(obj["images"])
+            else:
+                for v in obj.values():
+                    collect_images(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                collect_images(item)
+        elif isinstance(obj, str):
+            images.append(obj)
+
+    outputs = history.get("outputs", {}) or {}
+    if not outputs:
+        outputs = history.get("result", {}).get("outputs", {}) or history.get("history", {}).get("outputs", {}) or outputs
+
+    node_key = str(save_node_id)
+    if node_key in outputs and isinstance(outputs[node_key], dict):
+        images.extend(outputs[node_key].get("images", []))
+
+    collect_images(outputs)
+    collect_images(history)
+
     mlogger.info(f"Extracted {len(images)} images")
+    mlogger.debug(f"Extracted image data: {images}")
     return images
 
 # -------------------- TASK --------------------
@@ -154,17 +198,17 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
 
             workflow = load_workflow()
 
-            # ---- Inject image
-            workflow["76"]["inputs"]["image"] = input_filename
-            logger.info(f"Injected image into workflow node 76")
+            load_image_node = get_workflow_node(workflow, 1)
+            load_image_node["inputs"]["image"] = input_filename
+            logger.info("Injected image into workflow node 1")
 
-            # ---- Inject prompts
-            workflow["75:74"]["inputs"]["text"] = prompt
-            logger.info(f"Injected prompt into workflow node 75:74")
+            prompt_node = get_workflow_node(workflow, 8)
+            prompt_node["inputs"]["text"] = prompt
+            logger.info("Injected prompt into workflow node 8")
 
-            # ---- Randomize seed per image
             seed = int(time.time() * 1000) % 2**63
-            workflow["75:73"]["inputs"]["noise_seed"] = seed
+            noise_node = get_workflow_node(workflow, 9)
+            noise_node["inputs"]["noise_seed"] = seed
             logger.info(f"Seed used: {seed}")
 
             prompt_id = queue_prompt(workflow)
@@ -175,18 +219,40 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
             images = extract_saveimage_outputs(history)
 
             for img in images:
-                filename = img["filename"]
-                subfolder = img.get("subfolder", "")
-                output_path = os.path.join(COMFY_OUTPUT_DIR, subfolder, filename)
+                if isinstance(img, dict):
+                    filename = img.get("filename") or img.get("path") or img.get("file") or img.get("name")
+                    subfolder = img.get("subfolder", "")
+                elif isinstance(img, str):
+                    filename = img
+                    subfolder = ""
+                else:
+                    logger.warning(f"Unsupported image output format: {type(img)} {img}")
+                    continue
+
+                if not filename:
+                    logger.warning(f"Skipping image output with no filename/path: {img}")
+                    continue
+
+                output_path = filename
+                if not os.path.isabs(output_path):
+                    output_path = os.path.join(COMFY_OUTPUT_DIR, subfolder, output_path)
+                output_path = os.path.normpath(output_path)
+
                 logger.info(f"Processing output image: {output_path}")
 
-                if os.path.exists(output_path):
-                    url = func_gryd_file_system(output_path)
-                    if url:
-                        image_urls.append(url)
-                        logger.info(f"Uploaded to GRYD, URL: {url}")
-                else:
+                if not os.path.exists(output_path):
                     logger.warning(f"Output image not found: {output_path}")
+                    continue
+
+                ext = os.path.splitext(output_path)[1].lower().lstrip('.')
+                media_type = "image" if ext in ("png", "jpg", "jpeg", "webp", "gif") else "document"
+
+                url = func_gryd_file_system(output_path, media_type=media_type, logger=logger)
+                if url:
+                    image_urls.append(url)
+                    logger.info(f"Uploaded to GRYD, URL: {url}")
+                else:
+                    logger.warning(f"Upload failed for: {output_path}")
 
             logger.info(f"Image {i + 1} completed in {time.time() - iteration_start:.2f} sec")
 
@@ -196,6 +262,9 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
             logger.info(f"Removed input file: {input_path}")
 
         total_cost = (time.time() - total_start_time) * 0.0007
+        if len(image_urls) > 1:
+            image_urls = [image_urls[0]]
+
         logger.info(f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec =====")
         logger.info(f"Estimated cost: {total_cost:.4f} USD")
 

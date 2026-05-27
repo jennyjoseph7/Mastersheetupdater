@@ -16,6 +16,7 @@ from config import AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME
 from config import post_autocrm_model, AutocrmModel
 
 GRYD_CONFIG = {"broker_type" : "sqs", "timeout" : 10, "wait_time_to_shutdown" : 43200}
+INSIGHTS_SERVICE_NAME = "gryd_insights"
 logger = get_logger(__name__)
 
 def setup_gryd():
@@ -818,8 +819,86 @@ def check_container_status(*args, **kwargs):
             "error": str(e),
             "trace": traceback.format_exc()
         }
+    
+
+@gryd.is_a_task()
+def ask_insights(*args, **kwargs):
+    jobs = [{
+            "task" : "ask_insights",
+            "service" : INSIGHTS_SERVICE_NAME,
+            "kwargs": {
+                "question" : kwargs.get("question", None),
+                "collection_name" : kwargs.get("collection_name", None),
+                "llm_engine" : kwargs.get("llm_engine", None),
+                "llm_config" : kwargs.get("llm_config", None),
+                "database"   : kwargs.get("database", None)
+            }
+        }]
+    result_data = None
+    for job in gryd.yield_results(list_of_jobs = jobs, environment = kwargs.get("environment", "local")):
+        task_name, status, data = job[1], job[3], job[4]
+        if status=="result":
+            logger.info(f"Task '{task_name}' yielded result:\n{data}\n")
+            result_data = data
+    return result_data
+
+@gryd.is_a_task()
+def user_session_stitch_agent(*args, **kwargs):
+    try:
+        from cohorts_agents.user_session_stitch_agent import SessionStitcher
+        source = kwargs.get("source", None)
+        u = SessionStitcher(source=source)
+        d = u.sessions_by_user
+        return d
+    except Exception as e:  
+        full_trace = traceback.format_exc()
+        return {"task": inspect.currentframe().f_code.co_name, "error": str(e), "trace": full_trace}
+
+@gryd.is_a_task()
+def persona_generation_agent(*args, **kwargs):
+    try:
+        from cohorts_agents.persona_generation_agent import PersonaGenerationAgent
+        source = kwargs.get("source", None)
+        u = PersonaGenerationAgent(source=source)
+        d = u.run()
+        return d
+    except Exception as e:  
+        full_trace = traceback.format_exc()
+        return {"task": inspect.currentframe().f_code.co_name, "error": str(e), "trace": full_trace}
 
 if __name__ == "__main__":
+
+    d = persona_generation_agent(
+        source="/home/shreyasvaishnav/autobot_agents_branch_master/autobot_agents/cohorts_new/test_files/all_session_for_a_user.json")
+
+    print(json.dumps(d, indent=4, default=str))
+
+    assert False
+
+
+    d = user_session_stitch_agent(
+        source=["/home/shreyasvaishnav/autobot_agents_branch_master/autobot_agents/cohorts_new/test_files/all_session_for_a_user.json"])
+
+    print(json.dumps(d, indent=4, default=str))
+
+    assert False
+
+    r = ask_insights(
+        question = "total num of unique campaigns",
+        collection_name = "autongage_web_interaction_insights",
+        llm_engine = "ai_service",
+        llm_config = {"model_identifier" : "azure-gpt-4o"},
+        database = {
+            "duckdb" : {
+                "view_name" : "web_interaction_insights",
+                "url" :"http://autongage-analytics-dev.gryd.in/data/web_events_1.parquet"
+            }
+        }
+    )
+
+    print(json.dumps(r, indent=4, default=str)) 
+    assert False
+
 
     t_json ={
         "persona": "Design & Configurator Enthusiast",

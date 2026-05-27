@@ -19,8 +19,6 @@ import type { DataSourceFormData } from "../add-data-source-dialog";
 import { 
   uploadFileToGryd, 
   extractCsvHeadersAPI, 
-  getTaskStatus, 
-  getTaskResult 
 } from "@/utils/api";
 
 interface EnterConnectionDetailsProps {
@@ -33,15 +31,18 @@ export function EnterConnectionDetails({
   updateFormData,
 }: EnterConnectionDetailsProps) {
   const [status, setStatus] = useState<
-    "idle" | "uploading" | "extracting" | "polling" | "success" | "error"
+    "idle" | "uploading" | "extracting" | "success" | "error"
   >("idle");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Step 3: Get Headers Result ---
-  const fetchHeadersResult = async (taskId: string, file: File, fileUrl: string) => {
+  // --- Step 1: Start Header Extraction ---
+  const handleExtractHeaders = async (fileUrl: string, file: File) => {
+    setStatus("extracting");
+    setStatusMessage("Analyzing CSV file...");
+
     try {
-      const data = await getTaskResult(taskId);
+      const data = await extractCsvHeadersAPI(fileUrl);
       const rawResult = data.result || data;
       const headers = Array.isArray(rawResult) ? rawResult : (rawResult.headers || []);
 
@@ -64,86 +65,9 @@ export function EnterConnectionDetails({
       setStatusMessage("Headers extracted successfully!");
 
     } catch (error: any) {
-      console.error("Header fetch error:", error);
-      setStatus("error");
-      setStatusMessage(error.message || "Failed to retrieve CSV headers.");
-    }
-  };
-
-  // --- Step 2: Poll Header Extraction ---
-  const pollHeaderStatus = async (taskId: string, file: File, fileUrl: string) => {
-    setStatus("polling");
-    
-    const checkStatus = async () => {
-      try {
-        const data = await getTaskStatus(taskId);
-        
-        // --- SAFE ERROR HANDLING FIX ---
-        if (data.status === "error" || data.state === "FAILURE" || data.state === "REVOKED") {
-          setStatus("error");
-          
-          let errorMsg = "Header extraction failed.";
-          
-          // Check if error is in an array
-          if (Array.isArray(data.error) && data.error.length > 0) {
-             const firstErr = data.error[0];
-             if (typeof firstErr === 'string') {
-               errorMsg = firstErr;
-             } else if (typeof firstErr === 'object' && firstErr !== null) {
-               // Safely access properties: _error, message, error
-               errorMsg = (firstErr as any)._error || (firstErr as any).message || (firstErr as any).error || "Validation error in CSV.";
-             }
-          } 
-          // Check if error is a direct object
-          else if (typeof data.error === 'object' && data.error !== null) {
-             errorMsg = (data.error as any)._error || (data.error as any).message || "Unknown error object.";
-          }
-          // Check if error is a string
-          else if (typeof data.error === 'string') {
-             errorMsg = data.error;
-          }
-
-          // Truncate if message is too long
-          if (errorMsg.length > 120) errorMsg = errorMsg.substring(0, 120) + "...";
-
-          setStatusMessage(errorMsg);
-          return;
-        }
-
-        if (data.status === "success" || data.state === "SUCCESS") {
-          await fetchHeadersResult(taskId, file, fileUrl);
-          return; 
-        }
-
-        setStatusMessage(`Extracting headers...`);
-        setTimeout(checkStatus, 1500);
-
-      } catch (error) {
-        console.error("Polling error:", error);
-        setStatus("error");
-        setStatusMessage("Connection lost.");
-      }
-    };
-    checkStatus();
-  };
-
-  // --- Step 1: Start Header Extraction ---
-  const handleExtractHeaders = async (fileUrl: string, file: File) => {
-    setStatus("extracting");
-    setStatusMessage("Analyzing CSV file...");
-
-    try {
-      const data = await extractCsvHeadersAPI(fileUrl);
-      const taskId = data.job?.task_id;
-
-      if (!taskId) throw new Error("No Task ID returned for header extraction");
-
-      pollHeaderStatus(taskId, file, fileUrl);
-
-    } catch (error: any) {
       console.error("Extraction start error:", error);
       setStatus("error");
-      setStatusMessage(error.message || "Failed to start analysis.");
+      setStatusMessage(error.message || "Failed to analyze CSV headers.");
     }
   };
 

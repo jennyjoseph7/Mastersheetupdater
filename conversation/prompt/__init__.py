@@ -145,7 +145,7 @@ def get_cta_options(*args, **kwargs):
 
 def get_example_states_and_solutions(*args, **kwargs):
     cta_options = get_cta_options(*args, **kwargs)
-    examples = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["default"]
+    examples = hp.copyof(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["default"])
     if cta_options:
         examples.extend(cta_options)
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
