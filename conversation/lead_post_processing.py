@@ -24,7 +24,7 @@ THREADS_PER_SESSION = 0.1
 __version__ = "0.0.1"
 gryd.set_queue_manager()
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
-
+PROMPT_DIR = joinpath(dirname(abspath(__file__)), "prompts")
 
 
 
@@ -36,19 +36,25 @@ def WARM_UP():
         pass    
     return
 
-def update_session_data_in_lead(session_id,status,pg=None):
+def update_session_data_in_lead(session_id, status, pg = None):
+    """Updates the session data in the lead models associated with the given session id."""
     if not pg:
         mlogger.error("Postgres connection is required to update session data in lead.")
         return
     session_data = pg.get("session", "session_id",session_id)
     if not session_data:
         mlogger.info(f"Could not find session with session_id: {session_id}")
+        return
     lead_id = session_data.get("lead_id")
     campaign_type = session_data.get("campaign_type")
     last_interaction_time = session_data.get("last_response_time",None)
     if lead_id:
-        lead_model="post_sales_lead" if campaign_type == "post-sales" else "pre_sales_lead"
-        lead_model_id="post_sales_lead_id" if campaign_type == "post-sales" else "pre_sales_lead_id"
+        model_and_ids = {
+            "post-sales": ("post_sales_lead", "post_sales_lead_id"),
+            "pre-sales": ("pre_sales_lead", "pre_sales_lead_id")
+        }
+        lead_model, lead_model_id = model_and_ids.get(campaign_type, (None, None))
+
         pg.update(lead_model,lead_model_id,lead_id,{"last_session_id":session_id,"last_session_status":status,"last_interaction_time":last_interaction_time})
         mlogger.info(f"Updated session data in lead with session_id: {session_id} and lead_id: {lead_id}")
 
@@ -63,9 +69,9 @@ def end_session_and_post_process(*args, **kwargs):
     Returns:
         None
     """
-    session_id=kwargs.get("session_id")
-    additional_dict=kwargs.get("additional_dict",{})
-    pg=kwargs.get("pg",None)
+    session_id = kwargs.get("session_id")
+    additional_dict = kwargs.get("additional_dict",{})
+    pg = kwargs.get("pg",None)
     _call_post_process=kwargs.get("call_post_process",True)
     additional_dict["session_live"] = additional_dict.get("session_live", False)
     additional_dict["status"] = additional_dict.get("status", "completed")
@@ -160,61 +166,60 @@ def post_session_process(*args, **kwargs):
         mlogger.info("session_id not passed in kwargs")
         yield from yield_error("error","session_id not passed in kwargs",*args, **kwargs)
         return
-    session_data = {}
+    
+    session_data = {}; session_mdl_obj = {}
+    
     with get_pg_connector() as pg:
         session_data = pg.get("session_data_cache","session_id",session_id)
         session_mdl_obj = pg.get("session","session_id",session_id)
+    
     if not session_mdl_obj:
-        mlogger.info("session_id not passed in kwargs")
+        mlogger.info("session_mdl_obj not found for session_id == {}".format(session_id))
         yield from yield_error("error","session_mdl_obj not found",*args, **kwargs)
         return
+    
     if session_mdl_obj.get("status") in ["busy",
-                "no-answer",
-                "cancelled",
-                "failed",
-                "pre-initiated"]:
+                                        "no-answer",
+                                        "cancelled",
+                                        "failed",
+                                        "pre-initiated"]:
         mlogger.info("status is {}, Not doing post processing".format(session_mdl_obj.get("status")))
         return
         
     if not session_data:
-        mlogger.info("session_id not passed in kwargs")
-
+        mlogger.info("session_data not found for session_id == {}".format(session_id))
         yield from yield_error("error","session_data not found",*args, **kwargs)
         return
+    
     session_data = session_data.get("data",{})
-    campaign_data = session_data.get("campaign_data")
+    campaign_data = session_data.get("campaign_data", {})
     mlogger.info("campaign_data == {}".format(campaign_data))
-    campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
+    campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
 
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
     lead_data = {}
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+        sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
-        cur_disp_detail = lead_data.get('disposition_detail', None)
+        # cur_disp_detail = lead_data.get('disposition_detail', None)
 
 
     if not lead_data:
+        mlogger.info("lead_data not found for session_id == {} having campaign_data == {}".format(session_id, campaign_data))
         yield from yield_error("error","lead_data not found",*args, **kwargs)
-        mlogger.info("session_id not passed in kwargs")
-
         return
-    ## if lower in heirarchy than we would not change
-    # lead_disposition = lead_data.get("disposition")
 
-    # if lead_disposition != "engaged":
-    #     mlogger.info("lead_disposition is not engaged")
-    #     yield from yield_error("error","lead_disposition is not engaged",*args, **kwargs)
-    #     return
-
-    messages = session_data.get("messages")
+    messages = session_data.get("messages", [])
     if not messages or len(messages) == 0:
         mlogger.info("messages not found in session_data")
         yield from yield_error("error","messages not found in session_data",*args, **kwargs)
         return
+    
     sentiment_score = -1
     emotion_analysis = {}
+
     if messages:
         sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="gcp-gemini-3.1-flash-lite-preview")
         aa = sentiment_agent.run()
@@ -222,14 +227,10 @@ def post_session_process(*args, **kwargs):
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
     
-    sentiment_classification = get_disposition_classification(query = "", session_id = session_id, session_data_cache = session_data, session_mdl_obj= session_mdl_obj) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
-   
-    mlogger.info(f"\n\n sentiment_classified_for_query is ==> {sentiment_classification}\n\n")
-    
-    updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if session_data.get("messages") and len(session_data.get("messages")) > 0 else {"disposition"}
-    
-    mlogger.info("got disposition as == {}".format(updated_lead_data))
-    
+    sentiment_classification = get_disposition_classification(query = "", session_id = session_id, session_data_cache = session_data, session_mdl_obj= session_mdl_obj) if messages and len(messages) > 0 else {"disposition"}
+       
+    updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if messages and len(messages) > 0 else {"disposition"}
+        
     session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
     if updated_lead_data.get("disposition_detail").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
@@ -249,27 +250,26 @@ def post_session_process(*args, **kwargs):
 
     # yield {"lead_data":updated_lead_data,"session_id":session_id,"session_summary":session_mdl_obj.get("summary",""),"session_transcript":session_mdl_obj.get("history",[]), 'sentiment_analyse': sentiment_classification}
     # return
-    if sentiment_score != -1:
-        session_update_data["sentiment_score"] = sentiment_score
-    if emotion_analysis:
-        session_update_data["emotion_analysis"] = emotion_analysis
-    if sentiment_classification:
-        session_update_data["sentiment_classification"] = sentiment_classification
+
+    session_update_data.update({k: v for k,v in {
+                                                    "sentiment_score": sentiment_score if sentiment_score != -1 else None,
+                                                    "emotion_analysis": emotion_analysis,
+                                                    "sentiment_classification": sentiment_classification}.items() if v})
+    
     appt_date_time_purpose = {}
+
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
-    mlogger.info("updated_lead_data == {}".format(updated_lead_data))
     
     user_or_vehicle_data = get_extra_data(session_id,session_data)
-    mlogger.info("user_or_vehicle_data == {}".format(user_or_vehicle_data))
     
     summary_updated = get_summary(session_id,session_data)
-    mlogger.info("summary_update == {}".format(summary_updated))
 
     updated_lead_data["lead_summary"] = summary_updated
     if session_mdl_obj.get("channel") in ["whatsapp_chat"]:
         session_update_data["summary"] = summary_updated
+
     if campaign_type == "post_sales":
         if user_or_vehicle_data.get("vehicle_persona_summary"):
             updated_lead_data["vehicle_persona_summary"] = user_or_vehicle_data.get("vehicle_persona_summary")
@@ -280,8 +280,8 @@ def post_session_process(*args, **kwargs):
             if updated_lead_data.get("follow_up_language"):
                 pers_id = session_mdl_obj.get("user_id")
                 pg.update("person","user_id",pers_id,{"preferred_language":[updated_lead_data.get("follow_up_language")]})
-
             pg.update("vehicle","vehicle_id",session_data.get("user_data").get("vehicle_id"),user_or_vehicle_data)
+
     if campaign_type == "pre_sales":
         with get_pg_connector() as pg:
             mlogger.info("updating person == {}".format(user_or_vehicle_data))
@@ -309,18 +309,38 @@ def post_session_process(*args, **kwargs):
         """
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
+        try:
+            crm_sheet = sales_campaign_data.get("crm_source_details", {}).get('sheet_url', '')
+            crm_phone = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
+            crm_update = {"sheet_name": crm_sheet, "phone_number": crm_phone}
+            crm_update.update({k: v for k, v in updated_lead_data.items() if k not in crm_update})
+            if crm_sheet and crm_phone:
+                gryd.create_async_task(
+                    "update_lead_in_sheet",
+                    AUTOCRM_CONVERSATION_SERVICE_NAME,
+                    args=[],
+                    kwargs=crm_update,
+                )
+                mlogger.info(
+                    f"[CRM DEBUG] crm_sheet={crm_sheet}, crm_phone={crm_phone}"
+                )
+                mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
+        except Exception as e:
+            mlogger.exception(f"Failed to enter CRM update: {e}")
+
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
-            if appt_date_time_purpose.get("appointment_date"):
-                visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
-                mlogger.info("visit data == {}".format(visit_data))
-                if not visit_data:
-                    return
-                visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
-                m = AutocrmModel(visit_model)
-                mlogger.info("visit_model == {}".format(visit_model))
-                posted = m.post(visit_data)
-                mlogger.info("visit posted == {}".format(posted))
+
+        if appt_date_time_purpose.get("appointment_date"):
+            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+            mlogger.info("visit data == {}".format(visit_data))
+            if not visit_data:
+                return
+            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
+            m = AutocrmModel(visit_model)
+            mlogger.info("visit_model == {}".format(visit_model))
+            posted = m.post(visit_data)
+            mlogger.info("visit posted == {}".format(posted))
     
 @gryd.is_a_task(function_name="update_channel_identifier")
 def update_channel_identifier(user_id,**data):
@@ -337,12 +357,21 @@ def update_channel_identifier(user_id,**data):
     """
     person_payload = {}
     channel=data.get("channel")
-    if channel == "whatsapp_chat":
-        person_payload["last_contacted_whatsapp_number"] = data.get("phone_number")
-    elif channel == "email":
-        person_payload["last_contacted_email"] = data.get("email")
-    elif channel in ["voice_phone" ,"rcs"]:
-        person_payload["last_contacted_phone_number"] = data.get("phone_number")
+
+    channel_mapping = {
+        "whatsapp_chat": ("last_contacted_whatsapp_number", "phone_number"),
+        "email": ("last_contacted_email", "email"),
+        "voice_phone": ("last_contacted_phone_number", "phone_number"),
+        "rcs": ("last_contacted_phone_number", "phone_number")
+    }
+    if not channel_mapping.get(channel):
+        mlogger.info(f"Channel {channel} not in channel_mapping, skipping channel identifier update.")
+        return
+    
+    if channel in channel_mapping:
+        field_name, data_key = channel_mapping[channel]
+        person_payload[field_name] = data.get(data_key)
+
     with get_pg_connector() as pg:
         pg.update("person", "user_id", user_id, person_payload)
         mlogger.info(f"[update_channel_identifier] Updated channel identifier for user_id={user_id} with payload={person_payload}")
@@ -350,7 +379,6 @@ def update_channel_identifier(user_id,**data):
 
 @gryd.is_a_task(function_name="update_lead_disposition_and_post_billing")
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
-    # mlogger.info(f"[update_lead_disposition] Called with incoming_status={incoming_status} for lead_id={data.get('lead_id')} and DATA= {json.dumps(data,indent=4)}")
     mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
     post_template_message=data.get("post_template_message")
     if should_bill:
@@ -377,12 +405,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             return True
         return DISPOSITION_SEQUENCE.index(incoming) > DISPOSITION_SEQUENCE.index(current)
     
-    update_payload = {}
-    lead_id = data.get("lead_id")
+    update_payload = {}; lead_id = data.get("lead_id"); campaign_type = data.get("campaign_type"); channel = data.get("channel")
     user_id = user_id or data.get("user_id")
-    campaign_type = data.get("campaign_type")
-    channel = data.get("channel")
-    
+
     lead_table = (
         "post_sales_lead"
         if campaign_type == "post-sales"
@@ -396,10 +421,8 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
     lead_key = lead_id
     with get_pg_connector() as pg:
-        # lead_d = list(pg.list(lead_table, {lead_pk: lead_key}))
         mlogger.info(f"Lead table--{lead_table} | lead_pk--{lead_pk} | lead_key--{lead_key}")
         lead=pg.get(lead_table,lead_pk,lead_key)
-        # mlogger.info(f"[post_contact_status] lead data={lead}")
         if not lead:
             mlogger.warning(f"[post_contact_status] No lead found for {lead_key}")
             return
@@ -442,10 +465,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             
             if incoming_status == "failed":
                 update_payload["disposition_detail"] = data.get("failure_reason")
-            #only updating the previous_contact_channel when the diposition is updated and it is higher in sequence than the current diposition
+
             update_payload["previous_contact_channel"] = channel 
             
-            # updating previous_contact_channel for person as well only when the disposition is updated and it is higher in sequence than the current diposition
             person_payload = {"previous_contact_channel": channel}
             pg.update("person", "user_id", user_id, person_payload)
         else:
@@ -456,7 +478,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         update_payload.pop("lead_id", None)
         update_payload.pop("dealership_id", None)
-        # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
         if update_payload:
             mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
             pg.update(
@@ -535,23 +556,23 @@ def post_billing_obj(**message_dict):
             lead_model= 'post_sales_lead' if contact_status_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
         else:
             mlogger.info(f"Contact Status Data not found for message_id since it is a inbound message and not through campaign: {message_dict.get('message_id')}")
-            session_data=list(pg.list("session",{"phone_number":mob_num}))[0]
+            session_data=list(pg.list("session",{"phone_number":mob_num}))
             if not session_data: return
+            session_data=session_data[0]
             dealership_id=session_data.get("dealership_id",None)
             lead_id=session_data.get('lead_id',None)
             lead_model= 'post_sales_lead' if session_data.get('campaign_type') == 'post-sales' else 'pre_sales_lead'
             
         mlogger.info(f"We have dealership_id: {dealership_id} in contact_status_data")
-        c=get_communication_credential(dealership_id=dealership_id, channel="whatsapp_chat")
+        c = get_communication_credential(dealership_id=dealership_id, channel="whatsapp_chat")
         if c:
             mlogger.info(f"Communication Credential found for dealership_id: {dealership_id} and channel whatsapp_chat")
         if lead_id:
             mlogger.info(f"We have lead_id: {lead_id} in contact_status_data")
             lead_model_id="post_sales_lead_id" if lead_model == "post_sales_lead" else "pre_sales_lead_id"
-            # mlogger.info(f"We have lead_model: {lead_model} and lead_model_id: {lead_model_id} in contact_status_data")
-            # lead_data=list(pg.list(lead_model,{lead_model_id:lead_id}))[0]
+
             lead_data=pg.get(lead_model,lead_model_id,lead_id)
-            # mlogger.info(f"We have lead_data: {lead_data}")
+
             if lead_data:
                 item_description =f"{lead_data.get('campaign_type', 'unknown')} - {lead_data.get('campaign_objective_name', 'campaign_objective_id')} - {lead_data.get('campaign_name', 'unknown')} - {lead_data.get('channel', 'unknown')} - {c.get('provider_name', 'unknown')} - {message_dict.get('mobile_number')}"
                 campaign_id=lead_data.get('campaign_id')
@@ -620,27 +641,26 @@ def post_audit_logs(**message_dict):
     
     
 def get_summary(session_id,session_data):
+    
     messages = session_data.get("messages")
-
     existing_summary = session_data.get("user_data").get("lead_summary")
+
     if not messages:
         return existing_summary if existing_summary else ""
+    
     if existing_summary:
-        prompt = f"""
-            You are a summariser agent. I will provide you with the summary from the previous session. You are to update the existing summary using the current session history. Keep the overall summary brief. Try to maintain all pertinent information about their sessions in the summary. 
-            Previous session summary - {existing_summary}
-            Current session history - {messages}
-            Provide the new updated summary.
-        """
+        summary_prompt_template = get_prompt_file("existing_summary.txt")
+        prompt = summary_prompt_template.format(existing_summary = existing_summary, messages = messages)
+    
     else:
-        prompt = f"""
-            You are a summariser agent. You are to create a brief summary using the current session history. 
-            Current session history - {messages}
-            Provide the Summary.
-        """
+        no_summary_prompt_template = get_prompt_file("no_existing_summary.txt")
+        prompt = no_summary_prompt_template.format(messages = messages)
+    
+
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
+
 def get_lead_variables(campaign_type):
     """
         Get the list of lead variables for the given campaign type.
@@ -1164,10 +1184,9 @@ def get_lead_variables(campaign_type):
         return ["vehicle_name","vehicle_model","vehicle_type"]
     
 def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
-    lead_data = session_data_cache.get("user_data")
-    campaign_data = session_data_cache.get("campaign_data")
-    campaign_objective = campaign_data.get("campaign_objective")
-    campaign_purpose = campaign_data.get("purpose")
+    campaign_data = session_data_cache.get("campaign_data", {})
+    campaign_objective = campaign_data.get("campaign_objective", "General Customer Engagement")
+    campaign_purpose = campaign_data.get("purpose", "General Customer Engagement")
     campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
     messages = session_data_cache.get("messages")
     p_steps = campaign_data.get("purpose_steps",[])
@@ -1175,18 +1194,19 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     message_history = []
     has_user_message = False
     for message in messages:
-        # mlogger.info("message in get_disposition -  {}".format(message))
         if not message:
             continue
-        if "intent" in message and message.get("intent") == "llm_response":
-            message_history.append({"role" : "my agent", "message":message.get("message","")})
-        else:
-            if not has_user_message and message.get("message") and len(message.get("message")) > 0:
-                has_user_message = True
-            message_history.append({"role" : "customer", "message":message.get("message","")})
+
+        role = message.get("role", "customer")
+
+        message_history.append({"role" : role, "message":message.get("message","")})
+        
+        if not has_user_message and message.get("message") and len(message.get("message")) > 0:
+            has_user_message = True
+    
     if not has_user_message:
         return {"disposition":"contacted","disposition_detail":"No Response","prioritization_score":10,"prioritization_category":"INACTIVE"}
-    mlogger.info("message_history in get_disposition -  {}".format(message_history))
+    
     session_summary = session_mdl_obj.get("summary")
     campaign_type = campaign_data.get("campaign_type")
     example_disposition_response =  """{
@@ -1195,6 +1215,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
         "prioritization_score" : "number_values_from_0_to_100",
         "prioritization_category" : "COMPLETE or HOT or WARM or COOL or COLD or INACTIVE"
     }"""
+
     disp_details_options = {
             "CONVERTED": {
                 "CONVERTED": "Use this category when the customer successfully completes the campaign objective during the conversation and provides all required information or confirmation needed to finalize the lead, booking, inquiry, or conversion action."
@@ -1268,6 +1289,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
                 "TALK TO HUMAN": "Use this category when the customer explicitly requests to speak with a human representative, sales executive, advisor, or dealership staff instead of continuing with the AI agent or automated system."
             }
             }
+    
     if campaign_type == "post-sales":
         disp_details_options = {
                 "CONVERTED": {
@@ -1343,127 +1365,32 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
                 }
                 }
 
-    prompt = f"""
-    # You are a analyst bot that has the single purpose of looking at the conversation summary provided below about my customer and my agent and check if they completed the objective of my campaign. 
-    # I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
-    # These are some details of the campaign - {campaign_description}.
+    purpose = campaign_purpose if campaign_purpose else campaign_objective
+
+    details_options = disp_details_options[sentiment.upper()]
+        
+    prompt_template = get_prompt_file("disposition.txt")
+    prompt = prompt_template.format(purpose=purpose, campaign_description = campaign_description, purpose_steps = purpose_steps, session_summary = session_summary, message_history = message_history, disp_details_options = details_options, example_disposition_response=example_disposition_response)
+
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id}, temperature = 0.2, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     
-    # The campaign can be in different langauages so LOOK AT THE CONVERSATION HISTORY TO UNDERSTAND THE LANGUAGE and THE CONTEXT of the conversation before coming to a conclusion.
-    
-    # Following are the list of languages in which the conversation can happen - Englis, Hindi, Tamil, Telugu, Kannada, Malayalam.
-    
-    {purpose_steps}
-    
-    # I want to know if the purpose of the campaign was met by the customer.
-    For example:
-        If campaign is about booking a test drive check if the customer booked a test drive.
-        If campaign is about buying a car check if the customer bought a car.
-        If campaign is about informing the user about an offer we are running check if the customer was informed about the offer.
-
-    # The summary of my conversation with the customer is as follows:\n
-    {session_summary}\n
-    # The conversation history between my agent and the costomer is ask follows:\n
-    {message_history}\n
-    # Now check if the objective of the campaign was met by the customer. 
-    If the objective was met the disposition should be converted.
-    In all other cases it should be engaged.
-    If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
-    
-    # Possible values and description to qualify for disposition_detail are:
-    \n{disp_details_options[sentiment.upper()]}\n
-    Only pick ONE value from this above list for disposition details.
-    The disposition detail is a description of the status of the customer based on the conversation summary provided above. Not what the agent said. Only consider the customer's interaction to conclude on the final disposition detail value.,
-
-    # The disposition and disposition detail is for the customer and their intent shown in the conversation summary above.
-    # Special Cases:-
-    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
-    - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
-    
-    CRITICAL RULES:
-    - Your response must be ONLY the JSON object string that i can convert to json using json.loads.
-    - Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    - Use ONLY the exact labels provided below.
-    - NEVER create new labels.
-    - NEVER summarize the conversation.
-    - NEVER explain reasoning.
-    - NEVER output anything outside the allowed values.
-    - If uncertain, choose the closest valid label.
-    - Do NOT prepend labels (like "json"). Output only valid JSON.
-
-    ALLOWED VALUES for disposition_detail based on sentiment category are as follows:
-
-    {{
-        "CONVERTED": [
-            "CONVERTED"
-        ],
-
-        "POSITIVE": [
-            "ENQUIRED FOR TEST DRIVE",
-            "SHOWROOM VISIT PLANNED",
-            "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS",
-            "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS",
-            "ENQUIRED FOR PRICING",
-            "ENQUIRED FOR SPECIFICATIONS",
-            "ENQUIRED FOR SHOWROOM VISIT",
-            "ENQUIRED FOR BROCHURE",
-            "ENQUIRED FOR DEALERSHIP DETAILS",
-            "INTERESTED IN ANOTHER CAR SAME DEALERSHIP",
-            "FOLLOW UP REQUIRED",
-            "REQUESTED CALLBACK"
-        ],
-
-        "NEUTRAL": [
-            "WILL DECIDE LATER, EXPLORING OPTIONS",
-            "JUST EXPLORING",
-            "WILL CALL SHOWROOM/WORKSHOP THEMSELVES",
-            "GENERAL INQUIRY",
-            "COMPARING WITH ANOTHER BRAND",
-            "LANGUAGE BARRIER",
-            "AUDIO ISSUE",
-            "TEST DRIVE COMPLETED",
-            "ENQUIRED FOR OTHERS",
-            "OTHERS"
-        ],
-
-        "NEGATIVE": [
-            "NO RESPONSE",
-            "CALL DISCONNECTED",
-            "VOICEMAIL",
-            "NOT INTERESTED",
-            "NO BUYING INTENT",
-            "PURCHASED ELSEWHERE",
-            "LOST TO COMPETITION",
-            "PURCHASE POSTPONED",
-            "INVALID LEAD",
-            "TALK TO HUMAN"
-        ]
-    }}
-
-     # Your response should be in the following JSON format:
-    {example_disposition_response}
-    """
-
-    mlogger.info("prompt == {}".format(prompt))
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id, "temperature": 0.2})
-    # mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
-    mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
-    campaign_data = session_data.get("campaign_data")
-    mlogger.info("campaign_data == {}".format(json.dumps(campaign_data)))
+
     if campaign_data.get("campaign_type") == "pre-sales":
         if not lead_data.get("showroom_id"):
             mlogger.info("showroom_id not found in lead_data")
             return {}
+        
     if campaign_data.get("campaign_type") == "post-sales":
         if not lead_data.get("workshop_id"):
-            mlogger.info("showroom_id not found in lead_data")
+            mlogger.info("workshop_id not found in lead_data")
             return {}
         
     date_str = appt_date_time_purpose.get("appointment_date")
@@ -1471,20 +1398,26 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
     full_datetime_str = f"{date_str} {time_str}"
     format_string = "%d-%m-%Y %H:%M"
     timestamp_object = datetime.strptime(full_datetime_str, format_string)
-    
+
     appt_data = {
             "appointment_date" : date_str,
             "appointment_time" : time_str
     }
     if campaign_type == "post_sales":
-        appt_data["post_sales_lead_id"]= lead_id
-        appt_data["service_date"]= date_str
-        appt_data["workshop_id"] = lead_data.get("workshop_id")
+        appt_data.update({
+                            "service_date": date_str,
+                            "post_sales_lead_id": lead_id,
+                            "workshop_id": lead_data.get("workshop_id")
+                        })
+        
 
     elif campaign_type == "pre_sales":
-        appt_data["pre_sales_lead_id"]= lead_id
-        appt_data["showroom_id"] = lead_data.get("showroom_id")
-
+        appt_data.update(
+            {
+                "pre_sales_lead_id": lead_id,
+                "showroom_id": lead_data.get("showroom_id")
+            }
+        )
 
     return appt_data
         
@@ -1504,38 +1437,22 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     dict
         A dictionary containing the appointment date, time and purpose.
     """
-    lead_data = session_data_cache.get("user_data")
+    # lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
-    campaign_type = campaign_data.get("campaign_type")
+    # campaign_type = campaign_data.get("campaign_type")
     response_example = {
         "appointment_date": "DD-MM-YYYY format for the date mentioned",
         "appointment_time": "HH:MM format for the time mentioned",
         "purpose": ["purpose1","purpose2","purpose3"]
     }
-    prompt = f"""
-    You are an analyst bot that looks at my conversation history with my customer and detects if the customer made a booking for a date time and given any purpose details.
-    I am running a campaign with the objective of {campaign_objective}.
-    these are some details of the campaign {campaign_description}.
-    I want to know if the customer made a booking for a date time and given any purpose details.
+    
+    prompt_template = get_prompt_file("appt_date_time_purpose.txt")
+    datetime_format = datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")
+    prompt = prompt_template.format(campaign_objective=campaign_objective, campaign_description=campaign_description, message_history=message_history, datetime_format=datetime_format, response_example=json.dumps(response_example))
 
-    The conversation history is as follows:
-    {message_history}
-    Now check if the customer made a booking for a date time and given any purpose details.
-    for your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
-    For example:
-    if campaign was to book a service, purpose would be a list of issues they would like to get fixed during the service or list of different services they want.
-    if campaign was to book a test drive, purpose would be the aspects of the car they would like to test.
-
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
-    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    do NOT prepend labels (like "json"). Output only valid JSON.
-
-    Your response should be in the following JSON format:
-    {response_example}
-    """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
@@ -1556,45 +1473,35 @@ def get_preffered_language(session_id,session_data_cache):
     dict
         A dictionary containing the preffered language.
     """
-    campaign_data = session_data_cache.get("campaign_data")
+    # campaign_data = session_data_cache.get("campaign_data")
     messages = session_data_cache.get("messages")
     message_history = []
     for message in messages:
         if not message:
             continue
-        if "intent" in message and message.get("intent") == "llm_response":
-            message_history.append({"role" : "my agent", "message":message.get("message","")})
-        else:
-            message_history.append({"role" : "customer", "message":message.get("message","")})
+        role = message.get("role", "customer")
+        # role = "my agent" if message.get("intent", "") in ["llm_response"] else "customer"
+        message_history.append({"role" : role, "message":message.get("message","")})
+        # if "intent" in message and message.get("intent") == "llm_response":
+        # else:
+        #     message_history.append({"role" : "customer", "message":message.get("message","")})
     response_example = {
         "follow_up_language": "en"
     }
-    prompt = f"""
-    You are an analyst bot that looks at my conversation history with my customer and detects if the customer asks to speak in a different language what language was it.
     
-
-    The conversation history is as follows:
-    {message_history}
-    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
-    For example:
-    If the customer says anything 'talk in hindi' you should return the value of follow_up_language as 'hi' which is the google language code for hindi.
-    If the customer just speaks in a different language for example only speaks in tamil. You should return the value of follow_up_language as 'ta' which is the google language code for tamil.
-    If the customer seems to be speaking in a language different from the language the agent is speaking in the follow_up_language should be the google language code for the language the customer is speaking in.
+    datetime_format = datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")
     
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
-    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    do NOT prepend labels (like "json"). Output only valid JSON.
+    prompt_template = get_prompt_file("preffered_language.txt")
+    prompt = prompt_template.format(message_history=message_history, datetime_format=datetime_format, response_example= json.dumps(response_example))
 
-    Your response should be in the following JSON format with the language code as the value for the follow_up_language key based on the language that the customer is comfortable in:
-    {json.dumps(response_example)}
-    """
+
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
-    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
+    mlogger.info("get_preffered_language prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
         
 def get_callback_date_time(session_id,session_data_cache):
     """
-    Retrieves the appointment date time and purpose from the conversation history.
+    Retrieves the callback date time from the conversation history.
 
     Parameters
     ----------
@@ -1606,39 +1513,20 @@ def get_callback_date_time(session_id,session_data_cache):
     Returns
     -------
     dict
-        A dictionary containing the appointment date, time and purpose.
+        A dictionary containing the callback date and time.
     """
-    lead_data = session_data_cache.get("user_data")
-    campaign_data = session_data_cache.get("campaign_data")
-    campaign_objective = campaign_data.get("campaign_objective")
-    campaign_description = campaign_data.get("campaign_description")
+    # campaign_data = session_data_cache.get("campaign_data")
+
     message_history = session_data_cache.get("messages")
-    campaign_type = campaign_data.get("campaign_type")
+    datetime_format = datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")
     response_example = {
         "follow_up_date": "DD-MM-YYYY HH:MM format for the date and time for callback"
     }
-    prompt = f"""
-    You are an analyst bot that looks at my conversation history with my customer and detects if when i called the customer, and the customer requested to be called back at a later time, what date and time did they ask for the callback.
-    
+    prompt_template = get_prompt_file("callback_date_time.txt")
+    prompt = prompt_template.format(message_history=message_history, datetime_format=datetime_format, response_example= json.dumps(response_example))
 
-    The conversation history is as follows:
-    {message_history}
-    For your reference the timestamp for today is {datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")}
-    For example:
-    If the customer says anything like call me tomorrow or day after at 1pm. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for the time they mention.
-    If the customer only says tomorrow, or date but does not mention a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for the date they mentioned and hh mm is for 12pm.
-    If the customer has asks for a callback at just a time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for the time they mention.
-    If the customer does not mention any date or time. Return the date time value in the format of DD-MM-YYYY HH:MM where the date month and year is for today and hh mm is for 1 hour after the current time.
-    
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads. 
-    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    do NOT prepend labels (like "json"). Output only valid JSON.
-
-    Your response should be in the following JSON format:
-    {json.dumps(response_example)}
-    """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
-    mlogger.info("callback_date_time prompt response ======= {}".format(resp))
+    mlogger.info("get_callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
 
@@ -1667,76 +1555,38 @@ def get_extra_data(session_id,session_data_cache):
     campaign_description = campaign_data.get("campaign_description")
     message_history = session_data_cache.get("messages")
     campaign_type = campaign_data.get("campaign_type")
+    lead_variable_campaign_type = get_lead_variables(campaign_type)
+    purpose = campaign_purpose if campaign_purpose else campaign_objective 
     example_data = {
         "colour": "blue"
     }
     empty_dict = {}
-    prompt = f"""
-    You are a data identifier bot that helps pick out values i want to save about the user from the conversation history.
-    I am running a campaign with the objective of {campaign_purpose if campaign_purpose else campaign_objective}.
-    these are some details of the campaign {campaign_description}.
-    This the the information i already have about the user.
-    {lead_data}
-    I want you to check the history for the following attributes:
-    {get_lead_variables(campaign_type)}
+    prompt_template = get_prompt_file("extra_data.txt")
+    prompt = prompt_template.format(purpose=purpose, campaign_description=campaign_description, lead_data=json.dumps(lead_data), lead_variable_campaign_type=json.dumps(lead_variable_campaign_type), message_history=json.dumps(message_history), example_data=json.dumps(example_data))
 
-    The conversation history is as follows: 
-    {message_history}
-
-    Your response should be in JSON format with a dictionary with keys for the attributes you were able to identify from the above list. Do not add keys you are unable to find values for or ones that are already available in the data above.
-
-    
-
-    Example if the attributes im looking for include colour and variant_name and the message history contains a message from the user specifying they have a blue car. Your response should be like the following:-
-    {example_data}
-    if no new data is found then return empty json object.
-    Your response must be ONLY the JSON object string that i can convert to json using json.loads(<your response string>). 
-    Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
-    do NOT prepend labels (like "json"). Output only valid JSON.
-    Always make sure the exact response you give as string should be a valid JSON string that can be used for python api json.loads(<your response string>)
-    """
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
+    
     if resp and isinstance(resp,str):
         updated_dict = hp.json.loads(resp)
+
     mlogger.info("getting extra data summary for campaign_type {} and updated_dict {}".format(campaign_type,updated_dict))
+    
+    prompt_not_current_summary = get_prompt_file("not_current_summary.txt")
+    prompt_current_summary = get_prompt_file("current_summary.txt") 
+
     if campaign_type == "post-sales":
         current_summary = lead_data.get("vehicle_persona_summary")
-        mlogger.info("current_summary == {}".format(current_summary))
         if not current_summary:
-            prompt = f"""
-                You are a summariser agent. You are to create a brief summary of the information aboout the vehicle that is mentioned in the conversation history provided below. Only keep the relevent information about the vehicle itself.
+            prompt = prompt_not_current_summary.format(message_history=message_history)
 
-                Conversation history - {message_history}
-                Provide the Summary.
-
-            """
         else:
-            prompt = f"""
-            You are a summariser agent. You are to update the summary of the vehicle that is mentioned in the conversation history provided below. Only keep the relevent information about the vehicle itself. Use the previous summary as a starting point. Add more information to it based on the conversation history.
+            prompt = prompt_current_summary.format(current_summary = current_summary, message_history = message_history)
 
-            Previous summary - {current_summary}
-            Conversation history - {message_history}
-            Provide the updated summary.
-            """
-        mlogger.info("vehicle summary prompt == {}".format(prompt))
         resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
-        mlogger.info("got vehicle summary response as ===== {}".format(resp))
         updated_dict["vehicle_persona_summary"] = resp
 
     return updated_dict
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @gryd.is_a_task()
@@ -1763,7 +1613,8 @@ def session_close(*args, **kwargs):
     task_result_generator = gryd.yield_results(awaited_tasks)
 
     for task_result in task_result_generator:
-        logger.info(f"Task '{task_result[1]}' status: {task_result[3]} \n") 
+        logger.info(f"Task '{task_result[1]}' status: {task_result[3]} \n")
+
     with get_pg_connector() as pg:
         if kwargs.get("history"):
             ##TODO post history into message model
@@ -1771,6 +1622,7 @@ def session_close(*args, **kwargs):
 
         if kwargs.get("session_data_cache"):
             pass
+
         pg.delete("session_data_cache","session_id",kwargs.get("session_id"))
 
     yield {"status" : "complete","session_id":kwargs.get("session_id")}
@@ -1809,6 +1661,7 @@ def add_to_session_cache(*args, **kwargs):
         # optional_input = {"vegetable" : "text"}, #:Union[Dict[str, str], None] 
         # capability_function = None #:Union[Dict[str, str], None] Defaults to using Docstring
         )
+
 def update_person_vehicle(*args, **kwargs):
     '''
     This task called to update the person or vehicle data based on lead model and conversation history from message model.
@@ -1824,6 +1677,7 @@ def update_lead_data(*args, **pass_kwargs):
     look at message history for a session and then check the person and existin lead data nad update the lead model attrs
     '''
     pass
+
 @gryd.is_a_task()
 def post_visit_data(*args, **pass_kwargs):
     '''
@@ -1877,110 +1731,59 @@ def post_session_processes(*args, **kwargs):
         return
     if "campaign_ids" in kwargs and len(kwargs.get("campaign_ids",[])) > 0:
         campaign_ids = kwargs.get("campaign_ids")
-        mlogger.info("running post_lead_process for campaign_ids == {}".format(campaign_ids))
         for campaign_id in campaign_ids:
             with get_pg_connector() as pg:
                 session_ids = list(pg.list("session",{"campaign_id":campaign_id}))
-                mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
                 for session_data in session_ids:
-                    # mlogger.info("running post_lead_process for session_id == {} for campaign_id == {}".format(session_data.get("session_id"),session_data.get("campaign_id")))
                     if session_data.get("status") not in ["busy"]:
-                        mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
                         yield from post_session_process(session_id=session_data.get("session_id"))
             
     if "campaign_id" in kwargs:
         with get_pg_connector() as pg:
             session_ids = list(pg.list("session",{"campaign_id":kwargs.get("campaign_id")}))
-            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
             for session_data in session_ids:
                 if session_data.get("status") not in ["busy"]:
-                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
                     yield from post_session_process(session_id=session_data.get("session_id"))
         return
     if "dealership_id" in kwargs:
         with get_pg_connector() as pg:
             session_ids = list(pg.list("session",{"dealership_id":kwargs.get("dealership_id")}))
-            mlogger.info("running post_lead_process for session_ids == {}".format(session_ids))
             for session_data in session_ids:
                 if session_data.get("status") not in ["busy"]:
-                    mlogger.info("running post_lead_process for session_id == {} with status == {}".format(session_data.get("session_id"),session_data.get("status")))
                     yield from post_session_process(session_id=session_data.get("session_id"))
         return
 
 
 def get_disposition_classification(query = None, session_id = None, session_data_cache = None, session_mdl_obj = None):
-    classify_list = ["negative", "neutral", "positive", "converted"]
-    lead_data = session_data_cache.get("user_data")
     campaign_data = session_data_cache.get("campaign_data")
     campaign_objective = campaign_data.get("campaign_objective")
     campaign_purpose = campaign_data.get("purpose")
     campaign_description = campaign_data.get("campaign_description",campaign_data.get("campaign_objective_description"))
+    purpose = campaign_purpose if campaign_purpose else campaign_objective 
     messages = session_data_cache.get("messages")
     session_summary = session_mdl_obj.get("summary")
     message_history = []
     has_user_message = False
     for message in messages:
-        mlogger.info("message in get_disposition -  {}".format(message))
         if not message:
             continue
-        if "intent" in message and message.get("intent") == "llm_response":
-            message_history.append({"role" : "my agent", "message":message.get("message","")})
-        else:
-            if not has_user_message and message.get("message") and len(message.get("message")) > 0:
-                has_user_message = True
-            message_history.append({"role" : "customer", "message":message.get("message","")})
+        role = message.get("role", "customer")
+
+        message_history.append({"role" : role, "message":message.get("message","")})
+
+        if not has_user_message and message.get("message") and len(message.get("message")) > 0:
+            has_user_message = True
+
     if not has_user_message:
         return "neutral"
 
     p_steps = campaign_data.get("purpose_steps",[])
     purpose_steps = f"These are the mandatory steps that need to be completed for the campaign purpose to be achieved: {', '.join(p_steps)}" if p_steps else ""
-
-    prompt = f"""
-    # ROLE
-    You are a highly precise analyst bot. Your single purpose is to evaluate a conversation summary and history to determine if a customer met the specific objective of a campaign.
-
-    # CAMPAIGN DETAILS
-    - Objective: {campaign_purpose if campaign_purpose else campaign_objective}
-    - Description: {campaign_description}
-    {purpose_steps}
-
-    # EVALUATION CRITERIA
-    1. Look only at the CUSTOMER'S interaction and intent.
-    2. Ignore agent actions except to provide context for the customer's response.
-    3. Match the customer's status against the following classification list:
-    {classify_list}
-
-    # EXAMPLES FOR CLASSIFICATION REFERENCE
-    POSITIVE (Customer is interested but hasn't committed/converted yet)
-     - Reasoning: The user rejects the current timing or specific detail but maintains a conversational bridge. This indicates high intent with a logistical friction point rather than a lack of interest.
-     - Example 1: [{{'role': 'user', 'message': 'Not at this time'}}, {{'role': 'agent', 'message': 'When would be a better time?'}}] -> Customer is open to future contact.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:01:03 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 02:01:09 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, thank you for considering the Citroen Aircross, A Many buyers, you know, focus on smooth ride quality, cabin calmness, and everyday driving ease Is comfort one of your top priorities?', 'timestamp': '2026-03-03 02:01:10 PM +0000'}}, {{'role': 'user', 'message': 'Yes, yes', 'timestamp': '2026-03-03 02:01:24 PM +0000'}}, {{'role': 'agent', 'message': 'Absolutely Uh, the Citroen Aircross is really designed for comfort, especially, you know, for daily driving It has this Magic Carpet ride with Frequency Selective Damping suspension that's tuned for Indian roads This really helps absorb bumps and reduces fatigue, whether you're in the city or on longer journeys', 'timestamp': '2026-03-03 02:01:26 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:01:46 PM +0000'}}, {{'role': 'agent', 'message': 'And, uh, it als', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'user', 'message': 'So I had a question Hello?', 'timestamp': '2026-03-03 02:01:48 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, A, I m here Please go ahead with your question', 'timestamp': '2026-03-03 02:01:56 PM +0000'}}, {{'role': 'user', 'message': 'Yeah, so actually I had a 2024 vehicle from Andhra So I need to check whether that 2024 aircrafts manual top-end model is having the six airbags or not', 'timestamp': '2026-03-03 02:02:00 PM +0000'}}, {{'role': 'agent', 'message': 'Got it You are asking about the 2024 C3 Aircross manual top-end model and if it has six airbags Let me just check that for you\n', 'timestamp': '2026-03-03 02:02:15 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:24 PM +0000'}}]
     
-    NEGATIVE (Customer explicitly declines the objective)
-     - Reasoning: The user provides a definitive 'No' or a contextual rejection that closes the loop on the specific goal. No alternative or future opening is provided.
-     - Example 1: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'agent', 'message': 'Would you be interested in booking a test drive?'}}, {{'role': 'user', 'message': "No, I'm at a state by state"}}] -> Objective rejected.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 01:22:23 PM +0000'}}, {{'role': 'user', 'message': 'Yeah', 'timestamp': '2026-03-03 01:22:29 PM +0000'}}, {{'role': 'agent', 'message': 'Thanks for considering the Citroen Aircross, Aarun Gaur Are there any specific questions you have about service support or ownership experience in India?', 'timestamp': '2026-03-03 01:22:31 PM +0000'}}, {{'role': 'user', 'message': 'No, madam No', 'timestamp': '2026-03-03 01:22:40 PM +0000'}}, {{'role': 'agent', 'message': 'Got it So, um, Aarun Gaur, are you interested in booking a test drive for the Citroen C3 Aircross?', 'timestamp': '2026-03-03 01:22:43 PM +0000'}}, {{'role': 'user', 'message': '[car engine] <|unintellig', 'timestamp': '2026-03-03 01:22:51 PM +0000'}}, {{'role': 'agent', 'message': 'Sorry, I couldnt hear what you said Could', 'timestamp': '2026-03-03 01:22:55 PM +0000'}}, {{'role': 'user', 'message': 'Uh, already madam le-le-le-le li hai madam already trial Gaadi aayi thi aapki Toh hum dekh liya, chala ke drive kar liya', 'timestamp': '2026-03-03 01:22:58 PM +0000'}}, {{'role': 'agent', 'message': 'Ah, got it So, you have already taken a test drive of the Citroen C3 Aircross That makes sense\n\nUhm,', 'timestamp': '2026-03-03 01:23:08 PM +0000'}}, {{'role': 'user', 'message': 'Yeah Yeah', 'timestamp': '2026-03-03 01:23:14 PM +0000'}}, {{'role': 'agent', 'message': 'Okay So, um, Aarun Gaur, since you have already had a test drive, is there anything else I can help you with regarding the Citroen C3 Aircross, or perhaps any other Citroen or Jeep models?', 'timestamp': '2026-03-03 01:23:16 PM +0000'}}, {{'role': 'user', 'message': 'No, thank you', 'timestamp': '2026-03-03 01:23:29 PM +0000'}}, {{'role': 'agent', 'message': 'Alright, Aarun Gaur Thanks for your time I really appreciate it Have a great day!', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:31 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 01:23:37 PM +0000'}}]
-     
-    NEUTRAL (Inconclusive, language barrier, or no clear progress)
-     - Reasoning: The input is semantically "noise" relative to the objective. It contains no discernible intent (positive or negative) or suggests a communication barrier that prevents state progression.
-     - Example 1: [{{'role': 'user', 'message': 'Hindi'}}, {{'role': 'user', 'message': '[background noise]'}}] -> No decision made.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-03 02:02:09 PM +0000'}}, {{'role': 'user', 'message': '[clears throat]', 'timestamp': '2026-03-03 02:02:14 PM +0000'}}, {{'role': 'agent', 'message': 'Uh, I am sorry, K - Aamit Singh, I couldn't quite hear what you said Could you please speak a little louder?', 'timestamp': '2026-03-03 02:02:17 PM +0000'}}, {{'role': 'user', 'message': 'I can speak louder, but I can't speak in English Please speak in Hindi', 'timestamp': '2026-03-03 02:02:25 PM +0000'}}, {{'role': 'agent', 'message': 'Got it Um, I understand you'd prefer to speak in Hindi However, I'm currently only able to communicate in English Would you like me to continue in English, or would you prefer to, like, have someone else assist you in Hindi?', 'timestamp': '2026-03-03 02:02:31 PM +0000'}}, {{'role': 'user', 'message': 'Someone else?', 'timestamp': '2026-03-03 02:02:45 PM +0000'}}, {{'role': 'agent', 'message': 'Yes, uh, I can arrange for someone from our team to, you know, get in touch with you who can speak in Hindi Would that be alright, K - Aamit Singh?', 'timestamp': '2026-03-03 02:02:47 PM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-03 02:02:56 PM +0000'}}, {{'role': 'agent', 'message': 'Okay, K - Aamit Singh Someone will be with you soon to assist you in Hindi Thanks for your time!', 'timestamp': '2026-03-03 02:02:59 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:02:59 PM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-03 02:03:05 PM +0000'}}]
+    prompt_template = get_prompt_file("disposition_classification.txt")
 
-    CONVERTED (Customer successfully completed the primary objective)
-     - Reasoning: The user has explicitly accepted the core call-to-action (CTA) or provided the specific data required to close the task (e.g., confirming a time or providing a phone number).
-     - Example 1: [{{'role': 'agent', 'message': 'Are you interested?'}}, {{'role': 'user', 'message': 'Yes, sign me up for the 10 AM slot'}}] -> Objective achieved.
-     - Example 2: [{{'role': 'agent', 'message': 'Hello! I am shweta calling from Citroen India Is this a good time to talk??', 'timestamp': '2026-03-04 04:07:56 AM +0000'}}, {{'role': 'user', 'message': 'Mm-hmm', 'timestamp': '2026-03-04 04:08:01 AM +0000'}}, {{'role': 'agent', 'message': 'Great Muthu! Thank you for considering the Citroen Aircross When evaluating SUVs, do you compare feature-to-price balance to identify the strongest overall value?', 'timestamp': '2026-03-04 04:08:02 AM +0000'}}, {{'role': 'user', 'message': '[clears throat] Madam Tamil', 'timestamp': '2026-03-04 04:08:13 AM +0000'}}, {{'role': 'agent', 'message': 'Ah, unga peru Muthu nu therinjathu Citroen Aircross pathi pesalam Ungaluku pudicha mathiri, uh, car pathi pesanum na, uh, enna vishayam pathi pesalam nu sollunga?', 'timestamp': '2026-03-04 04:08:15 AM +0000'}}, {{'role': 'user', 'message': 'Thamizh, thamiz', 'timestamp': '2026-03-04 04:08:29 AM +0000'}}, {{'role': 'agent', 'message': 'Oh, uh, mannikkavum Naan ungaludan Thamizhilye pesuren Citroen Aircross pathi ungaluku enna therinjukittum?', 'timestamp': '2026-03-04 04:08:31 PM +0000'}}, {{'role': 'user', 'message': 'Eh', 'timestamp': '2026-03-04 04:08:41 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, sari', 'timestamp': '2026-03-04 04:08:42 AM +0000'}}, {{'role': 'user', 'message': 'Seven seater, seven seater EV', 'timestamp': '2026-03-04 04:08:42 AM +0000'}}, {{'role': 'agent', 'message': 'Got it', 'timestamp': '2026-03-04 04:08:47 AM +0000'}}, {{'role': 'user', 'message': 'Kizhile', 'timestamp': '2026-03-04 04:08:47 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, Citroen Aircross vanthu, uh, petrol engine la mattum thaan irukku Ippo electric version illai Aana, athu five-seater mattum illama, seven-seater option layum irukku', 'timestamp': '2026-03-04 04:08:49 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:03 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, okay Muthu, ungaluku seven-seater car venum na, Citroen C3 Aircross pathi konjam sollatuma? Athu five-seater and seven-seater rendu configuration layum varum', 'timestamp': '2026-03-04 04:09:05 AM +0000'}}, {{'role': 'user', 'message': '', 'timestamp': '2026-03-04 04:09:21 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, neenga innum', 'timestamp': '2026-03-04 04:09:22 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:24 AM +0000'}}, {{'role': 'agent', 'message': 'Okay C3', 'timestamp': '2026-03-04 04:09:26 AM +0000'}}, {{'role': 'user', 'message': 'Mm', 'timestamp': '2026-03-04 04:09:27 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, C3 Aircross vanthu, uh, family ku romba nalla option Athula, uh, romba neram payanam ponalum, aramama irukura mathiri seats irukum Adhoda, uh, third row seats thevai illana eduthu vechikkalam Appo, uh, boot space romba perusa irukum', 'timestamp': '2026-03-04 04:09:29 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:46 AM +0000'}}, {{'role': 'agent', 'message': 'Okay Uh,', 'timestamp': '2026-03-04 04:09:48 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:09:49 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, adhu mattum illama, uh, C3 Aircross la, uh, safety ku romba mukkiyathuvam koduthirukkom Athula, uh, six airbags irukku, adoda, uh, ESP, Hill Hold Assist mathiri features ellam irukku', 'timestamp': '2026-03-04 04:09:50 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:10:06 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, Muthu, indha C3 Aircross car-a, uh, neenga nerla paathu, drive panni paakanum nu ninaikireengala? Oru test drive arrange panna venduma?', 'timestamp': '2026-03-04 04:10:08 AM +0000'}}, {{'role': 'user', 'message': 'Okay', 'timestamp': '2026-03-04 04:10:19 AM +0000'}}, {{'role': 'agent', 'message': 'Uhm, neenga test drive panna virumbureengala Muthu?', 'timestamp': '2026-03-04 04:10:22 AM +0000'}}, {{'role': 'user', 'message': 'Ama, okay', 'timestamp': '2026-03-04 04:10:27 AM +0000'}}, {{'role': 'agent', 'message': 'Got it Unga pincode 627811 nu irukku Idhu correct', 'timestamp': '2026-03-04 04:10:29 AM +0000'}}, {{'role': 'user', 'message': 'Ama Yes', 'timestamp': '2026-03-04 04:10:30 AM +0000'}}, {{'role': 'agent', 'message': 'Thank you We'll arrange a test drive at your nearest dealership You'll hear from our team shortly to coordinate the details Thanks for your time I really appreciate it\n', 'timestamp': '2026-03-04 04:10:33 AM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-04 04:10:34 AM +0000'}}, {{'role': 'agent', 'message': '', 'timestamp': '2026-03-04 04:10:43 AM +0000'}}]
+    prompt = prompt_template.format(campaign_purpose=purpose, campaign_description=campaign_description, purpose_steps=purpose_steps, session_summary=session_summary, message_history=message_history)
 
-    # INPUT DATA
-    Conversation Summary:
-    {session_summary}
-
-    Message History:
-    {message_history}
-
-    # FINAL INSTRUCTION
-    Based on the data above, pick exactly ONE value from the classification list provided. Return ONLY that word/phrase and nothing else. No explanation, no punctuation, just the value.
-    """
     result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"gcp-gemini-3.1-flash-lite-preview"})
     return result
 
@@ -2004,4 +1807,8 @@ def update_error_in_lead_and_session(error_msg,source,**kwargs):
         mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
     return
 
-
+def get_prompt_file(file_name: str) -> str:
+    file_path = os.path.join(PROMPT_DIR, file_name)
+    with open(file_path,"r", encoding="utf-8") as f:
+        prompt_template = f.read()
+    return prompt_template
