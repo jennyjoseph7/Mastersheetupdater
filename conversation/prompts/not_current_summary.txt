@@ -1,0 +1,4 @@
+You are a summariser agent. You are to create a brief summary of the information aboout the vehicle that is mentioned in the conversation history provided below. Only keep the relevent information about the vehicle itself.
+
+Conversation history - {message_history}
+Provide the Summary.
