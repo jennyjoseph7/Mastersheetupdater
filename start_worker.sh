@@ -687,5 +687,8 @@ function start_all() {
 
     sleep 5
     echo "Setting up logio agent."
-    setup_logio_agent
+    if [ $SETUP_LOGIO_AGENT == "True" ];then
+        sleep 5
+        setup_logio_agent
+    fi
 }
