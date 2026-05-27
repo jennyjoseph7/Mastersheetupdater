@@ -74,6 +74,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Download,
+  Phone,
+  Mail,
+  MessageSquare,
+  MessageCircle,
+  Smartphone,
 } from "lucide-react";
 
 const swrOptions = {
@@ -717,11 +722,46 @@ export default function CampaignDashboard() {
   };
 
   const getChannelBadges = (channels?: string[]) =>
-    (channels ?? []).map((channel) => (
-      <Badge key={channel} variant="outline" className="mr-1">
-        {channel.charAt(0).toUpperCase() + channel.slice(1)}
-      </Badge>
-    ));
+    (channels ?? []).map((channel) => {
+      const lower = channel.toLowerCase();
+      let icon = null;
+      let label = channel;
+
+      if (lower === "voice_phone" || lower === "voice" || lower === "phone") {
+        icon = <Phone className="h-4 w-4 text-orange-600 dark:text-orange-400" />;
+        label = "Voice Call";
+      } else if (lower === "whatsapp_chat" || lower === "whatsapp") {
+        icon = <MessageSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+        label = "WhatsApp";
+      } else if (lower === "email") {
+        icon = <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />;
+        label = "Email";
+      } else if (lower === "rcs") {
+        icon = <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />;
+        label = "RCS";
+      } else if (lower === "sms") {
+        icon = <Smartphone className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+        label = "SMS";
+      }
+
+      if (icon) {
+        return (
+          <span
+            key={channel}
+            className="inline-flex items-center justify-center p-1.5 rounded-md bg-muted/50 border border-muted hover:bg-muted transition-colors mr-1.5"
+            title={label}
+          >
+            {icon}
+          </span>
+        );
+      }
+
+      return (
+        <Badge key={channel} variant="outline" className="mr-1">
+          {channel.charAt(0).toUpperCase() + channel.slice(1)}
+        </Badge>
+      );
+    });
 
   // const handleEdit = (campaign: Campaign) => {
   //   const campaignId = campaign.campaign_id ?? campaign.id;
@@ -1287,40 +1327,23 @@ export default function CampaignDashboard() {
                                     onClick={() => handleEdit(campaign)}
                                   >
                                     <Pencil className="mr-2 h-4 w-4" />
-                                    Edit
+                                    Relaunch
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => handleDuplicate(campaign)}
+                                    disabled
+                                    className="opacity-50 cursor-not-allowed"
                                   >
                                     <Copy className="mr-2 h-4 w-4" />
-                                    Duplicate
+                                    Duplicate (Coming Soon)
                                   </DropdownMenuItem>
-
-                                  {campaign.campaign_status === "live" ? (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handlePauseOrLaunch(campaign, "pause")
-                                      }
-                                    >
-                                      <Pause className="mr-2 h-4 w-4" /> Pause
-                                    </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handlePauseOrLaunch(campaign, "launch")
-                                      }
-                                    >
-                                      <Play className="mr-2 h-4 w-4" /> Launch
-                                    </DropdownMenuItem>
-                                  )}
 
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => handleDeleteClick(campaign)}
-                                    className="text-destructive focus:text-destructive"
+                                    disabled
+                                    className="text-destructive opacity-50 cursor-not-allowed"
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
+                                    Delete (Coming Soon)
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
