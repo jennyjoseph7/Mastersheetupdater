@@ -495,7 +495,10 @@
                     "person_number"
                 ]
             },
-            "indexed": true
+            "indexed": true,
+            "constraint": {
+                "function": "phone_validator"
+            }
         },
         {
             "name": "email",
@@ -507,7 +510,10 @@
                     "person_email"
                 ]
             },
-            "indexed": true
+            "indexed": true,
+            "constraint": {
+                "function": "email_validator"
+            }
         },
         {
             "name": "search_term",
