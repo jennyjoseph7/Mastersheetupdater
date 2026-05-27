@@ -689,7 +689,7 @@ function start_all() {
     ls $LOG_FILE
     echo "Setting up logio agent."
     if [ $SETUP_LOGIO_AGENT == "True" ];then
-        sleep 5
+        sleep 10
         setup_logio_agent
         echo "##########################"
         cat /root/app/logio_conf.json
