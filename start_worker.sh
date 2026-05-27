@@ -441,9 +441,9 @@ function start_worker() {
         fi
         worker_fname=${entry_point%.*}
         pid_filename=$BASE_DIR/${worker_name}_${worker_fname}.pid
-        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}_stderr.log
+        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}.log
         STDOUT_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}_stdout.log
-        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}.log
+        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}_stderr.log
         pushd $BASE_DIR > /dev/null
         if [ $worker_type == "workers" ];then
             entry_point=${worker_name}/${entry_point}
@@ -694,5 +694,6 @@ function start_all() {
         echo "##########################"
         cat /root/app/logio_conf.json
         echo "##########################"
+        cat $LOG_FILE
     fi
 }
