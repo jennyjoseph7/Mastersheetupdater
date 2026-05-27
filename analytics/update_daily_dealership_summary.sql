@@ -25,10 +25,10 @@ BEGIN
         created,
         updated
     )
-    WITH campaign_raw AS (
+    WITH    campaign_raw AS (
         SELECT 
             dict->>'dealership_id' as dealership_id,
-            (EXTRACT(EPOCH FROM (TO_TIMESTAMP((dict->>'created')::NUMERIC)::DATE)) * 1000)::BIGINT::TEXT as activity_date,
+            (EXTRACT(EPOCH FROM (TO_TIMESTAMP((dict->>'created')::NUMERIC)::DATE)) * 1000)::BIGINT as activity_date,
             dict->'channels' as channels_json
         FROM (
             SELECT dict FROM pre_sales_campaign
@@ -64,7 +64,7 @@ BEGIN
     lead_raw AS (
         SELECT 
             l.dict->>'dealership_id' as dealership_id,
-            (EXTRACT(EPOCH FROM (TO_TIMESTAMP((l.dict->>'created')::NUMERIC)::DATE)) * 1000)::BIGINT::TEXT as activity_date,
+            (EXTRACT(EPOCH FROM (TO_TIMESTAMP((l.dict->>'created')::NUMERIC)::DATE)) * 1000)::BIGINT as activity_date,
             l.dict->>'disposition' as disposition,
             c.dict->'channels' as channels_json
         FROM (
@@ -117,7 +117,7 @@ BEGIN
         SELECT dealership_id, activity_date, channel FROM lead_counts
     )
     SELECT
-        k.dealership_id || '_' || k.activity_date || '_' || k.channel,
+        k.dealership_id || '_' || k.activity_date::TEXT || '_' || k.channel,
         jsonb_build_object(
             'dealership_id', k.dealership_id,
             'activity_date', k.activity_date,

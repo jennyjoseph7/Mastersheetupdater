@@ -1,68 +1,72 @@
 {
-    "name": "daily_dealership_summary",
-    "model_type": "default",
-    "attributes": [
-      {
-        "name": "created",
-        "type": "number",
-        "auto_updater": true,
-        "default": {
-          "function": "now_ctime"
-        }
-      },
-      {
-        "name": "updated",
-        "type": "number",
-        "auto_updater": true,
-        "force_update": true,
-        "default": {
-          "function": "now_ctime"
-        }
-      },
-      {
-        "name": "dealership_id",
-        "type": "text"
-      },
-      {
-        "name": "activity_date",
-        "type": "text"
-      },
-      {
-        "name": "total_campaign_triggered",
-        "type": "number"
-      },
-      {
-        "name": "total_leads_triggered",
-        "type": "number"
-      },
-      {
-        "name": "total_pending",
-        "type": "number"
-      },
-      {
-        "name": "total_converted",
-        "type": "number"
-      },
-       {
-        "name": "total_connected",
-        "type": "number"
-      },
-       {
-         "name": "total_failed",
-         "type": "number"
-       },
-      {
-        "name": "channel",
-        "type": "text"
-      },
-      {
-        "name": "daily_dealership_summary_id",
-        "type": "uid",
-        "id": true,
-        "default": {
-          "function": "make_uuid3",
-          "args": ["dealership_id", "activity_date", "channel"]
-        }
+  "name": "daily_dealership_summary",
+  "model_type": "default",
+  "attributes": [
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": {
+        "function": "now_ctime"
       }
-    ]
+    },
+    {
+      "name": "updated",
+      "type": "number",
+      "auto_updater": true,
+      "force_update": true,
+      "default": {
+        "function": "now_ctime"
+      }
+    },
+    {
+      "name": "dealership_id",
+      "type": "text"
+    },
+    {
+      "name": "activity_date",
+      "type": "number"
+    },
+    {
+      "name": "total_campaign_triggered",
+      "type": "number"
+    },
+    {
+      "name": "total_leads_triggered",
+      "type": "number"
+    },
+    {
+      "name": "total_pending",
+      "type": "number"
+    },
+    {
+      "name": "total_converted",
+      "type": "number"
+    },
+    {
+      "name": "total_connected",
+      "type": "number"
+    },
+    {
+      "name": "total_failed",
+      "type": "number"
+    },
+    {
+      "name": "channel",
+      "type": "text"
+    },
+    {
+      "name": "daily_dealership_summary_id",
+      "type": "uid",
+      "id": true,
+      "default": {
+        "function": "make_uuid3",
+        "args": [
+          "dealership_id",
+          "activity_date",
+          "channel"
+        ]
+      }
+    }
+  ]
 }
