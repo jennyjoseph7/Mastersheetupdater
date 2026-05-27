@@ -922,24 +922,16 @@ if __name__ == "__main__":
             ],
             "reasons_users_may_not_be_interested": "If customer seems low on tech interest - Don't ask to learn but speak to test a hypothesis and guage if they maybe interested in safety or family or another key feature. And then lead into it. Keep pitch warm and short. \n - If customer is busy “No problem at all. When would be a better time to call you back?” (Optional)  “I just want to make sure you don’t miss available test drive slots.” \n - If customer is just browsing “That’s completely fine. A test drive usually helps people decide faster.” “There’s no commitment at all.” “Would this weekend work, or sometime next week?” \n - If price feels high “I understand. Budget matters.” “There are financing and exchange options that often surprise people.” “Would you like me to quickly check what might work better for you?” \n - If comparing with other brands “That’s smart.” “Many customers compare before deciding.” “Instead of explaining, I’d suggest a short test drive — it gives real clarity.” “Would you like me to arrange that?”  \n - If they want to wait “I get that.” “Just so you know, current offers and availability may change later.” “I can keep you updated.” “What’s more important for you — timing or features?” \n - If they got a better deal elsewhere “Thanks for sharing that.” “Let me see what we can do on our side.” “What exactly did they offer?” \n - if they had a bad past experience “I’m really sorry to hear that.” “A lot has changed, especially service-wise.” “I’d love to give you a fresh experience — even just a drive.” \n - If family decision is involved “Of course, that makes sense.” “Would it help if everyone experienced the car together?” “I can arrange a family test drive.” \n - If worried about maintenance “That’s a valid concern.” “We have clear service packages — no surprises.” “I can explain that briefly or share it on WhatsApp.” \n - If unsure about variant “No worries — that’s very common.” “Let me ask you one or two quick questions and I’ll suggest what fits best.” \n - If they want time to think “Absolutely.” “I’ll send you the brochure and a short video.” “Would you like me to follow up, or should I wait for you to reach out?”",
         }
-<<<<<<< HEAD
     if not channel_identifier:
         channel_identifier = args.channel_identifier
     if not channel_identifier:
         raise ValueError("Channel identifier is required")
     print(f"lead_id: {lead_id}, channel_identifier: {channel_identifier}")
-=======
-
->>>>>>> b238dd8 (Fixes for issues in campaign workflow)
     print(determine_campaign_next_action(
         campaign_type=args.campaign_type,
         lead_id=lead_id,
         channel="voice_phone",
         channel_identifier=channel_identifier,
         disposition=args.disposition,
-<<<<<<< HEAD
         debug = debug
-=======
-        debug = args.debug
->>>>>>> b238dd8 (Fixes for issues in campaign workflow)
     ))
