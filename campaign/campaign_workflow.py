@@ -428,20 +428,24 @@ def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None)
         if lead.get(ph):
             if lead.get(ph) in rlist:
                 continue
+            logger.info("Got %s from lead object: %s", ph, lead.get(ph))
             rlist.append(lead.get(ph))
     for person in lead.get('persons_involved', []):
         for ph in ph_list:
             if person.get(ph):
                 if person.get(ph) in rlist:
                     continue
+                logger.info("Got %s from person involved %s: %s", ph, person.get('user_id'), person.get(ph))
                 rlist.append(person.get(ph))
         if person.get(channel_last_contacted_name) == ph:
+            logger.info("Got %s as last contacted channel from person", ph)
             priority.append((person.get(f'updated'), person.get(channel_last_contacted_name)))
     priority.sort(key=lambda x: x[0])
     for p0, p1 in priority:
         if p1 in rlist:
             rlist.remove(p1)
         rlist.insert(0, p1)
+    logger.info("List of numbers for lead %s is \"%s\"", lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id'), ', '.join(rlist))
     logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
     return rlist
 
