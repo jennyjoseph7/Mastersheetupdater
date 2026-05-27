@@ -5,10 +5,17 @@ import re
 from datetime import datetime
 import time                 
 from os.path import dirname, abspath, join as joinpath
+
+from conversation.lead_post_processing import post_session_process
+
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel
+from crm_integration.crm_integration import load_crm
+from crm_integration.crm_integration.load_crm import load_crm
+from crm_integration.crm_integration.cron import _trigger_audience_task
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
@@ -384,10 +391,12 @@ def manage_active_sessions(*args, **kwargs):
             if last_response_epoch:
                 inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
             
+            
             last_ts = None
             existing_history = session.get("history", []) or []
             # checking and updating history only when the last_response_time is newer than the last updated history_time...
-            if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            # if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
+            if (last_history_epoch is None or (last_response_epoch and last_response_epoch > last_history_epoch )):
                 mlogger.info(f"Just updating history for session {session_id}")
                 history_rows = list(
                     # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
@@ -441,7 +450,8 @@ def manage_active_sessions(*args, **kwargs):
                     )
 
             # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
-            can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            # can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
+            can_call_post_process = (last_response_epoch and (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS))
             mlogger.info("can_call_post_process : {} and has history_updated : {}".format(can_call_post_process, has_unprocessed_history))
             if can_call_post_process and has_unprocessed_history:
                 handle_session_post_process_or_end(
@@ -514,15 +524,19 @@ def schedule_campaign_trigger(*args, **kwargs):
             campaigns = list(pg.list(table, where_clause))
 
             mlogger.info(f"Found {len(campaigns)} campaigns to trigger in {table}")
-
-            # for campaign in campaigns:
+            
+            for campaign in campaigns:
+                mlogger.info(f"Triggering campaign for- campaign_id: {campaign.get('campaign_id')} , campaign_type: {campaign.get('campaign_type')} , delearship_id: {campaign.get('dealership_id')}")
+                
             #     pg.update(
             #         table,
             #         "campaign_id",
             #         campaign.get("campaign_id"),
             #         {"campaign_status": "Active"},
             #     )
-                # call ananth's task
+                # call trigger task
+                
+                
                 
 
 @gryd.is_a_task(function_name="end_campaigns")
@@ -1435,6 +1449,60 @@ def rml_auth_login(user_name, password, max_retries=10, backoff=2):
 
 @gryd.is_a_task(function_name="reset_auth_creds")
 def reset_auth_creds(*args, **kwargs):
+    """
+    Refresh and reset authentication credentials for communication providers.
+
+    This function retrieves communication credential records using the
+    provided filters, authenticates with supported providers, and updates
+    authorization headers with newly generated authentication tokens.
+
+    Currently, only the RML provider is supported.
+
+    Args:
+        *args:
+            Unused positional arguments.
+
+        **kwargs:
+            Optional filters used to fetch communication credentials.
+            Any keyword argument with a non-None value is included in
+            the database query.
+
+            Example:
+                provider_name="Rml"
+                sender="9876543210"
+
+    Workflow:
+        1. Build query filters from kwargs.
+        2. Fetch matching communication credentials.
+        3. Validate presence of authentication credentials.
+        4. Authenticate against supported providers.
+        5. Extract authentication token from response.
+        6. Update auth headers in database.
+        7. Log successes, unsupported providers, and failures.
+
+    Supported Providers:
+        - RML / rml
+
+    Returns:
+        str:
+            "Completed!" after processing all matching credentials.
+
+    Notes:
+        - Credentials without `auth_creds` are skipped.
+        - Unsupported providers are logged and ignored.
+        - Errors during authentication are caught and logged so
+          processing continues for remaining records.
+        - Existing auth headers are preserved and merged with
+          refreshed authorization values.
+
+    Example:
+        reset_auth_creds(provider_name="Rml")
+
+        reset_auth_creds(
+            sender="9876543210",
+            provider_name="Rml"
+        )
+    """
     filters = {k: v for k, v in kwargs.items() if v is not None}
     mlogger.info(f"Filters for resetting auth creds: {filters}")
     mlogger.info("Resetting Auth credentials...")
@@ -1524,7 +1592,9 @@ def get_all_dealerships(pg, channel_filter=None):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
-    result = list(pg.list("dealership", {}))
+    result = list(pg.list("dealership", {"dealer_status": "active"}))
+    # result = list(pg.list("dealership", {}))
+    
     dealerships = []
 
     for row in result:
@@ -1545,7 +1615,102 @@ def get_all_dealerships(pg, channel_filter=None):
 
     return dealerships
 
+@gryd.is_a_task(function_name="mark_inactive_dealerships")
+def mark_inactive_dealerships(*args,**kwargs):
+    """
+    Mark dealerships as inactive if they have not had any contact activity
+    within the specified inactivity period.
+
+    This function retrieves the latest contact timestamp for each dealership
+    from the `contact_status` table and compares it against an inactivity
+    threshold. Any dealership whose most recent contact is older than the
+    configured number of inactive days (or has no contact history at all)
+    is marked with `dealer_status = 'inactive'`.
+
+    Args:
+        *args:
+            Unused positional arguments.
+
+        **kwargs:
+            inactive_days (int, optional):
+                Number of days of inactivity before a dealership is marked
+                inactive. Defaults to 14 days.
+
+    Workflow:
+        1. Calculate inactivity threshold timestamp.
+        2. Fetch latest contact timestamp per dealership.
+        3. Identify dealerships:
+            - not already inactive
+            - with no contact history OR
+            - whose latest contact is older than the threshold
+        4. Update dealership status to "inactive".
+        5. Log dealership details and summary count.
+
+    Returns:
+        dict:
+            {
+                "count": int,
+                    Number of dealerships marked inactive.
+
+                "dealership_ids": list[str],
+                    List of dealership IDs updated.
+            }
+    """
+    with get_pg_connector() as pg:
+        INACTIVE_DAYS=kwargs.get("inactive_days",14)
+        inactivity_days=time.time()-(INACTIVE_DAYS * 24 * 60 * 60)
+
+        query = f"""
+        WITH latest_contact AS (
+            SELECT DISTINCT ON (dict->>'dealership_id')
+                dict->>'dealership_id' AS dealership_id,
+                CAST(dict->>'created' AS FLOAT) AS created
+            FROM contact_status
+            ORDER BY
+                dict->>'dealership_id',
+                CAST(dict->>'created' AS FLOAT) DESC
+        )
+
+        SELECT
+            d.dict->>'dealership_id',
+            lc.created
+        FROM dealership d
+        LEFT JOIN latest_contact lc
+            ON d.dict->>'dealership_id' = lc.dealership_id
+        WHERE
+            COALESCE(d.dict->>'dealer_status','') != 'inactive'
+            AND (
+                lc.created IS NULL
+                OR lc.created < {inactivity_days}
+            )
+        """
+
+        result = pg.fetch_all(query)
+        dealership_ids = [row[0] for row in result]
+
+        mlogger.info(f"Inactive dealership count: {len(result)} for inactive days = {INACTIVE_DAYS} days")
+
+        for dealership_id, created in result:
+            mlogger.info(f"Dealership={dealership_id}, last_contact={created}")
+            
+            pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
+            
+        return {
+            "count": len(result),
+            "dealership_ids": dealership_ids
+        }
+
 def process_lead(pg,lead, channel):
+    """
+    Process a lead for a given communication channel and schedule an
+    asynchronous task for lead handling.
+
+    This function extracts lead information, determines the corresponding
+    lead model based on campaign type, resolves the channel identifier,
+    and triggers the `process_single_lead` async task. After scheduling
+    the task, it clears the lead's next scheduled processing fields to
+    avoid duplicate execution.
+    """
     # mlogger.info(f"[PROCESS] Processing lead for channel {lead}")
     lead_id=None
     try:
@@ -1655,8 +1820,17 @@ def test_campaign_workflow(*args, **kwargs):
         "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
         "count": len(leads)
     }
+
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):    
+def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):  
+    
+    """
+    First get all the dealerships with the channel filter voice_phone and dealer_status is active.
+    for each dealerships and channels we are checking the queue_length and if the queue_lengh is less than the max_thresold 
+    then we fetch all the leads for that dealership where we have the next_channel and next_schedule_time < = now time and 
+    then process each lead by calling process_single_lead function.
+    """
+    
     mlogger.info("-------Process all dealerships for voice phone and trigger campaign next action-------")
     
     max_threshold= voice_max_queue_size or VOICE_MAX_QUEUE_LENGTH
@@ -1697,10 +1871,17 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                 except Exception as e:
                     mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
 
-
                 
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
 def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
+    
+    """
+    First get all the dealerships with the channel filter non voice_phone(whatsapp_chat,email,rcs etc..) and dealer_status is active.
+    for each dealerships and channels we are checking the queue_length and if the queue_lengh is less than the max_thresold 
+    then we fetch all the leads for that dealership where we have the next_channel and next_schedule_time < = now time and 
+    then process each lead by calling process_single_lead function.
+    """
+    
     mlogger.info("-------Process all dealerships for non voice channels and trigger campaign next action-------")
 
     max_threshold= non_voice_max_queue_size or NON_VOICE_MAX_QUEUE_LENGTH
@@ -1807,4 +1988,185 @@ def manage_socket_server_load(
         ssm.delete(k)
     return False
 
+def get_active_crm_campaigns():
 
+    campaigns = []
+
+    campaign_list = [
+        "pre_sales_campaign",
+        "post_sales_campaign"
+    ]
+
+    for campaign_model in campaign_list:
+
+        query = f"""
+        SELECT *,
+               '{campaign_model}' AS campaign_model
+        FROM {campaign_model}
+        WHERE dict->>'campaign_status'=%s
+        AND (dict->>'last_sync_timestamp')::DOUBLE PRECISION
+            <= EXTRACT(EPOCH FROM NOW())
+        """
+
+        results = pg.fetch_all(
+            query,
+            ("Continuous",)
+        )
+
+        mlogger.info(
+            f"Found {len(results)} campaigns "
+            f"in model {campaign_model}"
+        )
+
+        campaigns.extend(results)
+
+    return campaigns
+
+@gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
+def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
+    # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
+    # For each  campaigns we get the channel check the queu length and if the queu length is <= max_thresold we proceed and get leads
+    
+    logger =  mlogger
+
+    campaigns = get_active_crm_campaigns()
+
+    if not campaigns:
+        logger.info("No campaigns")
+        return
+
+    logger.info(f"Current queue={queue_length}")
+
+    for campaign in campaigns:
+        campaign = campaign[1]
+        logger.info(f"Processing campaign: {campaign}")
+        campaign_id = campaign.get("campaign_id")
+        dealership_id = campaign.get("dealership_id")
+        channels = campaign.get("channels", [])
+        crm_details = campaign.get("crm_source_details", {}) or {}
+        sheet_url = crm_details.get("sheet_url")
+        crm_name = crm_details.get("crm_name")
+        campaign_type = campaign.get("campaign_type")
+
+        logger.info(f"Processing campaign_id={campaign_id}")
+
+        try:
+            sheet_url = crm_details.get("sheet_url")
+
+            if not sheet_url:
+                logger.warning(f"No sheet_url for campaign={campaign.get('_id')}")
+                continue
+
+            crm_batch_size = crm_details.get("batch_size")
+
+            for channel in channels:
+
+                is_voice = channel == VOICE_CHANNELS
+
+                max_queue_threshold = (
+                    queue_length
+                    if queue_length is not None
+                    else (
+                        VOICE_MAX_QUEUE_LENGTH
+                        if is_voice
+                        else NON_VOICE_MAX_QUEUE_LENGTH
+                    )
+                )
+
+                max_batch_size = (
+                    batch_size
+                    if batch_size is not None
+                    else (
+                        VOICE_BATCH_SIZE
+                        if is_voice
+                        else NON_VOICE_BATCH_SIZE
+                    )
+                )
+
+                current_queue = get_queue_length(
+                    channel,
+                    dealership_id
+                )
+
+                if current_queue >= max_queue_threshold:
+                    logger.info(f"Queue threshold reached for {channel}")
+                    continue
+
+                effective_batch_size = (crm_batch_size or max_batch_size)
+
+                remaining_capacity = (max_queue_threshold - current_queue)
+
+                leads_to_fetch = min(effective_batch_size,remaining_capacity)
+
+                if leads_to_fetch <= 0:
+                    continue
+
+                
+                crm = load_crm(
+                crm_name=crm_name,
+                sheet_name=sheet_url
+                )
+
+                leads = crm.list_pre_sales_leads(
+                    batch_size=leads_to_fetch
+                )
+
+                logger.info(
+                    f"Fetched {len(leads)} leads"
+                )
+
+                for lead in leads:
+                    
+                    try:
+                        from crm_integration.crm_integration.cron import _trigger_audience_task
+                        
+                        _trigger_audience_task(
+                            lead=lead,
+                            campaign_id=campaign.get("campaign_id"),
+                            campaign_objective_id=campaign.get("campaign_objective_id"),
+                            campaign_type=campaign_type,
+                            dealership_id=dealership_id,
+                            dealership_name=campaign.get("dealership_name")
+                        )
+                        
+                        try:
+                            logger.info("[TEST] Calling post_session_process")
+
+                            list(post_session_process(**{"session_id": "6a44571b-ed6f-36dd-b26b-7be37c88b313"}))
+
+                        except Exception as e:
+                            logger.error(f"post_session_process failed: {e}")
+
+                        crm.patch_pre_sales_lead(
+                            lead,
+                            "QUEUED"
+                        )
+
+                    except Exception as e:
+                        logger.error(
+                            f"Lead failed: {e}"
+                        )
+                logger.info(
+                    f"Finished processing leads for campaign_model={campaign.get('campaign_model')} and channel={channel}")
+                pg.update(
+                    f"{campaign.get('campaign_type').replace('-','_')}_campaign",
+                    "campaign_id",
+                    campaign_id,
+                    {
+                        "last_sync_timestamp": time.time()
+                    }
+                )    
+                    
+
+
+
+        except Exception:
+            logger.exception(
+                f"Campaign error: {campaign.get('_id')}"
+            )
+if __name__ == "__main__":
+    print("[TEST] Running CRM cron...")
+
+    result = process_crm_campaigns(batch_size=1)
+
+    print(result)            

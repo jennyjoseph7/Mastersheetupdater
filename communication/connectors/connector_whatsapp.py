@@ -320,7 +320,7 @@ def post_contact_status(*args, **data):
             )
             logger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
             
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
+            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=data.get("skip_workflow", False))
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
@@ -360,8 +360,8 @@ def post_contact_status(*args, **data):
                 payload
             )
             logger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg)
-            
+            # logger.info(f"Skip workflow value: {data.get('skip_workflow')}")
+            call_next_campaign_workflow_task(payload.get("campaign_id"),payload.get("campaign_type"),payload.get("lead_id"),payload.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=payload.get("skip_workflow", False))
 
         # post billing obj
         should_bill = (channel in ["whatsapp_chat"]
@@ -384,8 +384,13 @@ def post_contact_status(*args, **data):
     return 
 
 
-def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None):
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None,skip_workflow=False):
     logger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    logger.info(f"Skip workflow flag={skip_workflow} for campaign_id: {campaign_id} and lead_id: {lead_id}")
+    if skip_workflow:
+        logger.info(f"Skipping workflow for campaign_id:{campaign_id}, lead_id:{lead_id}")
+        return
+
     if not campaign_id:
         logger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
         return

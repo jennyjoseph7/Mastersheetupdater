@@ -12,9 +12,17 @@ import config
 from flask import Blueprint, request, jsonify
 from gryd_worker import gryd_helpers as hp, gryd
 
+from .tatatele import CloudPhoneAPI, TATATELE_API_TOKEN, TATATELE_BASE_URL
+
 logger = hp.get_logger(__name__)
 
 app = Blueprint("tatatelli_inbound", __name__)
+
+
+def hangup_inbound_call(call_id):
+    api = CloudPhoneAPI(TATATELE_API_TOKEN, TATATELE_BASE_URL)
+    response = api.hangup_call(call_id)
+    logger.info(f"Hangup call response: {response}")
 
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
@@ -31,7 +39,7 @@ def inbound_call(*args, **kwargs):
         data["caller_id_number"] = caller_id
         logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
         
-        gryd.create_async_task('start_call_from_inbound',config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
+        gryd.create_async_task('start_call_from_inbound', config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
         
         return jsonify({"status": "success", "message": "Inbound call session created."})
     elif data.get("call_status") in ["answered"]:

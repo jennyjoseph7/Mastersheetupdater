@@ -327,7 +327,8 @@ class BaseCampaignCreater:
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
-                    "template_message":campaign_details.get("template_message")
+                    "template_message":campaign_details.get("template_message"),
+                    "skip_workflow": campaign_details.get("skip_workflow", False)
                 }
             
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
@@ -431,7 +432,7 @@ class BaseCustomCampaignManager:
                 logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
                 session_data=handle_session_logic(mobile_number,None,channel.lower(),False,campaign_d)
-                logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
+                # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
                     continue
@@ -840,21 +841,83 @@ def nada_pre_sales(*args,**kwargs):
         
         logger.info(f"Pre-sales lead processed for lead_id={lead_id}")
 
-
-@gryd.is_a_task(function_name="manual_register_pre_sales", job_param='job', auth_param='auth', logger_param='logger')
-def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
-    """
-    Manually register a pre-sales lead using process_pre_sales_lead_row logic
-    and trigger the campaign immediately.
-    """
-
-    # 1. Extract Details from kwargs with fallbacks (optional)
-    campaign_id = kwargs.get("campaign_id")
-    dealership_id = kwargs.get("dealership_id")
-    campaign_type = kwargs.get("campaign_type", "pre-sales")
-    campaign_objective_id = kwargs.get("campaign_objective_id")
-
+def check_or_create_campaign(payload):
     
+    
+    with get_pg_connector() as pg:
+        camp_obj_data=pg.get('campaign_objective', 'campaign_objective_id', payload.get("campaign_objective_id"))
+        if not camp_obj_data:
+            logger.error(f"Campaign objective not found for ID: {payload.get('campaign_objective_id')}")
+            return None
+
+        campaign_model = f"{payload.get('campaign_type', camp_obj_data.get('campaign_type')).lower().replace('-', '_')}_campaign"
+        camp_data=list(pg.list(campaign_model,{ "campaign_objective_id": payload.get("campaign_objective_id") , "campaign_status": "Continuous"}))
+        
+        if camp_data:
+            logger.info(f"Campaign found for campaign_objective_id - {payload.get('campaign_objective_id')} and the campaign_id is {camp_data[0].get('campaign_id')} for Continuous campaign status.")
+            return camp_data[0]
+    m=AutocrmModel(model_name=campaign_model)
+    
+    a={
+        "ctas": [
+        ],
+        "channels": payload.get("channels",["voice_phone","whatsapp_chat"]),
+        "dealership_id": payload.get("dealership_id",""),
+        "languages": payload.get("languages",["english"]),
+        "campaign_objective_id": payload.get("campaign_objective_id",None),
+        "campaign_name": payload.get("campaign_name","test campaign"),
+        "campaign_type": payload.get("campaign_type","pre-sales"),
+        "end_date": time.time() + 86400,
+        "start_date": time.time(),
+        "urgency_hook": "",
+        "cost_per_lead": 0.0,
+        "campaign_offer": "",
+        "campaign_status": "Continuous",
+        "number_targeted": 0,
+        "budget_allocated": 0,
+        "campaign_description": camp_obj_data.get("description", ""),
+        "campaign_user_source": "auto_generated",
+        "target_audience_tags": [
+            "book-test-drive",
+            "book-your-free-service",
+            "free-service-due",
+            "purchase-date-less-than-1year",
+            "warranty-active",
+            "active-customer",
+            "low-mileage-vehicle",
+            "battery_health_alert",
+            "tyre_health_alert",
+            "tyre-rotation-due",
+            "engine-oil-check",
+            "brake_inspection_recommended",
+            "suspension_check_recommended",
+            "wheel_alignment_recommended",
+            "car-washing-recommended"
+        ],
+        "conversion_rate_percent": 0.0
+    }
+    
+    n=m.post(a)
+    payload.update(n)
+    return payload
+    
+
+@gryd.is_a_task(function_name="manual_register_and_trigger_lead", job_param='job', auth_param='auth', logger_param='logger')
+def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kwargs):
+    
+    logger.info("------ Manual Register And Trigger Lead ------")
+    # 1. Extract Details from kwargs with fallbacks (optional)
+    campaign_id = kwargs.get("campaign_id",None)
+    dealership_id = kwargs.get("dealership_id")
+    campaign_type = kwargs.get("campaign_type", 'pre-sales')
+    campaign_objective_id = kwargs.get("campaign_objective_id")
+    channel=kwargs.get("channel",["voice_phone"])
+    if not campaign_id:
+        campaign_data=check_or_create_campaign(kwargs)
+        campaign_id=campaign_data.get("campaign_id")
+        campaign_type=campaign_data.get("campaign_type")
+    
+
     # Validation check to ensure required params are present
     if not all([campaign_id, dealership_id, campaign_objective_id]):
         error_msg = f"Missing required kwargs. Got: campaign_id={campaign_id}, dealership_id={dealership_id}"
@@ -904,16 +967,31 @@ def manual_register_pre_sales(name, phone_number, email, *args, **kwargs):
             lead['lead_id'] = lead.get('pre_sales_lead_id') or lead.get('id')
 
         actual_id = lead.get('lead_id')
-        logger.info(f"Triggering campaign for lead_id: {actual_id}, person: {name}")
+        lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
+        lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
+        logger.info(f"Triggering campaign for lead_id: {actual_id}, campaign_id:{campaign_id}, person: {name}")
 
         # 3. Trigger Campaign
         # Note: Using campaign_id and campaign_type extracted from kwargs
         gryd.create_async_task(
             "process_single_lead",
             AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=["voice_phone", lead, campaign_type, campaign_id],
-            kwargs={}
+            args=[channel[0], lead, campaign_type, campaign_id],
+            kwargs={
+                "templateID": kwargs.get("template_id",None),
+                "image_url":kwargs.get("url",None),
+                "custom_template_variables": kwargs.get("custom_template_variables", None),
+                "skip_workflow": kwargs.get("skip_workflow", False)
+            }
         )
+        
+        # with get_pg_connector() as pg:
+        #     person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
+        #     pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
+        
+        
+        # logger.info(f"kwargs--{kwargs.get('template_id')}")
+        # list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),channel[0],phone_number,call_process_single_lead=True,templateID=kwargs.get("template_id",None),image_url=kwargs.get("url",None)))
 
         yield {"_result": {
             "status": "success",
@@ -1004,7 +1082,7 @@ def check_and_create_lead_object(**kwargs):
         
  
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None,image_url=None, custom_template_variables=None,skip_workflow=False):
     
     """
     Process a single lead and send campaign messages for each user.
@@ -1220,7 +1298,11 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
     lead_data['person_name']=customer_name
     logger.info(f"Customer Name: {customer_name}")
-    variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
+    if custom_template_variables:
+        logger.info(f"Custom Template Variables: {custom_template_variables} being sent in the params.So using it.")
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), custom_template_variables) if template_data else {}
+    else:
+        variable_mapping = get_variable_values(template_data.get("template_variables", []), lead_data) if template_data else {}
     logger.info(f"Variable Mapping: {variable_mapping}")
     campaign_user = {
         "lead_id": lead_id,
@@ -1238,9 +1320,10 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     template_message = None
 
     if template_data:
-        template_vars = template_data.get("template_variables", [])
+        template_vars = custom_template_variables if custom_template_variables else template_data.get("template_variables", [])
         render_data = {v: variable_mapping.get(v, "") for v in template_vars}
-
+        template_data["media_url"]= image_url or None
+        
         if channel in ("whatsapp_chat", "sms"):
             buttons = template_data.get("buttons")
 
@@ -1259,7 +1342,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             "buttons": buttons
         }
         return    
-
+    # logger.info(f"TEMPLATE DATA in : {json.dumps(template_data, indent=4)}")
+    
     final_payload = {
         **(template_data or {}),
         **campaign_details,
@@ -1270,6 +1354,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         "sender": sender_name or (template_data.get("sender") if template_data else None),
         "provider_name": provider_name or (template_data.get("provider_name").lower() if template_data else None),
         "template_message": template_message,
+        "skip_workflow": skip_workflow ,
         "campaign_user_source": {
             "source_type": "default",
             "campaign_users": [campaign_user],
@@ -1292,7 +1377,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     }
     run_async = campaign_details.get("run_async", False)
     is_testing = campaign_details.get("_is_testing", False)
-    logger.info(f"Final payload prepared for campaign_id={campaign_id} and lead_id={lead_id}: {json.dumps(final_payload, indent=4)}")
+    # logger.info(f"Final payload prepared for campaign_id={campaign_id} and lead_id={lead_id}: {json.dumps(final_payload, indent=4)}")
     if not run_async:
         logger.info("Running campaign in SYNC mode")
         BaseCustomCampaignManager().run_custom_campaign(

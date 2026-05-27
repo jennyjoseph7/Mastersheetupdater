@@ -30,13 +30,13 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], temperature=0.1, **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
-        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
+        resp = ai_service_app.get_llm_response(messages=messages,audit_params={"session_id":request_data.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{ }).get("model_identifier","gcp-gemini-3.1-flash-lite-preview"), "temperature": temperature})
     else:
-        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-3.1-flash-lite-preview")})
+        resp = ai_service_app.get_llm_response(user_query=user_query,system_prompt=system_prompt,history=history,audit_params={"session_id":kwargs.get("session_id")},**{"model_identifier":request_data.get("temporary_data",{}).get("model_identifier","gcp-gemini-3.1-flash-lite-preview"), "temperature": temperature})
     
     ###TODO write valid json detector and retry if not valid
     return resp
@@ -107,7 +107,7 @@ def get_purpose_and_steps(*args, **kwargs):
             steps = ', \n'.join(campaign_data.get("purpose_steps"))
             return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
-        steps = ["- Full Name \n- Car Model \n- Date & Time \n- Service Type"]
+        steps = ["- Full Name \n- Vehicle Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
@@ -205,7 +205,7 @@ def prune_user_data(user_data, channel):
             n_text = "{} {}".format(n_text,t)
         return n_text
     rephraser = ["reg_number", "vin_number","workshop_pincode","showroom_pincode","pincode","phone_number","existing_odometer_reading"]
-    popable = ["campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
+    popable = ["reasons_for_non_applicability","search_term","campaign_offer","supported_brands","pre_sales_lead_id","campaign_description","campaign_custom_attributes","why_user_should_avail_this","other_important_information","reasons_for_non_applicability","campaign_objective_description","campaign_guardrails_guidelines","conversation_tone","created","updated","region_id","vehicle_id","campaign_id","workshop_id","phone_number","audience_name","campaign_name","campaign_type","dealership_id","purchase_date","persons_involved","campaign_sub_type","custom_attributes","alt_phone_number_2","alt_phone_number_3","alt_phone_number_4","alt_phone_number_4","post_sales_lead_id","campaign_objective_id","supported_brand_names","loyalty_contact_number","campaign_objective_name","campaign_objective_type","region_level_guardrails","region_level_guidelines","supported_brands_guidelines","reasons_users_may_not_be_interested"]
     for p in popable:
         user_data.pop(p, None)
     if channel in ["voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
@@ -282,7 +282,6 @@ def setup_primary_prompt(*args, **kwargs):
 
     if not campaign_data:
         return {"status":"error","message":"FAILED TO GET CAMPAIGN DATA"}
-
         # campaign_name = "inbound"
         # campaign_objective = "inbound"
         # campaign_type = "inbound"
@@ -404,7 +403,7 @@ def setup_primary_prompt(*args, **kwargs):
         primary_prompt = f"""
         Who you are -
         You are a ai sales assistant for AutoNgage.
-        Your customers are representatives of car dealerships.
+        Your customers are representatives of vehicle dealerships.
 
         You can answer basic questions about AutoNgage the product. 
         

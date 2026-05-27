@@ -190,6 +190,7 @@ def post_session_process(*args, **kwargs):
     lead_data = {}
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+        sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
         cur_disp_detail = lead_data.get('disposition_detail', None)
@@ -309,6 +310,24 @@ def post_session_process(*args, **kwargs):
         """
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
+        try:
+            crm_sheet = sales_campaign_data.get("crm_source_details", {}).get('sheet_url', '')
+            crm_phone = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
+            crm_update = {"sheet_name": crm_sheet, "phone_number": crm_phone}
+            crm_update.update({k: v for k, v in updated_lead_data.items() if k not in crm_update})
+            if crm_sheet and crm_phone:
+                gryd.create_async_task(
+                    "update_lead_in_sheet",
+                    AUTOCRM_CONVERSATION_SERVICE_NAME,
+                    args=[],
+                    kwargs=crm_update,
+                )
+                mlogger.info(
+                    f"[CRM DEBUG] crm_sheet={crm_sheet}, crm_phone={crm_phone}"
+                )
+                mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
+        except Exception as e:
+            mlogger.exception(f"Failed to enter CRM update: {e}")
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
@@ -1471,7 +1490,7 @@ def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_dat
     full_datetime_str = f"{date_str} {time_str}"
     format_string = "%d-%m-%Y %H:%M"
     timestamp_object = datetime.strptime(full_datetime_str, format_string)
-    
+
     appt_data = {
             "appointment_date" : date_str,
             "appointment_time" : time_str
@@ -2003,5 +2022,4 @@ def update_error_in_lead_and_session(error_msg,source,**kwargs):
         pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
         mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
     return
-
 

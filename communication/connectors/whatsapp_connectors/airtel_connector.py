@@ -296,38 +296,79 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         payload["message"] = {"text": message}
         return payload
     
-    def interactive_media_payload(self, response_data: Optional[Dict[str, Any]], type: Any = None) -> Dict[str, Any]:
+    # def interactive_media_payload(self, response_data: Optional[Dict[str, Any]], type: Any = None) -> Dict[str, Any]:
+    #     logger.info(f"TEST Interactive media payload function: {json.dumps(response_data, indent=4)}")
+    #     logger.info(f"TEST Interactive media type: {json.dumps(self.media_types, indent=4)}")
+        
+    #     if not response_data:
+    #         return {}
+
+    #     media_type, media_meta = self.get_media_type_and_meta(response_data, self.media_types)
+    #     logger.info(f"TEST media meta: {json.dumps(media_meta, indent=4)}")
+    #     logger.info(f"TEST media type: {json.dumps(media_type, indent=4)}")
+    #     if not media_type:
+    #         return {}
+    #     logger.info(f"TEST media meta: {json.dumps(media_meta, indent=4)}")
+    #     media_fields = self.extract_common_media_fields(media_meta)
+    #     logger.info(f"TEST media fields: {json.dumps(media_fields, indent=4)}")
+    #     media_url = media_fields["url"]
+    #     media_id = media_meta.get("media_id", "")
+    #     use_url = media_url.startswith("http")
+    #     logger.info(f"TEST interactive_media_payload: {media_type} with URL: {media_url}")
+    #     if media_type == "IMAGE" and use_url:
+    #         try:
+    #             media_reference = self.convert_to_jpeg(media_url)
+    #         except Exception as e:
+    #             logger.exception("Image conversion failed")
+    #             return {}
+    #     else:
+    #         media_reference = media_url if use_url else media_id
+
+    #     payload = {
+    #         "mediaAttachment": {
+    #             "type": media_type,
+    #             "fileName": media_fields["filename"]  if "document"!= media_type.lower()  else media_meta.get("title",""),
+    #             "caption": media_fields["caption"],
+    #             "url" if use_url else "id": media_reference
+    #         }
+    #     }
+    #     return payload
+    
+    def interactive_media_payload(self,response_data: Optional[Dict[str, Any]],type: Any = None) -> Dict[str, Any]:
+
         if not response_data:
             return {}
 
-        media_type, media_meta = self.get_media_type_and_meta(response_data, self.media_types)
+        # Handle media_attachment directly
+        if response_data.get("media_attachment"):
+            media_meta = response_data["media_attachment"]
+            media_type = media_meta.get("type", "").upper()
+
+        else:
+            media_type, media_meta = self.get_media_type_and_meta(
+                response_data,
+                self.media_types
+            )
+
+        # logger.info(f"media_meta: {json.dumps(media_meta, indent=4)}")
+        # logger.info(f"media_type: {media_type}")
+
         if not media_type:
             return {}
 
-        media_fields = self.extract_common_media_fields(media_meta)
-        media_url = media_fields["url"]
-        media_id = media_meta.get("media_id", "")
+        media_url = media_meta.get("url", "")
+        media_id = media_meta.get("id", "")
+
         use_url = media_url.startswith("http")
 
-        if media_type == "IMAGE" and use_url:
-            try:
-                media_reference = self.convert_to_jpeg(media_url)
-            except Exception as e:
-                logger.exception("Image conversion failed")
-                return {}
-        else:
-            media_reference = media_url if use_url else media_id
+        media_reference = media_url if use_url else media_id
 
-        payload = {
+        return {
             "mediaAttachment": {
                 "type": media_type,
-                "fileName": media_fields["filename"]  if "document"!= media_type.lower()  else media_meta.get("title",""),
-                "caption": media_fields["caption"],
-                "url" if use_url else "id": media_reference
+                **({"url": media_reference} if use_url else {"id": media_reference})
             }
         }
-        return payload
-    
     def convert_to_jpeg(self, media_url: str) -> str:
         try:
             response = requests.get(media_url, timeout=10)
@@ -402,10 +443,15 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         elif response_data.get("media_attachment") or any(
             response_data.get(i) for i in self.media_types
         ):
-            payload["mediaAttachment"] = response_data.get(
-                "media_attachment", {}
-            ) or self.interactive_media_payload(response_data).get("mediaAttachment", {})
-        
+            # payload["mediaAttachment"] = response_data.get(
+            #     "media_attachment", {}
+            # ) or self.interactive_media_payload(response_data).get("mediaAttachment", {})
+            payload["mediaAttachment"] = (
+                self.interactive_media_payload(response_data)
+                .get("mediaAttachment", {})
+            )
+            
+        logger.info(f"Airtel template_payload function: {json.dumps(payload, indent=4)}")
         
         return payload
 
@@ -517,6 +563,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
                             "url" if use_url else "id": media_reference
                         }
                     }
+                    # logger.info(f"Handle media: {media_type} and payload: {json.dumps(payload, indent=4)}")
                     url=f"{self.base_url}/session/send/media"
                     self._prepare_send_request(payload,custom_api_path=url)
                     SleepOverMessage()

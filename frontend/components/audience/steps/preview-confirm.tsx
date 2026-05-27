@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   XCircle,
   Database,
+  Fingerprint,
 } from "lucide-react";
 import type { DataSourceFormData } from "../add-data-source-dialog";
 import { APP_BASE_URL } from "@/utils/headers";
@@ -104,6 +105,7 @@ export function PreviewConfirm({
         audienceSize: result.total || 0,
         processedCount: result.processed || 0,
         errorCount: result.error || 0,
+        uniqueCount: result.unique || 0,
         sampleData: (result.preview_rows || result.data || []).slice(0, 10),
         errorCsvUrl: result.error_csv_url || null,
       });
@@ -190,9 +192,10 @@ export function PreviewConfirm({
 
       {formData.taskStatus === "completed" && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="Total Rows" value={formData.audienceSize} icon={Database} />
             <StatCard label="Processed" value={formData.processedCount} icon={CheckCircle2} />
+            <StatCard label="Unique" value={formData.uniqueCount} icon={Fingerprint} />
             <StatCard label="Errors" value={formData.errorCount} icon={XCircle} />
           </div>
 
