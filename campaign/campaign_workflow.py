@@ -1,9 +1,13 @@
 import sys
+import re
 from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, gryd, hp, AutocrmModel, AUTOCRM_ALLOWED_CHANNELS, AUTOCRM_CHEAPEST_CHANNELS
+from config import AUTOCRM_APP_ENTERPRISE_ID, \
+    AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, \
+    gryd, hp, AutocrmModel, AUTOCRM_ALLOWED_CHANNELS, AUTOCRM_CHEAPEST_CHANNELS, \
+    get_phone_code_from_dealership
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from functools import reduce
@@ -163,6 +167,15 @@ CAMPAIGN_WORKFLOW = {
 }
 
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
+
+def process_phone_number(phone_number, dealership_id = None):
+    phone_code = '91'
+    if dealership_id:
+        phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
+    phone_number = re.sub(r'\D', '', phone_number)
+    if len(phone_number) > 10:
+        return phone_number
+    return f"{phone_code}{phone_number}"
 
 
 def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
@@ -425,23 +438,30 @@ def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None)
     ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
     channel_last_contacted_name = CHANNEL_LAST_CONTACTED_MAP.get(channel)
     for ph in ph_list:
-        if lead.get(ph):
-            if lead.get(ph) in rlist:
+        d = lead.get(ph)
+        if d:
+            d = process_phone_number(d, lead.get('dealership_id'))
+            if d in rlist:
                 continue
-            rlist.append(lead.get(ph))
+            logger.info(f"Adding {ph}: {d} to rlist")
+            rlist.append(d)
     for person in lead.get('persons_involved', []):
         for ph in ph_list:
             if person.get(ph):
-                if person.get(ph) in rlist:
+                d = process_phone_number(person.get(ph), lead.get('dealership_id'))
+                if d in rlist:
                     continue
-                rlist.append(person.get(ph))
+                logger.info(f"Adding {ph}: {d} to rlist")
+                rlist.append(d)
         if person.get(channel_last_contacted_name) == ph:
+            logger.info(f"Adding {ph} as last contacted channel from person")
             priority.append((person.get(f'updated'), person.get(channel_last_contacted_name)))
     priority.sort(key=lambda x: x[0])
     for p0, p1 in priority:
         if p1 in rlist:
             rlist.remove(p1)
         rlist.insert(0, p1)
+    logger.info(f"List of phone numbers for lead {lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id')} is \"{", ".join(rlist)}\"")
     logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
     return rlist
 
@@ -689,10 +709,19 @@ def get_last_contacted_email(statuses):
     return None
 
 if __name__ == "__main__":
-    lead_id = "123"
-    lead_id = "sainath-9108310847-sainath@iamdave.ai-dave-ai-india-de5c1f80-ef73-3763-818f-d573e12c71d9"
-    lead_id = "praveen-9113687241-praveen@iamdave.ai-dave-ai-india-87a6f785-b1fa-314a-83f6-3bb820b3a0d7"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lead-id", type=str, default="123")
+    parser.add_argument("--debug", action="store_true", default=True)
+    parser.add_argument("--channel-identifier", type=str, default=None)
+    parser.add_argument("--campaign-type", type=str, default="pre-sales")
+    parser.add_argument("--disposition", type=str, default="converted")
+    args = parser.parse_args()
+    lead_id = args.lead_id
+    debug = args.debug
+    channel_identifier = args.channel_identifier
     if lead_id == "123":
+        channel_identifier = "919108310847"
         DEBUG_STATUS = [
             {
                 "provider_status": "attempted",
@@ -893,11 +922,12 @@ if __name__ == "__main__":
             ],
             "reasons_users_may_not_be_interested": "If customer seems low on tech interest - Don't ask to learn but speak to test a hypothesis and guage if they maybe interested in safety or family or another key feature. And then lead into it. Keep pitch warm and short. \n - If customer is busy “No problem at all. When would be a better time to call you back?” (Optional)  “I just want to make sure you don’t miss available test drive slots.” \n - If customer is just browsing “That’s completely fine. A test drive usually helps people decide faster.” “There’s no commitment at all.” “Would this weekend work, or sometime next week?” \n - If price feels high “I understand. Budget matters.” “There are financing and exchange options that often surprise people.” “Would you like me to quickly check what might work better for you?” \n - If comparing with other brands “That’s smart.” “Many customers compare before deciding.” “Instead of explaining, I’d suggest a short test drive — it gives real clarity.” “Would you like me to arrange that?”  \n - If they want to wait “I get that.” “Just so you know, current offers and availability may change later.” “I can keep you updated.” “What’s more important for you — timing or features?” \n - If they got a better deal elsewhere “Thanks for sharing that.” “Let me see what we can do on our side.” “What exactly did they offer?” \n - if they had a bad past experience “I’m really sorry to hear that.” “A lot has changed, especially service-wise.” “I’d love to give you a fresh experience — even just a drive.” \n - If family decision is involved “Of course, that makes sense.” “Would it help if everyone experienced the car together?” “I can arrange a family test drive.” \n - If worried about maintenance “That’s a valid concern.” “We have clear service packages — no surprises.” “I can explain that briefly or share it on WhatsApp.” \n - If unsure about variant “No worries — that’s very common.” “Let me ask you one or two quick questions and I’ll suggest what fits best.” \n - If they want time to think “Absolutely.” “I’ll send you the brochure and a short video.” “Would you like me to follow up, or should I wait for you to reach out?”",
         }
+
     print(determine_campaign_next_action(
-        campaign_type="pre-sales",
+        campaign_type=args.campaign_type,
         lead_id=lead_id,
         channel="voice_phone",
-        channel_identifier="919108310847",
-        disposition="converted",
-        debug = True
+        channel_identifier=channel_identifier,
+        disposition=args.disposition,
+        debug = args.debug
     ))
