@@ -685,6 +685,7 @@ function start_all() {
         start_worker $worker_name
     done
 
+    sleep 5
     echo "Setting up logio agent."
     setup_logio_agent
 }
