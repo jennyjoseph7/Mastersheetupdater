@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from collections.abc import Generator
 import psycopg
-from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector, db
 import time
 from gryd_worker import gryd
 import os
@@ -39,7 +39,7 @@ def get_pg_connector(enterprise_id=AUTOCRM_APP_ENTERPRISE_ID, close_on_exit = Tr
                     conn = AutoCRMPGConnector(enterprise_id)
                     if not close_on_exit:
                         JOB_CONNECT[enterprise_id] = conn
-                except psycopg.errors.ConnectionTimeout as e:
+                except (psycopg.errors.ConnectionTimeout, db.DatabaseError) as e:
                     logger.error("Connection timed out, trying again: %s", e)
                     time.sleep(5)
                 else:
