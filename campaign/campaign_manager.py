@@ -756,7 +756,7 @@ def trigger_campaign(*args, **kwargs):
         # list(process_single_lead(None, lead, campaign_type, campaign_id))
         person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
         pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
-        list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=kwargs.get('trigger_now', True))))
+        list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=kwargs.get('trigger_now', True)))
         
     logger.info("All valid leads queued successfully.")
 
