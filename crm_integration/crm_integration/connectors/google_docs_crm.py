@@ -1,4 +1,8 @@
-import gspread
+try:
+    import gspread
+except ImportError:
+    gspread = None
+
 from google.oauth2.service_account import Credentials
 from crm_integration.crm_integration.base_crm import BaseCRMClass
 

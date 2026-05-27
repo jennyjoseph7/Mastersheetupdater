@@ -461,7 +461,7 @@ def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None)
         if p1 in rlist:
             rlist.remove(p1)
         rlist.insert(0, p1)
-    logger.info(f"List of phone numbers for lead {lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id')} is \"{", ".join(rlist)}\"")
+    logger.info(f"List of phone numbers for lead {lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id')} is \"{', '.join(rlist)}\"")
     logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
     return rlist
 
