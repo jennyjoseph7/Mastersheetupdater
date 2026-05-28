@@ -6,3 +6,6 @@ torch
 accelerate
 sentencepiece
 bs4
+Pillow
+openai
+requests
