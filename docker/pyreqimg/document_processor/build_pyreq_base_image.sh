@@ -3,9 +3,10 @@
 pull_success=0
 
 BRANCH=${1:-master}
-APP_NAME=${2:-document_processor}
 
 IMAGE_NAME="autobot-pyreq-baseimage"
+APP_NAME="document_processor"
+
 REPO="asia-south1-docker.pkg.dev/dave-70c8e/document-processor-pyreq-image/$IMAGE_NAME"
 
 update_repo() {
