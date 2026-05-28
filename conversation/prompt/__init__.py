@@ -1,5 +1,7 @@
 
 import os,sys
+
+from conversation.prompt import language_maps
 _root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
@@ -9,14 +11,12 @@ gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conve
 import json
 from autocrm_db_helper import get_pg_connector
 from ai_service import ai_service_app
-
+from config import AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
+DEFAULT_LANGUAGE = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
 mlogger = gryd.hp.get_logger(__name__)
-
 def yield_primary_prompt(*args, **kwargs):
     mlogger.info("yield_primary_prompt called with data \n {} \n\n ---------------".format(kwargs))
-    pr = setup_primary_prompt(*args, **kwargs)
-    if isinstance(pr,dict) and "status" in pr and pr.get("status") == "Error":
-        return pr
+
     ###TODO check prompt template model to find the correct prompt for this user and campaign
     pr = setup_primary_prompt(*args, **kwargs)
     if isinstance(pr,dict) and "status" in pr:
@@ -33,7 +33,7 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], temperature=0.1, **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
@@ -53,8 +53,11 @@ def get_document_data(*args, **kwargs):
     return ""
 
 def get_who_are_you(*args, **kwargs):
-    return "You are a digital sales assistant bot."   
-
+    who = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_are_you"] 
+    if kwargs.get("gender") and kwargs.get("gender") in["male","female"]:
+        gender = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["gender"].format(kwargs.get("gender"))
+        who = f"{who}. {gender}"
+    return who
 def get_who_you_represent(*args, **kwargs):
     session_data = kwargs.get("session_data",{})
     campaign_data = kwargs.get("campaign_data",{})
@@ -82,7 +85,8 @@ def get_who_you_represent(*args, **kwargs):
 def get_user_info(*args, **kwargs):
     user_data = kwargs.get("user_data")
 
-    return "The following is all the information we currently have about the customer (Use the users name from this data): \n{}\n\n".format(user_data)
+    return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_is_the_customer"].format(user_data)
+    # return "The following is all the information we currently have about the customer (Use the users name from this data): \n{}\n\n".format(user_data)
 
 def get_purpose_and_steps(*args, **kwargs):
     session_data_cache_data = kwargs.get("session_data_cache",{})
@@ -95,15 +99,9 @@ def get_purpose_and_steps(*args, **kwargs):
     urgency_hooks = campaign_data.get("urgency_hook",[])
     date_now = hp.datetime.now().strftime("%A, %B %d, %Y") ## TODO - add timezone. add referenced date and time for tom day after etc.
     offer = campaign_data.get("campaign_offer","No Offer")
-    date_time_ref = f"\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date."
+    date_time_ref = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["date_time"].format(date_now=date_now)
+    # date_time_ref = "\n--The current date is {date_now}. All relative time references like 'tomorrow,' 'today,' or 'next week' should be calculated based on this date.".format(date_now=date_now)
 
-
-
-    purpose_dict = {
-        "test_drive" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section') \n- Interested Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time "],
-        "service" : ["- Full Name (if not available as 'person_name' in 'Who is the customer section')\n- Car Model \n- Dealer (help match based on pincode provided by customer)\n- Date & Time \n- Service Type"]
-        }
-    p_steps = ""
     if campaign_data.get("purpose"):
         if campaign_data.get("purpose_steps"):
             flow = campaign_data.get("purpose")
@@ -151,16 +149,16 @@ def get_example_states_and_solutions(*args, **kwargs):
     if cta_options:
         examples.extend(cta_options)
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
-        examples.append("\n- Following are the reasons the user should avail this offer - {}".format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
+        examples.append(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["why_user_should_avail_this"].format(kwargs.get("campaign_data").get("why_user_should_avail_this")))
     
     if kwargs.get("campaign_data").get("reasons_users_may_not_be_interested"):
-        examples.append("\n- Reasons user may not be interested and how to respond - {}".format(kwargs.get("campaign_data").get("reasons_users_may_not_be_interested")))
+        examples.append(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["reasons_users_may_not_be_interested"].format(kwargs.get("campaign_data").get("reasons_users_may_not_be_interested")))
     
     if kwargs.get("campaign_data").get("reasons_for_non_applicability"):
-        examples.append("\n- Reasons why the offer may not be applicable - {}".format(kwargs.get("campaign_data").get("reasons_for_non_applicability")))
+        examples.append(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["reasons_for_non_applicability"].format(kwargs.get("campaign_data").get("reasons_for_non_applicability")))
     
     if kwargs.get("campaign_data").get("other_important_information"):
-        examples.append("\n- Other information that may be relevant to this offer and or campaign - {}".format(kwargs.get("campaign_data").get("other_important_information")))
+        examples.append(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["other_important_information"].format(kwargs.get("campaign_data").get("other_important_information")))
     return ", ".join(examples)
 
 
@@ -169,7 +167,7 @@ def get_rules(*args, **kwargs):
     campaign_data = session_data_cache_data.get("campaign_data",{})
     user_data = session_data_cache_data.get("user_data",{})
     mlogger.info("campaign_data == {}".format(session_data_cache_data))
-    rules = "Always be polite, be helpful, if the customer is rude, avoid confrontation, do not be pushy.\nIf the customer has completed their purpose, you should not ask them to do the purpose steps again."
+    rules = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["rules"]["intro"]
     if campaign_data.get("dealership_guardrails"):
         rules = campaign_data.get("dealership_guardrails")
     if campaign_data.get("dealership_guidelines"):
@@ -179,18 +177,17 @@ def get_rules(*args, **kwargs):
     if campaign_data.get("region_level_guidelines"):
         rules = "{}\n{}".format(rules,campaign_data.get("region_level_guidelines"))
     if campaign_data.get("supported_brands_guidelines"):
-        rules = "{}\nThese are some brands the dealer supports and specific guidelines for them.\n{}".format(rules,campaign_data.get("supported_brands_guidelines"))
+        rules = "{}\n{}\n{}".format(rules,language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["rules"]["brand_intro"],campaign_data.get("supported_brands_guidelines"))
     if user_data.get("subdivision_level_guidelines"):
         rules = "{}\n{}".format(rules,user_data.get("subdivision_level_guidelines"))
     if user_data.get("subdivision_level_guardrails"):
-        rules = "{}\nThese are some guardrails that are speicific to the area the user is in.\n{}".format(rules,user_data.get("subdivision_level_guardrails"))
+        rules = "{}\n{}\n{}".format(rules,language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["rules"]["subdiv_intro"],user_data.get("subdivision_level_guardrails"))
     return rules
 
 def get_tone_and_style(*args, **kwargs):
     if kwargs.get("campaign_data",{}).get("conversation_tone"):
         return kwargs.get("campaign_data",{}).get("conversation_tone")
-    return "be descriptive in your explanations, give examples and explanations when asking the user to select any options. try to acheive your goal but dont force the customer."
-
+    return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["tone_and_style"]
 def get_output_format(*args, **kwargs):
     return "" if "voice" in kwargs.get("request_data",{}).get("channel","text") else "text"
 def get_conversation_history(*args, **kwargs):
@@ -213,17 +210,18 @@ def prune_user_data(user_data, channel):
                 user_data[r] = rephrase(user_data[r])
     return user_data
 
-def get_response_channel_info(channel,campaign_id, campaign_data):
-    mlogger.info("got channel == {} and campaign id == {}".format(channel,campaign_id))
+def get_response_channel_info(channel,campaign_id, campaign_data,*args, **kwargs):
+    mlogger.info("asdfasdf got channel == {} and campaign id == {} for language == {}".format(channel,campaign_id,kwargs.get("language","english")))
     if campaign_id != "4c99d5ea-4441-3ce6-841f-de5d7585b3b7":
         if campaign_data.get("custom_conversation_start_pattern"):
             return "\nConversation Initiation Pattern -\n{}\n".format(campaign_data.get("custom_conversation_start_pattern"))
         if channel and channel in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"]:
             mlogger.info("got voice channel")
-            return """
-            \nConversation Initiation Pattern -
-            Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
-            """
+            return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["response_channel_info"]["default"]
+            # return """
+            # \nConversation Initiation Pattern -
+            # Start The conversation with the customer by asking them  - "Hello, am i speaking with <name of customer in Who is the customer section>?", if they confirm ask them "Do you have a moment to speak with me?", if they confirm tell them about the offer from the campaign.\n
+            # """
         return ""
     ret = ""
     mlogger.info("RUNNING NADA HACK")
@@ -260,6 +258,7 @@ def setup_primary_prompt(*args, **kwargs):
     - Tone and style
     - Documents
     - output format
+    - conversation history
 
     '''
     
@@ -277,11 +276,10 @@ def setup_primary_prompt(*args, **kwargs):
     dealer_description = "{dealer_name} is a dealer who sells vehicles from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
-
-
+    kwargs["language"] = session_data_cache_data.get("preferred_language","english")
+    mlogger.info("got my pref lang as {}".format(kwargs["language"]))
     if not campaign_data:
         return {"status":"error","message":"FAILED TO GET CAMPAIGN DATA"}
-
         # campaign_name = "inbound"
         # campaign_objective = "inbound"
         # campaign_type = "inbound"
@@ -292,7 +290,7 @@ def setup_primary_prompt(*args, **kwargs):
         model_fetch = "showroom" if campaign_type == "pre-sales" else "workshop"
         showroom = pg.get(model_fetch,f"{model_fetch}_id",shop_id)
     if showroom:
-        showroom_workshop_desc = "The following are the {showroom_workshop} of {dealer_name} :{showrooms}".format(showroom_workshop=model_fetch,dealer_name=dealer_name,showrooms = json.dumps(showroom))
+        showroom_workshop_desc = language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["showroom_workshop_desc"].format(showroom_workshop=model_fetch,dealer_name=dealer_name,showrooms = json.dumps(showroom))
     else:
         showroom_workshop_desc = campaign_data.get("dealership_description",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
 
@@ -301,19 +299,19 @@ def setup_primary_prompt(*args, **kwargs):
     mlogger.info("campaign_data == {}\n\n".format(campaign_data))
     mlogger.info("user_data == {}\n\n".format(user_data))
 
-    purpose_and_steps = get_purpose_and_steps(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    doc_data = get_document_data(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_are_you =  get_who_are_you(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_you_represent = get_who_you_represent(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    who_is_the_customer = get_user_info(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
-    tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    purpose_and_steps = get_purpose_and_steps(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    doc_data = get_document_data(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    who_are_you =  get_who_are_you(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    who_you_represent = get_who_you_represent(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    who_is_the_customer = get_user_info(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    possible_states_and_solutions = get_example_states_and_solutions(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    rules = get_rules(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
+    tone_and_style = get_tone_and_style(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
     conversation_history = "No previous history" if kwargs.get("channel","") and kwargs.get("channel","") in ["web_chat_voice","voice_phone","whatsapp_voice_note","whatsapp_voice_call"] else get_conversation_history(*args,**{"session_data_cache":session_data_cache_data})
-    output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data})
+    output_format = get_output_format(*args,**{"session_data_cache":session_data_cache_data,"campaign_data":campaign_data,"user_data":user_data,"language":kwargs.get("language","english")})
     mlogger.info("my history data == {}".format(conversation_history))
 
-    response_channel_info = get_response_channel_info(kwargs.get("channel",""),campaign_data.get("campaign_id","inbound"),campaign_data)
+    response_channel_info = get_response_channel_info(kwargs.get("channel",""),campaign_data.get("campaign_id","inbound"),campaign_data,language = kwargs.get("language","english"))
     
     if campaign_data.get("campaign_type") == "inbound":
         mlogger.info("is inbound")
@@ -450,29 +448,31 @@ def setup_primary_prompt(*args, **kwargs):
         # """
         return primary_prompt
     mlogger.info("is outbound")
-    primary_prompt = f"""
-    Who you are -
-    {who_are_you}
-    Who you represent -
-    {who_you_represent}
-    Who is the customer -
-    {who_is_the_customer}
-    The purpose of this conversation -
-    {purpose_and_steps}
-    {response_channel_info}
-    Possible states of the conversation and how to handle -
-    {possible_states_and_solutions}
-    Rules -
-    {rules}
-    Tone and style -
-    {tone_and_style}
-    Dealer description -
-    {showroom_workshop_desc}
-    Documents Data -
-    {doc_data}
-    Conversation History -
-    {conversation_history}
-    """
+    # primary_prompt = f"""
+    # Who you are -
+    # {who_are_you}
+    # Who you represent -
+    # {who_you_represent}
+    # Who is the customer -
+    # {who_is_the_customer}
+    # The purpose of this conversation -
+    # {purpose_and_steps}
+    # {response_channel_info}
+    # Possible states of the conversation and how to handle -
+    # {possible_states_and_solutions}
+    # Rules -
+    # {rules}
+    # Tone and style -
+    # {tone_and_style}
+    # Dealer description -
+    # {showroom_workshop_desc}
+    # Documents Data -
+    # {doc_data}
+    # Conversation History -
+    # {conversation_history}
+    # """
+    p_prompt = f"""{language_maps.MAP.get(kwargs.get("language","english")).get("parent")}"""
+    primary_prompt = p_prompt.format(**{"who_are_you":who_are_you,"who_you_represent":who_you_represent,"who_is_the_customer":who_is_the_customer,"purpose_and_steps":purpose_and_steps,"response_channel_info":response_channel_info,"possible_states_and_solutions":possible_states_and_solutions,"rules":rules,"tone_and_style":tone_and_style,"showroom_workshop_desc":showroom_workshop_desc,"doc_data":doc_data,"conversation_history":conversation_history})
     return primary_prompt
 
 

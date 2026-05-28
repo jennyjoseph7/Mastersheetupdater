@@ -168,9 +168,9 @@ function is_process_running() {
 }
 
 function kill_process() {
-    # Kill the process with the given PID and a timeout of 110 seconds
+    # Kill the process with the given PID and a timeout of 130 seconds
     ssw_pid=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
     if ! is_process_running $ssw_pid; then
         return 0
@@ -198,7 +198,7 @@ function kill_process() {
 function kill_process_by_search_string() {
     # GET pids by search string and then kill all the PIDs by that string e.g. kill_process_by_search_string "my.*search.*string"
     ssw_pids=`get_process_pids "${1}"`
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     echo "SSW PIDs for search-string ${1}: $ssw_pids" 1>&2
     for ssw_pid in $ssw_pids; do
         echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
@@ -214,9 +214,9 @@ function kill_process_by_search_string() {
 
 function stop_worker() {
     # Stop the worker by killing the process and waiting for it to terminate
-    # e.g. stop_worker 110 will stop the worker named "workers" with a timeout of 110 seconds
+    # e.g. stop_worker 130 will stop the worker named "workers" with a timeout of 130 seconds
     worker_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     worker_type=${3:-workers}
     echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
     names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
@@ -255,9 +255,9 @@ function stop_worker() {
 
 function stop_agent() {
     # Stop the agent by killing the process and waiting for it to terminate
-    # e.g. stop_agent "agents" 110 will stop the agent named "agents" with a timeout of 110 seconds
+    # e.g. stop_agent "agents" 130 will stop the agent named "agents" with a timeout of 130 seconds
     agent_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     echo "Stopping agent $agent_name with a timeout of $shutdown_time seconds" 1>&2
     stop_worker $agent_name $shutdown_time agents
     return $?
@@ -265,9 +265,9 @@ function stop_agent() {
 
 function stop_webapp() {
     # Stop the webapp by killing the process and waiting for it to terminate
-    # e.g. stop_webapp "app" 110 will stop the webapp named "app" with a timeout of 110 seconds
+    # e.g. stop_webapp "app" 130 will stop the webapp named "app" with a timeout of 130 seconds
     webapp_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     echo "Stopping webapp $webapp_name with a timeout of $shutdown_time seconds" 1>&2
     is_success=0
     for ssw_pid in `get_webapp_pids $webapp_name`; do
@@ -290,9 +290,9 @@ function stop_webapp() {
 
 function stop_default_worker() {
     # Stop the default worker by killing the process and waiting for it to terminate
-    # e.g. stop_default_worker "cron-scheduler" 110 will stop the default worker named "cron-scheduler" with a timeout of 110 seconds
+    # e.g. stop_default_worker "cron-scheduler" 130 will stop the default worker named "cron-scheduler" with a timeout of 130 seconds
     default_worker=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-130}
     echo "Stopping default workers $default_worker with a timeout of $shutdown_time seconds" 1>&2
     is_success=0
     for ssw_pid in `ls -1 $BASE_DIR/${default_worker}*.pid 2>/dev/null | sort`; do
@@ -315,7 +315,7 @@ function stop_default_worker() {
 
 function stop_all_workers() {
     echo "Stopping all workers with a timeout of $shutdown_time seconds" 1>&2
-    shutdown_time=${1:-110}
+    shutdown_time=${1:-130}
     pids=()
     is_success=0
     echo "Stopping default workers with a timeout of $shutdown_time seconds" 1>&2
@@ -372,7 +372,7 @@ function start_worker() {
         worker_name=$( echo $worker_name | awk -F"/" '{print $1}' )
     fi
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-130}
     worker_type=${4:-workers}
     echo "Checking for $worker_type $worker_name/$entry_point with a timeout of $shutdown_time seconds" 1>&2
     stop_worker $worker_name $shutdown_time $worker_type
@@ -436,7 +436,7 @@ function start_agent() {
     agent_name=$1
     entry_point=$( echo $agent_name | awk -F"/" '{print $2}' )
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-130}
     echo "Starting agent $agent_name/$entry_point with a timeout of $shutdown_time seconds: foreground? $is_foreground" 1>&2
     start_worker $agent_name $is_foreground $shutdown_time agents
     return $?
@@ -445,7 +445,7 @@ function start_agent() {
 function start_webapp() {
     webapp_name=$1
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-130}
     echo "Starting webapp $webapp_name with a timeout of $shutdown_time seconds: foreground? $is_foreground" 1>&2
     stop_webapp $webapp_name $shutdown_time
     if [ $? -ne 0 ];then
