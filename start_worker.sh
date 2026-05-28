@@ -79,7 +79,7 @@ function setup_logio_agent() {
 
     fi
     python3 /root/generate_logio_conf.py $track_files
-    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
+    export LOGIO_FILE_INPUT_CONFIG_PATH=$BASE_DIR/logio_conf.json
     status=$?
 	if [ $status != 0 ];then
 		echo "Generating log config failed. Exitting."
