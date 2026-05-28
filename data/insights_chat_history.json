@@ -1,0 +1,41 @@
+{
+    "timezone": "Asia/Kolkata",
+    "name": "insights_chat_history",
+    "model_type": "default",
+    "attributes": [
+    {
+      "name": "message_id",
+      "type": "uid",
+      "id": true,
+      "indexed": true,
+      "default": { "function": "make_uuid4" }
+    },
+    {
+      "name": "conversation_id",
+      "type": "uid",
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "role",
+      "type": "text",
+      "options": ["user", "assistant", "system"],
+      "required": true,
+      "indexed": true
+    },
+    {
+      "name": "message_text",
+      "type": "text"
+    },
+    {
+      "name": "response",
+      "type": "nested_object"
+    },
+    {
+      "name": "created",
+      "type": "number",
+      "auto_updater": true,
+      "default": { "function": "now_ctime" }
+    }
+  ]
+}
