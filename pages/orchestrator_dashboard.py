@@ -9,8 +9,16 @@ import os, sys, traceback
 from graphviz import Digraph
 
 logger = get_logger(__name__)
-gryd.SERVICE = GRYD_SERVICE
-gryd.set_queue_manager(config=GRYD_CONFIG)
+def environment(environment: str = "-local"):
+    gryd.SERVICE = GRYD_SERVICE
+    gryd.set_queue_manager(config = GRYD_CONFIG)
+    if not environment.startswith("-"):
+        environment = f"-{environment}"
+    gryd.ENVIRONMENT = environment
+    message = {"message": f"Environment set to '{environment}'"}
+    logger.info(message)
+    return message
+environment(environment = GRYD_ENVIRONMENT)
 
 st.set_page_config(page_title="Multi-Agent Orchestrator Streaming", layout="wide")
 st.markdown("## 🕵🏻 **Multi-Agent Orchestrator Streaming**")

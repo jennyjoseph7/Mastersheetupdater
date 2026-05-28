@@ -1,5 +1,8 @@
 from ai_service import ai_service_app
-from src.prompts import *
+try:
+    from src.prompts import *
+except:
+    from agents.src.prompts import *
 try:
     from .base_agent import BaseAgent
 except ImportError:
