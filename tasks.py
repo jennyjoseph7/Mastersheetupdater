@@ -344,7 +344,8 @@ def competitor_analysis_agent(*args, **kwargs):
     except Exception as e:
         logger.error(f"Competitor Analysis Agent Error: \n\n")
         traceback.print_exc()
-        return {"task": function_name, "error": str(e).strip()}
+        error = "The competitor analysis agent is under maintenance at the moment. Please try again later."
+        return {"task": function_name, "error": error, "error_message": str(e).strip()}
 
 
 
