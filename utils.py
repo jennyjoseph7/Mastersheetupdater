@@ -25,6 +25,7 @@ GRYD_CONFIG = {
     "timeout" : 10,
     "wait_time_to_shutdown" : 43200
 }
+GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 
 #GRYD FILE_SYSTEM
 GRYD_FILESYSTEM_URL = os.environ.get('GRYD_FILESYSTEM_URL', "https://file-dev.gryd.in")

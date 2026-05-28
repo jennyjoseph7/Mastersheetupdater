@@ -2,7 +2,10 @@ from typing import Union, Dict, Any
 try:
     from .base_agent import BaseAgent
 except:
-    from base_agent import BaseAgent
+    try:
+        from base_agent import BaseAgent
+    except:
+        from agents.base_agent import BaseAgent
     
 class AEMIntegrationAgent(BaseAgent):
     def __init__(self, source: dict, model_identifier='azure-gpt-4o'):

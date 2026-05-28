@@ -1,6 +1,17 @@
+import os 
+import sys 
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+import agents
+from agents.aem_integration_agent import AEMIntegrationAgent
+# print("TASKS SYS PATH:", sys.path)
 from gryd_worker import gryd
 from gryd_worker.gryd_routes import gryd_result
-from utils import GRYD_SERVICE, GRYD_CONFIG, get_logger, upload_file, load_json
+from utils import GRYD_SERVICE, GRYD_CONFIG, GRYD_ENVIRONMENT, get_logger, upload_file, load_json
 from typing import Union, Dict, Any, Generator
 import json
 import traceback, os
@@ -8,23 +19,20 @@ import AgentOrchestrator
 import inspect
 logger = get_logger(__name__)
 
-gryd.SERVICE = GRYD_SERVICE
-gryd.set_queue_manager(config = GRYD_CONFIG)
+logger.info(f"Sys Path: {json.dumps(sys.path, indent=2)}")
+logger.info(f"Current Path: {os.path.abspath(__file__)}")
+logger.info(f"Current Directory: {os.path.dirname(os.path.abspath(__file__))}")
 
 def environment(environment: str = "-local"):
+    gryd.SERVICE = GRYD_SERVICE
+    gryd.set_queue_manager(config = GRYD_CONFIG)
     if not environment.startswith("-"):
         environment = f"-{environment}"
     gryd.ENVIRONMENT = environment
     message = {"message": f"Environment set to '{environment}'"}
     logger.info(message)
     return message
-
-GRYD_ENVIRONMENT = os.getenv("ENVIRONMENT", "-local")
 environment(environment = GRYD_ENVIRONMENT)
-
-def get_function_name():
-    # return inspect.currentframe().f_back.f_code.co_name
-    return inspect.currentframe().f_code.co_name
 
 
 def get_gryd_docs():
@@ -215,8 +223,10 @@ def propensity_agent(*args, **kwargs):
         img_bytes = agent_response.get("img_bytes")
         reasoning = agent_response.get("reasoning")
         fig_json = agent_response.get("fig_json")
-        response = upload_file(img_bytes, {"autobot-agent": True})
-        propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
+        propensity_chart_url = None
+        if img_bytes:
+            response = upload_file(img_bytes, {"autobot-agent": True})
+            propensity_chart_url = response["cdn_url"] if isinstance(response, dict) else response
         filtered_results = {
             "task": function_name,
             "scores": scores,
@@ -1116,6 +1126,15 @@ def query_orchestrator(*args, **kwargs):
 
 if __name__ == "__main__":
 
+    from agents.aem_integration_agent import AEMIntegrationAgent
+    fp = "/home/shreyasvaishnav/autobot_agents/aem_mock_data/5.json"
+    interaction = json.load(open(fp, "r"))
+
+    aem_integration_agent_agent = AEMIntegrationAgent(source=interaction)
+    result = aem_integration_agent_agent.run()
+    print(json.dumps(result, indent=4, default=str))
+
+    assert False
 
 
     # result = campaign_idea_generation_agent(source = fp, brochure_url = "https://cache.industry.siemens.com/dl/files/811/109765811/att_1116928/v1/One-Stop-Shop-en.pdf")
