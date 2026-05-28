@@ -14,6 +14,7 @@ export TAIL_LOGS=${TAIL_LOGS:-True}
 if [ ! -d $LOGDIR ];then
     mkdir -p $LOGDIR
 fi
+export LOG_APPEND_TEXT="$HOSTNAME"_$(date +%s) 
 export SETUP_WEBAPP=${SETUP_WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 # Start webapps is a comma-separated list of <app-name>,<app-name1>
@@ -61,6 +62,40 @@ process_config=`cat start_worker_config.json`
 
 echo "APP Config"
 echo $process_config
+
+function stop_logio_agent() {
+	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
+}
+
+function setup_logio_agent() {
+    log_files=${1:-$LOG_FILE}
+    track_files=""
+    if [ -f ./logio_track_files.logfile ];then
+        track_files=$(cat ./logio_track_files.logfile)
+    else
+        # echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
+        echo "$log_files" > ./logio_track_files.logfile
+        track_files=$(cat ./logio_track_files.logfile)
+
+    fi
+    python3 /root/generate_logio_conf.py $track_files
+    export LOGIO_FILE_INPUT_CONFIG_PATH=$BASE_DIR/logio_conf.json
+    status=$?
+	if [ $status != 0 ];then
+		echo "Generating log config failed. Exitting."
+		exit
+	fi	
+	
+	stop_logio_agent
+
+	if [ $status == 0 ];then
+		echo "Start input server"
+		nohup log.io-file-input &
+	else
+		echo "Starting logger failed."
+	fi
+}
+
 
 function get_process_pids() {
     # Get the list of pid of the process matching the search string
@@ -354,8 +389,8 @@ function start_default_workers() {
         stop_default_worker $executable
         echo "Starting default workers - $executable"
         pid_filename=$BASE_DIR/${executable}.pid
-        export LOG_FILE=${LOGDIR}/${executable##*/}_stderr.log
-        STDOUT_FILE=${LOGDIR}/${executable##*/}_stdout.log
+        export LOG_FILE=${LOGDIR}/${executable##*/}_${LOG_APPEND_TEXT}_stderr.log
+        STDOUT_FILE=${LOGDIR}/${executable##*/}_${LOG_APPEND_TEXT}_stdout.log
         STDERR_FILE=${LOGDIR}/${executable##*/}.log
         nohup $executable 1>> ${STDOUT_FILE} 2>> ${STDERR_FILE} &
         w_pid=$!
@@ -406,9 +441,9 @@ function start_worker() {
         fi
         worker_fname=${entry_point%.*}
         pid_filename=$BASE_DIR/${worker_name}_${worker_fname}.pid
-        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_stderr.log
-        STDOUT_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_stdout.log
-        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}.log
+        export LOG_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}.log
+        STDOUT_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}_stdout.log
+        STDERR_FILE=${LOGDIR}/${worker_name}_${worker_fname##*/}_${LOG_APPEND_TEXT}_stderr.log
         pushd $BASE_DIR > /dev/null
         if [ $worker_type == "workers" ];then
             entry_point=${worker_name}/${entry_point}
@@ -476,9 +511,9 @@ function start_webapp() {
         for i in $(seq $webapp_api_threads); do
             pid_filename=$BASE_DIR/${webapp_name}_${i}.pid
             port=$((webapp_port + i - 1))
-            export LOG_FILE=${LOGDIR}/${webapp_name}_${i}_stderr.log
-            STDOUT_FILE=${LOGDIR}/${webapp_name}_${i}_stdout.log
-            STDERR_FILE=${LOGDIR}/${webapp_name}_${i}.log
+            export LOG_FILE=${LOGDIR}/${webapp_name}_${i}_${LOG_APPEND_TEXT}_stderr.log
+            STDOUT_FILE=${LOGDIR}/${webapp_name}_${i}_${LOG_APPEND_TEXT}_stdout.log
+            STDERR_FILE=${LOGDIR}/${webapp_name}_${i}_${LOG_APPEND_TEXT}.log
             nohup $WAITRESS_PATH --ident="" --port=${port} --url-scheme=${webapp_url_scheme} --threads=1 ${webapp_app_name}:app 1>> ${STDOUT_FILE} 2>> ${STDERR_FILE} &
             w_pid=$!
             echo $w_pid >> ${pid_filename}
@@ -487,8 +522,8 @@ function start_webapp() {
         done
     else
         export LOG_FILE=${LOGDIR}/${webapp_name}_stderr.log
-        STDOUT_FILE=${LOGDIR}/${webapp_name}_stdout.log
-        STDERR_FILE=${LOGDIR}/${webapp_name}.log
+        STDOUT_FILE=${LOGDIR}/${webapp_name}_${LOG_APPEND_TEXT}_stdout.log
+        STDERR_FILE=${LOGDIR}/${webapp_name}_${LOG_APPEND_TEXT}.log
         nohup $WAITRESS_PATH --ident="" --port=${WEBAPP_PORT} --url-scheme=${WEBAPP_URL_SCHEME} --threads=${WEBAPP_API_THREADS} ${WEBAPP_APP_NAME}:app 1>> ${STDOUT_FILE} 2>> ${STDERR_FILE} &
         w_pid=$!
         echo $w_pid >> ${pid_filename}
@@ -627,7 +662,7 @@ function start_all() {
         echo "Not setting up default workers. Since DEFAULT_WORKERS is 0 or not set." 1>&2
         #return
     else
-	start_default_workers
+	    start_default_workers
     fi
 
     if [[ $START_AGENTS == 1 ]]; then
@@ -649,4 +684,16 @@ function start_all() {
     for worker_name in ${START_WORKERS//,/ }; do
         start_worker $worker_name
     done
+
+    sleep 5
+    ls $LOG_FILE
+    echo "Setting up logio agent."
+    if [ $SETUP_LOGIO_AGENT == "True" ];then
+        sleep 30
+        setup_logio_agent
+        echo "##########################"
+        cat /root/app/logio_conf.json
+        echo "##########################"
+        cat $LOG_FILE
+    fi
 }

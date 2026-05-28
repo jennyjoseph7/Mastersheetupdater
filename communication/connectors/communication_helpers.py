@@ -620,7 +620,7 @@ Returns:
             campaigns = list(pg.list(
                 campaign_model,
                 {
-                    "campaign_objective_name": "Inbound Lead Handling" if channel == "voice_phone" else "Inbound Lead Handling- Whatsapp",
+                    "campaign_objective_name": "Inbound Lead Handling",
                     "dealership_id": dealership_id,
                     "campaign_type": campaign_type                
                 }
