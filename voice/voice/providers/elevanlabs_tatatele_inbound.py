@@ -24,6 +24,49 @@ def hangup_inbound_call(call_id):
     response = api.hangup_call(call_id)
     logger.info(f"Hangup call response: {response}")
 
+def get_service_name(agent_number):
+    try:
+        from voice import gryd_tasks
+    except ImportError as e:
+        import gryd_tasks
+    
+    def _func(agent_number):    
+        with gryd_tasks.get_pg_connector() as pg:
+            cc = list(pg.list(
+                "communication_credential",
+                {
+                    "sender": agent_number,
+                    "channel": "voice_phone"
+                }
+            ))
+            logger.info(f"Communication credentials found for {agent_number}: {cc}")
+            if not cc:
+                return None
+            
+            dealership_id = cc[0].get("dealership_id")
+            dealer = pg.get("dealership", "dealership_id", dealership_id)
+            if not dealer:
+                logger.info(f"No dealer found for dealership_id {dealership_id}")
+                return config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME
+            service_name = f"{dealer.get('voice_service_name', config.AUTOCRM_VOICE_SERVICE_NAME)}-inbound"
+            return service_name
+    sn = _func(agent_number)
+    if agent_number.startswith("91") and not sn:
+        logger.info(f"Agent number {agent_number} starts with country code, trying without it.")
+        agent_number = agent_number[-10:]
+        sn = _func(agent_number)
+
+    sn = sn or config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME
+    logger.info(f"Service name for agent number {agent_number}: {sn}")
+
+    return sn
+
+def check_available_threads(service_name):
+   c = gryd.get_service_connection()
+   available_threads = c.execute_read("SELECT COUNT(*) FROM service_job WHERE dict->>'service' = %s AND dict->>'environment' = %s AND dict->>'current_task' IS NULL", params = (service_name, gryd.get_environment()))
+   logger.info(f"Available threads for service {service_name}: {available_threads}")
+   return True if available_threads and available_threads >= 1 else False
+
 @app.route("/smartflo/webhook/inbound", methods=["POST"])
 def inbound_call(*args, **kwargs):
     data = request.get_json(silent=True) or request.form.to_dict() or request.data.decode() or {}
@@ -38,9 +81,14 @@ def inbound_call(*args, **kwargs):
             caller_id = "91" + str(caller_id)
         data["caller_id_number"] = caller_id
         logger.info(f"Processing inbound call for {data.get('caller_id_number')}")
+
+        service_name = get_service_name(data.get("call_to_number", ""))
+        if not check_available_threads(service_name):
+            logger.warning(f"No available threads for service {service_name}. Hanging up the call.")
+            hangup_inbound_call(data.get("call_id"))
+            return jsonify({"status": "error", "message": "No available threads to handle the call. Call has been hung up."})
         
-        gryd.create_async_task('start_call_from_inbound', config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME , args=[], kwargs={"user_data":data})
-        
+        gryd.create_async_task('start_call_from_inbound', service_name , args=[], kwargs={"user_data":data})
         return jsonify({"status": "success", "message": "Inbound call session created."})
     elif data.get("call_status") in ["answered"]:
         t = time.time()
@@ -121,7 +169,7 @@ def create_stream_url(*args, **kwargs):
     #inbound case swap
     to_number = data.get("from_number")[-10:]
     from_number = data.get("to_number")[-10:]
-
+    
     base_ws_url = config.get_websocket_base_url(to_number)
 
     wss_url = f"{base_ws_url}/tatatele/{from_number}_{to_number}/{to_number}"
@@ -132,3 +180,8 @@ def create_stream_url(*args, **kwargs):
         "wss_url": wss_url
     })
 
+
+
+if __name__ == "__main__":
+    sn = get_service_name("918065251317")
+    check_available_threads(sn)
