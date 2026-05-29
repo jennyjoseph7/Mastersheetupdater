@@ -376,10 +376,10 @@ function stop_all_workers() {
         stop_webapp $webapp_name $shutdown_time &
         pids+=($!)
     done
-    kill_process_by_search_string "node.*log"
     for pid in ${pids[@]}; do
         wait $pid || is_success=1
     done
+    kill_process_by_search_string "node.*log"
     return $is_success
 }
 
