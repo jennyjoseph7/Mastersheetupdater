@@ -237,7 +237,7 @@ def set_min_worker_count(services, environment, min_worker_count, max_worker_cou
         # TODO: use a scale_down function to scale down the environment - gryd_worker:0.5.1
 
 @gryd.is_a_task(function_name = "test_cron_job", logger_param = 'logger', job_param = 'job')
-def test_cron_job(execution_time = 110, logger = None, job_ = None):
+def test_cron_job(execution_time = 110, logger = None, job = None):
     """
     This job basically executes a loop by sleeping for 1 sec until execution time expires
     """
