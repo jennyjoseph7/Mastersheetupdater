@@ -206,6 +206,13 @@ def trigger_voice_call(*args, **kwargs):
                     session_data.get("session_id"),
                     {"status": "queued"}
                 )
+                with get_pg_connector() as pg:
+                    pg.update(
+                        config_data["table"],
+                        config_data["pk"],
+                        lead_id,
+                        {"disposition": "error"},
+                    )
                 return
                
             if x.get('prompt'):
