@@ -14,7 +14,17 @@ export TAIL_LOGS=${TAIL_LOGS:-True}
 if [ ! -d $LOGDIR ];then
     mkdir -p $LOGDIR
 fi
-export LOG_APPEND_TEXT="$HOSTNAME"_$(date +%s) 
+
+export ADD_TIMESTAMP_TO_LOGFILE_PATH=${ADD_TIMESTAMP_TO_LOGFILE_PATH:-"False"}
+
+if [ $ENVIRONMENT == "production" ];then
+    ADD_TIMESTAMP_TO_LOGFILE_PATH="True"
+fi
+
+export LOG_APPEND_TEXT=$HOSTNAME
+if [ $ADD_TIMESTAMP_TO_LOGFILE_PATH == "True" ];then
+    LOG_APPEND_TEXT=$LOG_APPEND_TEXT_$(date +%s)
+fi
 export SETUP_WEBAPP=${SETUP_WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 # Start webapps is a comma-separated list of <app-name>,<app-name1>
