@@ -16,7 +16,7 @@ class AutoCRMPGConnector(db.GrydPGConnector):
         return super().get(table_name, id, id_attr) 
     
     def list(self, table_name, where):
-        return super().filter(table_name, where_clause)
+        return super().filter(table_name, where)
     
     # TODO: add a limit .
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
