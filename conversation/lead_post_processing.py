@@ -258,8 +258,7 @@ def post_session_process(*args, **kwargs):
         session_update_data["sentiment_classification"] = sentiment_classification
 
     try:
-        disp = (updated_lead_data.get("disposition") or "").lower()
-        if disp in ("negative", "neutral"):
+        if sentiment_classification in ["negative", "neutral"]:
             receiver_emails = [
                 "eshwar@iamdave.ai",
                 "sahib@iamdave.ai",
@@ -269,7 +268,7 @@ def post_session_process(*args, **kwargs):
             subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
             html = f"""
             <p>Hi Team,</p>
-            <p>A customer interaction was classified as <b>{disp}</b> for session <b>{session_id}</b>.</p>
+            <p>A customer interaction was classified as <b>{sentiment_classification}</b> for session <b>{session_id}</b>.</p>
             <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
             <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
             <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
