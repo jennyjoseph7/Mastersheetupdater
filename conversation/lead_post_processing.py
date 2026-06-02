@@ -15,6 +15,7 @@ from conversation.prompt import run_prompt_sync
 # # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 # ----
 from communication.common_functions import get_communication_credential,generate_uid
+from communication.connectors.email_communication import communication_sender
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -257,7 +258,40 @@ def post_session_process(*args, **kwargs):
                                                     "sentiment_classification": sentiment_classification}.items() if v})
     
     appt_date_time_purpose = {}
+    try:
+        disp = (updated_lead_data.get("disposition") or "").lower()
+        if disp in ("negative", "neutral"):
+            receiver_emails = [
+                "eshwar@iamdave.ai",
+                "sahib@iamdave.ai",
+                "shanjai@iamdave.ai",
+            ]
 
+            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
+            html = f"""
+            <p>Hi Team,</p>
+            <p>A customer interaction was classified as <b>{disp}</b> for session <b>{session_id}</b>.</p>
+            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
+            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
+            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
+            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
+            <p><b>Conversation summary:</b></p>
+            <pre>{session_mdl_obj.get('summary','')}</pre>
+            <p>Message history:</p>
+            <pre>{json.dumps(session_mdl_obj.get('history',[]), indent=2, default=str)}</pre>
+            <p>Please review the SOPs and take corrective action.</p>
+            """
+
+            email_payload = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {"name": "AutoCRM Alerts"},
+                "receiver": {"emails": receiver_emails},
+                "html_string": html,
+                "subject": subject,
+            }
+            communication_sender(**email_payload)
+    except Exception as e:
+        mlogger.exception(f"Failed to send SOP alert email: {e}")
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
