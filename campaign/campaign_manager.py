@@ -734,7 +734,7 @@ def trigger_campaign(*args, **kwargs):
     #with get_pg_connector() as pg:
     #    leads = list(pg.list(lead_table, filters))
     tbl = AutocrmModel(lead_table)
-    leads = tbls.list(_as_option = True, **filters)
+    leads = tbl.list(_as_option = True, **filters)
 
     logger.info(f"Total leads fetched: {len(leads)}")
 
