@@ -731,8 +731,10 @@ def trigger_campaign(*args, **kwargs):
     lead_table = "pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
-    with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, filters))
+    #with get_pg_connector() as pg:
+    #    leads = list(pg.list(lead_table, filters))
+    tbl = AutocrmModel(lead_table)
+    leads = tbls.list(_as_option = True, **filters)
 
     logger.info(f"Total leads fetched: {len(leads)}")
 
