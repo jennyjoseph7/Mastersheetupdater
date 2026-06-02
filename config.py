@@ -504,6 +504,7 @@ AUTOCRM_VOICE_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_3", "a
 AUTOCRM_VOICE_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_4", "autocrm-voice-4")
 AUTOCRM_VOICE_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_5", "autocrm-voice-5")
 
+AUTOCRM_VOICE_INBOUND_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_INBOUND_SERVICE_NAME_1", "autocrm-voice-inbound-1")
 
 
 def get_websocket_base_url(room=None):

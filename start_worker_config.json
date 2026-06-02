@@ -79,10 +79,17 @@
             "shutdown_time": 0
         },
         {
+            "name": "voice",
+            "entry_point": "voice_inbound_1.py",
+            "parallel_threads": 1,
+            "gryd_service": "AUTOCRM_VOICE_INBOUND_SERVICE_NAME_1",
+            "shutdown_time": 0
+        },
+        {
             "name": "spark",
             "entry_point": "spark.py",
             "gryd_service": "AUTOCRM_SPARK_SERVICE_NAME",
-            "parallel_threads": 1,
+            "parallel_threads": 0,
             "shutdown_time": 0
         },
         {

@@ -37,10 +37,10 @@ def generate_conf(host, port, log_files, service_name):
 
 
 if __name__ == '__main__':
-    SERVICE_NAME=os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")
+    SERVICE_NAME=f'{os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")}-{os.environ.get("ENVIRONMENT", "UNKNOWN_ENVIRONMENT")}'
     HOST=os.environ.get("LOGIO_SERVER_TCP_URL", None)
     PORT=os.environ.get("LOGIO_SERVER_TCP_PORT", 6689)
-    APP_DIR=os.environ.get("APP_DIR", "/root/app")
+    APP_DIR=os.environ.get("BASE_DIR", "/root/app")
     log_files_csv= sys.argv[1]
 
     if not log_files_csv:

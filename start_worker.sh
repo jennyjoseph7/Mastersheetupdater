@@ -14,7 +14,17 @@ export TAIL_LOGS=${TAIL_LOGS:-True}
 if [ ! -d $LOGDIR ];then
     mkdir -p $LOGDIR
 fi
-export LOG_APPEND_TEXT="$HOSTNAME"_$(date +%s) 
+
+export ADD_TIMESTAMP_TO_LOGFILE_PATH=${ADD_TIMESTAMP_TO_LOGFILE_PATH:-"False"}
+
+if [ $ENVIRONMENT == "production" ];then
+    ADD_TIMESTAMP_TO_LOGFILE_PATH="True"
+fi
+
+export LOG_APPEND_TEXT=$HOSTNAME
+if [ $ADD_TIMESTAMP_TO_LOGFILE_PATH == "True" ];then
+    LOG_APPEND_TEXT=$LOG_APPEND_TEXT_$(date +%s)
+fi
 export SETUP_WEBAPP=${SETUP_WEBAPP:-True}
 export SETUP_WORKERS=${SETUP_WORKERS:-True}
 # Start webapps is a comma-separated list of <app-name>,<app-name1>
@@ -32,6 +42,7 @@ export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
 DEFAULT_WORKER_EXECUTABLES=""
+export TERMINATION_GRACE_PERIOD=${TERMINATION_GRACE_PERIOD:-590}
 
 if [ $PYTHON_VENV != 0 ];then
         export WAITRESS_PATH=$PYTHON_VENV/bin/waitress-serve
@@ -203,9 +214,9 @@ function is_process_running() {
 }
 
 function kill_process() {
-    # Kill the process with the given PID and a timeout of 110 seconds
+    # Kill the process with the given PID and a timeout of TERMINATION_GRACE_PERIOD or 130 seconds
     ssw_pid=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
     if ! is_process_running $ssw_pid; then
         return 0
@@ -233,7 +244,7 @@ function kill_process() {
 function kill_process_by_search_string() {
     # GET pids by search string and then kill all the PIDs by that string e.g. kill_process_by_search_string "my.*search.*string"
     ssw_pids=`get_process_pids "${1}"`
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     echo "SSW PIDs for search-string ${1}: $ssw_pids" 1>&2
     for ssw_pid in $ssw_pids; do
         echo "Killing process $ssw_pid with a timeout of $shutdown_time seconds" 1>&2
@@ -249,9 +260,9 @@ function kill_process_by_search_string() {
 
 function stop_worker() {
     # Stop the worker by killing the process and waiting for it to terminate
-    # e.g. stop_worker 110 will stop the worker named "workers" with a timeout of 110 seconds
+    # e.g. stop_worker TERMINATION_GRACE_PERIOD or 130 will stop the worker named "workers" with a timeout of TERMINATION_GRACE_PERIOD or 130 seconds
     worker_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     worker_type=${3:-workers}
     echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
     names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
@@ -290,9 +301,9 @@ function stop_worker() {
 
 function stop_agent() {
     # Stop the agent by killing the process and waiting for it to terminate
-    # e.g. stop_agent "agents" 110 will stop the agent named "agents" with a timeout of 110 seconds
+    # e.g. stop_agent "agents" TERMINATION_GRACE_PERIOD or 130 will stop the agent named "agents" with a timeout of TERMINATION_GRACE_PERIOD or 130 seconds
     agent_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     echo "Stopping agent $agent_name with a timeout of $shutdown_time seconds" 1>&2
     stop_worker $agent_name $shutdown_time agents
     return $?
@@ -300,9 +311,9 @@ function stop_agent() {
 
 function stop_webapp() {
     # Stop the webapp by killing the process and waiting for it to terminate
-    # e.g. stop_webapp "app" 110 will stop the webapp named "app" with a timeout of 110 seconds
+    # e.g. stop_webapp "app" TERMINATION_GRACE_PERIOD or 130 will stop the webapp named "app" with a timeout of TERMINATION_GRACE_PERIOD or 130 seconds
     webapp_name=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     echo "Stopping webapp $webapp_name with a timeout of $shutdown_time seconds" 1>&2
     is_success=0
     for ssw_pid in `get_webapp_pids $webapp_name`; do
@@ -325,9 +336,9 @@ function stop_webapp() {
 
 function stop_default_worker() {
     # Stop the default worker by killing the process and waiting for it to terminate
-    # e.g. stop_default_worker "cron-scheduler" 110 will stop the default worker named "cron-scheduler" with a timeout of 110 seconds
+    # e.g. stop_default_worker "cron-scheduler" TERMINATION_GRACE_PERIOD or 130 will stop the default worker named "cron-scheduler" with a timeout of TERMINATION_GRACE_PERIOD or 130 seconds
     default_worker=$1
-    shutdown_time=${2:-110}
+    shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     echo "Stopping default workers $default_worker with a timeout of $shutdown_time seconds" 1>&2
     is_success=0
     for ssw_pid in `ls -1 $BASE_DIR/${default_worker}*.pid 2>/dev/null | sort`; do
@@ -350,7 +361,7 @@ function stop_default_worker() {
 
 function stop_all_workers() {
     echo "Stopping all workers with a timeout of $shutdown_time seconds" 1>&2
-    shutdown_time=${1:-110}
+    shutdown_time=${1:-${TERMINATION_GRACE_PERIOD}}
     pids=()
     is_success=0
     echo "Stopping default workers with a timeout of $shutdown_time seconds" 1>&2
@@ -376,10 +387,10 @@ function stop_all_workers() {
         stop_webapp $webapp_name $shutdown_time &
         pids+=($!)
     done
-    kill_process_by_search_string "node.*log"
     for pid in ${pids[@]}; do
         wait $pid || is_success=1
     done
+    kill_process_by_search_string "node.*log"
     return $is_success
 }
 
@@ -407,7 +418,7 @@ function start_worker() {
         worker_name=$( echo $worker_name | awk -F"/" '{print $1}' )
     fi
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-${TERMINATION_GRACE_PERIOD}}
     worker_type=${4:-workers}
     echo "Checking for $worker_type $worker_name/$entry_point with a timeout of $shutdown_time seconds" 1>&2
     stop_worker $worker_name $shutdown_time $worker_type
@@ -471,7 +482,7 @@ function start_agent() {
     agent_name=$1
     entry_point=$( echo $agent_name | awk -F"/" '{print $2}' )
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-${TERMINATION_GRACE_PERIOD}}
     echo "Starting agent $agent_name/$entry_point with a timeout of $shutdown_time seconds: foreground? $is_foreground" 1>&2
     start_worker $agent_name $is_foreground $shutdown_time agents
     return $?
@@ -480,7 +491,7 @@ function start_agent() {
 function start_webapp() {
     webapp_name=$1
     is_foreground=${2:-0}
-    shutdown_time=${3:-110}
+    shutdown_time=${3:-${TERMINATION_GRACE_PERIOD}}
     echo "Starting webapp $webapp_name with a timeout of $shutdown_time seconds: foreground? $is_foreground" 1>&2
     stop_webapp $webapp_name $shutdown_time
     if [ $? -ne 0 ];then
@@ -686,14 +697,14 @@ function start_all() {
     done
 
     sleep 5
-    ls $LOG_FILE
-    echo "Setting up logio agent."
+    ls $LOG_FILE 1>&2
+    echo "Setting up logio agent." 1>&2
     if [ $SETUP_LOGIO_AGENT == "True" ];then
         sleep 30
         setup_logio_agent
         echo "##########################"
-        cat /root/app/logio_conf.json
+        cat /root/app/logio_conf.json 1>&2
         echo "##########################"
-        cat $LOG_FILE
+        cat $LOG_FILE 1>&2
     fi
 }

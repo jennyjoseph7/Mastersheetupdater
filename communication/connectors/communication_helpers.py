@@ -622,8 +622,7 @@ Returns:
                 {
                     "campaign_objective_name": "Inbound Lead Handling",
                     "dealership_id": dealership_id,
-                    "campaign_type": campaign_type,
-                    "channel": channel
+                    "campaign_type": campaign_type                
                 }
             ))
 

@@ -15,39 +15,15 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     def get(self, table_name, id_attr, id):        
         return super().get(table_name, id, id_attr) 
     
-    # def list(self, table_name, where):
-    #     where  = "WHERE dict @> '{}'".format(json.dumps(where))
-    #     return super().list(table_name, where)
-    
     def list(self, table_name, where):
-        if isinstance(where, dict):
-            where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
-        else:
-            where_clause = f"WHERE {where}"
-
-        return super().list(table_name, where_clause)
-    # def list_order_by(self, table_name, where, order_by="created", order="DESC"):
-    #     where_clause = "WHERE dict @> '{}'".format(json.dumps(where))
-    #     order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
-    #     return super().list(table_name, f"{where_clause} {order_clause}")
+        return super().filter(table_name, where)
     
     # TODO: add a limit .
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
         conditions = []
-
-        for key, value in where.items():
-            value = str(value).lower() if isinstance(value, bool) else value
-
-            if key.endswith("~"):
-                actual_key = key[:-1]
-                conditions.append(f"(dict->>'{actual_key}') != '{value}'")
-            else:
-                conditions.append(f"(dict->>'{key}') = '{value}'")
-
-        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        where, values = db.dict_to_where_clause(where)
         order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
-
-        return super().list(table_name, f"{where_clause} {order_clause}")
+        return super().list(table_name, f"{where} {order_clause}", values)
     
     def delete(self, table_name, id_attr, id):
         print("DELETE FROM {} WHERE {} = '{}'".format(table_name,id_attr,id))

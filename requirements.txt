@@ -8,21 +8,10 @@ elevenlabs==2.45.0
 elevenlabs[pyaudio]
 uvloop>=0.19.0; sys_platform != "win32"
 tabulate==0.10.0
-
-#spark
 pdfkit==1.0.0
-google-auth>=2.38.0
-google-cloud-aiplatform==1.71.1
-opencv-python==4.12.0.88
-google-genai>=1.75.0
-vertexai==1.71.1
-CairoSVG==2.8.2
-validators==0.35.0
 bs4>=0.0.2
+pypdf==6.6.2
 cleantext==1.1.4
-lxml>=6.0.2
-facebook_business==25.0.0
-pillow==11.1.0
 
 # streamlit 
 plotly==6.5.2
