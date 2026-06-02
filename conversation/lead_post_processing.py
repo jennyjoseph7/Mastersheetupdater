@@ -15,7 +15,6 @@ from conversation.prompt import run_prompt_sync
 # # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
 # ----
 from communication.common_functions import get_communication_credential,generate_uid
-from communication.connectors.email_communication import communication_sender
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
@@ -289,6 +288,7 @@ def post_session_process(*args, **kwargs):
                 "html_string": html,
                 "subject": subject,
             }
+            from communication.connectors.email_communication import communication_sender
             communication_sender(**email_payload)
     except Exception as e:
         mlogger.exception(f"Failed to send SOP alert email: {e}")
