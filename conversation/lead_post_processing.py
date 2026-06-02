@@ -256,6 +256,42 @@ def post_session_process(*args, **kwargs):
         session_update_data["emotion_analysis"] = emotion_analysis
     if sentiment_classification:
         session_update_data["sentiment_classification"] = sentiment_classification
+
+    try:
+        disp = (updated_lead_data.get("disposition") or "").lower()
+        if disp in ("negative", "neutral"):
+            receiver_emails = [
+                "eshwar@iamdave.ai",
+                "sahib@iamdave.ai",
+                "shanjai@iamdave.ai",
+            ]
+
+            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
+            html = f"""
+            <p>Hi Team,</p>
+            <p>A customer interaction was classified as <b>{disp}</b> for session <b>{session_id}</b>.</p>
+            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
+            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
+            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
+            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
+            <p><b>Conversation summary:</b></p>
+            <pre>{session_mdl_obj.get('summary','')}</pre>
+            <p>Message history:</p>
+            <pre>{json.dumps(session_mdl_obj.get('history',[]), indent=2, default=str)}</pre>
+            <p>Please review the SOPs and take corrective action.</p>
+            """
+
+            email_payload = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {"name": "AutoCRM Alerts"},
+                "receiver": {"emails": receiver_emails},
+                "html_string": html,
+                "subject": subject,
+            }
+            from communication.connectors.email_communication import communication_sender
+            communication_sender(**email_payload)
+    except Exception as e:
+        mlogger.exception(f"Failed to send SOP alert email: {e}")
     appt_date_time_purpose = {}
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
