@@ -21,7 +21,15 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     # TODO: add a limit .
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
         conditions = []
-        where, values = db.dict_to_where_clause(where)
+        filter_by_types = {}
+        for k, v in where.items():
+            if isinstance(v, (int, float)):
+                filter_by_types[k] = 'number'
+            if isinstance(v, bool):
+                filter_by_types[k] = 'bool'
+            if isinstance(v, hp.datetime):
+                filter_by_types[k] = 'datetime'
+        where, values = db.dict_to_where_clause(where, filter_by_types)
         order_clause = f"ORDER BY (dict->>'{order_by}') {order}"
         return super().list(table_name, f"{where} {order_clause}", values)
     
