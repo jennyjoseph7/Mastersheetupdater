@@ -205,7 +205,7 @@ function processFailureStats(failureStats: FailureStat[]) {
       stat.channel === "whatsapp_chat" ? "WhatsApp" : stat.channel || "Unknown",
     fill:
       CHANNEL_COLORS[
-        stat.channel === "whatsapp_chat" ? "whatsapp" : stat.channel
+      stat.channel === "whatsapp_chat" ? "whatsapp" : stat.channel
       ] || CHANNEL_COLORS.default,
   }));
 }
@@ -386,7 +386,10 @@ function CampaignInsightsContent() {
     localStorage.setItem(`${prefix}sessionStatus`, sessionStatus);
     localStorage.setItem(`${prefix}sessionStartDate`, sessionStartDate);
     localStorage.setItem(`${prefix}sessionEndDate`, sessionEndDate);
-    localStorage.setItem(`${prefix}sessionPageSize`, sessionPageSize.toString());
+    localStorage.setItem(
+      `${prefix}sessionPageSize`,
+      sessionPageSize.toString(),
+    );
     localStorage.setItem(
       `${prefix}sessionCurrentPage`,
       sessionCurrentPage.toString(),
@@ -459,15 +462,15 @@ function CampaignInsightsContent() {
     // Changed dependency to fetch independently of campaignType being loaded
     campaignId
       ? [
-          "campaign-leads",
-          campaignId,
-          campaignType || "",
-          currentPage,
-          pageSize === -1 ? (leadsCount || 10) : pageSize,
-          sortConfig?.key,
-          sortConfig?.direction,
-          dispositionFilter,
-        ]
+        "campaign-leads",
+        campaignId,
+        campaignType || "",
+        currentPage,
+        pageSize === -1 ? leadsCount || 10 : pageSize,
+        sortConfig?.key,
+        sortConfig?.direction,
+        dispositionFilter,
+      ]
       : null,
     ([_, id, type, page, size, sortKey, sortDir, dispFilter]) =>
       fetchCampaignLeads({
@@ -484,7 +487,8 @@ function CampaignInsightsContent() {
 
   const serverLeads = leadsDataRaw?.items || [];
   const totalRecords = leadsDataRaw?.total_number || 0;
-  const effectivePageSize = pageSize === -1 ? Math.max(totalRecords, 1) : pageSize;
+  const effectivePageSize =
+    pageSize === -1 ? Math.max(totalRecords, 1) : pageSize;
   const totalPages = Math.ceil(totalRecords / effectivePageSize) || 1;
 
   // 4. Conditional Fetch Sessions
@@ -496,16 +500,16 @@ function CampaignInsightsContent() {
   } = useSWR<{ items: CampaignSession[]; total_number: number }>(
     campaignId
       ? [
-          "campaign-sessions",
-          campaignId,
-          sessionCurrentPage,
-          sessionPageSize === -1 ? (sessionsCount || 10) : sessionPageSize,
-          sessionSortConfig.key,
-          sessionSortConfig.direction,
-          "all",
-          sessionStartDate,
-          sessionEndDate,
-        ]
+        "campaign-sessions",
+        campaignId,
+        sessionCurrentPage,
+        sessionPageSize === -1 ? sessionsCount || 10 : sessionPageSize,
+        sessionSortConfig.key,
+        sessionSortConfig.direction,
+        "all",
+        sessionStartDate,
+        sessionEndDate,
+      ]
       : null,
     ([_, id, page, size, sortKey, sortDir, status, startDate, endDate]) =>
       fetchCampaignSessions({
@@ -528,7 +532,8 @@ function CampaignInsightsContent() {
   };
   const serverSessions = sessionsDataRaw?.items || [];
   const totalSessionRecords = sessionsDataRaw?.total_number || 0;
-  const effectiveSessionPageSize = sessionPageSize === -1 ? Math.max(totalSessionRecords, 1) : sessionPageSize;
+  const effectiveSessionPageSize =
+    sessionPageSize === -1 ? Math.max(totalSessionRecords, 1) : sessionPageSize;
   const totalSessionPages =
     Math.ceil(totalSessionRecords / effectiveSessionPageSize) || 1;
 
@@ -1158,7 +1163,11 @@ function CampaignInsightsContent() {
 
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
-                    value={[10, 25, 50, 100, -1].includes(pageSize) ? pageSize : "custom"}
+                    value={
+                      [10, 25, 50, 100, -1].includes(pageSize)
+                        ? pageSize
+                        : "custom"
+                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === "custom") {
@@ -1191,7 +1200,9 @@ function CampaignInsightsContent() {
                           setCurrentPage(1);
                         }}
                       />
-                      <span className="text-xs text-slate-500 whitespace-nowrap">per page</span>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        per page
+                      </span>
                     </div>
                   )}
 
@@ -1364,28 +1375,28 @@ function CampaignInsightsContent() {
                                 <TableCell className="text-right">
                                   {lead.disposition?.toLowerCase() !==
                                     "queued" && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      disabled={!campaignId}
-                                      onClick={() => {
-                                        const effectiveUserId =
-                                          lead.pre_sales_lead_id ||
-                                          lead.post_sales_lead_id ||
-                                          lead.lead_id ||
-                                          lead.user_id;
-                                        if (effectiveUserId && campaignId) {
-                                          setSelectedLead({
-                                            userId: effectiveUserId,
-                                            personName: lead.person_name,
-                                          });
-                                          setEngagementModalOpen(true);
-                                        }
-                                      }}
-                                    >
-                                      Engagement
-                                    </Button>
-                                  )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={!campaignId}
+                                        onClick={() => {
+                                          const effectiveUserId =
+                                            lead.pre_sales_lead_id ||
+                                            lead.post_sales_lead_id ||
+                                            lead.lead_id ||
+                                            lead.user_id;
+                                          if (effectiveUserId && campaignId) {
+                                            setSelectedLead({
+                                              userId: effectiveUserId,
+                                              personName: lead.person_name,
+                                            });
+                                            setEngagementModalOpen(true);
+                                          }
+                                        }}
+                                      >
+                                        Engagement
+                                      </Button>
+                                    )}
                                 </TableCell>
                               </TableRow>
                             );
@@ -1400,8 +1411,12 @@ function CampaignInsightsContent() {
                         {totalRecords === 0
                           ? 0
                           : (currentPage - 1) * effectivePageSize + 1}{" "}
-                        to {Math.min(currentPage * effectivePageSize, totalRecords)} of{" "}
-                        {totalRecords} entries
+                        to{" "}
+                        {Math.min(
+                          currentPage * effectivePageSize,
+                          totalRecords,
+                        )}{" "}
+                        of {totalRecords} entries
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
@@ -1500,7 +1515,11 @@ function CampaignInsightsContent() {
                   {/* SERVER Page Size */}
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
-                    value={[10, 20, 50, 100, -1].includes(sessionPageSize) ? sessionPageSize : "custom"}
+                    value={
+                      [10, 20, 50, 100, -1].includes(sessionPageSize)
+                        ? sessionPageSize
+                        : "custom"
+                    }
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val === "custom") {
@@ -1533,7 +1552,9 @@ function CampaignInsightsContent() {
                           setSessionCurrentPage(1);
                         }}
                       />
-                      <span className="text-xs text-slate-500 whitespace-nowrap">per page</span>
+                      <span className="text-xs text-slate-500 whitespace-nowrap">
+                        per page
+                      </span>
                     </div>
                   )}
 
@@ -1642,7 +1663,7 @@ function CampaignInsightsContent() {
                                 {campaignType === "post-sales"
                                   ? session.reg_number || "-"
                                   : session.person_name?.replace("_", " ") ||
-                                    "-"}
+                                  "-"}
                               </TableCell>
                               <TableCell className="font-medium text-slate-900 text-sm">
                                 {session.phone_number
@@ -1656,15 +1677,14 @@ function CampaignInsightsContent() {
                               <TableCell className="text-center">
                                 <Badge
                                   variant="outline"
-                                  className={`capitalize font-normal border ${
-                                    session.status === "completed"
+                                  className={`capitalize font-normal border ${session.status === "completed"
                                       ? "border-green-200 text-green-700 bg-green-50"
                                       : session.status === "active"
                                         ? "border-blue-200 text-blue-700 bg-blue-50"
                                         : session.status === "failed"
                                           ? "border-red-200 text-red-700 bg-red-50"
                                           : "border-slate-200 text-slate-500"
-                                  }`}
+                                    }`}
                                 >
                                   {session.status}
                                 </Badge>
@@ -1722,7 +1742,7 @@ function CampaignInsightsContent() {
                                     )}
 
                                   {session.emotion_analysis &&
-                                  typeof session.emotion_analysis ===
+                                    typeof session.emotion_analysis ===
                                     "object" ? (
                                     <div className="flex flex-wrap items-center justify-center gap-1">
                                       {Object.entries(

@@ -714,6 +714,8 @@ def send_text_template_for_approval(data, *args, **kwargs):
 def trigger_campaign(*args, **kwargs):
     """
     Trigger a campaign for a given campaign type and campaign id.
+
+    if kwargs has 'trigger_now', then it will trigger the calls immediately, otherwise it will schedule it
     """
     
     logger.info("------ Triggering Campaign ------")
@@ -754,7 +756,7 @@ def trigger_campaign(*args, **kwargs):
         # list(process_single_lead(None, lead, campaign_type, campaign_id))
         person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
         pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
-        list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=True))
+        list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=kwargs.get('trigger_now', True)))
         
     logger.info("All valid leads queued successfully.")
 

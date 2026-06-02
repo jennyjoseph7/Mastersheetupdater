@@ -1752,8 +1752,8 @@
                 "engaged",
                 "converted",
                 "failed",
-                "busy",
-                "error"
+                "error",
+                "busy"
             ],
             "default": "queued"
         },

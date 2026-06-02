@@ -236,12 +236,11 @@ def set_min_worker_count(services, environment, min_worker_count, max_worker_cou
             
         # TODO: use a scale_down function to scale down the environment - gryd_worker:0.5.1
 
-@gryd.is_a_task(function_name = "test_cron_job", logger_param = 'logger', job_param = 'job')
-def test_cron_job(execution_time = 110, logger = None, job = None):
+@gryd.is_a_task(function_name = "test_cron_job")
+def test_cron_job(execution_time = 110):
     """
     This job basically executes a loop by sleeping for 1 sec until execution time expires
     """
-    logger = logger or mlogger
     n = hp.now()
     st = hp.epoch()
     logger.info("Start time: %s (%s)", n, st)
@@ -1585,7 +1584,7 @@ def get_queue_length(channel,dealership_id=None):
             return ql
 
     
-def get_all_dealerships(pg, channel_filter=None, **kwargs):
+def get_all_dealerships(pg, channel_filter=None):
     # query = """
     #     SELECT DISTINCT ON (dict->>'dealership_id')
     #         dict->>'dealership_id' AS dealership_id,
@@ -1593,8 +1592,7 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
-    kwargs.update({"dealer_status": "active"})
-    result = list(pg.list("dealership", kwargs))
+    result = list(pg.list("dealership", {"dealer_status": "active"}))
     # result = list(pg.list("dealership", {}))
     
     dealerships = []
@@ -1824,7 +1822,7 @@ def test_campaign_workflow(*args, **kwargs):
     }
 
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None, **kwargs):  
+def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):  
     
     """
     First get all the dealerships with the channel filter voice_phone and dealer_status is active.
@@ -1846,7 +1844,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
         mlogger.info("Outside allowed execution window for channel - voice_phone.So exiting...")
         return
     with get_pg_connector() as pg:
-        dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS, **kwargs)
+        dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS)
         mlogger.info(f"Total dealerships for channel - voice_phone = {len(dealerships)}")
         for dealership in dealerships:
             dealership_id = dealership["id"]
@@ -1875,7 +1873,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
 
                 
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
-def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None, **kwargs):
+def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
     
     """
     First get all the dealerships with the channel filter non voice_phone(whatsapp_chat,email,rcs etc..) and dealer_status is active.
@@ -1897,7 +1895,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,
         mlogger.info("Outside allowed execution window for channel - non voice.So exiting...")
         return
     with get_pg_connector() as pg:
-        dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS, **kwargs)
+        dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS)
 
         mlogger.info(f"Total dealerships for non voice channels = {len(dealerships)}")
         
@@ -2167,8 +2165,9 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                 f"Campaign error: {campaign.get('_id')}"
             )
 if __name__ == "__main__":
-    print("[TEST] Running CRM cron...")
+    pass
+    # print("[TEST] Running CRM cron...")
 
-    result = process_crm_campaigns(batch_size=1)
+    # result = process_crm_campaigns(batch_size=1)
 
-    print(result)            
+    # print(result)            

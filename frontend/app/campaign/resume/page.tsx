@@ -171,7 +171,7 @@ function ResumeCampaignContent() {
   const loadAudienceData = async (currentPage = 1) => {
     setIsLoadingAudience(true);
     try {
-      const res: any = await fetchAudienceTasks(currentPage, 10);
+      const res: any = await fetchAudienceTasks(currentPage, 10, "all", campaignId || "");
       const items = res.items || res.data || (Array.isArray(res) ? res : []);
       setAudienceTasks(items);
       setTotalPages(Math.ceil((res.total || 0) / 10));

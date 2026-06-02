@@ -1590,6 +1590,7 @@ def gryd_task_import_leads_from_csv(
             - workshop_id
             - lead_tags
             - campaign_objective_id
+            - next_schedule_time
             - etc.
     Yields:
         - {"_error": ...} for errors
@@ -2690,14 +2691,12 @@ class VATCalculator:
 
 if __name__ == "__main__":
 
-    gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
+    #gryd_task_import_leads_from_csv.execute("pre-sales", "dave-ai-india", "/Users/ggananth/Downloads/Stellantis_sample.csv", campaign_id = "b14c86d0-1434-3119-9d1e-2e0257da00f3", showroom_id = 'dave-ai-india')    
     for out in gryd_task_import_leads_from_csv(
             "pre-sales", 
-            "sales-dealership1-india", 
-            "/Users/ggananth/Downloads/stellantis.csv", 
-            #campaign_id = "74f260b8-e8dc-3c52-ab8d-31bd0fc49943",
-            audience_name = "Stellantis - test data",
-            campaign_objective_id = "pre-sales-test-drive-booking"
+            "dave-ai-india", 
+            "/Users/ggananth/Downloads/Aircross_RT_Set_1.csv", 
+            campaign_id = "ff7fb7b2-a158-3a95-b0ef-214040222c03",
         ):    
         print(hp.json.dumps(out, hp.json.OPT_INDENT_2))
     # gryd_task_import_leads_from_csv.execute("post-sales", "ambal-auto-india", "/Users/ggananth/Downloads/ambal_sample.csv", campaign_objective_id = "post-sales-service-overdue", audience_name = "Ambal Sample", mapping = {
