@@ -276,7 +276,7 @@ def post_session_process(*args, **kwargs):
             <p><b>Conversation summary:</b></p>
             <pre>{session_mdl_obj.get('summary','')}</pre>
             <p>Message history:</p>
-            <pre>{json.dumps(session_mdl_obj.get('history',[]), indent=2, default=str)}</pre>
+            <pre>{json.dumps(session_mdl_obj.get('history',[]))}</pre>
             <p>Please review the SOPs and take corrective action.</p>
             """
 
