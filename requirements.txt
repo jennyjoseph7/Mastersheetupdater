@@ -18,3 +18,4 @@ plotly==6.5.2
 # streamlit_chat
 chardet==5.2.0
 PyMuPDF==1.27.2.3
+validators==0.35.0
