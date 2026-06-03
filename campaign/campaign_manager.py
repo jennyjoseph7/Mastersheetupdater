@@ -723,40 +723,36 @@ def trigger_campaign(*args, **kwargs):
     lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
-    with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, filters))
+    lead_model = AutocrmModel(lead_table)
 
-    logger.info(f"Total leads fetched: {len(leads)}")
 
-    valid_leads = []
-
+    total_leads = lead_model.count(**filters)
+    logger.info(f"Total leads fetched: {total_leads}")
+    valid_leads = 0
     # if the lead_data doesnt have a phone number(pre sales) or persons_involved (post sales), skip it
-    for lead in leads:
-
+    for lead in lead_model.yield_list(_as_option = True, _sort_by = 'created', **filters):
+        lead_id = lead.get(lead_table_id)
         if campaign_type == "post-sales":
-            persons = lead.get("persons_involved") or []
+            for _ in range(2):
+                persons = lead.get("persons_involved") or []
+                if persons:
+                    break
+                logger.info("Persons involved is absent, retrying")
+                lead = lead_model.update(lead_id, {})
             if not persons:
-                logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('lead_id')}")
+                logger.info(f"Skipping post-sales lead (no persons involved): {lead_id}")
                 continue
-
         else:  
             if not lead.get("phone_number"):
-                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
+                logger.info(f"Skipping pre-sales lead (no phone number): {lead_id}")
                 continue
-
-        valid_leads.append(lead)
-
-    logger.info(f"Valid leads to process: {len(valid_leads)}")
-
-    for lead in valid_leads:
-        
+        valid_leads += 1
+        logger.info(f"Valid leads processed: {valid_leads}")
         logger.info(f"Queueing task for lead_id={lead.get(lead_table_id)}")
-        # list(process_single_lead(None, lead, campaign_type, campaign_id))
         person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
-        pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
+        lead_model.update(lead_id, {"user_id": person.get("user_id")})
         list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=kwargs.get('trigger_now', True)))
-        
-    logger.info("All valid leads queued successfully.")
+    logger.info("All %s valid leads queued successfully.", valid_leads)
 
 @gryd.is_a_task(function_name="trigger_queued_campaigns")
 def trigger_queued_campaigns(*args, **kwargs):

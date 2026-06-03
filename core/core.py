@@ -487,7 +487,8 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
         else:
             logger.info("Posting person involved: %s", person)
             persons_involved.append(person)
-
+    if persons_involved:
+        row['persons_involved'] = persons_involved
     return row, missing_reason
 
 
