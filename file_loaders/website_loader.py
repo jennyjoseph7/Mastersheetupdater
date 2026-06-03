@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 from munch import Munch
 from cleantext import clean
 from utils import get_logger, generate_id_using_string
-from langchain_community.document_loaders import WebBaseLoader
 
 logger = get_logger(__name__)
 
@@ -24,25 +23,47 @@ class WebsiteLoader:
         }
         self.file_id = generate_id_using_string(string=self.url)
 
-        self.loader = WebBaseLoader(self.url,)
-
     def load(self, *args, **kwargs) -> List[Munch]:
-        documents = []
+        """
+        Loads the website raw content
+        """
         logger.info(f"Loaded website: {self.url}")
-        lang_docs = self.loader.load()
+        
+        try:
+            response = requests.get(self.url, headers=self.headers, timeout=self.timeout)
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Error fetching {self.url}: {e}")
+            raise
 
+        soup = BeautifulSoup(response.text, "html.parser")
+        text = soup.get_text()
 
-        for doc in lang_docs:
-            # logger.info(f"Document: {doc.page_content}")
-            # logger.info(f"Metadata: {doc.metadata}")
+        metadata = {
+            "source": self.source,
+            "url": self.url,
+            "file_id": self.file_id,
+            "content_type": "website",
+        }
+        
+        
+        if soup.title and soup.title.string:
+            metadata["title"] = soup.title.string.strip()
+            
+        meta_desc = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", attrs={"property": "og:description"})
+        if meta_desc and meta_desc.get("content"):
+            metadata["description"] = meta_desc.get("content").strip()
+            
+        html_tag = soup.find("html")
+        if html_tag and html_tag.get("lang"):
+            metadata["language"] = html_tag.get("lang")
 
-            doc.metadata["source"] = self.source
-            doc.metadata["url"] = self.url
-            doc.metadata["file_id"] = self.file_id
-            doc.metadata["content_type"] = "website"
-            doc = Munch(page_content=doc.page_content.strip(),metadata=doc.metadata)
-            documents.append(doc)
-        return documents
+        if "additional_metadata" in kwargs:
+            logger.info("Adding additional metadata...")
+            metadata.update(kwargs["additional_metadata"])
+
+        doc = Munch(page_content=text.strip(), metadata=metadata)
+        return [doc]
 
     def _load(self, *args, **kwargs) -> List[Munch]:
         """
@@ -56,12 +77,16 @@ class WebsiteLoader:
         """
         logger.info(f"Loading website: {self.url}")
 
-        response = requests.get(self.url, headers=self.headers, timeout=self.timeout)
-        response.raise_for_status()
+        try:
+            response = requests.get(self.url, headers=self.headers, timeout=self.timeout)
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Error fetching {self.url}: {e}")
+            raise
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        for tag in soup(["script", "style", "noscript", "header", "footer", "nav"]): # Remove noisee
+        for tag in soup(["script", "style", "noscript", "header", "footer", "nav"]): # Remove noise
             tag.decompose()
 
         text = soup.get_text(separator=" ", strip=True)
@@ -100,8 +125,6 @@ class WebsiteLoader:
             logger.info("Adding additional metadata...")
             additional_metadata = kwargs["additional_metadata"]
             metadata.update(additional_metadata)
-        doc = Munch(page_content=text,metadata=metadata,)
+            
+        doc = Munch(page_content=text, metadata=metadata)
         return [doc]
-    
-
-
