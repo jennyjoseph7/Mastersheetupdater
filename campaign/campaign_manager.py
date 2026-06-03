@@ -746,7 +746,7 @@ def trigger_campaign(*args, **kwargs):
         if campaign_type == "post-sales":
             persons = lead.get("persons_involved") or []
             if not persons:
-                tbl.update(lead.get('post_sales_lead_id'), {})
+                lead = tbl.update(lead.get('post_sales_lead_id'), {})
                 persons = lead.get('persons_involved') or []
                 if not persons:
                     logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('post_sales_lead_id')}")
