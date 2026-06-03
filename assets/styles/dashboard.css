@@ -650,15 +650,14 @@
       display: inline-block;
       margin-right: 0.35rem;
       vertical-align: middle;
-    }
-
-    .kpi-value {
-      font-family: var(--sans);
-      font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1.1;
-      margin: 0.35rem 0 0.15rem;
+    }    .kpi-value {
+      font-family: var(--sans);
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin: 0.35rem 0 0.15rem;
+      color: var(--text);
     }
 
     .kpi-label {
@@ -1553,22 +1552,22 @@
     .pdf-export-mode .hbar-fill.green { background: #63d6a3 !important; }
     .pdf-export-mode .hbar-fill.amber { background: #e6a456 !important; }
     .pdf-export-mode .hbar-fill.red { background: #f16f6f !important; }
-    .pdf-export-mode .hbar-fill.teal { background: #5eead4 !important; }
-
-    .pdf-export-mode {
-      --bg: #ffffff !important;
-      --surface: #ffffff !important;
-      --surface2: #ffffff !important;
-      --surface3: #ffffff !important;
-      --surface-card: #ffffff !important;
-      --surface-card-hover: #ffffff !important;
-      --text: #111827 !important;
-      --text-dim: #374151 !important;
-      --text-muted: #6b7280 !important;
-      --border: rgba(17, 24, 39, 0.14) !important;
-      --border-subtle: rgba(17, 24, 39, 0.10) !important;
-      --shadow-card: none !important;
-      --shadow-subtle: none !important;
+    .pdf-export-mode .hbar-fill.teal { background: #5eead4 !important; }    .pdf-export-mode {
+      --bg: #ffffff !important;
+      --surface: #ffffff !important;
+      --surface2: #ffffff !important;
+      --surface3: #ffffff !important;
+      --surface-card: #ffffff !important;
+      --surface-card-hover: #ffffff !important;
+      --text: #111827 !important;
+      --text-dim: #374151 !important;
+      --text-muted: #6b7280 !important;
+      --border: rgba(17, 24, 39, 0.14) !important;
+      --border-subtle: rgba(17, 24, 39, 0.10) !important;
+      --shadow-card: none !important;
+      --shadow-subtle: none !important;
+      --sans: 'Manrope', 'Inter', sans-serif !important;
+      --mono: 'IBM Plex Mono', monospace !important;
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
