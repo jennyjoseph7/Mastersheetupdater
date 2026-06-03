@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Lock, User, LogOut, Plus, Search, Edit2, Trash2, 
   X, Save, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2,
-  Tag, PlusCircle, MinusCircle
+  Tag, PlusCircle, MinusCircle,ChevronDown, ChevronUp, Edit3, Check
+
 } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'UNDEFINED'  
@@ -76,6 +77,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   );
 };
 
+
 interface TagInputProps {
   tags?: string[];
   onChange: (tags: string[]) => void;
@@ -85,6 +87,13 @@ interface TagInputProps {
 const TagInput: React.FC<TagInputProps> = ({ tags = [], onChange, placeholder }) => {
   const [input, setInput] = useState<string>('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  
+  // States for expanding long cards
+  const [expandedIndices, setExpandedIndices] = useState<number[]>([]);
+  
+  // States for inline card editing
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && input.trim()) {
@@ -100,19 +109,40 @@ const TagInput: React.FC<TagInputProps> = ({ tags = [], onChange, placeholder })
     onChange(tags.filter(tag => tag !== tagToRemove));
   };
 
-  // --- HTML5 Drag and Drop Handlers ---
+  // --- Inline Editing Operations ---
+  const startEditing = (index: number, currentText: string) => {
+    setEditingIndex(index);
+    setEditingText(currentText);
+  };
+
+  const saveEdit = (index: number) => {
+    if (!editingText.trim()) return;
+    const updatedTags = [...tags];
+    updatedTags[index] = editingText.trim();
+    onChange(updatedTags);
+    setEditingIndex(null);
+  };
+
+  // --- Expand/Collapse Toggle ---
+  const toggleExpand = (index: number) => {
+    setExpandedIndices(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  // --- HTML5 Native Drag & Drop Logic ---
   const handleDragStart = (index: number) => {
+    if (editingIndex !== null) return; // Prevent drag during text edit modifications
     setDraggedIndex(index);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault(); // Required to allow dropping
+    e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
 
     const remainingItems = [...tags];
     const draggedItem = remainingItems[draggedIndex];
     
-    // Rearrange items
     remainingItems.splice(draggedIndex, 1);
     remainingItems.splice(index, 0, draggedItem);
     
@@ -124,7 +154,6 @@ const TagInput: React.FC<TagInputProps> = ({ tags = [], onChange, placeholder })
     setDraggedIndex(null);
   };
 
-  // --- Accessibility Accessibility Fallbacks (Keyboard / Click Sort) ---
   const moveStep = (index: number, direction: 'up' | 'down') => {
     const nextIndex = direction === 'up' ? index - 1 : index + 1;
     if (nextIndex < 0 || nextIndex >= tags.length) return;
@@ -138,7 +167,6 @@ const TagInput: React.FC<TagInputProps> = ({ tags = [], onChange, placeholder })
 
   return (
     <div className="w-full space-y-3">
-      {/* Input Field First for Natural Form Flow */}
       <input
         type="text"
         value={input}
@@ -148,80 +176,131 @@ const TagInput: React.FC<TagInputProps> = ({ tags = [], onChange, placeholder })
         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-all shadow-sm bg-white"
       />
 
-      {/* Structured Vertical Stack instead of inline wrapping tags */}
-      <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-2 max-h-[450px] overflow-y-auto pr-1">
         {tags.map((tag, idx) => {
-          const isLongText = tag.length > 60;
+          const isExpanded = expandedIndices.includes(idx);
+          const isEditing = editingIndex === idx;
+          const isLongText = tag.length > 90; // Threshold to display reveal control toggle
+
           return (
             <div
               key={idx}
-              draggable
+              draggable={!isEditing}
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => handleDragOver(e, idx)}
               onDragEnd={handleDragEnd}
-              className={`flex items-start gap-3 bg-white border rounded-xl p-3 shadow-sm transition-all duration-150 cursor-grab active:cursor-grabbing ${
+              className={`flex items-start gap-3 bg-white border rounded-xl p-3 shadow-sm transition-all duration-150 ${
+                isEditing ? '' : 'cursor-grab active:cursor-grabbing'
+              } ${
                 draggedIndex === idx 
                   ? 'border-blue-400 bg-blue-50/40 opacity-50 scale-[0.99]' 
                   : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
               }`}
             >
               {/* Drag Indicator Handle */}
-              <div className="flex flex-col text-slate-400 p-0.5 mt-0.5 select-none">
-                <span className="text-xs tracking-widest leading-none font-bold">···</span>
-                <span className="text-xs tracking-widest leading-none font-bold -mt-1">···</span>
-              </div>
+              {!isEditing && (
+                <div className="flex flex-col text-slate-400 p-0.5 mt-1 select-none shrink-0">
+                  <span className="text-xs tracking-widest leading-none font-bold">···</span>
+                  <span className="text-xs tracking-widest leading-none font-bold -mt-1">···</span>
+                </div>
+              )}
 
-              {/* Text Content Block */}
-              <div className="flex-grow text-sm font-medium text-slate-700 leading-relaxed pr-2 pt-0.5">
-                {isLongText ? (
-                  <p className="whitespace-pre-wrap">{tag}</p>
+              {/* Text Layout Block Container */}
+              <div className="flex-grow text-sm font-medium text-slate-700 leading-relaxed pt-0.5 min-w-0">
+                {isEditing ? (
+                  <div className="flex gap-2 items-end">
+                    <textarea
+                      rows={3}
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      className="w-full p-2 border border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50"
+                      placeholder="Modify tag text contents..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveEdit(idx)}
+                      className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm"
+                      title="Save modifications"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
                 ) : (
-                  <span className="flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <div className="min-w-0">
+                   <div className={`break-all text-slate-700 ${!isExpanded && isLongText ? 'line-clamp-2 text-ellipsis overflow-hidden' : 'whitespace-pre-wrap'}`}>
                     {tag}
-                  </span>
+                   </div>
+                    
+                    {/* Expand/Collapse Action Toggle Trigger Button */}
+                    {isLongText && (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(idx)}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-0.5 transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>Show Less <ChevronUp className="w-3 h-3" /></>
+                        ) : (
+                          <>Read All Contents <ChevronDown className="w-3 h-3" /></>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Utility Sort Buttons + Delete Control */}
-              <div className="flex items-center space-x-1 shrink-0">
-                <button
-                  type="button"
-                  disabled={idx === 0}
-                  onClick={() => moveStep(idx, 'up')}
-                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md disabled:opacity-20 transition-colors"
-                  title="Move Up"
-                >
-                  <ChevronLeft className="w-4 h-4 rotate-90" />
-                </button>
-                <button
-                  type="button"
-                  disabled={idx === tags.length - 1}
-                  onClick={() => moveStep(idx, 'down')}
-                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md disabled:opacity-20 transition-colors"
-                  title="Move Down"
-                >
-                  <ChevronLeft className="w-4 h-4 -rotate-90" />
-                </button>
-                
-                <div className="w-px h-4 bg-slate-200 mx-1" />
+              {/* Functional Controls Bar panel */}
+              {!isEditing && (
+                <div className="flex items-center space-x-1 shrink-0 ml-2">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(idx, tag)}
+                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                    title="Edit item text inline"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
 
-                <button 
-                  type="button" 
-                  onClick={() => removeTag(tag)} 
-                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                  title="Remove"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  <div className="w-px h-4 bg-slate-200 mx-0.5" />
+
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={() => moveStep(idx, 'up')}
+                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md disabled:opacity-20 transition-colors"
+                    title="Move Step Up"
+                  >
+                    <ChevronLeft className="w-4 h-4 rotate-90" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={idx === tags.length - 1}
+                    onClick={() => moveStep(idx, 'down')}
+                    className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md disabled:opacity-20 transition-colors"
+                    title="Move Step Down"
+                  >
+                    <ChevronLeft className="w-4 h-4 -rotate-90" />
+                  </button>
+                  
+                  <div className="w-px h-4 bg-slate-200 mx-0.5" />
+
+                  <button 
+                    type="button" 
+                    onClick={() => removeTag(tag)} 
+                    className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                    title="Remove"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
 
         {tags.length === 0 && (
           <div className="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-            <p className="text-xs text-slate-400 font-medium">No items or logic steps added yet.</p>
+            <p className="text-xs text-slate-400 font-medium">No items or sequence parameters found.</p>
           </div>
         )}
       </div>
