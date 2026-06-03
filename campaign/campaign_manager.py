@@ -746,12 +746,15 @@ def trigger_campaign(*args, **kwargs):
         if campaign_type == "post-sales":
             persons = lead.get("persons_involved") or []
             if not persons:
-                logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('lead_id')}")
-                continue
+                tbl.update(lead.get('post_sales_lead_id'), {})
+                persons = lead.get('persons_involved') or []
+                if not persons:
+                    logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('post_sales_lead_id')}")
+                    continue
 
         else:  
             if not lead.get("phone_number"):
-                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
+                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('pre_sales_lead_id')}")
                 continue
 
         valid_leads.append(lead)
