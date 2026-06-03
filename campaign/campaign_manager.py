@@ -725,6 +725,7 @@ def trigger_campaign(*args, **kwargs):
     logger.info(f"Filters: {filters}")
     with get_pg_connector() as pg:
         leads = list(pg.list(lead_table, filters))
+    lm = AutocrmModel(lead_table)
 
     logger.info(f"Total leads fetched: {len(leads)}")
 
@@ -734,14 +735,20 @@ def trigger_campaign(*args, **kwargs):
     for lead in leads:
 
         if campaign_type == "post-sales":
-            persons = lead.get("persons_involved") or []
+            persons = []
+            for _ in range(2):
+                persons = lead.get("persons_involved") or []
+                if persons:
+                    break
+                lead = lm.update(lead.get('post_sales_lead_id'), {})
+                    
             if not persons:
-                logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('lead_id')}")
+                logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('post_sales_lead_id')}")
                 continue
 
         else:  
             if not lead.get("phone_number"):
-                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
+                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('pre_sales_lead_id')}")
                 continue
 
         valid_leads.append(lead)
