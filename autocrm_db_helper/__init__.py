@@ -31,7 +31,7 @@ def get_pg_connector(enterprise_id=AUTOCRM_APP_ENTERPRISE_ID, close_on_exit = Tr
     try:
         if not isinstance(JOB_CONNECT, dict):
             JOB_CONNECT = {}
-        if enterprise_id not in JOB_CONNECT or getattr(JOB_CONNECT[enterprise_id], 'is_connected', False):
+        if enterprise_id not in JOB_CONNECT or not getattr(JOB_CONNECT[enterprise_id], 'is_connected', False) or not getattr(JOB_CONNECT[enterprise_id], 'is_connected_read', False):
             t = time.time()
             ex = t + 120
             while time.time() < ex:
