@@ -100,7 +100,7 @@ if st.button("Generate Cohorts"):
         st.error("Provide either Product URL or Brochure PDF")
     else:
         with st.spinner("Generating cohorts... (this may take a few minutes)"):
-                cohort_generation_agent:object = ProductCohortGenerationAgent(product_website_url = product_link, brochure_url = brochure_url)
+                cohort_generation_agent:object = ProductCohortGenerationAgent(product_website_url = product_link, brochure_url = brochure_url, num_of_cohorts = 5)
                 cohorts:list = cohort_generation_agent.run()['cohorts']
                 st.session_state.cohorts = cohorts
 
@@ -275,8 +275,8 @@ for cohort_id, users in st.session_state.clusters.items():
         "Cohort Name": cohort_meta["cohort_name"],
         "Cohort ID": cohort_id,
         "Users Count": len(users),
-        "Intent Level": cohort_meta["intent_level"],
-        "Priority": cohort_meta["priority"]
+        "Intent Level": cohort_meta.get("intent_level", "N/A"),
+        "Priority": cohort_meta.get("priority", "N/A")
     })
 cluster_df = pd.DataFrame(cluster_rows)
 
@@ -307,8 +307,8 @@ def display_cohort_classification(classified):
         summary_df = pd.DataFrame([{
             "Cohort Name": classified["cohort_name"],
             "Cohort ID": classified["cohort_id"],
-            "Intent Level": classified["intent_level"],
-            "Priority": classified["priority"]
+            "Intent Level": classified.get("intent_level", "N/A"),
+            "Priority": classified.get("priority", "N/A")
         }])
         st.markdown("**Identified Cohort**")
         st.dataframe(summary_df, hide_index=True, use_container_width=True)
@@ -869,7 +869,8 @@ if run_pipeline:
         # Step 2: Affinity Engine
         with st.spinner("🔗 Step 2/3: Calculating affinity scores..."):
             interaction = selected_user_data["interaction"]
-            affinity = AffinityEngineAgent().run(interaction, product_website_url=product_link, brochure_url=brochure_url)
+            ae = AffinityEngineAgent(interaction_json=interaction)
+            affinity = ae.run()
             st.session_state.affinity = affinity
         
         display_affinity_engine(st.session_state.affinity)
@@ -912,7 +913,7 @@ if run_pipeline:
 
         # Step 2: Affinity Engine
         with st.spinner("🔗 Step 2/3: Calculating cohort affinity scores..."):
-            affinity = AffinityEngineAgent().run(interaction_json=classified)
+            affinity = AffinityEngineAgent(interaction_json=classified).run()
             st.session_state.affinity = affinity
         
         
