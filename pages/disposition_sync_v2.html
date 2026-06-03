@@ -2393,6 +2393,7 @@
       { header: 'City', key: 'city' },
       { header: 'PIncode', key: 'pincode' },
       { header: 'Language', key: 'language' },
+        { header: "Disposition_Detail_AI", key: "manual_disposition_detail" },
       { header: 'Source', key: 'lead_source' },
       { header: 'Cohort', key: 'cohort' },
       { header: 'Campaign_ID', key: 'campaign_id' },
@@ -3694,8 +3695,8 @@
 
     function renderTestDriveTable(data) {
       testDriveData = data.filter(r => {
-        var s = (r.disposition_detail || r.summary || '').toLowerCase();
-        return s.includes('purchased elsewhere') || s.includes('already purchased');
+        var s = (r.disposition || r.disposition_detail || r.summary || '').toLowerCase();
+        return s.includes('test drive completed') || s.includes('test-drive completed') || s.includes('completed test drive');
       });
 
       if (testDriveData.length === 0) {
@@ -3754,7 +3755,7 @@
     function renderStats(data) {
       const total = data.length;
       const connected = data.filter(r => r.outcome === 'Connected').length;
-      const notConn = total - connected;
+      const notConn = data.filter(r => r.outcome === 'Not Connected').length;
       const excluded = data.filter(r => r.exclusion_flag === 'YES').length;
       const withRec = data.filter(r => r.recordings).length;
 

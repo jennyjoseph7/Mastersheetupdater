@@ -12,7 +12,7 @@
 | Dealer | `workshop_code` |
 | Phone No | `phone_number` |
 | Model | `vehicle_model` |
-| Chassis No | `VIN` |
+| Chassis No | `vin_number` |
 | Sales Customer Name | `person_name` |
 | Vehicle Number | `reg_number` |
 | Last Service Date | `last_service_date` |
@@ -25,7 +25,7 @@
 ```
 workshop_code
 purchase_date
-VIN
+vin_number
 next_service_due
 person_name
 vehicle_model
@@ -44,7 +44,7 @@ last_service_date
 | Client Field | AutoEngage Field |
 |---|---|
 | Dealer Code | `workshop_code` |
-| VIN | `VIN` |
+| VIN | `vin_number` |
 | Due Date | `next_service_due` |
 | Cust. Name | `person_name` |
 | Model Name | `vehicle_model` |
@@ -67,7 +67,7 @@ last_service_date
 
 ```
 workshop_code
-VIN
+vin_number
 next_service_due
 person_name
 vehicle_model
@@ -89,7 +89,7 @@ purpose_of_visit       ← DEFAULT: "yearly service"
 | Client Field | AutoEngage Field |
 |---|---|
 | Dealer Code | `workshop_code` |
-| VIN | `VIN` |
+| VIN | `vin_number` |
 | Due Date | `next_service_due` |
 | Cust. Name | `person_name` |
 | Model Name | `vehicle_model` |
@@ -112,7 +112,7 @@ purpose_of_visit       ← DEFAULT: "yearly service"
 
 ```
 workshop_code
-VIN
+vin_number
 next_service_due
 person_name
 vehicle_model

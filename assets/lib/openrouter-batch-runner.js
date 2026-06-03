@@ -146,8 +146,16 @@
       var total = batches.length;
       var aborted = false;
 
+      // Track the currently-active per-request controller so the caller's signal can cancel it
+      var activeController = null;
+
       if (signal) {
-        signal.addEventListener('abort', function () { aborted = true; });
+        signal.addEventListener('abort', function () {
+          aborted = true;
+          if (activeController) {
+            try { activeController.abort(); } catch (_) {}
+          }
+        });
       }
 
       // ── single batch request with retries ────────────────────────────
@@ -185,6 +193,7 @@
           var timeoutId = null;
           if (controller) {
             timeoutId = setTimeout(function () { controller.abort(); }, requestTimeout);
+            activeController = controller;
           }
 
           try {
@@ -233,6 +242,7 @@
 
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = null;
+            activeController = null;
 
             if (response.ok) {
               var data = await response.json();
@@ -254,8 +264,10 @@
             var errMsg = 'OpenRouter ' + response.status + ': ' + (errText || 'unknown error').slice(0, 300);
 
             if (isClientError(response.status)) {
-              // Non-retryable client error
-              throw new Error(errMsg);
+              // Non-retryable client error — mark so the catch rethrows immediately
+              var clientErr = new Error(errMsg);
+              clientErr.nonRetryable = true;
+              throw clientErr;
             }
 
             if (response.status === 429) {
@@ -270,6 +282,13 @@
           } catch (e) {
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = null;
+            activeController = null;
+
+            // Non-retryable client error — bail immediately
+            if (e.nonRetryable) {
+              failedBatches.push(batchIndex);
+              return { ok: false, reason: e.message };
+            }
 
             // AbortError is not retryable if we initiated the abort
             if (e.name === 'AbortError') {

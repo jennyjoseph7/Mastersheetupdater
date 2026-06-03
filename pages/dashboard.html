@@ -3356,6 +3356,22 @@
     /* ═══════════════════════════════════════════════════════════════════════
        ZOHO DISPOSITION → INTERNAL THEME MAPPING
        ═══════════════════════════════════════════════════════════════════════ */
+
+    function sanitizeForPrompt(text) {
+      if (!text) return '';
+      var s = String(text);
+      s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+      s = s.replace(/"/g, "'");
+      s = s.replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
+      s = s.replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
+      s = s.replace(/you\s+are\s+(now|not\s+required\s+to)/gi, '[REDACTED]');
+      s = s.replace(/system\s+(prompt|message|instruction)/gi, '[REDACTED]');
+      s = s.replace(/\bDAN\b|do\s+anything\s+now/gi, '[REDACTED]');
+      s = s.replace(/output\s+(format|as|in)\s+json/i, '[REDACTED]');
+      if (s.length > 5000) s = s.substring(0, 5000) + '...[truncated]';
+      return s;
+    }
+
     var DISPO_TO_THEME = {
       'voicemail': 'voicemail',
       'rejected': 'not_interested',
@@ -3607,8 +3623,7 @@
         if (part) results.push(part);
       }
       // Flatten: combine results for same row if multiple batches returned dups
-          var flat = {};
-          for (var k = 0; k < llmResults.length; k++) {
+
             var item = llmResults[k];
             if (!flat[item.rowIndex]) flat[item.rowIndex] = [];
             (item.dispositions || []).forEach(function(d) {
@@ -3626,50 +3641,7 @@
         }
       }
 
-      if (llmResults) {
-        // Build lookup
-        var llmLookup = {};
-        for (var l = 0; l < llmResults.length; l++) {
-          llmLookup[llmResults[l].rowIndex] = llmResults[l].dispositions || [];
-        }
 
-        // Apply LLM classifications
-        for (var m = 0; m < summaries.length; m++) {
-          var s = summaries[m];
-          var dispo = llmLookup[s.rowIndex] || [];
-          if (dispo.length === 0) continue;
-          var text = s.text;
-          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
-          var parsed = parseSummary(text);
-          var seenThemes = {};
-
-          for (var d = 0; d < dispo.length; d++) {
-            var key = dispo[d].toLowerCase().trim();
-            var themeId = DISPO_TO_THEME[key] || null;
-            if (themeId && themes[themeId] && !seenThemes[themeId]) {
-              seenThemes[themeId] = true;
-              themes[themeId].count++;
-              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
-              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
-                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
-              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
-                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
-              if (themeId === 'deferred') {
-                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
-                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
-              }
-            }
-          }
-        }
-      } else {
-        // Fallback to keywords
-        return mineCustomerThemesKeyword(rows, colMap);
-      }
-
-      var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
-      var total = themeList.reduce(function(s, t) { return s + t.count; }, 0);
-      var topTheme = themeList.length > 0 ? themeList[0] : null;
-      return { themes: themeList, total: total, topTheme: topTheme, engine: analysisEngine };
     }
 
     /* ── VOICE INSIGHTS (LLM summary + per-theme actions) ──────────────── */
@@ -3706,6 +3678,10 @@
 
         if (!response.ok) return null;
         const data = await response.json();
+        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
+          console.warn('Invalid API response shape');
+          return null;
+        }
         const text = data.choices[0].message.content;
         const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
         const match = cleaned.match(/\{[\s\S]*\}/);
@@ -4216,6 +4192,10 @@
 
         if (!response.ok) return null;
         const data = await response.json();
+        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
+          console.warn('Invalid API response shape');
+          return null;
+        }
         const text = data.choices[0].message.content;
         const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
         const match = cleaned.match(/\[[\s\S]*\]/);
@@ -4808,6 +4788,107 @@
       const healthClass = healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'warning' : 'critical';
 
       // ── STORYTELLING ENGINE ─────────────────────────────────────────────────
+    /* ── CUSTOMER THEME MINING ─────────────────────────────────── */
+    async function mineCustomerThemes(rows, colMap, isPostSales) {
+      if (!rows || !rows.length || !colMap) {
+        return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+      }
+      try {
+        var summaries = rows.map(function(r, i) {
+          var vals = colMap.map(function(c) { return r[c.key] || r[c.header] || ''; });
+          return { rowIndex: i, text: vals.join(' ').trim() };
+        }).filter(function(s) { return s.text && s.text.length > 10; });
+        if (summaries.length === 0) {
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+        }
+        var apiKey = getApiKey();
+        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+        var systemPrompt = buildLlmSystemPrompt(isPostSales);
+        var promptBatches = [];
+        var batchSize = 50;
+        for (var bi = 0; bi < summaries.length; bi += batchSize) {
+          promptBatches.push(summaries.slice(bi, bi + batchSize));
+        }
+        var runner = new OpenRouterBatchRunner(apiKey);
+        var runnerResult = await runner.run({
+          prompts: promptBatches,
+          buildPrompt: function(batch, batchIndex) {
+            var rowsPrompt = batch.map(function(s) {
+              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
+            }).join('\n');
+            return { system: systemPrompt, user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: 4096 };
+          },
+          parseResponse: function(data) {
+            if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) return null;
+            try {
+              var text = data.choices[0].message.content;
+              var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+              var match = cleaned.match(/\{[\s\S]*\}/);
+              if (!match) return null;
+              var result = JSON.parse(match[0]);
+              return result.dispositions || result;
+            } catch(e) { return null; }
+          },
+          maxRetries: 2, signal: null
+        });
+        if (!runnerResult || !runnerResult.results) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+        var llmResults = [];
+        for (var ri = 0; ri < summaries.length; ri++) {
+          var part = runnerResult.results.get(ri);
+          if (part) llmResults.push(part);
+        }
+        if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+        var themes = {};
+        var themeKeys = Object.keys(DISPO_TO_THEME);
+        for (var ti = 0; ti < themeKeys.length; ti++) {
+          var key = themeKeys[ti];
+          var tid = DISPO_TO_THEME[key];
+          if (!themes[tid]) {
+            themes[tid] = { label: tid.split('_').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '), count: 0, excerpts: [], competitorNames: [], callbackTimes: [], timeframes: [] };
+          }
+        }
+        var llmLookup = {};
+        for (var li = 0; li < llmResults.length; li++) {
+          var item = llmResults[li];
+          if (Array.isArray(item)) llmLookup[li] = item;
+          else if (item && item.rowIndex !== undefined) llmLookup[item.rowIndex] = item.dispositions || [];
+        }
+        for (var mi = 0; mi < summaries.length; mi++) {
+          var s = summaries[mi];
+          var dispo = llmLookup[s.rowIndex] || [];
+          if (dispo.length === 0) continue;
+          var text = s.text;
+          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
+          var parsed = parseSummary(text);
+          var seenThemes = {};
+          for (var di = 0; di < dispo.length; di++) {
+            var key = dispo[di].toLowerCase().trim();
+            var themeId = DISPO_TO_THEME[key] || null;
+            if (themeId && themes[themeId] && !seenThemes[themeId]) {
+              seenThemes[themeId] = true;
+              themes[themeId].count++;
+              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
+              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
+                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
+              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
+                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
+              if (themeId === 'deferred') {
+                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
+              }
+            }
+          }
+        }
+        var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+        var total = themeList.reduce(function(a, t) { return a + t.count; }, 0);
+        var topTheme = themeList.length > 0 ? themeList[0].label : 'General';
+        return { themes: themeList, total: total, topTheme: topTheme, engine: 'openrouter' };
+      } catch(e) {
+        console.warn('mineCustomerThemes failed:', e);
+        return { themes: [], total: 0, topTheme: "General", engine: "local" };
+      }
+    }
+
       const themes = await mineCustomerThemes(rows, colMap, isPostSales);
       const agents = analyzeAgentPerformance(rows, colMap);
       const headline = generateStoryHeadline(themes, funnel, healthScore);
@@ -5562,21 +5643,24 @@
         return;
       }
 
+      let prevWidth = '', prevMaxWidth = '', prevMargin = '';
+      let metricAuditOrigDisplay = undefined;
+      let metricAudit, captureWidth;
       try {
         flushOpenKpiEdits(true);
         if (btn) btn.disabled = true;
         if (btn) btn.style.visibility = 'hidden';
         if (uploadSection) uploadSection.style.display = 'none';
-        const metricAudit = document.getElementById('metricAudit');
-        const metricAuditOrigDisplay = metricAudit ? metricAudit.style.display : null;
+        metricAudit = document.getElementById('metricAudit');
+        metricAuditOrigDisplay = metricAudit ? metricAudit.style.display : null;
         if (metricAudit) metricAudit.style.display = 'none';
         mainEl.classList.add('pdf-export-mode');
 
         // Force desktop layout for capture so responsive breakpoints don't stack cards.
-        const captureWidth = 1440;
-        const prevWidth = mainEl.style.width;
-        const prevMaxWidth = mainEl.style.maxWidth;
-        const prevMargin = mainEl.style.margin;
+        var captureWidth = 1440;
+        prevWidth = mainEl.style.width;
+        prevMaxWidth = mainEl.style.maxWidth;
+        prevMargin = mainEl.style.margin;
         mainEl.style.width = captureWidth + 'px';
         mainEl.style.maxWidth = captureWidth + 'px';
         mainEl.style.margin = '0 auto';
@@ -5677,10 +5761,12 @@
           el.style.animation = '';
           el.style.transition = '';
         });
-        mainEl.style.width = prevWidth;
-        mainEl.style.maxWidth = prevMaxWidth;
-        mainEl.style.margin = prevMargin;
-        mainEl.classList.remove('pdf-export-mode');
+        if (mainEl) {
+          mainEl.style.width = prevWidth;
+          mainEl.style.maxWidth = prevMaxWidth;
+          mainEl.style.margin = prevMargin;
+          mainEl.classList.remove('pdf-export-mode');
+        }
         if (metricAudit && metricAuditOrigDisplay !== undefined) metricAudit.style.display = metricAuditOrigDisplay;
         if (uploadSection) uploadSection.style.display = '';
         if (btn) btn.style.visibility = '';

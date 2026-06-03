@@ -847,20 +847,20 @@
           'Dealer': 'workshop_code',
           'Phone No': 'phone_number',
           'Model': 'vehicle_model',
-          'Chassis No': 'VIN',
+          'Chassis No': 'vin_number',
           'Sales Customer Name': 'person_name',
           'Vehicle Number': 'reg_number',
           'Last Service Date': 'last_service_date',
           'Service Due Date': 'next_service_due'
         },
-        outputOrder: ['workshop_code', 'purchase_date', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'last_service_date'],
+        outputOrder: ['workshop_code', 'purchase_date', 'vin_number', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'last_service_date'],
         defaults: {}
       },
       ambal_erode_service: {
         label: 'Ambal ERODE - Service Reminder',
         sourceToTarget: {
           'Dealer Code': 'workshop_code',
-          'VIN': 'VIN',
+          'VIN': 'vin_number',
           'Due Date': 'next_service_due',
           'Cust. Name': 'person_name',
           'Model Name': 'vehicle_model',
@@ -870,14 +870,14 @@
           'Last Scheduled Service Date': 'last_service_date',
           'Current Loyalty Points': 'customer_score'
         },
-        outputOrder: ['workshop_code', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
+        outputOrder: ['workshop_code', 'vin_number', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
         defaults: { purpose_of_visit: 'yearly service' }
       },
       ambal_saibaba_service: {
         label: 'Ambal SAIBABA - Service Reminder',
         sourceToTarget: {
           'Dealer Code': 'workshop_code',
-          'VIN': 'VIN',
+          'VIN': 'vin_number',
           'Due Date': 'next_service_due',
           'Cust. Name': 'person_name',
           'Model Name': 'vehicle_model',
@@ -887,7 +887,7 @@
           'Last Scheduled Service Date': 'last_service_date',
           'Current Loyalty Points': 'customer_score'
         },
-        outputOrder: ['workshop_code', 'VIN', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
+        outputOrder: ['workshop_code', 'vin_number', 'next_service_due', 'person_name', 'vehicle_model', 'reg_number', 'phone_number', 'alt_phone_number_2', 'odometer_reading', 'last_service_date', 'customer_score', 'purpose_of_visit'],
         defaults: { purpose_of_visit: 'yearly service' }
       },
       suryabala_service: {

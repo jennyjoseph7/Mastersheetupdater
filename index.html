@@ -4,9 +4,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Security: These meta tags are defense-in-depth placeholders only.
+       For full enforcement, set real HTTP response headers from your server or CDN:
+         X-Content-Type-Options: nosniff
+         X-Frame-Options: DENY
+         Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai; form-action 'self'; frame-ancestors 'none';
+  -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Frame-Options" content="DENY" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai; form-action 'self'; frame-ancestors 'none';" />
   <script>
     // Blocking theme initialization — runs before styles to prevent flash
     (function() {
@@ -89,12 +95,12 @@
       --accent7: #2563eb;
       --accent7-soft: rgba(37, 99, 235, 0.08);
       --success: #1a9960;
-      --card-hover-shadow-rose: 0 16px 48px rgba(219, 39, 119, 0.1);
-      --card-hover-shadow-cyan: 0 16px 48px rgba(8, 145, 178, 0.1);
-      --card-hover-shadow-indigo: 0 16px 48px rgba(79, 70, 229, 0.1);
-      --card-hover-border-rose: rgba(219, 39, 119, 0.35);
-      --card-hover-border-cyan: rgba(8, 145, 178, 0.35);
-      --card-hover-border-indigo: rgba(79, 70, 229, 0.35);
+      --card-hover-shadow-green: 0 16px 48px rgba(22, 163, 74, 0.1);
+      --card-hover-shadow-pink: 0 16px 48px rgba(219, 39, 119, 0.1);
+      --card-hover-shadow-blue: 0 16px 48px rgba(37, 99, 235, 0.1);
+      --card-hover-border-green: rgba(22, 163, 74, 0.35);
+      --card-hover-border-pink: rgba(219, 39, 119, 0.35);
+      --card-hover-border-blue: rgba(37, 99, 235, 0.35);
       --text: #1a1e26;
       --text-dim: #4a5568;
       --text-muted: #8896a6;

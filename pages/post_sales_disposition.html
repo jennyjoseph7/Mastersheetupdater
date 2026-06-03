@@ -1929,7 +1929,7 @@
     function formatDate(str) {
       const d = parseAutoEngageDate(str);
       if (!d) return clean(str);
-      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
     }
 
     function convertEpochToIST(val) {
@@ -1937,11 +1937,11 @@
       var num = typeof val === 'number' ? val : Number(String(val).trim());
       if (!Number.isFinite(num) || num < 1000000000) return String(val).trim();
       var ts = num < 10000000000000 ? num * 1000 : num;
-      var d = new Date(ts);
+      var d = new Date(ts + (5.5 * 60 * 60 * 1000));
       if (isNaN(d.getTime())) return String(val).trim();
-      var dd = String(d.getDate()).padStart(2, '0');
-      var mm = String(d.getMonth() + 1).padStart(2, '0');
-      var yyyy = d.getFullYear();
+      var dd = String(d.getUTCDate()).padStart(2, '0');
+      var mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      var yyyy = d.getUTCFullYear();
       return dd + '/' + mm + '/' + yyyy;
     }
 
@@ -2510,7 +2510,7 @@
       bookedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
         var tr = document.createElement('tr');
         var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
-        var creRemarks = '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
           + '<td>' + esc(r.vehicle_model) + '</td>'
           + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
@@ -2535,7 +2535,7 @@
       completedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
         var tr = document.createElement('tr');
         var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
-        var creRemarks = '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
           + '<td>' + esc(r.vehicle_model) + '</td>'
           + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
@@ -2558,7 +2558,7 @@
       body.innerHTML = '';
       notInterestedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
         var tr = document.createElement('tr');
-        var creRemarks = '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
           + '<td>' + esc(r.vehicle_model) + '</td>'
           + '<td>' + esc(r.summary) + '</td>'
@@ -2800,6 +2800,19 @@
       }, 1000);
       
       aiValidationController = new AbortController();
+    }
+
+    function cancelAiValidation() {
+      if (aiValidationController) {
+        aiValidationController.abort();
+        aiValidationController = null;
+      }
+      var sb = document.getElementById("aiStatusBar");
+      var cb = document.getElementById("aiStatusCancel");
+      if (sb) sb.style.display = "none";
+      if (cb) cb.style.display = "none";
+      var msg = document.getElementById("aiStatusMsg");
+      if (msg) msg.textContent = "AI validation cancelled.";
     }
 
     function updateAiStatusBar(done, total, message, pct, correctedResults) {
@@ -3287,7 +3300,7 @@
         for (var idx = 0; idx < candidates.length; idx++) {
           var decision = runnerResult.results.get(idx);
           if (decision && decision.isCorrect === false && decision.correctedDisposition) {
-            cacheArray.push({ rowIndex: idx, isCorrect: false, correctedDisposition: decision.correctedDisposition });
+            cacheArray.push({ rowIndex: candidates[idx].index, isCorrect: false, correctedDisposition: decision.correctedDisposition });
           } else {
             cacheArray.push({ rowIndex: idx, isCorrect: true, correctedDisposition: null });
           }
@@ -3298,7 +3311,7 @@
         for (var ri = 0; ri < candidates.length; ri++) {
           var dec = runnerResult.results.get(ri);
           if (dec && dec.isCorrect === false && dec.correctedDisposition) {
-            correctedResults[ri] = dec.correctedDisposition;
+            correctedResults[candidates[ri].index] = dec.correctedDisposition;
           }
         }
       } else {

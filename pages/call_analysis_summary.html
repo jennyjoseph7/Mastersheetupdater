@@ -1486,7 +1486,7 @@
             conversion: clean(get(['Conversion', 'conversion'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
             call_date_raw: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])),
-            call_date: '', // computed below
+            call_date: normalizeDateString(clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])) || ''),
             attempts: clean(get([
               'NUMBER OF ATTEMPTS',
               'NUMBER_OF_ATTEMPTS',
@@ -1497,10 +1497,6 @@
             next_service_due: clean(get(['NEXT_SERVICE_DUE', 'next_service_due', 'NEXT_SERVICE_DATE', 'next_service_date']))
           };
         });
-      // Normalize call_date from raw after the fact so format changes can re-normalize
-      rows.forEach(function(row) {
-        row.call_date = normalizeDateString(row.call_date_raw || '');
-      });
       return rows;
     }
 

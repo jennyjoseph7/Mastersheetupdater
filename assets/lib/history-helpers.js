@@ -5,9 +5,18 @@
  * to avoid duplication. Provides:
  *   detectHistory(obj)        – Find history column in a session row
  *   parseHistoryJson(raw)     – Safely parse history JSON into an array
- *   formatRelativeOffset(ts)  – Format a timestamp offset as [m:ss] or [h:mm:ss]
+ *   formatRelativeOffset(firstTs, currentTs) – Format a timestamp offset as [m:ss] or [h:mm:ss].
+ *       @param {number} firstTs   - Epoch ms of the first message in the conversation.
+ *       @param {number} currentTs - Epoch ms of the current message.
+ *       @returns {string} Formatted offset like "[0:05]" or "[1:02:30]".
  *   normalizeRoleLabel(role)  – Normalise agent/assistant/bot → Agent, etc.
  *   formatHistoryForPrompt(r) – Convert raw history into readable transcript text
+ */
+
+/**
+ * @param {number} firstTs   - Epoch ms of the first message in the conversation.
+ * @param {number} currentTs - Epoch ms of the current message.
+ * @returns {string} Formatted offset like "[0:05]" for durations <1h or "[1:02:30]" for ≥1h.
  */
 
 // ─── DETECTION ────────────────────────────────────────────────────────────
