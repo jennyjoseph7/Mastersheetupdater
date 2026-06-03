@@ -105,29 +105,21 @@ const formatCampaignType = (type: string): string => {
     .join("-");
 };
 
-const getStatusBadge = (status: string, disposition?: string) => {
-  let displayStatus = "Lead";
-  let badgeClass = "bg-amber-100 text-amber-700 border-amber-200";
-
-  if (disposition === "engaged" || status === "interacted") {
-    displayStatus =
-      status === "interacted" && disposition === "engaged"
-        ? "Qualified"
-        : "Lead";
-    badgeClass =
-      displayStatus === "Qualified"
-        ? "bg-blue-100 text-blue-700 border-blue-200"
-        : badgeClass;
-  } else if (disposition === "converted" || status === "converted") {
-    displayStatus = "Converted";
-    badgeClass = "bg-purple-100 text-purple-700 border-purple-200";
-  } else if (status === "attempted") {
-    displayStatus = "Attempted";
-    badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
+const getStatusBadge = (status: string) => {
+  // Fallback to "Unknown" if status is missing, null, or undefined
+  if (!status) {
+    return (
+      <Badge className="font-medium border px-3 py-1 bg-gray-100 text-gray-700 border-gray-200">
+        Unknown
+      </Badge>
+    );
   }
 
+  // Capitalize the first letter of the raw status string exactly as it comes from the DB
+  const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
+
   return (
-    <Badge className={cn("font-medium border px-3 py-1", badgeClass)}>
+    <Badge className="font-medium border px-3 py-1 whitespace-nowrap bg-amber-100 text-amber-700 border-amber-200">
       {displayStatus}
     </Badge>
   );
@@ -725,10 +717,7 @@ export default function LiveStatusPage() {
                             {formatPhoneNumber(session.phone_number)}
                           </TableCell>
                           <TableCell>
-                            {getStatusBadge(
-                              session.status,
-                              session.disposition,
-                            )}
+                             {getStatusBadge(session.status)}
                           </TableCell>
                           <TableCell>
                             {formatCampaignType(session.campaign_type)}
