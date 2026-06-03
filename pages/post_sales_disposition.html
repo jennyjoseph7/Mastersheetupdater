@@ -2,23 +2,25 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Post-Sales Disposition Sync - AutoNage</title>
   <meta name="description"
     content="Merges post-sales AutoEngage lead and session exports into a dealership-specific Zoho Master Sheet-ready output." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/lib/history-helpers.js"></script>
+  <script src="../assets/lib/openrouter-batch-runner.js"></script>
+  <script src="../config.js"></script>
   <style>
     :root,
     [data-theme="dark"] {
@@ -27,9 +29,10 @@
       --surface2: #1a1a1a;
       --surface3: #222222;
       --border: rgba(255, 255, 255, 0.08);
-      --accent: #4dd0e1;
+      --accent: #f97316;
       --accent2: #ffad3a;
-      --accent-soft: rgba(77, 208, 225, 0.12);
+      --accent-soft: rgba(249, 115, 22, 0.13);
+      --accent-dim: #ea580c;
       --success: #5ad7a1;
       --success-soft: rgba(90, 215, 161, 0.12);
       --warn: #ffc857;
@@ -53,9 +56,10 @@
       --surface2: #f7f8fa;
       --surface3: #eef0f4;
       --border: rgba(0, 20, 50, 0.08);
-      --accent: #087b8e;
+      --accent: #ea580c;
       --accent2: #c47a1e;
-      --accent-soft: rgba(8, 123, 142, 0.1);
+      --accent-soft: rgba(234, 88, 12, 0.1);
+      --accent-dim: #c2410c;
       --success: #1a9960;
       --success-soft: rgba(26, 153, 96, 0.08);
       --warn: #c89520;
@@ -123,7 +127,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 26px rgba(77, 208, 225, 0.2);
+      box-shadow: 0 8px 26px rgba(249, 115, 22, 0.2);
       overflow: hidden;
     }
     .brand-mark img {
@@ -138,7 +142,7 @@
       display: inline-flex;
       align-items: center;
       background: var(--accent-soft);
-      border: 1px solid rgba(77, 208, 225, 0.3);
+      border: 1px solid rgba(249, 115, 22, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -177,7 +181,7 @@
 
     .nav-link:hover,
     .nav-link.active {
-      border-color: rgba(77, 208, 225, 0.35);
+      border-color: rgba(249, 115, 22, 0.35);
       color: var(--accent);
       background: var(--accent-soft);
     }
@@ -276,9 +280,9 @@
     }
 
     .drop-zone.has-file {
-      border-color: var(--success);
+      border-color: var(--accent);
       border-style: solid;
-      background: var(--success-soft);
+      background: var(--accent-soft);
     }
 
     .dz-icon {
@@ -290,7 +294,7 @@
       justify-content: center;
       color: var(--accent);
       background: var(--accent-soft);
-      border: 1px solid rgba(77, 208, 225, 0.25);
+      border: 1px solid rgba(249, 115, 22, 0.25);
     }
 
     .dz-label {
@@ -328,9 +332,9 @@
     }
 
     .dz-status.ok {
-      background: var(--success-soft);
-      color: var(--success);
-      border-color: rgba(90, 215, 161, 0.3);
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
     }
 
     input[type=file] {
@@ -366,9 +370,9 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #98f3ff);
+      background: linear-gradient(135deg, var(--accent), #ea580c);
       color: #08181b;
-      box-shadow: 0 4px 16px rgba(77, 208, 225, 0.2);
+      box-shadow: 0 4px 16px rgba(249, 115, 22, 0.2);
     }
 
     .btn-primary:hover,
@@ -455,8 +459,8 @@
 
     .lead-id-input:focus,
     select:focus {
-      border-color: rgba(77, 208, 225, 0.6);
-      box-shadow: 0 0 0 3px rgba(77, 208, 225, 0.12);
+      border-color: rgba(249, 115, 22, 0.6);
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12);
     }
 
     .status-msg {
@@ -467,7 +471,7 @@
     }
 
     .status-msg.ok {
-      color: var(--success);
+      color: var(--accent);
     }
 
     .status-msg.err {
@@ -609,7 +613,7 @@
     }
 
     .quality-item.info {
-      border-color: rgba(77, 208, 225, 0.22);
+      border-color: rgba(249, 115, 22, 0.22);
       background: var(--accent-soft);
     }
 
@@ -694,7 +698,7 @@
     }
 
     tbody tr:hover {
-      background: rgba(77, 208, 225, 0.05);
+      background: rgba(249, 115, 22, 0.05);
     }
 
     tbody td {
@@ -766,7 +770,7 @@
     .spinner {
       width: 28px;
       height: 28px;
-      border: 3px solid rgba(77, 208, 225, 0.2);
+      border: 3px solid rgba(249, 115, 22, 0.2);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
@@ -828,7 +832,232 @@
         justify-content: center;
       }
     }
-  </style>
+
+    .ai-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      margin-right: 0.3rem;
+      letter-spacing: 0.03em;
+    }
+    .ai-badge.verified {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+    .ai-badge.corrected {
+      color: var(--warn);
+      background: var(--warn-soft);
+    }
+    .ai-badge.pending {
+      color: var(--text-muted);
+      background: transparent;
+    }
+
+    .ai-key-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+    }
+
+    .api-key-input {
+      width: 200px;
+      max-width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.45rem 0.6rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      outline: none;
+    }
+
+    .api-key-input:focus {
+      border-color: var(--accent);
+    }
+
+    .api-key-btn {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface3);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.43rem 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .api-key-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .api-key-btn.subtle {
+      background: transparent;
+    }
+
+    .api-key-status {
+      min-width: 78px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .api-key-status.ok { color: var(--success); }
+    .api-key-status.warn { color: var(--warn); }
+    .api-key-status.err { color: var(--danger); }
+
+    .api-key-status.active-proxy {
+      background: rgba(46, 213, 115, 0.15);
+      color: #2ed573 !important;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      text-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
+    }
+    @keyframes pulse-proxy {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(0.98); }
+    }
+  
+    /* ── AI Validation Status Bar ─────────────────────────────────────── */
+    .ai-status-bar {
+      margin: 0.75rem 0;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      animation: fadeIn 0.25s ease;
+    }
+    .ai-status-bar.aborted {
+      border-color: rgba(241, 111, 111, 0.3);
+      background: var(--danger-soft);
+    }
+    .ai-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.55rem;
+    }
+    .ai-status-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .ai-status-msg {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .ai-status-msg.ok { color: var(--success); }
+    .ai-status-msg.err { color: var(--danger); }
+    .ai-status-badge {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(249, 115, 22, 0.25);
+      color: var(--accent);
+    }
+    .ai-status-badge.corrected {
+      background: var(--success-soft);
+      border-color: rgba(90, 215, 161, 0.25);
+      color: var(--success);
+    }
+    .ai-status-badge.done {
+      background: var(--success-soft);
+      border-color: rgba(90, 215, 161, 0.25);
+      color: var(--success);
+    }
+    .ai-status-badge.err {
+      background: var(--danger-soft);
+      border-color: rgba(255, 107, 107, 0.25);
+      color: var(--danger);
+    }
+    .ai-status-time {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .ai-status-track {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--surface3);
+      overflow: hidden;
+    }
+    .ai-status-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-dim));
+      transition: width 0.3s ease;
+    }
+    .ai-status-fill.ok {
+      background: linear-gradient(90deg, var(--success), #3ecf8e);
+    }
+    .ai-status-fill.err {
+      background: var(--danger);
+    }
+    .ai-status-btn {
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface3);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: var(--body);
+    }
+    .ai-status-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .ai-status-btn.cancel {
+      border-color: rgba(255, 107, 107, 0.35);
+      color: var(--danger);
+    }
+    .ai-status-btn.cancel:hover {
+      background: var(--danger-soft);
+      border-color: var(--danger);
+    }
+    .ai-status-btn.primary {
+      background: linear-gradient(135deg, var(--accent), #ea580c);
+      color: #fff;
+      border-color: transparent;
+    }
+    .ai-status-btn.primary:hover {
+      opacity: 0.9;
+      border-color: transparent;
+    }
+    .ai-status-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+</style>
 </head>
 
 <body>
@@ -836,13 +1065,17 @@
     <div class="processing-card">
       <div class="spinner"></div>
       <span id="processingMsg">Processing files...</span>
+      <div class="progress-track" id="progressTrack" style="display:none;width:100%;height:6px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:0.5rem;">
+        <div class="progress-fill" id="progressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-dim));border-radius:999px;transition:width 0.4s ease;"></div>
+      </div>
+      <span id="progressCounter" style="display:none;font-size:0.78rem;color:var(--text-muted);"></span>
     </div>
   </div>
 
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div>
           <h1>Post-Sales Sync</h1>
           <div class="header-sub">AutoEngage → Zoho Master Sheet</div>
@@ -948,7 +1181,7 @@
           </div>
           <div class="dz-label">File 2 - Sessions</div>
           <div class="dz-sublabel">AutoEngage sessions export for the same campaign batch</div>
-          <div class="dz-cols" id="sessionCols">status - duration - start_time - summary - disposition_detail</div>
+          <div class="dz-cols" id="sessionCols">status - duration - start_time - summary - history - disposition_detail</div>
           <div class="dz-status" id="st2">Drag and drop or click to browse</div>
           <input type="file" id="f2" accept=".csv,.xlsx,.xls">
         </div>
@@ -991,6 +1224,13 @@
             </select>
           </div>
         </div>
+        <div class="ai-key-control" title="Paste your OpenRouter API key for AI disposition validation.">
+          <span class="control-label" style="font-size:0.72rem;font-weight:700;color:var(--text-dim);">AI Key</span>
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="OpenRouter API key" autocomplete="off" spellcheck="false">
+          <button type="button" class="api-key-btn" onclick="saveOpenRouterApiKey()">Save</button>
+          <button type="button" class="api-key-btn subtle" onclick="clearOpenRouterApiKey()">Clear</button>
+          <span class="api-key-status" id="apiKeyStatus">Required</span>
+        </div>
         <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -1011,11 +1251,35 @@
           </svg>
           Export Excel
         </button>
+        <button class="btn btn-secondary" id="btnValidateAI" disabled onclick="validateDispositionsWithLLM()" style="display:none">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          Validate with AI
+        </button>
         <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
         <div class="status-msg" id="globalStatus"></div>
       </div>
     </section>
 
+
+      <!-- AI Validation Status Bar (shown during AI validation) -->
+      <div id="aiValidationStatus" class="ai-status-bar" style="display:none;">
+        <div class="ai-status-row">
+          <div class="ai-status-info">
+            <span class="ai-status-msg" id="aiStatusMsg">AI validating dispositions…</span>
+            <span class="ai-status-badge" id="aiStatusBatch"></span>
+            <span class="ai-status-badge corrected" id="aiStatusCorrected" style="display:none;"></span>
+            <span class="ai-status-time" id="aiStatusElapsed"></span>
+          </div>
+          <div class="ai-status-actions" id="aiStatusActions">
+            <button class="ai-status-btn cancel" id="aiStatusCancel" onclick="cancelAiValidation()">Cancel</button>
+          </div>
+        </div>
+        <div class="ai-status-track">
+          <div class="ai-status-fill" id="aiStatusFill" style="width:0%;"></div>
+        </div>
+      </div>
     <section class="results-panel">
       <div class="section-head">
         <div>
@@ -1040,8 +1304,12 @@
           <div class="stat-val green" id="statBooked">0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Feedback</div>
-          <div class="stat-val blue" id="statFeedback">0</div>
+          <div class="stat-label">Service Completed</div>
+          <div class="stat-val green" id="statCompleted">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Not Interested</div>
+          <div class="stat-val amber" id="statNotInterested">0</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Not Connected</div>
@@ -1094,21 +1362,22 @@
       <div class="table-wrapper" id="bookedTableWrapper">
         <div class="table-header">
           <div>
-            <div class="table-title">Service Booked Preview</div>
+            <div class="table-title">SERVICE BOOKED</div>
             <div class="table-caption" id="bookedCaption">0 rows</div>
           </div>
-          <button class="btn btn-success" onclick="copyPreviewRows('booked')">Copy Service Booked</button>
+          <button class="btn btn-success" id="btnCopyBooked" onclick="copyPreviewRows('booked')">Copy</button>
         </div>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>Phone_Number</th>
-                <th>Vehicle_Model</th>
-                <th>Next_Service_Due</th>
-                <th>Disposition_Detail</th>
-                <th>Call_Date</th>
-                <th>Call_Recording</th>
+                <th>PHONE_NUMBER</th>
+                <th>VEHICLE_MODEL</th>
+                <th>DISPOSITION_DETAILS</th>
+                <th>LOCATION</th>
+                <th>CALL_DATE (MM/DD/YYYY)</th>
+                <th>Perfect Riders CRE Remarks</th>
+                <th>COMMON REMARKS</th>
               </tr>
             </thead>
             <tbody id="bookedBody"></tbody>
@@ -1116,27 +1385,51 @@
         </div>
       </div>
 
-      <div class="table-wrapper" id="feedbackTableWrapper">
+      <div class="table-wrapper" id="completedTableWrapper">
         <div class="table-header">
           <div>
-            <div class="table-title">Feedback and Escalation Preview</div>
-            <div class="table-caption" id="feedbackCaption">0 rows</div>
+            <div class="table-title">Service Completed</div>
+            <div class="table-caption" id="completedCaption">0 rows</div>
           </div>
-          <button class="btn btn-success" onclick="copyPreviewRows('feedback')">Copy Feedback</button>
+          <button class="btn btn-success" id="btnCopyCompleted" onclick="copyPreviewRows('completed')">Copy</button>
         </div>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>Phone_Number</th>
-                <th>Vehicle_Model</th>
-                <th>Disposition_Detail</th>
-                <th>Summary</th>
-                <th>Call_Date</th>
-                <th>Call_Recording</th>
+                <th>PHONE_NUMBER</th>
+                <th>VEHICLE_MODEL</th>
+                <th>DISPOSITION_DETAILS</th>
+                <th>LOCATION</th>
+                <th>CALL_DATE (MM/DD/YYYY)</th>
+                <th>Perfect Riders CRE Remarks</th>
               </tr>
             </thead>
-            <tbody id="feedbackBody"></tbody>
+            <tbody id="completedBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="table-wrapper" id="notInterestedTableWrapper">
+        <div class="table-header">
+          <div>
+            <div class="table-title">Not Interested</div>
+            <div class="table-caption" id="notInterestedCaption">0 rows</div>
+          </div>
+          <button class="btn btn-success" id="btnCopyNotInterested" onclick="copyPreviewRows('notInterested')">Copy</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>PHONE_NUMBER</th>
+                <th>VEHICLE_MODEL</th>
+                <th>SUMMARY</th>
+                <th>CALL_DATE (MM/DD/YYYY)</th>
+                <th>Perfect Riders CRE Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="notInterestedBody"></tbody>
           </table>
         </div>
       </div>
@@ -1151,7 +1444,8 @@
     let processedData = [];
     let qualityReport = null;
     let bookedRows = [];
-    let feedbackRows = [];
+    let completedRows = [];
+    let notInterestedRows = [];
 
     const DEALERSHIPS = {
       ambal_service: {
@@ -1222,7 +1516,8 @@
         { header: 'STATUS', key: 'session_status' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT_SCORE', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
@@ -1239,7 +1534,8 @@
         { header: 'STATUS', key: 'session_status' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
@@ -1258,7 +1554,8 @@
         { header: 'VIN', key: 'vin_number' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'SUMMARY', key: 'summary' },
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
@@ -1282,7 +1579,8 @@
         { header: 'STATUS', key: 'session_status' },
         { header: 'SUMMARY', key: 'summary' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'Updated Disposition', key: '' },
+        { header: 'Updated Disposition', key: 'updated_disposition' },
+
         { header: 'LAST_SERVICE_DATE', key: 'last_service_date' },
         { header: 'NEXT_SERVICE_DATE', key: 'next_service_due' },
         { header: 'CALL_DATE', key: 'call_date' },
@@ -1303,6 +1601,7 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
+
         { header: 'MANUAL_DISPOSITION', key: 'manual_disposition' },
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
@@ -1323,7 +1622,8 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
@@ -1344,7 +1644,8 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
@@ -1365,7 +1666,8 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'SENTIMENT', key: 'sentiment_score' },
         { header: 'RECORDINGS', key: 'call_recording' },
@@ -1385,7 +1687,7 @@
         { header: 'SUMMARY', key: 'summary' },
         { header: 'STATUS', key: 'session_status' },
         { header: 'DISPOSITION_DETAILS', key: 'disposition' },
-        { header: 'UPDATED_DISPOSITION', key: '' },
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
         { header: 'CALL_DATE', key: 'call_date' },
         { header: 'RECORDINGS', key: 'call_recording' },
         { header: 'CAMPAIGN_ID', key: 'campaign_id' },
@@ -1665,13 +1967,29 @@
     }
 
     function isServiceBooked(row) {
-      const text = normalizedText([row.disposition_detail, row.summary, row.session_status].join(' '));
-      return ['service booked', 'appointment booked', 'slot booked', 'booking confirmed'].some(term => text.includes(term));
+      var ud = clean(row.updated_disposition);
+      if (ud === 'Converted') return true;
+      const text = normalizedText(row.disposition_detail || '');
+      return ['service booked', 'service appointment booked', 'appointment booked', 'slot booked', 'booking confirmed'].some(term => text.includes(term));
     }
 
     function isFeedbackOrEscalation(row) {
       const text = normalizedText([row.disposition_detail, row.summary, row.session_status].join(' '));
       return ['feedback', 'complaint', 'escalation', 'unhappy', 'dissatisfied', 'negative'].some(term => text.includes(term));
+    }
+
+    function isServiceCompleted(row) {
+      var ud = clean(row.updated_disposition);
+      if (ud === 'Has serviced car in another dealership' || ud === 'Existing Dealer Contact') return true;
+      const text = normalizedText(row.disposition_detail || '');
+      return ['vehicle serviced', 'service completed', 'has serviced car in another dealership'].some(term => text.includes(term));
+    }
+
+    function isNotInterested(row) {
+      var ud = clean(row.updated_disposition);
+      if (ud === 'Not Interested' || ud === 'Invalid Lead' || ud === 'Rejected') return true;
+      const text = normalizedText(row.disposition_detail || '');
+      return ['not interested', 'refused service', 'service not required', 'already serviced'].some(term => text.includes(term));
     }
 
     function extractPerfectRidersLocation(summary) {
@@ -1682,6 +2000,22 @@
       return '';
     }
 
+    function extractPerfectRidersCRE(summary) {
+      const text = normalizedText(summary);
+      if (!text) return '';
+      // Extract remarks after 'remarks:' or 'cre:' markers if present
+      const remarkMatch = text.match(/remarks?\s*[:\-]\s*(.+)/i);
+      if (remarkMatch) return remarkMatch[1].trim();
+      const creMatch = text.match(/cre\s*[:\-]\s*(.+)/i);
+      if (creMatch) return creMatch[1].trim();
+      // Fallback: return first 120 chars as a remark summary
+      const truncated = summary.trim().substring(0, 120);
+      return truncated.length < summary.trim().length ? truncated + '…' : truncated;
+    }
+
+
+
+    // ─── HISTORY DETECTION & FORMATTING ─────────────────────────────────────
     function sessionScore(row) {
       let score = 0;
       const date = parseAutoEngageDate(detectDate(row));
@@ -1709,11 +2043,12 @@
       const map = {};
       for (const [phone, sessions] of Object.entries(groups)) {
         const best = sessions.slice().sort((a, b) => sessionScore(b) - sessionScore(a))[0];
+        var histRaw = detectHistory(best);
         map[phone] = {
           row: best,
           count: sessions.length,
           status: get(best, ['status', 'session_status', 'call_status', 'conversation_status']),
-          disposition: get(best, ['disposition_detail', 'disposition', 'disposition_details', 'call_disposition', 'updated_disposition']),
+          disposition: get(best, ['updated_disposition', 'disposition_detail', 'disposition', 'disposition_details', 'call_disposition']),
           duration: get(best, ['duration', 'call_duration', 'talk_time', 'total_duration']),
           startTime: detectDate(best),
           summary: get(best, ['summary', 'call_summary', 'conversation_summary', 'notes', 'remarks']),
@@ -1722,7 +2057,9 @@
           // duration must come from Sessions (File 2). Some exports only have a generic "duration".
           recordingDuration: get(best, ['duration', 'call_duration', 'recording_length', 'recording_time', 'audio_duration', 'duration', 'call_duration']),
           lastSessionId: get(best, ['last_session_id', 'session_id', 'sessionid', 'id', 'call_id']),
-          serviceType: get(best, ['service_type', 'service_type_session'])
+          serviceType: get(best, ['service_type', 'service_type_session']),
+          history_raw: histRaw,
+          history_text: formatHistoryForPrompt(histRaw),
         };
       }
       return { map, groups };
@@ -2017,6 +2354,7 @@
             call_date: formatDate(sess.startTime || ''),
             duration: sess.duration || '',
             summary: sess.summary || '',
+            session_history: sess.history_text || '',
             sentiment_score: sess.sentiment || '',
             call_recording: sess.recording || '',
             recording_duration: sess.recordingDuration || '',
@@ -2040,6 +2378,13 @@
 
         processedData = output;
         qualityReport = buildQualityReport({ leadRows, sessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo });
+        // Separate preview rows by disposition type
+        var allOutput = output;
+        // Classify rows with mutual exclusion: each row goes to at most one preview table
+        bookedRows = allOutput.filter(isServiceBooked);
+        completedRows = allOutput.filter(function(r) { return !isServiceBooked(r) && isServiceCompleted(r); });
+        notInterestedRows = allOutput.filter(function(r) { return !isServiceBooked(r) && !isServiceCompleted(r) && isNotInterested(r); });
+        processedData = allOutput;
         renderAll();
         hideOverlay();
         const roleNote = filesSwapped ? ' Upload order was auto-swapped.' : '';
@@ -2052,6 +2397,10 @@
         document.getElementById('btnCopy').disabled = !qualityReport.canExport;
         document.getElementById('btnExport').style.display = '';
         document.getElementById('btnExport').disabled = !qualityReport.canExport;
+        document.getElementById('btnValidateAI').style.display = '';
+        document.getElementById('btnValidateAI').disabled = false;
+        document.getElementById('btnValidateAI').textContent = 'Validate with AI';
+        document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(); };
         document.getElementById('btnReset').style.display = '';
       } catch (e) {
         hideOverlay();
@@ -2069,14 +2418,16 @@
 
     function renderStats() {
       const matched = processedData.filter(r => r._matched).length;
-      const booked = processedData.filter(isServiceBooked).length;
-      const feedback = processedData.filter(isFeedbackOrEscalation).length;
+      const booked = bookedRows.length;
+      const completed = completedRows.length;
+      const notInterested = notInterestedRows.length;
       const notConnected = processedData.filter(r => r.outcome === 'Not Connected').length;
       const unknown = processedData.filter(r => r.outcome === 'Unknown').length;
       document.getElementById('statLeads').textContent = processedData.length;
       document.getElementById('statMatched').textContent = matched;
       document.getElementById('statBooked').textContent = booked;
-      document.getElementById('statFeedback').textContent = feedback;
+      document.getElementById('statCompleted').textContent = completed;
+      document.getElementById('statNotInterested').textContent = notInterested;
       document.getElementById('statNotConnected').textContent = notConnected;
       document.getElementById('statUnknown').textContent = unknown;
       document.getElementById('statsBar').style.display = 'flex';
@@ -2124,6 +2475,13 @@
             if (!href) return `<td title="${esc(val)}">${esc(val)}</td>`;
             return `<td><a class="cell-url" href="${esc(href)}" target="_blank" rel="noopener noreferrer" title="${esc(val)}">Recording</a></td>`;
           }
+          if (col.key === 'updated_disposition') {
+            var st = r._ai_status || '';
+            var badge = '<span class="ai-badge pending">—</span>';
+            if (st === 'corrected') badge = '<span class="ai-badge corrected" title="AI suggested a correction">✎</span> ';
+            else if (st === 'verified') badge = '<span class="ai-badge verified" title="AI verified this disposition is correct">✓</span> ';
+            return '<td>' + badge + esc(val) + '</td>';
+          }
           return `<td title="${esc(val)}">${esc(val)}</td>`;
         }).join('');
         body.appendChild(tr);
@@ -2136,37 +2494,82 @@
     }
 
     function renderPreviewTables() {
-      bookedRows = processedData.filter(isServiceBooked);
-      feedbackRows = processedData.filter(isFeedbackOrEscalation);
-      renderPreviewTable('booked', bookedRows, ['phone_number', 'vehicle_model', 'next_service_due', 'disposition_detail', 'call_date', 'call_recording']);
-      renderPreviewTable('feedback', feedbackRows, ['phone_number', 'vehicle_model', 'disposition_detail', 'summary', 'call_date', 'call_recording']);
+      renderPreviewBookedTable();
+      renderPreviewCompletedTable();
+      renderPreviewNotInterestedTable();
     }
 
-    function renderPreviewTable(type, rows, keys) {
-      const wrapper = document.getElementById(type === 'booked' ? 'bookedTableWrapper' : 'feedbackTableWrapper');
-      const body = document.getElementById(type === 'booked' ? 'bookedBody' : 'feedbackBody');
-      const caption = document.getElementById(type === 'booked' ? 'bookedCaption' : 'feedbackCaption');
-      if (!rows.length) {
-        wrapper.style.display = 'none';
-        return;
-      }
+    function renderPreviewBookedTable() {
+      const dealerKey = document.getElementById('dealerSelect').value;
+      const isPerfectRiders = dealerKey === 'perfect_riders_service';
+      const wrapper = document.getElementById('bookedTableWrapper');
+      const body = document.getElementById('bookedBody');
+      const caption = document.getElementById('bookedCaption');
+      if (!bookedRows.length) { wrapper.style.display = 'none'; return; }
       body.innerHTML = '';
-      for (const r of rows.slice(0, PREVIEW_LIMIT)) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = keys.map(key => {
-          const val = r[key] || '';
-          if (key === 'phone_number') return `<td class="cell-phone">${esc(val)}</td>`;
-          if (key === 'call_recording' && val) {
-            const href = String(val).startsWith('http') || String(val).startsWith('s3:') ? val : `https://${val}`;
-            return `<td><a class="cell-url" href="${esc(href)}" target="_blank">Recording</a></td>`;
-          }
-          return `<td title="${esc(val)}">${esc(val)}</td>`;
-        }).join('');
+      bookedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
+        var tr = document.createElement('tr');
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var creRemarks = '';
+        tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
+          + '<td>' + esc(r.vehicle_model) + '</td>'
+          + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
+          + '<td>' + esc(location) + '</td>'
+          + '<td>' + esc(r.call_date) + '</td>'
+          + '<td>' + esc(creRemarks) + '</td>'
+          + '<td></td>';
         body.appendChild(tr);
-      }
-      caption.textContent = rows.length > PREVIEW_LIMIT ? `Showing first ${PREVIEW_LIMIT} of ${rows.length} rows` : `${rows.length} rows`;
+      });
+      caption.textContent = bookedRows.length > PREVIEW_LIMIT ? 'Showing first ' + PREVIEW_LIMIT + ' of ' + bookedRows.length + ' rows' : bookedRows.length + ' rows';
       wrapper.style.display = 'block';
     }
+
+    function renderPreviewCompletedTable() {
+      const dealerKey = document.getElementById('dealerSelect').value;
+      const isPerfectRiders = dealerKey === 'perfect_riders_service';
+      const wrapper = document.getElementById('completedTableWrapper');
+      const body = document.getElementById('completedBody');
+      const caption = document.getElementById('completedCaption');
+      if (!completedRows.length) { wrapper.style.display = 'none'; return; }
+      body.innerHTML = '';
+      completedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
+        var tr = document.createElement('tr');
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var creRemarks = '';
+        tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
+          + '<td>' + esc(r.vehicle_model) + '</td>'
+          + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
+          + '<td>' + esc(location) + '</td>'
+          + '<td>' + esc(r.call_date) + '</td>'
+          + '<td>' + esc(creRemarks) + '</td>';
+        body.appendChild(tr);
+      });
+      caption.textContent = completedRows.length > PREVIEW_LIMIT ? 'Showing first ' + PREVIEW_LIMIT + ' of ' + completedRows.length + ' rows' : completedRows.length + ' rows';
+      wrapper.style.display = 'block';
+    }
+
+    function renderPreviewNotInterestedTable() {
+      const dealerKey = document.getElementById('dealerSelect').value;
+      const isPerfectRiders = dealerKey === 'perfect_riders_service';
+      const wrapper = document.getElementById('notInterestedTableWrapper');
+      const body = document.getElementById('notInterestedBody');
+      const caption = document.getElementById('notInterestedCaption');
+      if (!notInterestedRows.length) { wrapper.style.display = 'none'; return; }
+      body.innerHTML = '';
+      notInterestedRows.slice(0, PREVIEW_LIMIT).forEach(function(r) {
+        var tr = document.createElement('tr');
+        var creRemarks = '';
+        tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
+          + '<td>' + esc(r.vehicle_model) + '</td>'
+          + '<td>' + esc(r.summary) + '</td>'
+          + '<td>' + esc(r.call_date) + '</td>'
+          + '<td>' + esc(creRemarks) + '</td>';
+        body.appendChild(tr);
+      });
+      caption.textContent = notInterestedRows.length > PREVIEW_LIMIT ? 'Showing first ' + PREVIEW_LIMIT + ' of ' + notInterestedRows.length + ' rows' : notInterestedRows.length + ' rows';
+      wrapper.style.display = 'block';
+    }
+
 
     function rowsToTsv(rows, keys) {
       return rows.map(r => keys.map(k => String(r[k] ?? '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ')).join('\t')).join('\n');
@@ -2201,16 +2604,44 @@
       const btn = document.getElementById('btnCopy');
       const old = btn.innerHTML;
       btn.textContent = 'Copied';
-      setTimeout(() => { btn.innerHTML = old; }, 1800);
+      setTimeout(() => { btn.innerHTML = old; }, 3000);
     }
 
     async function copyPreviewRows(type) {
-      const rows = type === 'booked' ? bookedRows : feedbackRows;
-      const keys = type === 'booked'
-        ? ['phone_number', 'vehicle_model', 'next_service_due', 'disposition_detail', 'call_date', 'call_recording']
-        : ['phone_number', 'vehicle_model', 'disposition_detail', 'summary', 'call_date', 'call_recording'];
-      if (!rows.length) return;
-      await copyText(rowsToTsv(rows, keys), `Copied ${rows.length} preview row(s).`);
+      var rows, keys;
+      if (type === 'booked') {
+        rows = bookedRows;
+        keys = ['phone_number', 'vehicle_model', 'disposition_detail', 'service_location', 'call_date', 'cre_remarks', 'common_remarks'];
+      } else if (type === 'completed') {
+        rows = completedRows;
+        keys = ['phone_number', 'vehicle_model', 'disposition_detail', 'service_location', 'call_date', 'cre_remarks'];
+      } else {
+        rows = notInterestedRows;
+        keys = ['phone_number', 'vehicle_model', 'summary', 'call_date', 'cre_remarks'];
+      }
+      if (!rows || !rows.length) { setStatus('globalStatus', 'No rows to copy.', 'warn'); return; }
+      var data = rows.map(function(r) {
+        var dealerKey = document.getElementById('dealerSelect').value;
+        var isPerfectRiders = dealerKey === 'perfect_riders_service';
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
+        return keys.map(function(k) {
+          if (k === 'service_location') return location;
+          if (k === 'cre_remarks') return creRemarks;
+          if (k === 'common_remarks') return '';
+          if (k === 'disposition_detail') return r.disposition_detail || r.disposition || '';
+          if (k === 'summary') return r.summary || '';
+          return String(r[k] || '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
+        }).join('\t');
+      }).join('\n');
+      await copyText(data, 'Copied ' + rows.length + ' preview row(s).');
+      var btnMap = { booked: 'btnCopyBooked', completed: 'btnCopyCompleted', notInterested: 'btnCopyNotInterested' };
+      var btn = document.getElementById(btnMap[type]);
+      if (btn) {
+        var orig = btn.textContent;
+        btn.textContent = 'Copied';
+        setTimeout(function() { btn.textContent = orig; }, 3000);
+      }
     }
 
     async function copyQualityReport() {
@@ -2245,19 +2676,36 @@
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataRows), 'Output');
 
       if (bookedRows.length) {
-        const bookedKeys = ['phone_number', 'vehicle_model', 'next_service_due', 'disposition_detail', 'call_date', 'call_recording'];
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-          ['Phone_Number', 'Vehicle_Model', 'Next_Service_Due', 'Disposition_Detail', 'Call_Date', 'Call_Recording'],
-          ...bookedRows.map(r => bookedKeys.map(k => r[k] ?? ''))
+          ['PHONE_NUMBER', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'LOCATION', 'CALL_DATE (MM/DD/YYYY)', 'Perfect Riders CRE Remarks', 'COMMON REMARKS'],
+          ...bookedRows.map(function(r) {
+            var dealerKey = document.getElementById('dealerSelect').value;
+            var isPR = dealerKey === 'perfect_riders_service';
+            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '', ''];
+          })
         ]), 'Service Booked');
       }
 
-      if (feedbackRows.length) {
-        const feedbackKeys = ['phone_number', 'vehicle_model', 'disposition_detail', 'summary', 'call_date', 'call_recording'];
+      if (completedRows.length) {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-          ['Phone_Number', 'Vehicle_Model', 'Disposition_Detail', 'Summary', 'Call_Date', 'Call_Recording'],
-          ...feedbackRows.map(r => feedbackKeys.map(k => r[k] ?? ''))
-        ]), 'Feedback');
+          ['PHONE_NUMBER', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'LOCATION', 'CALL_DATE (MM/DD/YYYY)', 'Perfect Riders CRE Remarks'],
+          ...completedRows.map(function(r) {
+            var dealerKey = document.getElementById('dealerSelect').value;
+            var isPR = dealerKey === 'perfect_riders_service';
+            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : ''];
+          })
+        ]), 'Service Completed');
+      }
+
+      if (notInterestedRows.length) {
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+          ['PHONE_NUMBER', 'VEHICLE_MODEL', 'SUMMARY', 'CALL_DATE (MM/DD/YYYY)', 'Perfect Riders CRE Remarks'],
+          ...notInterestedRows.map(function(r) {
+            var dealerKey = document.getElementById('dealerSelect').value;
+            var isPR = dealerKey === 'perfect_riders_service';
+            return [r.phone_number || '', r.vehicle_model || '', r.summary || '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : ''];
+          })
+        ]), 'Not Interested');
       }
 
       const dealer = getSelectedDealer();
@@ -2271,23 +2719,31 @@
       processedData = [];
       qualityReport = null;
       bookedRows = [];
-      feedbackRows = [];
+      completedRows = [];
+      notInterestedRows = [];
+      currentSortKey = 'person_name'; currentSortDir = 'asc';
       ['f1', 'f2'].forEach(id => { document.getElementById(id).value = ''; });
       ['dz1', 'dz2'].forEach(id => document.getElementById(id).classList.remove('has-file'));
       document.getElementById('st1').className = 'dz-status';
       document.getElementById('st2').className = 'dz-status';
       document.getElementById('st1').textContent = 'Drag and drop or click to browse';
       document.getElementById('st2').textContent = 'Drag and drop or click to browse';
-      ['statsBar', 'qualityCard', 'tableWrapper', 'bookedTableWrapper', 'feedbackTableWrapper'].forEach(id => {
-        document.getElementById(id).style.display = 'none';
+      ['statsBar', 'qualityCard', 'tableWrapper', 'bookedTableWrapper', 'completedTableWrapper', 'notInterestedTableWrapper'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
       });
-      ['outputBody', 'bookedBody', 'feedbackBody', 'qualityWarnings', 'qualitySamples', 'qualityMeta'].forEach(id => {
-        document.getElementById(id).innerHTML = '';
+      ['outputBody', 'bookedBody', 'completedBody', 'notInterestedBody', 'qualityWarnings', 'qualitySamples', 'qualityMeta'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = '';
       });
       document.getElementById('btnCopy').style.display = 'none';
       document.getElementById('btnExport').style.display = 'none';
+      document.getElementById('btnValidateAI').style.display = 'none';
+      document.getElementById('btnValidateAI').textContent = 'Validate with AI';
+      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(); };
       document.getElementById('btnReset').style.display = 'none';
       setStatus('globalStatus', '', '');
+      updateSortIndicators();
       updateProcessButton();
     }
 
@@ -2304,6 +2760,129 @@
 
     function hideOverlay() {
       document.getElementById('processingOverlay').style.display = 'none';
+    }
+
+    // ── AI Validation Status Bar (non-blocking) ──────────────────────────
+    let _aiStatusStartTime = 0;
+    let _aiStatusTimer = null;
+    let _aiStatusActive = false;
+
+    function showAiStatusBar(total) {
+      if (_aiStatusTimer) { clearInterval(_aiStatusTimer); _aiStatusTimer = null; }
+      _aiStatusActive = true;
+      _aiStatusStartTime = Date.now();
+      var bar = document.getElementById('aiValidationStatus');
+      var msg = document.getElementById('aiStatusMsg');
+      var batch = document.getElementById('aiStatusBatch');
+      var corrected = document.getElementById('aiStatusCorrected');
+      var elapsed = document.getElementById('aiStatusElapsed');
+      var fill = document.getElementById('aiStatusFill');
+      var actions = document.getElementById('aiStatusActions');
+      
+      bar.style.display = 'block';
+      bar.className = 'ai-status-bar';
+      msg.textContent = 'AI validating dispositions…';
+      msg.className = 'ai-status-msg';
+      batch.textContent = '0/' + total;
+      batch.className = 'ai-status-badge';
+      corrected.style.display = 'none';
+      fill.style.width = '0%';
+      fill.className = 'ai-status-fill';
+      
+      actions.innerHTML = '<button class="ai-status-btn cancel" id="aiStatusCancel" onclick="cancelAiValidation()">Cancel</button>';
+      
+      if (_aiStatusTimer) clearInterval(_aiStatusTimer);
+      _aiStatusTimer = setInterval(function() {
+        var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+        var min = Math.floor(secs / 60);
+        var s = secs % 60;
+        elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+      }, 1000);
+      
+      aiValidationController = new AbortController();
+    }
+
+    function updateAiStatusBar(done, total, message, pct, correctedResults) {
+      var batch = document.getElementById('aiStatusBatch');
+      var fill = document.getElementById('aiStatusFill');
+      var msg = document.getElementById('aiStatusMsg');
+      var corrected = document.getElementById('aiStatusCorrected');
+      
+      if (batch) batch.textContent = done + '/' + total;
+      if (fill) fill.style.width = pct + '%';
+      if (msg) msg.textContent = message || 'AI validating…';
+      
+      if (correctedResults) {
+        var count = Object.keys(correctedResults).length;
+        if (count > 0) {
+          corrected.style.display = 'inline';
+          corrected.textContent = count + ' corrected';
+        }
+      }
+    }
+
+    function hideAiStatusBar(correctedResults) {
+      if (_aiStatusTimer) {
+        clearInterval(_aiStatusTimer);
+        _aiStatusTimer = null;
+      if (!_aiStatusActive) return;
+      _aiStatusActive = false;
+      }
+      
+      if (aiValidationController && aiValidationController.signal.aborted) {
+        var bar = document.getElementById('aiValidationStatus');
+        var msg = document.getElementById('aiStatusMsg');
+        var batch = document.getElementById('aiStatusBatch');
+        var fill = document.getElementById('aiStatusFill');
+        var actions = document.getElementById('aiStatusActions');
+        
+        bar.className = 'ai-status-bar aborted';
+        msg.textContent = 'AI validation cancelled.';
+        msg.className = 'ai-status-msg err';
+        fill.className = 'ai-status-fill err';
+        actions.innerHTML = '<button class="ai-status-btn" onclick="document.getElementById(\'aiValidationStatus\').style.display=\'none\'">Dismiss</button>' +
+          '<button class="ai-status-btn primary" onclick="validateDispositionsWithLLM()">↻ Run again</button>';
+        aiValidationController = null;
+        return;
+      }
+      
+      var correctedCount = correctedResults ? Object.keys(correctedResults).length : 0;
+      var totalDone = document.getElementById('aiStatusBatch');
+      var totalText = totalDone ? totalDone.textContent : 'done';
+      
+      var bar = document.getElementById('aiValidationStatus');
+      var msg = document.getElementById('aiStatusMsg');
+      var batch = document.getElementById('aiStatusBatch');
+      var fill = document.getElementById('aiStatusFill');
+      var elapsed = document.getElementById('aiStatusElapsed');
+      var actions = document.getElementById('aiStatusActions');
+      var corrected = document.getElementById('aiStatusCorrected');
+      
+      bar.className = 'ai-status-bar';
+      msg.textContent = correctedCount > 0
+        ? 'AI validation complete — ' + correctedCount + ' disposition(s) corrected. Check the Updated Disposition column.'
+        : 'AI validation complete — all dispositions appear correct.';
+      msg.className = 'ai-status-msg ok';
+      batch.textContent = totalText;
+      batch.className = 'ai-status-badge done';
+      if (corrected) {
+        corrected.style.display = correctedCount > 0 ? 'inline' : 'none';
+        if (correctedCount > 0) corrected.textContent = correctedCount + ' corrected';
+      }
+      fill.className = 'ai-status-fill ok';
+      fill.style.width = '100%';
+      
+      if (elapsed) {
+        var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+        var min = Math.floor(secs / 60);
+        var s = secs % 60;
+        elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+      }
+      
+      actions.innerHTML = '<button class="ai-status-btn" onclick="document.getElementById(\'aiValidationStatus\').style.display=\'none\'">Dismiss</button>' +
+        '<button class="ai-status-btn primary" onclick="validateDispositionsWithLLM(true)">↻ Re-run AI</button>';
+      
+      aiValidationController = null;
     }
 
     function tick() {
@@ -2385,6 +2964,391 @@
       applyTheme(current === 'dark' ? 'light' : 'dark');
     }
 
+    /* ═══════════════════════════════════════════════════════════════════════
+       LLM VALIDATION — POST-SALES DISPOSITIONS
+       ═══════════════════════════════════════════════════════════════════════ */
+    var OPENROUTER_MODEL = (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterModel) 
+      ? window.JEJO_CONFIG.openRouterModel 
+      : 'deepseek/deepseek-v4-flash';
+    var OPENROUTER_KEY_STORAGE = 'llm-api-key';
+
+    function getApiEndpoint() {
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.apiEndpoint) {
+        var url = window.JEJO_CONFIG.apiEndpoint.trim();
+        if (url && url !== 'YOUR_PROXY_URL_HERE') return url;
+      }
+      return 'https://openrouter.ai/api/v1/chat/completions';
+    }
+
+    function getApiKey() {
+      if (getApiEndpoint() !== 'https://openrouter.ai/api/v1/chat/completions') {
+        return 'PROXY_ACTIVE';
+      }
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey) {
+        var key = window.JEJO_CONFIG.openRouterApiKey.trim();
+        if (key && key !== 'YOUR_OPENROUTER_API_KEY_HERE') return key;
+      }
+      return (localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+    }
+
+    function syncApiKeyControl(message, tone) {
+      var container = document.querySelector('.ai-key-control');
+      var input = document.getElementById('openRouterApiKey');
+      var status = document.getElementById('apiKeyStatus');
+      var saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
+      var clearBtn = container ? container.querySelector('button.subtle') : null;
+
+      var endpoint = getApiEndpoint();
+      var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+      
+      var keyFromConfig = window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey && 
+                           window.JEJO_CONFIG.openRouterApiKey !== 'YOUR_OPENROUTER_API_KEY_HERE' && 
+                           window.JEJO_CONFIG.openRouterApiKey.trim();
+      
+      var isAutoConfigured = isProxy || keyFromConfig;
+
+      if (isAutoConfigured) {
+        if (input) input.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        
+        if (status) {
+          if (isProxy) {
+            status.textContent = '✓ AI Active (Secure Proxy)';
+            status.className = 'api-key-status ok active-proxy';
+            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
+          } else {
+            status.textContent = '✓ AI Active (Configured)';
+            status.className = 'api-key-status ok';
+          }
+        }
+      } else {
+        if (input) input.style.display = '';
+        if (saveBtn) saveBtn.style.display = '';
+        if (clearBtn) clearBtn.style.display = '';
+        
+        var hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+        if (input) {
+          input.value = '';
+          input.placeholder = hasSavedKey ? 'Key saved in browser' : 'OpenRouter API key';
+        }
+        if (status) {
+          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
+          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+          status.style.animation = '';
+        }
+      }
+    }
+
+    function saveOpenRouterApiKey() {
+      var input = document.getElementById('openRouterApiKey');
+      var key = input ? input.value.trim() : '';
+      if (!key) {
+        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
+        return;
+      }
+      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      syncApiKeyControl('Saved locally', 'ok');
+    }
+
+    function clearOpenRouterApiKey() {
+      localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      syncApiKeyControl('Cleared', 'warn');
+    }
+
+    function hashStr(str) {
+      var h = 0;
+      for (var i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
+      return 'h' + Math.abs(h).toString(36);
+    }
+
+    var POST_SALES_DISPOSITIONS = {
+      "Voicemail": "If the customer has asked to leave a message or voicemail.",
+      "Rejected": "If the customer has rejected the offer or to even speak with the agent. repeated rejection.",
+      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+      "Vehicle is commercial or part of a fleet": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
+      "Vehicle is not being run": "Vehicle is unused and not being run.",
+      "Requires special spare parts": "The vehicle requires special spare parts for repair.",
+      "Others": "All other disposition details not listed above.",
+      "Wrong contact number": "Customer tells the agent they have the wrong person or number that was contacted",
+      "Has sold/given away the car": "The customer has sold or given away the vehicle.",
+      "Has moved to another location": "The customer has moved to another location.",
+      "Cannot make decision on servicing": "The customer the agent has called is not the right person to make the decision.",
+      "Will call workshop themselves": "The customer will contact the workshop themselves.",
+      "Requested Callback": "The customer asked the agent to call back at a later date and or time.",
+      "Looking for a discount": "The customer is looking for a discount on the campaign purpose.",
+      "Has serviced car in another dealership": "The customer has serviced the vehicle in another dealership.",
+      "Will decide tomorrow": "The customer said they would decide to service the vehicle tomorrow.",
+      "Will decide within 1 to 3 days": "The customer said they would decide to service the vehicle within 1 to 3 days.",
+      "Will decide within 4 to 7 days": "The customer said they would decide to service the vehicle within 4 to 7 days.",
+      "Will decide within 8 to 14 days": "The customer said they would decide to service the vehicle within 8 to 14 days.",
+      "Will decide within 15 to 30 days": "The customer said they would decide to service the vehicle within 15 to 30 days.",
+      "Will decide within 31 to 60 days": "The customer said they would decide to service the vehicle within 31 to 60 days.",
+      "Will decide within 61 to 90 days": "The customer said they would decide to service the vehicle within 61 to 90 days.",
+      "Will decide after 90 days": "The customer said they would decide to service the vehicle after 90 days.",
+      "Unsubscribed": "The customer asked to unsubscribed from the campaign.",
+      "Call Disconnected": "The call ended abruptly without completing the campaign objective.",
+      "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
+      "Call Quality Issue": "There was issues with the quality of the call.",
+      "Connection Issue": "There was issues with the connection between the customer and the agent.",
+      "Customer Busy": "The customer was busy.",
+      "No Response": "The customer did not say anything at all.",
+      "Price Inquiry": "The customer is interested in the price of the service.",
+      "Lost to Competition": "the customer already did the campaign objective from a competitors workshop",
+      "Invalid Lead": "Not a valid lead.",
+      "Not Interested": "The customer specifically said they are not interested or declined the offer/service.",
+      "Service Postponed": "They decided or implied they will postpone the service.",
+      "Showroom Visit Planned": "Already booked a showroom visit.",
+      "Existing Dealer Contact": "The customer already did the campaign objective from an existing dealership.",
+      "Contact Fatigue": "customer implied they were being contacted too many times by the agent.",
+      "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
+      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant.",
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
+    };
+
+    var DEALER_LANGUAGES = {
+      perfect_riders_service: ['Kannada', 'English'],
+      fortune_service: ['Telugu', 'English'],
+      ambal_service: ['Tamil', 'English'],
+      bullmen_service: ['Tamil', 'English'],
+      pressana_service_feedback: ['Tamil', 'English'],
+      pressana_post_service_feedback: ['Tamil', 'English'],
+      suryabala_service: ['Tamil', 'English'],
+      icare_feedback: ['Tamil', 'English']
+    };
+
+    async function validateDispositionsWithLLM(force) {
+      if (!processedData || processedData.length === 0) return;
+
+      document.getElementById('btnValidateAI').textContent = 'Validating...';
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        setStatus('globalStatus', 'AI key required. Paste your key above and click Save.', 'err');
+        return;
+      }
+
+      const dispKeys = Object.keys(POST_SALES_DISPOSITIONS);
+      const dispDefs = dispKeys.map(k => `- "${k}": ${POST_SALES_DISPOSITIONS[k]}`).join('\n');
+
+      var dealerKey = document.getElementById('dealerSelect').value;
+      var dealerCfg = DEALERSHIPS[dealerKey];
+      var dealerName = dealerCfg ? dealerCfg.name : 'Unknown Dealership';
+      var supportedLangs = DEALER_LANGUAGES[dealerKey] || ['English'];
+
+      const candidates = [];
+      for (var i = 0; i < processedData.length; i++) {
+        var r = processedData[i];
+        var summ = (r.summary || '').trim();
+        var hist = (r.session_history || '').trim();
+        var disp = (r.disposition_detail || r.disposition || '').trim();
+        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
+        if (hasText && disp) {
+          candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, callDate: r.call_date || '', outcome: r.outcome || '', vehicleModel: r.vehicle_model || '', campaignId: r.campaign_id || '', dealerName: dealerName, supportedLanguages: supportedLangs.join(', ') });
+        }
+      }
+
+      if (candidates.length === 0) {
+        setStatus('globalStatus', 'No rows with session summaries to validate.', 'warn');
+        return;
+      }
+
+      showAiStatusBar(candidates.length);
+
+      var corrected = 0;
+      var BATCH_SIZE = 10;
+      var correctedResults = {};
+
+      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.history + '||' + c.currentDisp + '||' + c.callDate + '||' + c.outcome + '||' + c.vehicleModel + '||' + c.campaignId + '||' + c.dealerName + '||' + c.supportedLanguages; }).join('|');
+      var cacheKey = 'ps-disp-validate-v3-history-' + hashStr(cacheInput);
+      var cached = force ? null : localStorage.getItem(cacheKey);
+      var cachedParsed = null;
+      if (cached) {
+        try {
+          cachedParsed = JSON.parse(cached);
+        } catch(e) { cached = null; }
+      }
+
+      if (!cached) {
+        var runnerOpts = {
+          items: candidates,
+          batchSize: BATCH_SIZE,
+          maxConcurrent: 2,
+          minGapMs: 300,
+          maxRetries: 3,
+          requestTimeoutMs: 60000,
+          cachedData: null,
+          getCacheKey: null,
+          buildPrompt: function(batch, batchIndex) {
+            var dispKeys = Object.keys(POST_SALES_DISPOSITIONS);
+            var dispDefs = dispKeys.map(function(k) { return '- "' + k + '": ' + POST_SALES_DISPOSITIONS[k]; }).join('\n');
+            var dealerContext = 'Dealership: "' + (batch.length > 0 ? batch[0].dealerName : '') + '"\nSupported Languages: "' + (batch.length > 0 ? batch[0].supportedLanguages : '') + '"';
+            var promptLines = batch.map(function(c, idx) {
+              var safeSummary = sanitizeForPrompt(c.summary);
+              var safeHistory = sanitizeForPrompt(c.history);
+              var safeDisp = sanitizeForPrompt(c.currentDisp);
+              var safeDealer = sanitizeForPrompt(c.dealerName);
+              var safeLangs = sanitizeForPrompt(c.supportedLanguages);
+              var safeModel = sanitizeForPrompt(c.vehicleModel);
+              var safeOutcome = sanitizeForPrompt(c.outcome);
+              var safeDate = sanitizeForPrompt(c.callDate);
+              var safeCampaign = sanitizeForPrompt(c.campaignId);
+              var line = 'Row ' + idx + ':';
+              if (safeSummary) line += '\n--- BEGIN SUMMARY ---\n' + safeSummary + '\n--- END SUMMARY ---';
+              if (safeHistory) line += '\n--- BEGIN CONVERSATION HISTORY ---\n' + safeHistory + '\n--- END CONVERSATION HISTORY ---';
+              line += '\nCurrent Disposition: "' + safeDisp + '"';
+              line += '\nDealership: "' + safeDealer + '"';
+              line += '\nSupported Languages: "' + safeLangs + '"';
+              if (safeModel) line += '\nVehicle Model: "' + safeModel + '"';
+              if (safeOutcome) line += '\nCall Outcome: "' + safeOutcome + '"';
+              if (safeDate) line += '\nCall Date: "' + safeDate + '"';
+              if (safeCampaign) line += '\nCampaign ID: "' + safeCampaign + '"';
+              return line;
+            }).join('\n\n---\n\n');
+
+            var systemMsg = 'You are a strict disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Dealership, Supported Languages, Vehicle Model, Call Outcome, Call Date, Campaign ID) is also provided — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.';
+
+            var examples = 'Example 1:\nTranscript: "Customer said they will bring the car next week for service"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Service Booked"\nReason: Customer intends to service — they did not refuse.\n\n' +
+              'Example 2:\nTranscript: "Customer complained about poor service quality and long wait times"\nCurrent Disposition: "Feedback Given"\n→ isCorrect: false, correctedDisposition: "Complaint / Escalation"\nReason: This is a complaint, not neutral feedback.\n\n' +
+              'Example 3:\nTranscript: "Customer said the car was already serviced at another workshop"\nCurrent Disposition: "Vehicle Serviced"\n→ isCorrect: false, correctedDisposition: "Already Serviced"\nReason: Already Serviced means elsewhere. Vehicle Serviced means this campaign\'s service was done.\n\n' +
+              'Example 4:\nTranscript: "Call went to ringtone but no one picked up"\nCurrent Disposition: "Not Reachable"\n→ isCorrect: false, correctedDisposition: "No Response"\nReason: No Response means the call connected but was not answered. Not Reachable means phone is off.\n\n' +
+              'Example 5:\nTranscript: "Customer asked what services are included in the free service package"\nCurrent Disposition: "Happy Customer"\n→ isCorrect: false, correctedDisposition: "Requested Service Details"\nReason: The customer is asking for information, not expressing satisfaction.\n\n' +
+              'Example 6:\nTranscript: "Customer said not interested and hung up"\nCurrent Disposition: "Call Completed"\n→ isCorrect: false, correctedDisposition: "Not Interested"\nReason: Customer explicitly declined.\n\n' +
+              'Example 7:\nTranscript: "Customer mentioned they have sold the car"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Sold / Given Away"\nReason: Sold / Given Away is more specific than Not Interested.\n\n' +
+              'Example 8:\nTranscript: "Call went to voicemail, left a message"\nCurrent Disposition: "Not Reachable"\n→ isCorrect: false, correctedDisposition: "Voicemail"\nReason: Reaching voicemail is not the same as not reachable.\n\n' +
+              'Example 9:\nTranscript: "Customer said \'I only speak Hindi\' but dealer supports Kannada/English"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Language barrier"\nReason: Language barrier — customer needs a language outside the supported set for this dealership.\n\n' +
+              'Example 10:\nTranscript: "Customer said they already serviced at another dealership"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Has serviced car in another dealership"\nReason: More specific — they did service elsewhere.\n\n' +
+              'Example 11:\nTranscript: "Customer asked for a callback later"\nCurrent Disposition: "No Response"\n→ isCorrect: false, correctedDisposition: "Requested Callback"\nReason: Customer explicitly requested a callback.\n\n' +
+              'Example 12:\nTranscript: "Phone rang multiple times but no one answered"\nCurrent Disposition: "Wrong Contact Number"\n→ isCorrect: false, correctedDisposition: "No Response"\nReason: No Response means call connected but unanswered. Wrong Contact Number means wrong number.\n\n' +
+              'Example 13:\nTranscript: "Could not hear the customer clearly due to network issues"\nCurrent Disposition: "No Response"\n→ isCorrect: false, correctedDisposition: "Audio Issue"\nReason: Audio Issue is more specific — there was a technical problem.\n\n' +
+              'Example 14:\nTranscript: "Customer confirmed they would come in for service on Saturday and provided email"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Converted"\nReason: Customer completed the campaign purpose and provided info — this is a conversion.\n\n' +
+              'Example 15:\nTranscript: "Customer was very happy with the service and said thank you"\nCurrent Disposition: "Converted"\n→ isCorrect: false, correctedDisposition: "Happy Customer"\nReason: Happy Customer is more appropriate — no booking or info provision.';
+
+            var userPrompt = 'VALID DISPOSITIONS:\n' + dispDefs + '\n\nLANGUAGE BARRIER RULE:\nThe active dealership is "' + dealerContext + '". The customer\'s transcript/summary may be in a language different from the dealership\'s supported languages. If the customer requested or attempted to speak in a language NOT in the supported languages list for their dealership, the disposition MUST be "Language barrier". Pay close attention to phrases like "I don\'t understand", "speak [language]", "[language] please", etc. — especially if the requested language is outside the supported set. The supported languages are only those listed for the dealership; any other language the customer requests is a barrier.\n\nEXAMPLES (learn from these patterns):\n' + examples + '\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+
+            return {
+              system: systemMsg,
+              user: userPrompt,
+              temperature: 0.3,
+              maxTokens: 3000
+            };
+          },
+          parseResponse: function(text, batch, batchIndex) {
+            var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+            var match = cleaned.match(/\[[\s\S]*\]/);
+            if (match) {
+              var parsed = JSON.parse(match[0]);
+              return parsed.map(function(item, idx) {
+                return {
+                  rowIndex: (batchIndex * BATCH_SIZE) + idx,
+                  isCorrect: item.isCorrect,
+                  correctedDisposition: item.correctedDisposition,
+                  confidence: item.confidence,
+                  reason: item.reason
+                };
+              });
+            }
+            return [];
+          },
+          buildHeaders: function() {
+            var endpoint = getApiEndpoint();
+            var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+            var h = { 'Content-Type': 'application/json' };
+            if (isProxy) {
+              var handshake = (window.JEJO_CONFIG && window.JEJO_CONFIG.proxyHandshakeToken)
+                ? window.JEJO_CONFIG.proxyHandshakeToken
+                : 'jejo-postsales-secure-handshake';
+              h['X-Handshake-Token'] = handshake;
+            } else {
+              h['Authorization'] = 'Bearer ' + getApiKey();
+              h['HTTP-Referer'] = window.location.origin;
+              h['X-Title'] = 'AutoNage Post-Sales Sync';
+            }
+            return h;
+          },
+          onProgress: function(done, total, message, pct) {
+            updateAiStatusBar(done, total, message, pct, correctedResults);
+          },
+          signal: aiValidationController ? aiValidationController.signal : null
+        };
+
+        var runnerResult = await runOpenRouterBatches(runnerOpts);
+        
+        // Check if aborted — don't apply results if user cancelled
+        if (runnerResult.aborted) {
+          hideAiStatusBar(correctedResults);
+          return;
+        }
+        
+        corrected = runnerResult.correctedCount;
+
+        // Build cache array
+        var cacheArray = [];
+        for (var idx = 0; idx < candidates.length; idx++) {
+          var decision = runnerResult.results.get(idx);
+          if (decision && decision.isCorrect === false && decision.correctedDisposition) {
+            cacheArray.push({ rowIndex: idx, isCorrect: false, correctedDisposition: decision.correctedDisposition });
+          } else {
+            cacheArray.push({ rowIndex: idx, isCorrect: true, correctedDisposition: null });
+          }
+        }
+        try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
+
+        // Apply corrections
+        for (var ri = 0; ri < candidates.length; ri++) {
+          var dec = runnerResult.results.get(ri);
+          if (dec && dec.isCorrect === false && dec.correctedDisposition) {
+            correctedResults[ri] = dec.correctedDisposition;
+          }
+        }
+      } else {
+        // Cache hit
+        try {
+          for (var ci = 0; ci < cachedParsed.length; ci++) {
+            var item = cachedParsed[ci];
+            if (item.isCorrect === false && item.correctedDisposition) {
+              correctedResults[item.rowIndex] = item.correctedDisposition;
+            }
+          }
+          corrected = Object.keys(correctedResults).length;
+        } catch(e) {}
+      }
+var correctedIndices = Object.keys(correctedResults);
+      for (var k = 0; k < correctedIndices.length; k++) {
+        var rowIdx = parseInt(correctedIndices[k]);
+        if (processedData[rowIdx]) {
+          processedData[rowIdx].updated_disposition = correctedResults[rowIdx];
+          processedData[rowIdx]._ai_status = 'corrected';
+        }
+      }
+      for (var ci = 0; ci < candidates.length; ci++) {
+        var cand = candidates[ci];
+        if (processedData[cand.index] && !processedData[cand.index]._ai_status) {
+          processedData[cand.index]._ai_status = 'verified';
+        }
+      }
+
+      hideAiStatusBar(correctedResults);
+      if (correctedIndices.length > 0) {
+        renderTable();
+        // Re-classify preview tables to pick up updated_disposition changes from AI
+        var allForPreview = processedData;
+        bookedRows = allForPreview.filter(isServiceBooked);
+        completedRows = allForPreview.filter(function(r) { return !isServiceBooked(r) && isServiceCompleted(r); });
+        notInterestedRows = allForPreview.filter(function(r) { return !isServiceBooked(r) && !isServiceCompleted(r) && isNotInterested(r); });
+        renderPreviewBookedTable();
+        renderPreviewCompletedTable();
+        renderPreviewNotInterestedTable();
+        setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows, corrected ' + correctedIndices.length + ' dispositions. Check Updated Disposition column.', 'ok');
+      } else {
+        setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows — all dispositions appear correct.', 'ok');
+      }
+
+      document.getElementById('btnValidateAI').textContent = '↻ Re-run AI';
+      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(true); };
+    }
+
+    syncApiKeyControl();
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     setupDragDrop('dz1', 'f1');
     setupDragDrop('dz2', 'f2');

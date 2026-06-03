@@ -2,24 +2,25 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pre-Sales Sync - AutoNage</title>
   <meta name="description"
     content="Merges AutoEngage Audience & Leads + Sessions exports and produces a Zoho Master Sheet-ready table." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    rel="stylesheet" />
-  <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../config.js"></script>
+  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/lib/history-helpers.js"></script>
+  <script src="../assets/lib/openrouter-batch-runner.js"></script>
   <style>
     /* ── DESIGN TOKENS ─────────────────────────────────────────────────── */
     :root,
@@ -29,10 +30,10 @@
       --surface2: #1a1a1a;
       --surface3: #222222;
       --border: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(255, 173, 58, 0.5);
-      --accent: #ffad3a;
-      --accent-dim: #e79400;
-      --accent-soft: rgba(255, 173, 58, 0.12);
+      --border-focus: rgba(239, 68, 68, 0.58);
+      --accent: #ef4444;
+      --accent-dim: #dc2626;
+      --accent-soft: rgba(239, 68, 68, 0.13);
       --success: #5ad7a1;
       --success-soft: rgba(90, 215, 161, 0.12);
       --warn: #ffc857;
@@ -56,10 +57,10 @@
       --surface2: #f7f8fa;
       --surface3: #eef0f4;
       --border: rgba(0, 20, 50, 0.08);
-      --border-focus: rgba(200, 130, 50, 0.5);
-      --accent: #c47a1e;
-      --accent-dim: #a86510;
-      --accent-soft: rgba(196, 122, 30, 0.1);
+      --border-focus: rgba(220, 38, 38, 0.5);
+      --accent: #dc2626;
+      --accent-dim: #b91c1c;
+      --accent-soft: rgba(220, 38, 38, 0.1);
       --success: #1a9960;
       --success-soft: rgba(26, 153, 96, 0.08);
       --warn: #c89520;
@@ -126,7 +127,7 @@
       align-items: center;
       gap: 0.35rem;
       background: var(--accent-soft);
-      border: 1px solid rgba(255, 173, 58, 0.3);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -173,7 +174,7 @@
       height: 18px;
       border-radius: 50%;
       background: var(--accent-soft);
-      border: 1px solid rgba(255, 173, 58, 0.35);
+      border: 1px solid rgba(239, 68, 68, 0.35);
       color: var(--accent);
       display: flex;
       align-items: center;
@@ -213,14 +214,14 @@
     .drop-zone:hover,
     .drop-zone.drag-over {
       border-color: var(--accent);
-      background: rgba(255, 173, 58, 0.04);
+      background: rgba(239, 68, 68, 0.04);
       transform: translateY(-2px);
     }
 
     .drop-zone.has-file {
-      border-color: var(--success);
+      border-color: var(--accent);
       border-style: solid;
-      background: var(--success-soft);
+      background: var(--accent-soft);
     }
 
     .dz-icon {
@@ -235,7 +236,7 @@
 
     .dz-icon.file1 {
       background: var(--accent-soft);
-      border: 1px solid rgba(255, 173, 58, 0.25);
+      border: 1px solid rgba(239, 68, 68, 0.25);
     }
 
     .dz-icon.file2 {
@@ -279,9 +280,9 @@
     }
 
     .dz-status.ok {
-      background: var(--success-soft);
-      border-color: rgba(90, 215, 161, 0.3);
-      color: var(--success);
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .dz-status.err {
@@ -403,14 +404,14 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #e79400);
-      color: #1a0e00;
-      box-shadow: 0 4px 16px rgba(255, 173, 58, 0.2);
+      background: linear-gradient(135deg, var(--accent), #dc2626);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
     }
 
     .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 24px rgba(255, 173, 58, 0.35);
+      box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35);
     }
 
     .btn-success {
@@ -525,7 +526,7 @@
     }
 
     .status-msg.ok {
-      color: var(--success);
+      color: var(--accent);
     }
 
     .status-msg.err {
@@ -651,10 +652,8 @@
     tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 0.1s;
-    }
-
-    tbody tr:hover {
-      background: rgba(255, 173, 58, 0.04);
+    }       tbody tr:hover {
+      background: rgba(239, 68, 68, 0.04);
     }
 
     tbody tr:last-child {
@@ -784,7 +783,7 @@
     .spinner {
       width: 28px;
       height: 28px;
-      border: 3px solid rgba(255, 173, 58, 0.2);
+      border: 3px solid rgba(239, 68, 68, 0.2);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
@@ -847,10 +846,10 @@
       --surface2: #1a1a1a;
       --surface3: #222222;
       --border: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(255, 173, 58, 0.5);
-      --accent: #ffad3a;
-      --accent-dim: #e79400;
-      --accent-soft: rgba(255, 173, 58, 0.13);
+      --border-focus: rgba(239, 68, 68, 0.58);
+      --accent: #ef4444;
+      --accent-dim: #dc2626;
+      --accent-soft: rgba(239, 68, 68, 0.13);
       --success: #63d6a3;
       --success-soft: rgba(99, 214, 163, 0.12);
       --warn: #f2c464;
@@ -922,7 +921,7 @@
 
     .nav-link:hover,
     .nav-link.active {
-      border-color: rgba(255, 173, 58, 0.35);
+      border-color: rgba(239, 68, 68, 0.35);
       color: var(--accent);
       background: var(--accent-soft);
     }
@@ -978,7 +977,7 @@
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      box-shadow: 0 8px 26px rgba(255, 173, 58, 0.2);
+      box-shadow: 0 8px 26px rgba(239, 68, 68, 0.2);
       flex-shrink: 0;
       overflow: hidden;
     }
@@ -992,7 +991,7 @@
 
     .header-badge {
       background: var(--accent-soft);
-      border: 1px solid rgba(255, 173, 58, 0.3);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       color: var(--accent);
     }
 
@@ -1102,9 +1101,9 @@
     }
 
     .drop-zone.has-file {
-      border-color: var(--success);
+      border-color: var(--accent);
       border-style: solid;
-      background: var(--success-soft);
+      background: var(--accent-soft);
     }
 
     .dz-icon {
@@ -1118,8 +1117,8 @@
     }
 
     .dz-icon.file1 {
-      background: rgba(255, 173, 58, 0.15);
-      border: 1px solid rgba(255, 173, 58, 0.3);
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       color: var(--accent);
     }
 
@@ -1401,7 +1400,7 @@
     }
 
     tbody tr:hover {
-      background: rgba(255, 173, 58, 0.055);
+      background: rgba(239, 68, 68, 0.055);
     }
 
     .processing-card {
@@ -1457,6 +1456,164 @@
       .quality-grid {
         grid-template-columns: 1fr;
       }
+    }
+
+    /* ── GUIDE BUTTON IN HEADER ─────────────────────────────────────── */
+    .guide-btn-header {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--surface2);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.25s;
+    }
+
+    .guide-btn-header:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    /* ── GUIDE OVERLAY ─────────────────────────────────────────────────── */
+    .guide-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: transparent;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .guide-overlay.active {
+      display: block;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .guide-highlight {
+      position: absolute;
+      border-radius: 12px;
+      box-shadow: 0 0 0 4px var(--accent), 0 0 30px rgba(239, 68, 68, 0.35);
+      transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      z-index: 10001;
+      opacity: 0;
+    }
+
+    .guide-highlight.show {
+      opacity: 1;
+      box-shadow: 0 0 0 4px var(--accent), 0 0 30px rgba(239, 68, 68, 0.35), 0 0 0 9999px rgba(0, 0, 0, 0.65);
+    }
+
+    .guide-arrow-svg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10002;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .guide-card {
+      position: fixed;
+      z-index: 10003;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      max-width: 340px;
+      width: calc(100vw - 2rem);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .guide-card.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .guide-card-title {
+      font-family: var(--sans);
+      font-size: 1rem;
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .guide-card-step {
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 999px;
+      padding: 0.15rem 0.5rem;
+      white-space: nowrap;
+    }
+
+    .guide-card-desc {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+      margin-bottom: 0.85rem;
+    }
+
+    .guide-card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .guide-card-actions > div {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .guide-btn {
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--body);
+    }
+
+    .guide-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .guide-btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .guide-btn.primary:hover {
+      opacity: 0.9;
+      border-color: transparent;
     }
 
     /* ── SORTABLE HEADERS ─────────────────────────────────────────────── */
@@ -1615,7 +1772,133 @@
     }
 
 
-  </style>
+  
+    /* ── AI Validation Status Bar ─────────────────────────────────────── */
+    .ai-status-bar {
+      margin: 0.75rem 0;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface2);
+      animation: fadeIn 0.25s ease;
+    }
+    .ai-status-bar.aborted {
+      border-color: rgba(241, 111, 111, 0.3);
+      background: var(--danger-soft);
+    }
+    .ai-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.55rem;
+    }
+    .ai-status-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .ai-status-msg {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .ai-status-msg.ok { color: var(--success); }
+    .ai-status-msg.err { color: var(--danger); }
+    .ai-status-badge {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: var(--accent);
+    }
+    .ai-status-badge.corrected {
+      background: var(--success-soft);
+      border-color: rgba(99, 214, 163, 0.25);
+      color: var(--success);
+    }
+    .ai-status-badge.done {
+      background: var(--success-soft);
+      border-color: rgba(99, 214, 163, 0.25);
+      color: var(--success);
+    }
+    .ai-status-badge.err {
+      background: var(--danger-soft);
+      border-color: rgba(241, 111, 111, 0.25);
+      color: var(--danger);
+    }
+    .ai-status-time {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .ai-status-track {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--surface3);
+      overflow: hidden;
+    }
+    .ai-status-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-dim));
+      transition: width 0.3s ease;
+    }
+    .ai-status-fill.ok {
+      background: linear-gradient(90deg, var(--success), #3ecf8e);
+    }
+    .ai-status-fill.err {
+      background: var(--danger);
+    }
+    .ai-status-btn {
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface3);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: var(--body);
+    }
+    .ai-status-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .ai-status-btn.cancel {
+      border-color: rgba(241, 111, 111, 0.35);
+      color: var(--danger);
+    }
+    .ai-status-btn.cancel:hover {
+      background: var(--danger-soft);
+      border-color: var(--danger);
+    }
+    .ai-status-btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #fff;
+      border-color: transparent;
+    }
+    .ai-status-btn.primary:hover {
+      opacity: 0.9;
+      border-color: transparent;
+    }
+    .ai-status-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+</style>
 </head>
 
 <body>
@@ -1625,6 +1908,10 @@
     <div class="processing-card">
       <div class="spinner"></div>
       <span id="processingMsg">Processing files…</span>
+      <div class="progress-track" id="progressTrack" style="display:none;width:100%;height:6px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:0.5rem;">
+        <div class="progress-fill" id="progressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-dim));border-radius:999px;transition:width 0.4s ease;"></div>
+      </div>
+      <span id="progressCounter" style="display:none;font-size:0.78rem;color:var(--text-muted);"></span>
     </div>
   </div>
 
@@ -1632,7 +1919,7 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div>
           <h1>Pre-Sales Sync</h1>
           <div class="header-sub">AutoEngage → Zoho Master Sheet </div>
@@ -1684,6 +1971,11 @@
             Formatter
           </a>
         </div>
+        <button class="guide-btn-header" onclick="startGuide()" aria-label="Show guide" title="How to use this page">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
         <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
           <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
             stroke-width="2">
@@ -1740,7 +2032,7 @@
           </div>
           <div class="dz-label">File 2 — Sessions</div>
           <div class="dz-sublabel">AutoEngage → Sessions export</div>
-          <div class="dz-cols">phone_number · created · start_time<br>summary · call_recording · sentiment_score</div>
+          <div class="dz-cols">phone_number · created · start_time<br>summary · history · call_recording · sentiment_score</div>
           <div class="dz-status" id="st2">Drag & drop or click to browse</div>
           <input type="file" id="f2" accept=".csv,.xlsx,.xls">
         </div>
@@ -1794,14 +2086,14 @@
           <button type="button" class="api-key-btn subtle" onclick="clearOpenRouterApiKey()">Clear</button>
           <span class="api-key-status" id="apiKeyStatus">Required</span>
         </div>
-        <button class="btn btn-success" id="btnCopy" disabled onclick="copyData()" style="display:none">
+        <button class="btn btn-primary" id="btnCopy" disabled onclick="copyData()" style="display:none">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Copy All Data
         </button>
-        <button class="btn btn-success" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
+        <button class="btn btn-primary" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
           <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
             <path
               d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
@@ -1819,6 +2111,24 @@
       </div>
     </section>
 
+
+      <!-- AI Validation Status Bar (shown during AI validation) -->
+      <div id="aiValidationStatus" class="ai-status-bar" style="display:none;">
+        <div class="ai-status-row">
+          <div class="ai-status-info">
+            <span class="ai-status-msg" id="aiStatusMsg">AI validating dispositions…</span>
+            <span class="ai-status-badge" id="aiStatusBatch"></span>
+            <span class="ai-status-badge corrected" id="aiStatusCorrected" style="display:none;"></span>
+            <span class="ai-status-time" id="aiStatusElapsed"></span>
+          </div>
+          <div class="ai-status-actions" id="aiStatusActions">
+            <button class="ai-status-btn cancel" id="aiStatusCancel" onclick="cancelAiValidation()">Cancel</button>
+          </div>
+        </div>
+        <div class="ai-status-track">
+          <div class="ai-status-fill" id="aiStatusFill" style="width:0%;"></div>
+        </div>
+      </div>
     <section class="results-panel">
       <div class="section-head">
         <div>
@@ -1911,7 +2221,7 @@
       <div class="table-wrapper" id="convertedTableWrapper" style="display:none; margin-top: 2rem;">
         <div class="table-header">
           <div class="table-title">Converted Leads Preview</div>
-          <button class="btn btn-success" id="btnCopyConverted" onclick="copyConvertedData()"
+          <button class="btn btn-primary" id="btnCopyConverted" onclick="copyConvertedData()"
             style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Converted</button>
         </div>
         <div class="table-scroll">
@@ -1936,7 +2246,7 @@
       <div class="table-wrapper" id="testDriveTableWrapper" style="display:none; margin-top: 2rem;">
         <div class="table-header">
           <div class="table-title">Test Drive Completed Preview</div>
-          <button class="btn btn-success" id="btnCopyTestDrive" onclick="copyTestDriveData()"
+          <button class="btn btn-primary" id="btnCopyTestDrive" onclick="copyTestDriveData()"
             style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Test Drive</button>
         </div>
         <div class="table-scroll">
@@ -1956,21 +2266,24 @@
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer>
-    <div style="display:flex;align-items:center;justify-content:center;gap:0.6rem;flex-wrap:wrap;">
-      <div
-        style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,#f5c97a,var(--accent));color:#15100a;font-family:var(--sans);font-weight:800;font-size:0.7rem;">
-        J</div>
-      <span style="color:var(--text-dim);font-weight:600;">AutoNage</span>
-      <span style="color:var(--border);">·</span>
-      <span>Pre-Sales Sync v2</span>
-      <span style="color:var(--border);">·</span>
-      <span>AutoEngage → Zoho Master Sheet</span>
-      <span style="color:var(--border);">·</span>
-      <span>No backend · No install</span>
+  <!-- Guide Overlay -->
+  <div class="guide-overlay" id="guideOverlay">
+    <div class="guide-highlight" id="guideHighlight"></div>
+    <svg class="guide-arrow-svg" id="guideArrowSvg"></svg>
+    <div class="guide-card" id="guideCard">
+      <div class="guide-card-title" id="guideCardTitle"></div>
+      <div class="guide-card-desc" id="guideCardDesc"></div>
+      <div class="guide-card-actions">
+        <div>
+          <button class="guide-btn" onclick="prevGuideStep()" id="guidePrevBtn">← Prev</button>
+          <button class="guide-btn" onclick="nextGuideStep()" id="guideNextBtn">Next →</button>
+        </div>
+        <button class="guide-btn primary" onclick="exitGuide()">Exit <span style="font-size:0.65rem;opacity:0.6;">(Esc)</span></button>
+      </div>
     </div>
-  </footer>
+  </div>
+
+  <footer>AutoNage - Pre-Sales Sync v2 - AutoEngage to Zoho Master Sheet</footer>
 
   <script>
     // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -1979,6 +2292,15 @@
     let processedData = [];
     let qualityReport = null;
     let isProcessing = false;
+    let aiValidationController = null;
+
+    function cancelAiValidation() {
+      if (aiValidationController) {
+        aiValidationController.abort();
+        aiValidationController = null;
+      }
+    }
+
 
     // ─── PRIORITY TABLE ───────────────────────────────────────────────────────────
     const BUSINESS_CONFIG = {
@@ -2028,6 +2350,7 @@
           { label: 'Recording', candidates: ['call_recording', 'recording', 'recording_url', 'call_url', 'audio_url'] },
           { label: 'Sentiment', candidates: ['sentiment_score', 'sentiment', 'score'] },
           { label: 'Channel', candidates: ['channel', 'call_channel', 'communication_channel'] },
+          { label: 'History', candidates: ['history', 'session_history', 'transcript', 'conversation_history', 'chat_history', 'messages'] },
           { label: 'Duration', candidates: ['duration', 'call_duration', 'recording_duration', 'talk_time'] },
         ],
       },
@@ -2191,6 +2514,33 @@
     }
 
 
+    /**
+     * Sanitize user-provided text before inserting into an LLM prompt.
+     * Prevents prompt injection by:
+     * 1. Replacing double quotes with single quotes to prevent string boundary breaking
+     * 2. Stripping control characters (except newlines/tabs)
+     * 3. Removing known prompt injection keywords
+     * 4. Wrapping in clearly marked data boundaries
+     */
+    function sanitizeForPrompt(text) {
+      if (!text) return '';
+      var s = String(text);
+      // Strip control characters except \n, \t, \r
+      s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+      // Replace double quotes with single quotes to prevent JSON/string boundary breaking
+      s = s.replace(/"/g, "'");
+      // Remove common prompt injection / jailbreak patterns (case-insensitive)
+      s = s.replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
+      s = s.replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
+      s = s.replace(/you\s+are\s+(now|not\s+required\s+to)/gi, '[REDACTED]');
+      s = s.replace(/system\s+(prompt|message|instruction)/gi, '[REDACTED]');
+      s = s.replace(/\bDAN\b|do\s+anything\s+now/gi, '[REDACTED]');
+      s = s.replace(/output\s+(format|as|in)\s+json/i, '[REDACTED]');
+      // Limit length to prevent token flooding
+      if (s.length > 5000) s = s.substring(0, 5000) + '...[truncated]';
+      return s;
+    }
+
     function hashStr(str) {
       var h = 0;
       for (var i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
@@ -2245,9 +2595,6 @@
 
     function handleDealerChange() {
       var cfg = getActiveDealerConfig();
-      document.getElementById('leadCols').textContent = cfg.summarySource === 'lead_summary'
-        ? 'person_name · phone_number · lead_summary · campaign_id · disposition · disposition_detail · updated'
-        : 'person_name · phone_number · campaign_id · disposition · disposition_detail · updated';
       setStatus('globalStatus', cfg.name + ' selected.', '');
       renderTableHeader();
       if (processedData.length) renderTable(processedData);
@@ -2631,8 +2978,7 @@
       const sessionSelectionCounts = { recording: 0, summary: 0, fallback: 0 };
       Object.values(sessionMap).forEach(session => {
         const reason = session.selectionReason || 'fallback';
-        if (sessionSelectionCounts[reason] === undefined) sessionSelectionCounts.fallback += 1;
-        else sessionSelectionCounts[reason] += 1;
+        sessionSelectionCounts[reason] = (sessionSelectionCounts[reason] || 0) + 1;
       });
       const missingFile1Required = getMissingColumnGroups(rows1, validation.file1RequiredGroups);
       const missingFile1Recommended = getMissingColumnGroups(rows1, validation.file1RecommendedGroups);
@@ -2810,6 +3156,7 @@
             }
           }
           if (!best) best = sessions[sessions.length - 1];
+          var histRaw = detectHistory(best);
 
           sessionMap[phone] = {
             selectionReason,
@@ -2822,6 +3169,7 @@
             duration: detectDuration(best),
             session_id: detectSessionId(best),
             session_disposition: detectSessionDisposition(best),
+            history_text: formatHistoryForPrompt(histRaw),
           };
         }
 
@@ -2856,8 +3204,10 @@
           let outcome;
           if (CONNECTED_SET.has(dispLower)) {
             outcome = 'Connected';
-          } else if (NOT_CONNECTED_SET.has(dispLower) || DISPOSITION_PRIORITY.hasOwnProperty(dispLower)) {
+          } else if (NOT_CONNECTED_SET.has(dispLower)) {
             outcome = 'Not Connected';
+          } else if (disp && Object.keys(ALL_DISPOSITIONS).some(function(k) { return k.toLowerCase() === dispLower; })) {
+            outcome = 'Connected';
           } else {
             outcome = 'Unknown';
             console.warn(`[Pre-Sales Sync] Unknown disposition "${disp}" for phone ${phone} — mapped to "Unknown". Check for typos or add to DISPOSITION_PRIORITY / CONNECTED_SET / NOT_CONNECTED_SET.`);
@@ -2877,7 +3227,7 @@
           const seating = deriveSeating(seatingRaw, model);
 
           const sess = sessionMap[phone] || {};
-          const isStellantis = getActiveDealerConfig().name === 'Stellantis WA';
+          const isStellantis = document.getElementById('dealerSelect').value === 'stellantis_wa';
 
           const leadId = startId > 0 ? `L-${startId + output.length}` : '';
           const formulaRow = startId > 0 ? startId + output.length : 2 + output.length;
@@ -2908,6 +3258,7 @@
             seating,
             exclusion_flag: priority >= TERMINAL_THRESHOLD ? 'YES' : '',
             session_summary: sess.summary || '',
+            session_history: sess.history_text || '',
             conversion: dispositionText.includes('converted') ? 'Yes' : '',
             channel: sess.channel || '',
             call_duration: sess.duration || '',
@@ -2951,9 +3302,8 @@
     async function validateDispositionsWithLLM(force) {
       if (!processedData || processedData.length === 0) return;
 
-      // Reset button to default state at start of each run
-      document.getElementById('btnValidateAI').textContent = 'Validate with AI';
-      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(); };
+      // Reset button text
+      document.getElementById('btnValidateAI').textContent = 'Validating...';
 
       const apiKey = getApiKey();
       if (!apiKey) {
@@ -2965,134 +3315,174 @@
       const dispKeys = Object.keys(ALL_DISPOSITIONS);
       const dispDefs = dispKeys.map(k => `- "${k}": ${ALL_DISPOSITIONS[k]}`).join('\n');
 
-      // Filter rows that have a meaningful session_summary AND any disposition_detail
+      // Filter rows that have a meaningful session_summary OR session_history AND any disposition_detail
       const candidates = [];
       for (var i = 0; i < processedData.length; i++) {
         var r = processedData[i];
         var summ = (r.session_summary || '').trim();
+        var hist = (r.session_history || '').trim();
         var disp = (r.disposition_detail || '').trim();
-        if (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.' && disp) {
-          candidates.push({ index: i, summary: summ, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
+        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
+        if (hasText && disp) {
+          candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
         }
       }
 
       if (candidates.length === 0) {
         setStatus('globalStatus', 'No rows with session summaries to validate.', 'warn');
         return;
-      }
-
-      showOverlay('AI validating ' + candidates.length + ' dispositions…');
+      }          // Show inline AI status bar instead of blocking overlay
+      showAiStatusBar(candidates.length);
 
       var corrected = 0;
-      var BATCH_SIZE = 20;
+      var BATCH_SIZE = 10;
       var correctedResults = {};
 
       // Check cache first — build a combined hash
-      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.currentDisp + '||' + c.model + '||' + c.outcome + '||' + c.callDuration + '||' + c.leadSource; }).join('|');
-      var cacheKey = 'disp-validate-v2-' + hashStr(cacheInput);
+      var cacheInput = candidates.map(function(c) { return c.summary + '||' + c.history + '||' + c.currentDisp + '||' + c.model + '||' + c.outcome + '||' + c.callDuration + '||' + c.leadSource; }).join('|');
+      var cacheKey = 'disp-validate-v3-history-' + hashStr(cacheInput);
       var cached = force ? null : localStorage.getItem(cacheKey);
+      var cachedParsed = null;
       if (cached) {
         try {
-          var parsed = JSON.parse(cached);
-          for (var ci = 0; ci < parsed.length; ci++) {
-            var item = parsed[ci];
+          cachedParsed = JSON.parse(cached);
+        } catch(e) { cached = null; }
+      }
+
+      if (!cached) {
+        var runnerOpts = {
+          items: candidates,
+          batchSize: BATCH_SIZE,
+          maxConcurrent: 2,
+          minGapMs: 300,
+          maxRetries: 3,
+          requestTimeoutMs: 60000,
+          cachedData: null,
+          getCacheKey: null,
+          buildPrompt: function(batch, batchIndex) {
+            var dispDefs = Object.keys(ALL_DISPOSITIONS).map(function(k) { return '- "' + k + '": ' + ALL_DISPOSITIONS[k]; }).join('\n');
+            var promptLines = batch.map(function(c, idx) {
+              var safeSummary = sanitizeForPrompt(c.summary);
+              var safeHistory = sanitizeForPrompt(c.history);
+              var safeDisp = sanitizeForPrompt(c.currentDisp);
+              var safeModel = sanitizeForPrompt(c.model);
+              var safeOutcome = sanitizeForPrompt(c.outcome);
+              var safeDuration = sanitizeForPrompt(c.callDuration);
+              var safeSource = sanitizeForPrompt(c.leadSource);
+              var line = 'Row ' + idx + ':';
+              if (safeSummary) line += '\n--- BEGIN SUMMARY ---\n' + safeSummary + '\n--- END SUMMARY ---';
+              if (safeHistory) line += '\n--- BEGIN CONVERSATION HISTORY ---\n' + safeHistory + '\n--- END CONVERSATION HISTORY ---';
+              line += '\nCurrent Disposition: "' + safeDisp + '"';
+              if (safeModel) line += '\nVehicle Model: "' + safeModel + '"';
+              if (safeOutcome) line += '\nCall Outcome: "' + safeOutcome + '"';
+              if (safeDuration) line += '\nCall Duration: "' + safeDuration + '"';
+              if (safeSource) line += '\nLead Source: "' + safeSource + '"';
+              return line;
+            }).join('\n\n---\n\n');
+
+            var systemMsg = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is also provided — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.';
+
+            var examples = 'Example 1:\nTranscript: "Customer said they would think about it and call back next week"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will decide later, exploring options"\nReason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n' +
+              'Example 2:\nTranscript: "Customer asked about financing options and EMI plans"\nCurrent Disposition: "General Inquiry"\n→ isCorrect: false, correctedDisposition: "Enquired for Pricing"\nReason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n' +
+              'Example 3:\nTranscript: "Customer said the vehicle is too expensive and they will look at other brands"\nCurrent Disposition: "Rejected"\n→ isCorrect: false, correctedDisposition: "Comparing with another brand"\nReason: Still in market, just price-shopping — not a hard rejection.\n\n' +
+              'Example 4:\nTranscript: "Call dropped mid-conversation while discussing test drive"\nCurrent Disposition: "Follow Up Required"\n→ isCorrect: false, correctedDisposition: "Call Disconnected"\nReason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n' +
+              'Example 5:\nTranscript: "Customer said they already own this model and do not need another"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "No buying intent"\nReason: No buying intent is for customers who do not want to purchase a car at all.\n\n' +
+              'Example 6:\nTranscript: "Customer asked to be called back after 5pm"\nCurrent Disposition: "Call Disconnected"\n→ isCorrect: false, correctedDisposition: "Requested Callback"\nReason: Customer explicitly requested a callback — not a disconnect.\n\n' +
+              'Example 7:\nTranscript: "Customer kept asking about the vehicle but would not give their details"\nCurrent Disposition: "No buying intent"\n→ isCorrect: false, correctedDisposition: "Just Exploring"\nReason: Just Exploring means they want info without buying intent.\n\n' +
+              'Example 8:\nTranscript: "Customer said they already booked a test drive at another dealership"\nCurrent Disposition: "Converted"\n→ isCorrect: false, correctedDisposition: "Lost to Competition"\nReason: Converted elsewhere = competitive loss, not a campaign conversion.\n\n' +
+              'Example 9:\nTranscript: "The customer declined the call, stating they were busy."\nCurrent Disposition: "Rejected"\n→ isCorrect: false, correctedDisposition: "Customer Busy"\nReason: "Rejected" means explicit refusal of the offer. Saying "I am busy" means the customer was not available — they did not reject the product.';
+
+            var userPrompt = 'VALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n' + examples + '\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+
+            return {
+              system: systemMsg,
+              user: userPrompt,
+              temperature: 0.3,
+              maxTokens: 3000
+            };
+          },
+          parseResponse: function(text, batch, batchIndex) {
+            var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+            var match = cleaned.match(/\[[\s\S]*\]/);
+            if (match) {
+              var parsed = JSON.parse(match[0]);
+              // Assign rowIndex relative to the batch
+              return parsed.map(function(item, idx) {
+                return {
+                  rowIndex: (batchIndex * BATCH_SIZE) + idx,
+                  isCorrect: item.isCorrect,
+                  correctedDisposition: item.correctedDisposition,
+                  confidence: item.confidence,
+                  reason: item.reason
+                };
+              });
+            }
+            return [];
+          },
+          buildHeaders: function() {
+            var endpoint = getApiEndpoint();
+            var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+            var h = { 'Content-Type': 'application/json' };
+            if (isProxy) {
+              var handshake = (window.JEJO_CONFIG && window.JEJO_CONFIG.proxyHandshakeToken)
+                ? window.JEJO_CONFIG.proxyHandshakeToken
+                : 'jejo-presales-secure-handshake';
+              h['X-Handshake-Token'] = handshake;
+            } else {
+              h['Authorization'] = 'Bearer ' + getApiKey();
+              h['HTTP-Referer'] = window.location.origin;
+              h['X-Title'] = 'AutoNage Pre-Sales Sync';
+            }
+            return h;
+          },
+          onProgress: function(done, total, message, pct) {
+            updateAiStatusBar(done, total, message, pct, correctedResults);
+          },
+          signal: aiValidationController ? aiValidationController.signal : null
+        };
+
+        var runnerResult = await runOpenRouterBatches(runnerOpts);
+        
+        // Check if aborted — don't apply results if user cancelled
+        if (runnerResult.aborted) {
+          hideAiStatusBar(correctedResults);
+          return;
+        }
+        
+        corrected = runnerResult.correctedCount;
+
+        // Build cache array from runner results and candidates
+        var cacheArray = [];
+        for (var idx = 0; idx < candidates.length; idx++) {
+          var c = candidates[idx];
+          var decision = runnerResult.results.get(idx);
+          if (decision && decision.isCorrect === false && decision.correctedDisposition) {
+            cacheArray.push({ rowIndex: idx, isCorrect: false, correctedDisposition: decision.correctedDisposition });
+          } else {
+            cacheArray.push({ rowIndex: idx, isCorrect: true, correctedDisposition: null });
+          }
+        }
+        try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
+
+        // Apply corrections from runner results
+        for (var ri = 0; ri < candidates.length; ri++) {
+          var dec = runnerResult.results.get(ri);
+          if (dec && dec.isCorrect === false && dec.correctedDisposition) {
+            correctedResults[ri] = dec.correctedDisposition;
+          }
+        }
+      } else {
+        // Cache hit — parse cached data
+        try {
+          for (var ci = 0; ci < cachedParsed.length; ci++) {
+            var item = cachedParsed[ci];
             if (item.isCorrect === false && item.correctedDisposition) {
               correctedResults[item.rowIndex] = item.correctedDisposition;
             }
           }
           corrected = Object.keys(correctedResults).length;
-        } catch(e) { cached = null; }
+        } catch(e) {}
       }
-
-      if (!cached) {
-        for (var batchStart = 0; batchStart < candidates.length; batchStart += BATCH_SIZE) {
-          var batch = candidates.slice(batchStart, batchStart + BATCH_SIZE);
-          var promptLines = batch.map(function(c, idx) {
-            var line = 'Row ' + idx + ': Session Transcript="' + c.summary + '" | Current Disposition="' + c.currentDisp + '"';
-            if (c.model) line += ' | Vehicle Model="' + c.model + '"';
-            if (c.outcome) line += ' | Call Outcome="' + c.outcome + '"';
-            if (c.callDuration) line += ' | Call Duration="' + c.callDuration + '"';
-            if (c.leadSource) line += ' | Lead Source="' + c.leadSource + '"';
-            return line;
-          }).join('\n\n');
-
-          var prompt = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call "Session Transcript". Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is provided for each row — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.\n\nVALID DISPOSITIONS:\n' + dispDefs + '\n\nEXAMPLES (learn from these patterns):\n- Transcript: "Customer said they would think about it and call back next week" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "Will decide later, exploring options". Reason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n- Transcript: "Customer asked about financing options and EMI plans" | Current: "General Inquiry" → isCorrect: false, correctedDisposition: "Enquired for Pricing". Reason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n- Transcript: "Customer said the vehicle is too expensive and they will look at other brands" | Current: "Rejected" → isCorrect: false, correctedDisposition: "Comparing with another brand". Reason: Still in market, just price-shopping — not a hard rejection.\n\n- Transcript: "Call dropped mid-conversation while discussing test drive" | Current: "Follow Up Required" → isCorrect: false, correctedDisposition: "Call Disconnected". Reason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n- Transcript: "Customer said they already own this model and do not need another" | Current: "Not Interested" → isCorrect: false, correctedDisposition: "No buying intent". Reason: No buying intent is for customers who do not want to purchase a car at all.\n\n- Transcript: "Customer asked to be called back after 5pm" | Current: "Call Disconnected" → isCorrect: false, correctedDisposition: "Requested Callback". Reason: Customer explicitly requested a callback — not a disconnect.\n\n- Transcript: "Customer kept asking about the vehicle but would not give their details" | Current: "No buying intent" → isCorrect: false, correctedDisposition: "Just Exploring". Reason: Just Exploring means they want info without buying intent.\n\n- Transcript: "Customer said they already booked a test drive at another dealership" | Current: "Converted" → isCorrect: false, correctedDisposition: "Lost to Competition". Reason: Converted elsewhere = competitive loss, not a campaign conversion.\n\n- Transcript: "The customer declined the call, stating they were busy." | Current: "Rejected" → isCorrect: false, correctedDisposition: "Customer Busy". Reason: "Rejected" means explicit refusal of the offer. Saying "I am busy" means the customer was not available — they did not reject the product.\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
-
-          var result = null;
-          try {
-            var endpoint = getApiEndpoint();
-            var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
-            var headers = { 'Content-Type': 'application/json' };
-            if (isProxy) {
-              var handshake = (window.JEJO_CONFIG && window.JEJO_CONFIG.proxyHandshakeToken) 
-                ? window.JEJO_CONFIG.proxyHandshakeToken 
-                : 'jejo-presales-secure-handshake';
-              headers['X-Handshake-Token'] = handshake;
-            } else {
-              headers['Authorization'] = 'Bearer ' + apiKey;
-              headers['HTTP-Referer'] = window.location.origin;
-              headers['X-Title'] = 'AutoNage Pre-Sales Sync';
-            }
-
-            var response = await fetch(endpoint, {
-              method: 'POST',
-              headers: headers,
-              body: JSON.stringify({
-                model: OPENROUTER_MODEL,
-                messages: [
-                  { role: 'system', content: 'You are a strict disposition auditor for an automotive campaign. Validate each row critically and respond ONLY with the requested JSON array. Do NOT default to "correct".' },
-                  { role: 'user', content: prompt }
-                ],
-                temperature: 0.3,
-                max_tokens: 3000
-              })
-            });
-            if (response.ok) {
-              var data = await response.json();
-              var text = data.choices[0].message.content;
-              var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-              var match = cleaned.match(/\[[\s\S]*\]/);
-              if (match) {
-                result = JSON.parse(match[0]);
-              }
-            }
-          } catch(e) {
-            console.warn('Batch validate failed:', e);
-          }
-
-          if (result && result.length === batch.length) {
-            for (var j = 0; j < result.length; j++) {
-              var candidate = batch[j];
-              var decision = result[j];
-              if (decision.isCorrect === false && decision.correctedDisposition) {
-                correctedResults[candidate.index] = decision.correctedDisposition;
-              }
-            }
-          }
-
-          // Update overlay
-          var done = Math.min(batchStart + BATCH_SIZE, candidates.length);
-          showOverlay('AI validating… ' + done + '/' + candidates.length);
-
-          // Delay between batches
-          if (batchStart + BATCH_SIZE < candidates.length) {
-            await new Promise(function(resolve) { setTimeout(resolve, 2000); });
-          }
-        }
-
-        // Cache results
-        var cacheArray = [];
-        for (var idx = 0; idx < candidates.length; idx++) {
-          var c = candidates[idx];
-          if (correctedResults[c.index] !== undefined) {
-            cacheArray.push({ rowIndex: c.index, isCorrect: false, correctedDisposition: correctedResults[c.index] });
-          } else {
-            cacheArray.push({ rowIndex: c.index, isCorrect: true, correctedDisposition: null });
-          }
-        }
-        try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
-      }
-
       // Apply corrections + mark validation status
       var correctedIndices = Object.keys(correctedResults);
       for (var k = 0; k < correctedIndices.length; k++) {
@@ -3109,8 +3499,7 @@
         }
       }
 
-      hideOverlay();
-
+      hideAiStatusBar(correctedResults);
       if (correctedIndices.length > 0) {
         renderTable(processedData);
         setStatus('globalStatus', 'AI validated ' + candidates.length + ' rows, corrected ' + correctedIndices.length + ' dispositions. Check Manual_Disposition_detail column.', 'ok');
@@ -3358,7 +3747,7 @@
     }
 
     function esc(str) {
-      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // ─── RENDER STATS ─────────────────────────────────────────────────────────────
@@ -3545,6 +3934,8 @@
       document.getElementById('btnCopy').style.display = 'none';
       document.getElementById('btnExport').style.display = 'none';
       document.getElementById('btnValidateAI').style.display = 'none';
+      document.getElementById('btnValidateAI').textContent = 'Validate with AI';
+      document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(); };
       document.getElementById('btnReset').style.display = 'none';
       document.getElementById('btnCopyQuality').textContent = 'Copy Report';
       document.getElementById('btnProcess').disabled = true;
@@ -3561,15 +3952,156 @@
       el.className = 'status-msg' + (type ? ' ' + type : '');
     }
 
-    function showOverlay(msg) {
+    function showOverlay(msg, total) {
       isProcessing = true;
       document.getElementById('processingMsg').textContent = msg;
       document.getElementById('processingOverlay').style.display = 'flex';
+      var track = document.getElementById('progressTrack');
+      var counter = document.getElementById('progressCounter');
+      if (typeof total !== 'undefined' && total > 0) {
+        track.style.display = 'block';
+        counter.style.display = 'inline';
+        counter.textContent = '0/' + total;
+        document.getElementById('progressFill').style.width = '0%';
+      } else {
+        track.style.display = 'none';
+        counter.style.display = 'none';
+      }
     }
 
     function hideOverlay() {
       isProcessing = false;
       document.getElementById('processingOverlay').style.display = 'none';
+    }
+
+    // ── AI Validation Status Bar (non-blocking) ──────────────────────────
+    let _aiStatusStartTime = 0;
+    let _aiStatusTimer = null;
+    let _aiStatusActive = false;
+
+    function showAiStatusBar(total) {
+      if (_aiStatusTimer) { clearInterval(_aiStatusTimer); _aiStatusTimer = null; }
+      _aiStatusActive = true;
+      _aiStatusStartTime = Date.now();
+      var bar = document.getElementById('aiValidationStatus');
+      var msg = document.getElementById('aiStatusMsg');
+      var batch = document.getElementById('aiStatusBatch');
+      var corrected = document.getElementById('aiStatusCorrected');
+      var elapsed = document.getElementById('aiStatusElapsed');
+      var fill = document.getElementById('aiStatusFill');
+      var actions = document.getElementById('aiStatusActions');
+      
+      bar.style.display = 'block';
+      bar.className = 'ai-status-bar';
+      msg.textContent = 'AI validating dispositions…';
+      msg.className = 'ai-status-msg';
+      batch.textContent = '0/' + total;
+      batch.className = 'ai-status-badge';
+      corrected.style.display = 'none';
+      fill.style.width = '0%';
+      fill.className = 'ai-status-fill';
+      
+      // Reset actions to just the cancel button
+      actions.innerHTML = '<button class="ai-status-btn cancel" id="aiStatusCancel" onclick="cancelAiValidation()">Cancel</button>';
+      
+      // Start elapsed timer
+      if (_aiStatusTimer) clearInterval(_aiStatusTimer);
+      _aiStatusTimer = setInterval(function() {
+        var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+        var min = Math.floor(secs / 60);
+        var s = secs % 60;
+        elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+      }, 1000);
+      
+      // Create abort controller for this run
+      aiValidationController = new AbortController();
+    }
+
+    function updateAiStatusBar(done, total, message, pct, correctedResults) {
+      var batch = document.getElementById('aiStatusBatch');
+      var fill = document.getElementById('aiStatusFill');
+      var msg = document.getElementById('aiStatusMsg');
+      var corrected = document.getElementById('aiStatusCorrected');
+      
+      if (batch) batch.textContent = done + '/' + total;
+      if (fill) fill.style.width = pct + '%';
+      if (msg) msg.textContent = message || 'AI validating…';
+      
+      // Show live corrected count
+      if (correctedResults) {
+        var count = Object.keys(correctedResults).length;
+        if (count > 0) {
+          corrected.style.display = 'inline';
+          corrected.textContent = count + ' corrected';
+        }
+      }
+    }
+
+    function hideAiStatusBar(correctedResults) {
+      if (_aiStatusTimer) {
+        clearInterval(_aiStatusTimer);
+        _aiStatusTimer = null;
+      if (!_aiStatusActive) return;
+      _aiStatusActive = false;
+      }
+      
+      if (aiValidationController && aiValidationController.signal.aborted) {
+        // Show cancelled state
+        var bar = document.getElementById('aiValidationStatus');
+        var msg = document.getElementById('aiStatusMsg');
+        var batch = document.getElementById('aiStatusBatch');
+        var fill = document.getElementById('aiStatusFill');
+        var actions = document.getElementById('aiStatusActions');
+        
+        bar.className = 'ai-status-bar aborted';
+        msg.textContent = 'AI validation cancelled.';
+        msg.className = 'ai-status-msg err';
+        fill.className = 'ai-status-fill err';
+        actions.innerHTML = '<button class="ai-status-btn" onclick="document.getElementById(\'aiValidationStatus\').style.display=\'none\'">Dismiss</button>' +
+          '<button class="ai-status-btn primary" onclick="validateDispositionsWithLLM()">↻ Run again</button>';
+        aiValidationController = null;
+        return;
+      }
+      
+      var correctedCount = correctedResults ? Object.keys(correctedResults).length : 0;
+      var totalDone = document.getElementById('aiStatusBatch');
+      var totalText = totalDone ? totalDone.textContent : 'done';
+      
+      var bar = document.getElementById('aiValidationStatus');
+      var msg = document.getElementById('aiStatusMsg');
+      var batch = document.getElementById('aiStatusBatch');
+      var fill = document.getElementById('aiStatusFill');
+      var elapsed = document.getElementById('aiStatusElapsed');
+      var actions = document.getElementById('aiStatusActions');
+      var corrected = document.getElementById('aiStatusCorrected');
+      
+      bar.className = 'ai-status-bar';
+      msg.textContent = correctedCount > 0
+        ? 'AI validation complete — ' + correctedCount + ' disposition(s) corrected. Review the Manual_Disposition_detail column.'
+        : 'AI validation complete — all dispositions appear correct.';
+      msg.className = 'ai-status-msg ok';
+      batch.textContent = totalText;
+      batch.className = 'ai-status-badge done';
+      if (corrected) {
+        corrected.style.display = correctedCount > 0 ? 'inline' : 'none';
+        if (correctedCount > 0) corrected.textContent = correctedCount + ' corrected';
+      }
+      fill.className = 'ai-status-fill ok';
+      fill.style.width = '100%';
+      
+      // Update elapsed one last time
+      if (elapsed) {
+        var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+        var min = Math.floor(secs / 60);
+        var s = secs % 60;
+        elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+      }
+      
+      // Change actions: dismiss + re-run
+      actions.innerHTML = '<button class="ai-status-btn" onclick="document.getElementById(\'aiValidationStatus\').style.display=\'none\'">Dismiss</button>' +
+        '<button class="ai-status-btn primary" onclick="validateDispositionsWithLLM(true)">↻ Re-run AI</button>';
+      
+      aiValidationController = null;
     }
 
     function tick() { return new Promise(r => setTimeout(r, 20)); }
@@ -3696,6 +4228,230 @@
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     renderTableHeader();
     syncApiKeyControl();
+
+    // ─── INTERACTIVE DOODLE GUIDE ────────────────────────────────────────────
+    function cleanGuideArrow(sx, sy, ex, ey) {
+      // Clean bezier curve with a slight arc - no randomness
+      var cx = (sx + ex) / 2;
+      var cy = (sy + ey) / 2 - 20;
+      return 'M' + sx + ',' + sy + ' Q' + cx + ',' + cy + ' ' + ex + ',' + ey;
+    }
+
+    const guideSteps = [
+      {
+        selector: '#dz1',
+        title: 'Upload Audience & Leads',
+        desc: 'Drop your AutoEngage Audience & Leads export here. This file contains lead info, dispositions, model preferences, and seating capacity.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#dz2',
+        title: 'Upload Sessions',
+        desc: 'Drop the Sessions export here. It provides call summaries, recording URLs, sentiment scores, and channel info per phone number.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#btnProcess',
+        title: 'Process Both Files',
+        desc: 'Once both files are uploaded, click this to merge them into the Zoho Master Sheet format with business rules applied automatically.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#dealerSelect',
+        title: 'Choose Dealership',
+        desc: 'Select your dealership from this dropdown. It controls the output column layout, business rules, and summary source column.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#btnCopy',
+        title: 'Copy All Data',
+        desc: 'After processing, click here to copy the entire output table to clipboard. Then paste directly into your Zoho Master Sheet.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#btnExport',
+        title: 'Export Excel',
+        desc: 'Prefer a file? This exports the processed data as a .xlsx file with all columns and formatting ready to download.',
+        arrow: cleanGuideArrow
+      },
+      {
+        selector: '#btnReset',
+        title: 'Reset',
+        desc: 'Clears all uploaded files, processed data, stats, and tables so you can start a fresh batch from scratch.',
+        arrow: cleanGuideArrow
+      }
+    ];
+
+    var guideCurrentStep = 0;
+    var guideActive = false;
+    var guideUnhiddenEl = null;      // element currently made visible by guide
+    var guideUnhiddenOrig = '';      // its original display value
+
+    function guideRestoreUnhidden() {
+      if (guideUnhiddenEl) {
+        guideUnhiddenEl.style.display = guideUnhiddenOrig;
+        guideUnhiddenEl.style.visibility = '';
+        guideUnhiddenEl = null;
+        guideUnhiddenOrig = '';
+      }
+    }
+
+    function startGuide() {
+      guideCurrentStep = 0;
+      guideActive = true;
+      guideUnhiddenEl = null;
+      guideUnhiddenOrig = '';
+      document.getElementById('guideOverlay').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      updateGuideStep();
+    }
+
+    function exitGuide() {
+      guideRestoreUnhidden();
+      guideActive = false;
+      document.getElementById('guideOverlay').classList.remove('active');
+      document.getElementById('guideHighlight').classList.remove('show');
+      document.getElementById('guideCard').classList.remove('show');
+      document.getElementById('guideArrowSvg').innerHTML = '';
+      document.body.style.overflow = '';
+    }
+
+    function nextGuideStep() {
+      if (guideCurrentStep < guideSteps.length - 1) {
+        guideCurrentStep++;
+        updateGuideStep();
+      }
+    }
+
+    function prevGuideStep() {
+      if (guideCurrentStep > 0) {
+        guideCurrentStep--;
+        updateGuideStep();
+      }
+    }
+
+    function updateGuideStep() {
+      var step = guideSteps[guideCurrentStep];
+      var el = document.querySelector(step.selector);
+      if (!el) return;
+
+      // Restore previously unhidden element only if it's not the current one
+      if (guideUnhiddenEl && guideUnhiddenEl !== el) {
+        guideRestoreUnhidden();
+      }
+
+      // If element is hidden, make it VISIBLE so user can see it
+      if (el.style.display === 'none' || getComputedStyle(el).display === 'none') {
+        guideUnhiddenEl = el;
+        guideUnhiddenOrig = el.style.display;
+        el.style.display = 'inline-flex';
+        el.style.visibility = 'visible';
+      }
+
+      // Position highlight around target
+      var hl = document.getElementById('guideHighlight');
+      var rect = el.getBoundingClientRect();
+      var pad = 6;
+      hl.style.left = (rect.left - pad) + 'px';
+      hl.style.top = (rect.top - pad) + 'px';
+      hl.style.width = (rect.width + pad * 2) + 'px';
+      hl.style.height = (rect.height + pad * 2) + 'px';
+      hl.style.borderRadius = Math.max(8, getComputedStyle(el).borderRadius ? parseInt(getComputedStyle(el).borderRadius) : 8) + 'px';
+      hl.classList.add('show');
+
+      // Update card content
+      document.getElementById('guideCardTitle').innerHTML =
+        esc(step.title) + ' <span class="guide-card-step">' + (guideCurrentStep + 1) + ' of ' + guideSteps.length + '</span>';
+      document.getElementById('guideCardDesc').textContent = step.desc;
+
+      // Enable/disable prev/next buttons
+      document.getElementById('guidePrevBtn').style.opacity = guideCurrentStep === 0 ? '0.35' : '1';
+      document.getElementById('guideNextBtn').style.opacity = guideCurrentStep === guideSteps.length - 1 ? '0.35' : '1';
+
+      // Position the card below the target element with a gap
+      var card = document.getElementById('guideCard');
+      var cardW = Math.min(340, window.innerWidth - 32);
+      var targetCenterX = rect.left + rect.width / 2;
+      var cardLeft = Math.max(16, Math.min(window.innerWidth - cardW - 16, targetCenterX - cardW / 2));
+      var cardTop = rect.bottom + 20;
+
+      // If card would go off the bottom, place it above
+      var cardH = 200;
+      if (cardTop + cardH > window.innerHeight - 20) {
+        cardTop = Math.max(16, rect.top - cardH - 20);
+      }
+
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+      card.style.maxWidth = cardW + 'px';
+      card.classList.add('show');
+
+      // Draw doodle arrow from card to target
+      var svg = document.getElementById('guideArrowSvg');
+      var cardCenterX = cardLeft + cardW / 2;
+      var cardEdgeY, targetEdgeX, targetEdgeY;
+      var arrowFromX, arrowFromY;
+
+      if (cardTop > rect.bottom) {
+        // Card is below target — arrow goes from card top to target bottom
+        cardEdgeY = cardTop;
+        arrowFromX = cardCenterX + (Math.random() - 0.5) * 40;
+        arrowFromY = cardEdgeY;
+        targetEdgeX = targetCenterX + (Math.random() - 0.5) * 30;
+        targetEdgeY = rect.bottom;
+      } else {
+        // Card is above target — arrow goes from card bottom to target top
+        cardEdgeY = cardTop + cardH;
+        arrowFromX = cardCenterX + (Math.random() - 0.5) * 40;
+        arrowFromY = cardEdgeY;
+        targetEdgeX = targetCenterX + (Math.random() - 0.5) * 30;
+        targetEdgeY = rect.top;
+      }
+
+      var pathData = step.arrow(arrowFromX, arrowFromY, targetEdgeX, targetEdgeY);
+
+      // Add arrowhead
+      var headSize = 10;
+      var headAngle = Math.atan2(targetEdgeY - arrowFromY, targetEdgeX - arrowFromX);
+      var hx1 = targetEdgeX - headSize * Math.cos(headAngle - 0.45);
+      var hy1 = targetEdgeY - headSize * Math.sin(headAngle - 0.45);
+      var hx2 = targetEdgeX - headSize * Math.cos(headAngle + 0.45);
+      var hy2 = targetEdgeY - headSize * Math.sin(headAngle + 0.45);
+
+      svg.innerHTML = '' +
+        '<defs>' +
+          '<filter id="guideShadow" x="-2" y="-2" width="4" height="4">' +
+            '<feDropShadow dx="0" dy="0" stdDeviation="1.5" flood-color="rgba(239,68,68,0.4)" flood-opacity="1"/>' +
+          '</filter>' +
+        '</defs>' +
+        '<path d="' + pathData + '" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#guideShadow)" opacity="0.9"/>' +
+        '<path d="M' + targetEdgeX + ',' + targetEdgeY + ' L' + hx1 + ',' + hy1 + ' L' + hx2 + ',' + hy2 + ' Z" fill="#ef4444" opacity="0.9"/>';
+
+      // Scroll target into view only if truly out of view — instant, no smooth animation
+      if (rect.top < 0 || rect.bottom > window.innerHeight - 100) {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (!guideActive) return;
+      if (e.key === 'Escape') {
+        exitGuide();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextGuideStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        prevGuideStep();
+        e.preventDefault();
+      }
+    });
+
+    // Window resize handler — reposition on resize
+    window.addEventListener('resize', function() {
+      if (guideActive) updateGuideStep();
+    });
   </script>
 </body>
 

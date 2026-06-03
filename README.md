@@ -1,238 +1,89 @@
-# Pre-Sales Sync — JEJO Lead Operations Automation
+# AutoNage — Lead Operations Automation
 
-## What This Is
-
-A single-file browser tool (`disposition_sync_v2.html`) that takes two pre-sales AutoEngage export files, merges them by phone number, applies all business logic, and produces a fully populated table ready to copy-paste directly into the Zoho Master Sheet. No backend. No Python. No installation. Open in any browser.
+A suite of browser-based tools for automotive lead operations. Each tool is a self-contained HTML file with no backend dependencies — everything runs locally in the browser. All external resources (fonts, JavaScript libraries) are self-hosted for offline use and security compliance.
 
 ---
 
-## Files
+## Project Structure
 
-| File | Purpose |
+```
+.
+├── index.html                          # Landing page — tool catalog
+├── config.js                           # API keys & proxy settings (gitignored)
+├── config.example.js                   # Config template with instructions
+├── opencode.json                       # Project metadata
+├── .gitignore
+├── README.md                           # This file
+│
+├── pages/                              # Tool HTML files
+│   ├── disposition_sync_v2.html        # Pre-Sales Sync
+│   ├── post_sales_disposition.html     # Post-Sales Sync
+│   ├── recording_renamer.html          # Recording Renamer
+│   ├── autongage_formatter.html        # AutoEngage Formatter
+│   ├── call_analysis_summary.html      # Call Analysis Summary
+│   ├── reattempt_filter.html           # Re-Attempt Filter
+│   └── dashboard.html                  # Campaign Dashboard
+│
+├── assets/
+│   ├── fonts/                          # Self-hosted web fonts
+│   │   ├── fonts.css                   #   @font-face declarations
+│   │   └── *.woff2                     #   Inter, Manrope, IBM Plex Mono
+│   ├── lib/                            # Self-hosted JS libraries
+│   │   ├── xlsx.full.min.js            #   SheetJS — Excel parsing
+│   │   ├── jszip.min.js                #   JSZip — ZIP compression
+│   │   ├── html2canvas.min.js          #   html2canvas — screenshot capture
+│   │   └── jspdf.umd.min.js            #   jsPDF — PDF generation
+│   └── images/
+│       ├── AN.png                      #   Light mode logo
+│       └── AN Dark.png                 #   Dark mode logo
+│
+└── docs/
+    ├── AN_format.md                    # AutoNage format reference
+    └── disposition.md                  # Disposition definitions
+```
+
+---
+
+## Tools Overview
+
+| Page | Purpose |
 |---|---|
-| `disposition_sync_v2.html` | Pre-Sales Sync — UI + logic in one file |
-| `README.md` | This file |
+| **dashboard.html** | Campaign performance dashboard with KPIs, charts, and data overview |
+| **call_analysis_summary.html** | Call analysis summary with connected/disconnected stats and KPIs |
+| **disposition_sync_v2.html** | Pre-Sales Sync — merges AutoEngage exports into Zoho Master Sheet format |
+| **post_sales_disposition.html** | Post-Sales Disposition — service campaign sync and validation |
+| **recording_renamer.html** | Bulk rename call recording files with campaign metadata |
+| **reattempt_filter.html** | Filter and manage re-attempt leads for call campaigns |
+| **autongage_formatter.html** | Format and clean AutoEngage export data |
 
 ---
 
-## Inputs
+## Getting Started
 
-### File 1 — Audience & Leads Export
-Downloaded from AutoEngage → Audience & Leads section.
+### 1. Configuration
 
-Columns used:
+Copy `config.example.js` to `config.js` and fill in your API keys:
 
-| AutoEngage Column | Used For |
-|---|---|
-| `person_name` | Full_Name |
-| `phone_number` | Phone (match key) |
-| `city` | City |
-| `campaign_id` | Campaign_ID |
-| `lead_source` | Lead_Source |
-| `disposition` | Disposition + Outcome + Exclusion_Flag logic |
-| `disposition_detail` | SUMMARY |
-| `updated` | Call_Date |
-| `model_preference` | Model |
-| `seating_capacity_preference` | Seating (primary source) |
-| `campaign_objective_name` | Cohort |
-
-### File 2 — Sessions Export
-Downloaded from AutoEngage → Sessions section.
-
-Columns used:
-
-| AutoEngage Column | Used For |
-|---|---|
-| `phone_number` | Match key to join with File 1 |
-| `created` | Call Triggered (min and max time) |
-| `start_time` | Call Triggered fallback |
-| `summary` | SUMMARY |
-| `call_recording` | Recordings |
-| `sentiment_score` | SENTIMENT |
-
----
-
-## Output Columns
-
-Exact column order matching the Zoho Master Sheet:
-
-| # | Column | Source | Logic |
-|---|---|---|---|
-| 1 | Lead_ID | — | Auto-generated (L-{number}) or filled manually in Zoho |
-| 2 | Full_Name | File 1 `person_name` | Direct copy |
-| 3 | Phone | File 1 `phone_number` | Normalized to 10 digits |
-| 4 | City | File 1 `city` | Direct copy |
-| 5 | Pincode | — | Left blank. Not in either export file. |
-| 6 | Language | User dropdown selection | Selected at runtime |
-| 7 | Lead_Source | File 1 `lead_source` | Direct copy |
-| 8 | Cohort | File 1 `campaign_objective_name` | Direct copy |
-| 9 | Campaign_ID | File 1 `campaign_id` | Direct copy |
-| 10 | Call Triggered | File 2 `created` / `start_time` | See formula below |
-| 11 | Outcome | File 1 `disposition` | See formula below |
-| 12 | Disposition | File 1 `disposition` | Direct copy |
-| 13 | SUMMARY | File 1 `disposition_detail` | See formula below |
-| 14 | Conversion | — | Left blank |
-| 15 | Call_Date | File 1 `updated` | Parsed as DD/MM/YYYY |
-| 16 | Number of attempts | File 1 `phone_number` | Count of matching phones |
-| 17 | SENTIMENT | File 2 `sentiment_score` | Direct copy |
-| 18 | Recordings | File 2 `call_recording` | Direct URL copy |
-| 19 | Model | File 1 `model_preference` | Cleaned (brackets/quotes removed) |
-| 20 | Seating | File 1 `seating_capacity_preference` | See formula below |
-| 21 | Exclusion_Flag | Derived from Disposition priority | YES for terminal dispositions |
-
----
-
-## Formulas and Business Logic
-
-### Phone Normalization
-Applied to both File 1 and File 2 before any matching.
-```
-1. Strip all non-digit characters (spaces, +, -, brackets)
-2. If starts with "91" and total length is 12 → remove first 2 digits
-3. If starts with "0" and total length is 11 → remove first digit
-4. Result must be exactly 10 digits → valid phone
-5. Anything else → null (excluded from output)
-```
-Example: `+91 98765 43210` → `9876543210`
-
----
-
-### Call Triggered
-Reads all `created` (or `start_time`) timestamps from the entire File 2.
-Finds the minimum (earliest) and maximum (latest) timestamps across the full batch.
-Formats as:
-```
-{ordinal day} {Month} Calls Triggered From {min time} - {max time}
-```
-Example: `9th March Calls Triggered From 7:19pm - 7:31pm`
-
-Date parsing handles AutoEngage format `DD/MM/YYYY, H:MM:SS am/pm` explicitly.
-JavaScript's native `new Date()` is NOT used for parsing because it assumes MM/DD/YYYY
-which would misread `9/3/2026` as September 3rd instead of March 9th.
-
----
-
-### Outcome
-Connected dispositions → "Connected":
-- Contacted
-- Reached
-- Engaged
-- Converted
-
-Not Connected dispositions → "Not Connected":
-- Attempted
-- Busy
-- Any value listed in the Exclusion Flag priority table below
-
-Unrecognized dispositions → "Unknown":
-- Any value not listed in either set above or in the priority table
-- A console warning is logged when this occurs (check browser DevTools)
-- Indicates a possible typo or a new disposition that should be added to the code
-
----
-
-### Exclusion Flag
-
-Derived from the disposition priority. Terminal dispositions (priority ≥ 9) set `Exclusion_Flag = YES`.
-
-Priority table for exclusion:
-
-| Priority | Disposition | Type |
-|---|---|---|
-| 10 | Test Drive Booked | Terminal |
-| 10 | Converted | Terminal |
-| 9 | Not Interested | Terminal |
-| 9 | DND | Terminal |
-| 9 | Wrong Number | Terminal |
-| 8 | Interested | Interim |
-| 6 | Callback Requested | Interim |
-| 6 | Call Back | Interim |
-| 4 | Busy | Interim |
-| 3 | Not Connected | Interim |
-| 3 | No Revert | Interim |
-| 2 | User Did Not Speak | Interim |
-| 1 | Any unlisted value | Interim |
-
----
-
-### SUMMARY
-```
-if disposition_detail is not empty → use it directly
-else → "No Response"
+```js
+window.JEJO_CONFIG = {
+  apiEndpoint: '',                       // Custom API endpoint (optional)
+  openRouterApiKey: 'sk-or-v1-...',     // Your OpenRouter API key
+  openRouterModel: 'deepseek/deepseek-v4-flash',
+  corsProxyUrl: '',                      // CORS proxy URL (if needed)
+  proxyHandshakeToken: 'your-token-here',
+};
 ```
 
----
+**Note:** `config.js` is gitignored and should never be committed. Only `config.example.js` is tracked.
 
-### Number of Attempts
-Count of how many rows in File 1 share the same normalized phone number.
+### 2. Open a Tool
 
----
+Open any page directly in a browser — no server required:
 
-### Seating
-```
-if File 1 seating_capacity_preference is not empty → use it directly
-else derive from model name:
-    basalt         → "5 Seater"
-    aircross / c3  → "5 Seater & 7 Seater"
-    meridian / jeep→ "5 Seater & 7 Seater"
-    else           → ""
-```
+- **Landing page:** `index.html`
+- **Any tool:** `pages/dashboard.html` (or from the landing page)
 
----
-
-### File 2 Session Matching
-Each phone in File 1 may have multiple session rows in File 2.
-Selection priority:
-```
-1. Session with a non-empty call_recording URL
-2. Session with a non-empty summary
-3. Most recent session (last row)
-```
-
----
-
-### CSV Column Shift Bug Fix
-File 2 contains a `history` column with JSON data inside it (quotes and commas).
-XLSX.js misparses this when reading CSV, shifting all subsequent column positions.
-
-Fix applied:
-- Phone detection scans all values in the row for a 10-12 digit number pattern.
-- Recording detection scans all values for any string containing `cloudphone` or `/recording`.
-- Date detection scans all values for strings matching `DD/MM/YYYY` pattern.
-
----
-
-## How to Use
-
-1. Export **Audience & Leads** from AutoEngage — save as File 1
-2. Export **Sessions** from AutoEngage — save as File 2
-3. Open `disposition_sync_v2.html` in any browser (Chrome recommended)
-4. Upload File 1 in the left zone, File 2 in the right zone
-5. Click **Process Both Files**
-6. Click **Copy All Data**
-7. Open Zoho Master Sheet → click the first empty row → **Ctrl+V**
-
----
-
-## Data Quality and Reconciliation
-
-After processing, the tool shows a **Data quality** report before the preview tables.
-This report is advisory only. It does **not** change the Zoho column order, formulas,
-copy output, or Excel export.
-
-Checks currently shown:
-
-| Check | Purpose |
-|---|---|
-| Missing columns | Flags required or recommended export columns that are not present |
-| Skipped phones | Shows File 1 rows skipped by the existing phone normalization rule |
-| Duplicate phones | Highlights repeated phone numbers in Audience & Leads |
-| Matched / unmatched leads | Shows whether processed leads found a matching Sessions row |
-| Session-only phones | Shows Sessions phone numbers that were not present in File 1 |
-| Unknown dispositions | Lists dispositions that map to `Unknown` and may need rule review |
-| Session rows without phone | Flags File 2 rows where no 10-digit phone was detectable |
-
-Use **Copy Report** to share the quality summary before pasting the final data into Zoho.
+> All tools work offline once assets are cached. No installation. No backend.
 
 ---
 
@@ -242,31 +93,59 @@ Use **Copy Report** to share the quality summary before pasting the final data i
 |---|---|
 | UI | HTML + CSS (no framework) |
 | Logic | Vanilla JavaScript (ES6+) |
-| File parsing | XLSX.js v0.18.5 (via CDN) |
-| Clipboard | `navigator.clipboard` with `execCommand` fallback for `file://` protocol |
-| Fonts | Google Fonts — Sora + DM Mono |
-| Hosting | None needed — runs entirely in browser |
+| File parsing | SheetJS (XLSX.js) — self-hosted |
+| PDF generation | jsPDF + html2canvas — self-hosted |
+| Fonts | Inter, Manrope, IBM Plex Mono — self-hosted |
+| AI validation | OpenRouter API (configurable endpoint) |
+| Hosting | Static file serving (CloudFront / S3 / any web server) |
 
 ---
 
-## Known Limitations
+## Deployment
 
-- Pincode is not present in either AutoEngage export file. Must be filled manually in Zoho.
-- SENTIMENT and Recordings will be empty for sessions where AutoEngage did not capture them.
-- Table preview is capped at 200 rows for performance. Full data is always in the copied TSV.
-- Only tested with AutoEngage CSV exports. XLSX export from AutoEngage may behave differently.
+The project is designed to be deployed as a static site to any web server or CDN.
+
+### CloudFront (AWS)
+
+1. Upload all files to an S3 bucket (keep the directory structure intact)
+2. Point CloudFront distribution to the S3 bucket
+3. Add a **Response Headers Policy** for security headers:
+
+| Header | Value |
+|---|---|
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+
+4. Set **Security Policy** to `TLSv1.2_2023` (disables TLS 1.0/1.1 and weak ciphers)
+
+### Security
+
+- All external scripts and fonts are self-hosted (zero CDN dependencies)
+- Content Security Policy (CSP) enforced via `<meta>` tag
+- `X-Frame-Options: DENY` and `X-Content-Type-Options: nosniff` set as meta tags and HTTP headers
+- Inline scripts allowed (`'unsafe-inline'`) — necessary for self-contained HTML tools
 
 ---
 
-## Phase Roadmap
+## Development
 
-| Phase | What | Status |
-|---|---|---|
-| 1 | Disposition sync browser tool (this file) | ✅ Done |
-| 2 | LLM-based transcript intelligence — summary + intent detection from raw conversation text | Planned |
-| 3 | Disposition accuracy evaluation — precision, recall, confusion matrix of LLM-suggested vs ground truth | Planned |
+All tools are single-file HTML documents in `pages/`. To modify:
+
+1. Edit the relevant `pages/*.html` file
+2. Open it directly in a browser to test
+3. No build step, no bundler, no npm install needed
+
+### Adding a New Tool
+
+1. Create a new HTML file in `pages/`
+2. Add a link in `index.html` with `href="pages/your-tool.html"`
+3. Reference assets with `../assets/` prefix (e.g., `../assets/fonts/fonts.css`)
 
 ---
 
-*JEJO — Lead Operations Automation*  
-*AI/ML Intern: Kanniga (Jenny Joseph K.) | March 2026*
+## License
+
+Internal use — AutoNage Lead Operations Automation
+
+*JEJO — Lead Operations Automation*

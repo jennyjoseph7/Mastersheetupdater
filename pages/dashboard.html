@@ -2,26 +2,26 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function() {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Campaign Dashboard — AutoNage</title>
   <meta name="description"
     content="Call campaign summary dashboard with KPI metrics, charts, and data insights — AutoNage." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
-    rel="stylesheet" />
-  <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../config.js"></script>
+  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/lib/openrouter-batch-runner.js"></script>
+  <script src="../assets/lib/html2canvas.min.js"></script>
+  <script src="../assets/lib/jspdf.umd.min.js"></script>
   <style>
     /* ═══════════════════════════════════════════════════════════════════════
        THEME TOKENS — DARK (default)
@@ -36,10 +36,10 @@
       --surface-card-hover: rgba(26, 26, 26, 0.95);
       --border: rgba(255, 255, 255, 0.08);
       --border-subtle: rgba(255, 255, 255, 0.05);
-      --border-focus: rgba(74, 222, 128, 0.58);
-      --accent: #4ade80;
-      --accent-dim: #22c55e;
-      --accent-soft: rgba(74, 222, 128, 0.13);
+      --border-focus: rgba(234, 179, 8, 0.58);
+      --accent: #eab308;
+      --accent-dim: #ca8a04;
+      --accent-soft: rgba(234, 179, 8, 0.13);
       --accent2: #5b9cf5;
       --accent2-soft: rgba(91, 156, 245, 0.13);
       --success: #63d6a3;
@@ -49,7 +49,7 @@
       --danger: #f16f6f;
       --danger-soft: rgba(241, 111, 111, 0.12);
       --purple: #a78bfa;
-      --purple-soft: rgba(167, 139, 250, 0.12);
+      --purple-soft: rgba(234, 179, 8, 0.12);
       --teal: #5eead4;
       --teal-soft: rgba(94, 234, 212, 0.12);
       --rose: #f472b6;
@@ -87,10 +87,10 @@
       --surface-card-hover: rgba(255, 255, 255, 1);
       --border: rgba(0, 20, 50, 0.08);
       --border-subtle: rgba(0, 20, 50, 0.04);
-      --border-focus: rgba(22, 163, 74, 0.5);
-      --accent: #16a34a;
-      --accent-dim: #15803d;
-      --accent-soft: rgba(22, 163, 74, 0.1);
+      --border-focus: rgba(124, 58, 237, 0.5);
+      --accent: #ca8a04;
+      --accent-dim: #a16207;
+      --accent-soft: rgba(202, 138, 4, 0.1);
       --accent2: #2d6fd6;
       --accent2-soft: rgba(45, 111, 214, 0.08);
       --success: #1a9960;
@@ -178,7 +178,7 @@
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      box-shadow: 0 8px 26px rgba(74, 222, 128, 0.2);
+      box-shadow: 0 8px 26px rgba(234, 179, 8, 0.2);
       flex-shrink: 0;
       overflow: hidden;
     }
@@ -194,7 +194,7 @@
       display: inline-flex;
       align-items: center;
       background: var(--accent-soft);
-      border: 1px solid rgba(74, 222, 128, 0.3);
+      border: 1px solid rgba(234, 179, 8, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -544,9 +544,9 @@
     }
 
     .drop-zone-dash.has-file {
-      border-color: var(--success);
+      border-color: var(--accent);
       border-style: solid;
-      background: var(--success-soft);
+      background: var(--accent-soft);
     }
 
     .drop-zone-dash .dz-icon {
@@ -586,9 +586,9 @@
     }
 
     .drop-zone-dash .dz-status.ok {
-      background: var(--success-soft);
-      border-color: rgba(99, 214, 163, 0.3);
-      color: var(--success);
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .drop-zone-dash .dz-status.err {
@@ -614,7 +614,7 @@
       border: none;
       background: linear-gradient(135deg, var(--accent), var(--accent-dim));
       color: #1a0e00;
-      box-shadow: 0 4px 16px rgba(74, 222, 128, 0.2);
+      box-shadow: 0 4px 16px rgba(234, 179, 8, 0.2);
       transition: all 0.25s;
       white-space: nowrap;
       min-height: 44px;
@@ -622,7 +622,7 @@
 
     .btn-generate:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(74, 222, 128, 0.3);
+      box-shadow: 0 8px 24px rgba(234, 179, 8, 0.3);
     }
 
     .btn-generate:disabled {
@@ -805,7 +805,7 @@
     .kpi-card.green .kpi-label { color: var(--success); }
 
     .kpi-card.amber::before { background: var(--accent); }
-    .kpi-card.amber .kpi-dot { background: var(--accent); box-shadow: 0 0 8px rgba(74, 222, 128, var(--kpi-dot-shadow)); }
+    .kpi-card.amber .kpi-dot { background: var(--accent); box-shadow: 0 0 8px rgba(234, 179, 8, var(--kpi-dot-shadow)); }
     .kpi-card.amber .kpi-label { color: var(--accent); }
 
     .kpi-card.red::before { background: var(--danger); }
@@ -990,7 +990,7 @@
     }
 
     .hbar-fill.blue { background: linear-gradient(90deg, var(--accent2), rgba(91, 156, 245, 0.7)); }
-    .hbar-fill.purple { background: linear-gradient(90deg, var(--purple), rgba(167, 139, 250, 0.7)); }
+    .hbar-fill.purple { background: linear-gradient(90deg, var(--purple), rgba(234, 179, 8, 0.7)); }
     .hbar-fill.green { background: linear-gradient(90deg, var(--success), rgba(99, 214, 163, 0.7)); }
     .hbar-fill.amber { background: linear-gradient(90deg, #f2c464, rgba(242, 196, 100, 0.7)); }
     .hbar-fill.red { background: linear-gradient(90deg, var(--danger), rgba(241, 111, 111, 0.7)); }
@@ -1352,7 +1352,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background: linear-gradient(120deg, rgba(74,222,128,0.04) 0%, rgba(91,156,245,0.03) 50%, rgba(167,139,250,0.03) 100%);
+      background: linear-gradient(120deg, rgba(234,179,8,0.04) 0%, rgba(91,156,245,0.03) 50%, rgba(234,179,8,0.03) 100%);
       pointer-events: none;
     }
     .health-ring-wrap {
@@ -1420,7 +1420,7 @@
       text-transform: uppercase;
       color: var(--accent);
       background: var(--accent-soft);
-      border: 1px solid rgba(74,222,128,0.3);
+      border: 1px solid rgba(234,179,8,0.3);
       padding: 0.2rem 0.55rem;
       border-radius: 999px;
     }
@@ -1573,7 +1573,7 @@
     }
 
     .pdf-export-mode .hbar-fill.blue { background: #5b9cf5 !important; }
-    .pdf-export-mode .hbar-fill.purple { background: #a78bfa !important; }
+    .pdf-export-mode .hbar-fill.purple { background: #eab308 !important; }
     .pdf-export-mode .hbar-fill.green { background: #63d6a3 !important; }
     .pdf-export-mode .hbar-fill.amber { background: #e6a456 !important; }
     .pdf-export-mode .hbar-fill.red { background: #f16f6f !important; }
@@ -1969,7 +1969,7 @@
     .disp-fill.neutral  { background: linear-gradient(90deg, var(--warn), rgba(242,196,100,0.6)); }
     .disp-fill.negative { background: linear-gradient(90deg, var(--danger), rgba(241,111,111,0.6)); }
     .disp-fill.blue { background: linear-gradient(90deg, var(--accent2), rgba(91,156,245,0.6)); }
-    .disp-fill.purple { background: linear-gradient(90deg, var(--purple), rgba(167,139,250,0.6)); }
+    .disp-fill.purple { background: linear-gradient(90deg, var(--purple), rgba(234,179,8,0.6)); }
     .disp-fill.green { background: linear-gradient(90deg, var(--success), rgba(99,214,163,0.6)); }
     .disp-fill.amber { background: linear-gradient(90deg, #f2c464, rgba(242,196,100,0.6)); }
     .disp-fill.red { background: linear-gradient(90deg, var(--danger), rgba(241,111,111,0.6)); }
@@ -2537,7 +2537,7 @@
     }
     .agent-rank-badge.gold   { background: rgba(242,196,100,0.18); color: var(--warn); }
     .agent-rank-badge.silver { background: rgba(91,156,245,0.13); color: var(--accent2); }
-    .agent-rank-badge.bronze { background: rgba(167,139,250,0.13); color: var(--purple); }
+    .agent-rank-badge.bronze { background:rgba(234, 179, 8, 0.13); color: var(--purple); }
     .agent-rank-badge.rest   { background: var(--surface3); color: var(--text-muted); }
     .perf-bar-wrap { width: 60px; display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.3rem; }
     .perf-bar-track { flex: 1; height: 5px; border-radius: 9px; background: var(--chart-bar-bg); overflow: hidden; }
@@ -2570,7 +2570,7 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div>
           <h1>Campaign Dashboard</h1>
           <div class="header-sub">Upload Zoho export to generate insights</div>
@@ -2696,12 +2696,16 @@
       <div id="aiStatus" class="upload-section" style="display:none;padding:0.6rem 1rem;margin-bottom:0.75rem;">
         <div style="display:flex;align-items:center;gap:0.6rem;">
           <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.25rem;" id="aiStatusText">Analyzing with DeepSeek...</div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.25rem;">
+              <span style="font-size:0.7rem;color:var(--text-muted);" id="aiStatusText">Analyzing with DeepSeek...</span>
+              <span style="display:none;font-size:0.65rem;font-weight:700;padding:0.15rem 0.45rem;border-radius:999px;background:var(--success-soft);border:1px solid rgba(99,214,163,0.25);color:var(--success);font-family:var(--mono);" id="aiStatusCorrected"></span>
+              <span style="font-size:0.68rem;color:var(--text-muted);font-family:var(--mono);" id="aiStatusElapsed"></span>
+            </div>
             <div style="height:4px;border-radius:4px;background:var(--surface3);overflow:hidden;">
               <div id="aiStatusBar" style="height:100%;width:0%;border-radius:4px;background:var(--accent);transition:width 0.3s;"></div>
             </div>
           </div>
-          <div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;" id="aiStatusDot"></div>
+          <button class="ai-status-cancel" id="aiStatusCancel" style="display:none;padding:0.35rem 0.65rem;border-radius:8px;border:1px solid rgba(241,111,111,0.35);background:transparent;color:var(--danger);font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onclick="cancelAiValidationDash()">Cancel</button>
         </div>
       </div>
 
@@ -2862,7 +2866,7 @@
 
   </main>
 
-  <footer>AutoNage — Campaign Dashboard · Lead Operations Automation · <span>No backend · No install</span></footer>
+  <footer>AutoNage - Campaign Dashboard - Lead Operations Automation</footer>
 
   <script>
     /* ═══════════════════════════════════════════════════════════════════════
@@ -3168,6 +3172,9 @@
     const LLM_BATCH_SIZE = 20;
     const LLM_MAX_CONCURRENT = 2;
     const LLM_REQUEST_TIMEOUT_MS = 45000;
+    let aiValidationController = null;
+    let _aiStatusStartTime = 0;
+    let _aiStatusTimer = null;
     const LLM_CACHE_VERSION = 'deepseek-dispo-v2';
     const OPENROUTER_KEY_STORAGE = 'llm-api-key';
 
@@ -3284,11 +3291,21 @@
       }, 3500);
     }
 
+    function cancelAiValidationDash() {
+      if (aiValidationController) {
+        aiValidationController.abort();
+        aiValidationController = null;
+      }
+    }
+
     function updateAiStatus(current, total, msg, isError) {
       const bar = document.getElementById('aiStatusBar');
       const txt = document.getElementById('aiStatusText');
       const con = document.getElementById('aiStatus');
       const dot = document.getElementById('aiStatusDot');
+      const cancel = document.getElementById('aiStatusCancel');
+      const elapsed = document.getElementById('aiStatusElapsed');
+      const corrected = document.getElementById('aiStatusCorrected');
       if (!con) return;
       if (total > 0) {
         con.style.display = '';
@@ -3298,8 +3315,21 @@
         }
         if (txt) txt.textContent = msg || 'Analyzing with DeepSeek... ' + current + '/' + total;
         if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
+        if (cancel) cancel.style.display = '';
+        
+        // Elapsed time
+        if (_aiStatusStartTime > 0 && elapsed) {
+          var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+          var min = Math.floor(secs / 60);
+          var s = secs % 60;
+          elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+        }
+        
+        // Hide corrected badge in dashboard (no correctedResults tracking here)
       } else {
         con.style.display = 'none';
+        if (cancel) cancel.style.display = 'none';
+        if (elapsed) elapsed.textContent = '';
       }
     }
 
@@ -3482,50 +3512,6 @@
       }
     }
 
-    async function callDeepSeekBatch(systemPrompt, summaries, apiKey) {
-      var rowsPrompt = summaries.map(function(s) {
-        return 'Row ' + s.rowIndex + ': "' + s.text + '"';
-      }).join('\n');
-
-      var lastErr;
-      for (var attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(function(r) { setTimeout(r, 1200 * attempt); });
-        var controller = window.AbortController ? new AbortController() : null;
-        var timeoutId = controller ? window.setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS) : null;
-        try {
-          var response = await fetch(getApiEndpoint(), {
-            method: 'POST',
-            headers: buildOpenRouterHeaders(apiKey),
-            signal: controller ? controller.signal : undefined,
-            body: JSON.stringify({
-              model: OPENROUTER_MODEL,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: 'Classify these ' + summaries.length + ' call summaries:\n\n' + rowsPrompt }
-              ],
-              temperature: 0.1,
-              max_completion_tokens: 4096
-            })
-          });
-          if (timeoutId) window.clearTimeout(timeoutId);
-          if (isRetryableOpenRouterError(response.status) && attempt < 2) continue;
-          if (!response.ok) {
-            var errText = await response.text();
-            throw new Error('OpenRouter ' + response.status + ': ' + errText.slice(0, 240));
-          }
-          var data = await response.json();
-          var text = getChoiceText(data);
-          if (!text) throw new Error('Null response from DeepSeek');
-          return parseLlmJsonResults(text, summaries);
-        } catch (e) {
-          if (timeoutId) window.clearTimeout(timeoutId);
-          lastErr = e;
-          if (attempt < 2 && !isNonRetryableOpenRouterErrorMessage(e.message)) continue;
-          throw e;
-        }
-      }
-      throw lastErr || new Error('Max retries exceeded');
-    }
 
     async function classifyWithDeepSeek(allSummaries, isPostSales, apiKey) {
       var systemPrompt = buildLlmSystemPrompt(isPostSales);
@@ -3553,226 +3539,74 @@
         return { rowIndex: summary.rowIndex, dispositions: disp };
       }
 
-      // batchResults[b] = { ok: true, data: [...] } or { ok: false, reason: '...' }
-      var batchResults = [];
-      var completed = 0;
-
+      _aiStatusStartTime = Date.now();
       updateAiStatus(0, batches.length, 'Starting DeepSeek classification...');
+      
+      // Create abort controller for this run
+      aiValidationController = new AbortController();
 
-      // ── Pass 1: Process all batches with a small concurrency cap ──
-      var nextBatch = 0;
-      async function runNextBatch() {
-        while (nextBatch < batches.length) {
-          var b = nextBatch++;
-          var batch = batches[b];
-          try {
-            var res = await callDeepSeekBatch(systemPrompt, batch, apiKey);
-            batchResults[b] = { ok: true, data: res };
-          } catch (err) {
-            console.warn('DeepSeek pass 1, batch ' + (b + 1) + ' failed, will retry:', err);
-            batchResults[b] = { ok: false, reason: err.message || String(err) };
-          }
-          completed++;
-          updateAiStatus(completed, batches.length, 'DeepSeek: ' + completed + '/' + batches.length + ' batches');
-        }
-      }
-      var workers = [];
-      var workerCount = Math.min(LLM_MAX_CONCURRENT, batches.length);
-      for (var w = 0; w < workerCount; w++) workers.push(runNextBatch());
-      await Promise.all(workers);
-
-      // ── Pass 2: Retry any failed batches ──
-      var failed = [];
-      for (var f = 0; f < batchResults.length; f++) {
-        if (!batchResults[f].ok) failed.push(f);
-      }
-
-      if (failed.length > 0) {
-        var failedCompleted = 0;
-        updateAiStatus(failedCompleted, failed.length, 'Retrying ' + failed.length + ' failed batch(es) with DeepSeek...', true);
-        for (var r = 0; r < failed.length; r++) {
-          var idx = failed[r];
-          try {
-            var retryRes = await callDeepSeekBatch(systemPrompt, batches[idx], apiKey);
-            batchResults[idx] = { ok: true, data: retryRes };
-          } catch (err) {
-            console.warn('DeepSeek pass 2, batch ' + (idx + 1) + ' still failed, using keywords:', err);
-            batchResults[idx] = { ok: true, data: batches[idx].map(keywordFallback) };
-          }
-          failedCompleted++;
-          updateAiStatus(failedCompleted, failed.length, 'Retry: ' + failedCompleted + '/' + failed.length + ' failed batches');
-          if (r < failed.length - 1) await new Promise(function(r2) { setTimeout(r2, 3000); });
-        }
-      }
-
-      // Flatten results
-      var results = [];
-      for (var j = 0; j < batchResults.length; j++) {
-        if (batchResults[j].ok && batchResults[j].data) {
-          results = results.concat(batchResults[j].data);
-        }
-      }
-
-      updateAiStatus(0, 0, '');
-      return results;
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       STORYTELLING ENGINE — SUMMARY text mining, narrative generation
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function mineCustomerThemesKeyword(rows, colMap) {
-      var themes = {
-        already_serviced: { id: 'already_serviced', label: 'Already Serviced Elsewhere', count: 0, excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer completed the service elsewhere — lost to competition', interpretation: 'Indicates competitive gap in service quality, pricing, or convenience. Each lost customer reduces pipeline and damages retention.' },
-        language_barrier: { id: 'language_barrier', label: 'Language Preference Mismatch', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer preferred a language the system does not support', interpretation: 'Leads to abandoned conversations and missed opportunities. A systemic gap that reduces effective reach by the percentage of non-English/Kannada speakers.' },
-        voicemail: { id: 'voicemail', label: 'Voicemail — No Connection', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call reached voicemail instead of the customer', interpretation: 'Reduces connect rate directly. May indicate outdated numbers or suboptimal dialing windows. Should be tracked separately from "Not Connected".' },
-        callback_requested: { id: 'callback_requested', label: 'Customer Requested Follow-Up', count: 0, excerpts: [], callbackTimes: [], sentiment: 'positive', explanation: 'Customer asked to be contacted later', interpretation: 'Positive intent signal — they are open to the offer but timing is wrong. Rapid callback execution directly impacts conversion.' },
-        deferred: { id: 'deferred', label: 'Deferred Decision', count: 0, excerpts: [], timeframes: [], sentiment: 'neutral', explanation: 'Customer postponed decision to a later time', interpretation: 'High potential pipeline — these leads need structured re-engagement within their stated timeframe before interest fades.' },
-        not_interested: { id: 'not_interested', label: 'Not Interested', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer explicitly declined the offer', interpretation: 'May indicate weak targeting, poor offer alignment, or message fatigue. Cluster analysis of why may reveal fixable campaign issues.' },
-        customer_busy: { id: 'customer_busy', label: 'Customer Unavailable', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer was driving, in a meeting, or otherwise occupied', interpretation: 'Timing issue rather than disinterest. Adjusting call windows based on busy patterns may improve future connect rate.' },
-        wrong_person: { id: 'wrong_person', label: 'Wrong Contact / Not Decision Maker', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Person reached is not the owner or decision maker', interpretation: 'Indicates lead data quality issue. The CRM contact may be outdated or incorrect — verify and update records.' },
-        audio_issue: { id: 'audio_issue', label: 'Audio / Connection Issue', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call quality prevented conversation', interpretation: 'Technical barrier that wastes agent time and reduces effective capacity. May indicate network or device issues on either end.' },
-        sold_vehicle: { id: 'sold_vehicle', label: 'Vehicle Sold or Transferred', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer no longer owns the vehicle', interpretation: 'Lead has zero conversion potential. Flagging these quickly saves agent effort and improves pipeline accuracy.' },
-        service_booked: { id: 'service_booked', label: 'Service Booked', count: 0, excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment', interpretation: 'The primary conversion event. Track booking rate relative to connected calls to measure campaign effectiveness.' },
-        dissatisfied: { id: 'dissatisfied', label: 'Customer Dissatisfied', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction with service', interpretation: 'Risk to brand reputation and repeat business. Escalate and investigate root cause — may require service recovery.' }
-      };
-      var lower = function(s) { return String(s || '').toLowerCase(); };
-      if (!colMap.summary) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
-
-      rows.forEach(function(r) {
-        var text = String(r[colMap.summary] || '').trim();
-        if (!text || text === "Summary couldn't be generated for this call.") return;
-        var lc = lower(text);
-        var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
-        var parsed = parseSummary(text);
-
-        if (lc.includes('already serviced') || lc.includes('already done') || lc.includes('already completed') || lc.includes('already serviced elsewhere') || lc.includes('bike was recently serviced') || lc.includes('bike had already been serviced') || lc.includes('service had already been')) {
-          themes.already_serviced.count++;
-          if (themes.already_serviced.excerpts.length < 5) themes.already_serviced.excerpts.push(excerpt);
-          if (parsed.competitorLocation && !themes.already_serviced.competitorNames.includes(parsed.competitorLocation)) themes.already_serviced.competitorNames.push(parsed.competitorLocation);
-          return;
-        }
-        if (lc.includes('do not speak english') || lc.includes('only hindi') || lc.includes('requested hindi') || lc.includes('language barrier') || lc.includes('only kannada or english') || lc.includes('speak in a different language')) {
-          themes.language_barrier.count++;
-          if (themes.language_barrier.excerpts.length < 5) themes.language_barrier.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('voicemail') || lc.includes('at the tone') || lc.includes('record your message') || lc.includes('when you have finished') || lc.includes('automated voicemail') || lc.includes('hang up after') || (lc.includes('please stay on the line') && (lc.includes('unavailable') || lc.includes('voicemail')))) {
-          themes.voicemail.count++;
-          if (themes.voicemail.excerpts.length < 5) themes.voicemail.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('requested a callback') || lc.includes('call back later') || lc.includes('will call back') || lc.includes('asked to call back') || lc.includes('callback requested') || lc.includes('would call back')) {
-          themes.callback_requested.count++;
-          if (themes.callback_requested.excerpts.length < 5) themes.callback_requested.excerpts.push(excerpt);
-          if (parsed.callbackTime && !themes.callback_requested.callbackTimes.includes(parsed.callbackTime)) themes.callback_requested.callbackTimes.push(parsed.callbackTime);
-          return;
-        }
-        if (lc.includes('deferred') || lc.includes('will decide') || lc.includes('out of station') || lc.includes('out of town') || (lc.includes('next week') && !lc.includes('booked')) || (lc.includes('next month') && !lc.includes('booked')) || lc.includes('will come next') || lc.includes('can\'t confirm') || lc.includes('not ready')) {
-          themes.deferred.count++;
-          if (themes.deferred.excerpts.length < 5) themes.deferred.excerpts.push(excerpt);
-          var timeMatch = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
-          if (timeMatch && !themes.deferred.timeframes.includes(timeMatch.toLowerCase())) themes.deferred.timeframes.push(timeMatch.toLowerCase());
-          return;
-        }
-        if (lc.includes('declined') || lc.includes('not interested') || lc.includes('not required') || lc.includes('refused') || lc.includes('repeatedly declined') || lc.includes('declined the service') || lc.includes('not now')) {
-          themes.not_interested.count++;
-          if (themes.not_interested.excerpts.length < 5) themes.not_interested.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('driving') || lc.includes('in a meeting') || lc.includes('at work') || lc.includes('was riding') || lc.includes('was busy') || lc.includes('unavailable to speak') || lc.includes('not a good time') || lc.includes('currently out') || lc.includes('currently at work')) {
-          themes.customer_busy.count++;
-          if (themes.customer_busy.excerpts.length < 5) themes.customer_busy.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('belongs to') || lc.includes('not the right person') || lc.includes('not the decision maker') || lc.includes('not the owner') || lc.includes('not the correct person')) {
-          themes.wrong_person.count++;
-          if (themes.wrong_person.excerpts.length < 5) themes.wrong_person.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('audio issue') || lc.includes('unclear audio') || lc.includes('could not hear') || lc.includes('difficulty hearing') || lc.includes('communication breakdown') || lc.includes('poor voice') || lc.includes('can\'t hear') || lc.includes('voice issue')) {
-          themes.audio_issue.count++;
-          if (themes.audio_issue.excerpts.length < 5) themes.audio_issue.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('sold the bike') || lc.includes('no longer own') || lc.includes('given away') || lc.includes('sold it') || lc.includes('no longer have') || lc.includes('had sold it')) {
-          themes.sold_vehicle.count++;
-          if (themes.sold_vehicle.excerpts.length < 5) themes.sold_vehicle.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('appointment was successfully booked') || lc.includes('service confirmed') || lc.includes('booking confirmed') || lc.includes('successfully confirmed') || lc.includes('was successfully booked')) {
-          themes.service_booked.count++;
-          if (themes.service_booked.excerpts.length < 5) themes.service_booked.excerpts.push(excerpt);
-          return;
-        }
-        if (lc.includes('dissatisfied') || lc.includes('complaint') || lc.includes('unhappy') || lc.includes('negative feedback') || lc.includes('poor service') || lc.includes('bad experience')) {
-          themes.dissatisfied.count++;
-          if (themes.dissatisfied.excerpts.length < 5) themes.dissatisfied.excerpts.push(excerpt);
-          return;
+      var batchSize = LLM_BATCH_SIZE;
+      var runnerResult = await runOpenRouterBatches({
+        items: allSummaries,
+        batchSize: batchSize,
+        maxConcurrent: LLM_MAX_CONCURRENT,
+        minGapMs: 150,
+        maxRetries: 3,
+        requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+        cachedData: null,
+        buildPrompt: function(batch, batchIndex) {
+          var rowsPrompt = batch.map(function(s) {
+            return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
+          }).join('\n');
+          return {
+            system: systemPrompt,
+            user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
+            temperature: 0.1,
+            maxCompletionTokens: 4096
+          };
+        },
+        parseResponse: function(text, batch, batchIndex) {
+          return parseLlmJsonResults(text, batch);
+        },
+        buildHeaders: function() {
+          return buildOpenRouterHeaders(apiKey);
+        },
+        onProgress: function(done, total, message, pct) {
+          updateAiStatus(done, total, message);
         }
       });
 
-      var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
-      var total = themeList.reduce(function(s, t) { return s + t.count; }, 0);
-      var topTheme = themeList.length > 0 ? themeList[0] : null;
-      return { themes: themeList, total: total, topTheme: topTheme, engine: 'keyword' };
-    }
-
-    async function mineCustomerThemes(rows, colMap, isPostSales) {
-      var themes = {
-        already_serviced: { id: 'already_serviced', label: 'Already Serviced Elsewhere', count: 0, excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer completed the service elsewhere — lost to competition', interpretation: 'Indicates competitive gap in service quality, pricing, or convenience. Each lost customer reduces pipeline and damages retention.' },
-        language_barrier: { id: 'language_barrier', label: 'Language Preference Mismatch', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer preferred a language the system does not support', interpretation: 'Leads to abandoned conversations and missed opportunities. A systemic gap that reduces effective reach by the percentage of non-English/Kannada speakers.' },
-        voicemail: { id: 'voicemail', label: 'Voicemail — No Connection', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call reached voicemail instead of the customer', interpretation: 'Reduces connect rate directly. May indicate outdated numbers or suboptimal dialing windows. Should be tracked separately from "Not Connected".' },
-        callback_requested: { id: 'callback_requested', label: 'Customer Requested Follow-Up', count: 0, excerpts: [], callbackTimes: [], sentiment: 'positive', explanation: 'Customer asked to be contacted later', interpretation: 'Positive intent signal — they are open to the offer but timing is wrong. Rapid callback execution directly impacts conversion.' },
-        deferred: { id: 'deferred', label: 'Deferred Decision', count: 0, excerpts: [], timeframes: [], sentiment: 'neutral', explanation: 'Customer postponed decision to a later time', interpretation: 'High potential pipeline — these leads need structured re-engagement within their stated timeframe before interest fades.' },
-        not_interested: { id: 'not_interested', label: 'Not Interested', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer explicitly declined the offer', interpretation: 'May indicate weak targeting, poor offer alignment, or message fatigue. Cluster analysis of why may reveal fixable campaign issues.' },
-        customer_busy: { id: 'customer_busy', label: 'Customer Unavailable', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Customer was driving, in a meeting, or otherwise occupied', interpretation: 'Timing issue rather than disinterest. Adjusting call windows based on busy patterns may improve future connect rate.' },
-        wrong_person: { id: 'wrong_person', label: 'Wrong Contact / Not Decision Maker', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Person reached is not the owner or decision maker', interpretation: 'Indicates lead data quality issue. The CRM contact may be outdated or incorrect — verify and update records.' },
-        audio_issue: { id: 'audio_issue', label: 'Audio / Connection Issue', count: 0, excerpts: [], sentiment: 'neutral', explanation: 'Call quality prevented conversation', interpretation: 'Technical barrier that wastes agent time and reduces effective capacity. May indicate network or device issues on either end.' },
-        sold_vehicle: { id: 'sold_vehicle', label: 'Vehicle Sold or Transferred', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer no longer owns the vehicle', interpretation: 'Lead has zero conversion potential. Flagging these quickly saves agent effort and improves pipeline accuracy.' },
-        service_booked: { id: 'service_booked', label: 'Service Booked', count: 0, excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment', interpretation: 'The primary conversion event. Track booking rate relative to connected calls to measure campaign effectiveness.' },
-        dissatisfied: { id: 'dissatisfied', label: 'Customer Dissatisfied', count: 0, excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction with service', interpretation: 'Risk to brand reputation and repeat business. Escalate and investigate root cause — may require service recovery.' }
-      };
-      var lower = function(s) { return String(s || '').toLowerCase(); };
-      if (!colMap.summary) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
-
-      // Collect valid summaries
-      var summaries = [];
-      for (var i = 0; i < rows.length; i++) {
-        var text = String(rows[i][colMap.summary] || '').trim();
-        if (text && text !== "Summary couldn't be generated for this call.") {
-          summaries.push({ rowIndex: i, text: text });
-        }
-      }
-      if (summaries.length === 0) return { themes: [], total: 0, topTheme: null, engine: 'keyword' };
-
-      // Try LLM with cache
-      var apiKey = getApiKey();
-      var cacheKey = hashStr(LLM_CACHE_VERSION + '|' + OPENROUTER_MODEL + '|' + summaries.map(function(s) { return s.text; }).join('|') + (isPostSales ? '|post' : '|pre'));
-      var cached = localStorage.getItem(cacheKey);
-      var llmResults = null;
-      var analysisEngine = 'keyword';
-      if (apiKey) useTypedApiKeyForRun();
-
-      if (cached) {
-        try {
-          llmResults = JSON.parse(cached);
-          analysisEngine = 'cache';
-          showAiNotice('Using cached DeepSeek analysis.', false);
-        } catch(e) {
-          localStorage.removeItem(cacheKey);
+      // ── Pass 2: Retry any failed batches using keyword fallback ──
+      if (runnerResult.failedBatches.length > 0) {
+        var failedCompleted = 0;
+        updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Retrying ' + runnerResult.failedBatches.length + ' failed batch(es) with keywords...', true);
+        for (var r = 0; r < runnerResult.failedBatches.length; r++) {
+          var idx = runnerResult.failedBatches[r];
+          var batchStart2 = idx * batchSize;
+          var fallbackResults = batches[idx].map(keywordFallback);
+          for (var fi = 0; fi < fallbackResults.length; fi++) {
+            runnerResult.results.set(batchStart2 + fi, fallbackResults[fi]);
+          }
+          failedCompleted++;
+          updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Fallback: ' + failedCompleted + '/' + runnerResult.failedBatches.length + ' batches');
         }
       }
 
-      if (!llmResults) {
-        if (!apiKey) {
-          showAiNotice('OpenRouter key missing. Using local keyword analysis.', true);
-          return mineCustomerThemesKeyword(rows, colMap);
-        }
-        try {
-          llmResults = await classifyWithDeepSeek(summaries, isPostSales, apiKey);
-          analysisEngine = 'openrouter';
-          // Flatten: combine results for same row if multiple batches returned dups
+      // Check if aborted
+      if (runnerResult.aborted) {
+        updateAiStatus(0, 0, '');
+        aiValidationController = null;
+        return [];
+      }
+      aiValidationController = null;
+
+      // Flatten: combine results for same row if multiple batches returned dups
+      var results = [];
+      for (var j = 0; j < allSummaries.length; j++) {
+        var part = runnerResult.results.get(j);
+        if (part) results.push(part);
+      }
+      // Flatten: combine results for same row if multiple batches returned dups
           var flat = {};
           for (var k = 0; k < llmResults.length; k++) {
             var item = llmResults[k];

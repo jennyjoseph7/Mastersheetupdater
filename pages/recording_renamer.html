@@ -2,23 +2,23 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recording Renamer - AutoNage</title>
   <meta name="description" content="Rename local call recordings from a processed Pre-Sales Sync export." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../config.js"></script>
+  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/lib/jszip.min.js"></script>
   <style>
     :root,
     [data-theme="dark"] {
@@ -27,9 +27,9 @@
       --surface2: #1a1a1a;
       --surface3: #222222;
       --border: rgba(255, 255, 255, 0.08);
-      --accent: #22d3ee;
-      --accent-dim: #0ea5e9;
-      --accent-soft: rgba(34, 211, 238, 0.13);
+      --accent: #22c55e;
+      --accent-dim: #16a34a;
+      --accent-soft: rgba(34, 197, 94, 0.13);
       --blue: #5b9cf5;
       --blue-soft: rgba(91, 156, 245, 0.13);
       --success: #63d6a3;
@@ -55,9 +55,9 @@
       --surface2: #f7f8fa;
       --surface3: #eef0f4;
       --border: rgba(0, 20, 50, 0.08);
-      --accent: #0891b2;
-      --accent-dim: #0e7490;
-      --accent-soft: rgba(8, 145, 178, 0.1);
+      --accent: #16a34a;
+      --accent-dim: #15803d;
+      --accent-soft: rgba(22, 163, 74, 0.1);
       --blue: #2d6fd6;
       --blue-soft: rgba(45, 111, 214, 0.08);
       --success: #1a9960;
@@ -125,7 +125,7 @@
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      box-shadow: 0 8px 26px rgba(34, 211, 238, 0.2);
+      box-shadow: 0 8px 26px rgba(34, 197, 94, 0.2);
       flex-shrink: 0;
       overflow: hidden;
     }
@@ -141,7 +141,7 @@
       display: inline-flex;
       align-items: center;
       background: var(--accent-soft);
-      border: 1px solid rgba(34, 211, 238, 0.3);
+      border: 1px solid rgba(34, 197, 94, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -294,14 +294,14 @@
     .drop-zone:hover,
     .drop-zone.drag-over {
       border-color: var(--accent);
-      background: rgba(34, 211, 238, 0.06);
+      background: rgba(34, 197, 94, 0.06);
       transform: translateY(-2px);
     }
 
     .drop-zone.has-file {
       border-style: solid;
-      border-color: var(--success);
-      background: var(--success-soft);
+      border-color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .dz-icon {
@@ -312,7 +312,7 @@
       place-items: center;
       color: var(--accent);
       background: var(--accent-soft);
-      border: 1px solid rgba(34, 211, 238, 0.28);
+      border: 1px solid rgba(34, 197, 94, 0.28);
     }
 
     .dz-icon.blue {
@@ -356,9 +356,9 @@
     }
 
     .dz-status.ok {
-      color: var(--success);
-      background: var(--success-soft);
-      border-color: rgba(99, 214, 163, 0.3);
+      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: var(--accent);
     }
 
     .dz-status.err {
@@ -371,16 +371,57 @@
       display: none;
     }
 
-    .action-bar {
-      margin-top: 1rem;
-      padding: 1rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: rgba(255, 255, 255, 0.035);
+
+
+    /* ── CONTROL BAR (dashboard-style) ───────────────────────────────── */
+    .upload-controls {
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      margin-top: 1rem;
+      margin-bottom: 0.9rem;
       flex-wrap: wrap;
+    }
+
+    .mode-label {
+      font-size: 0.73rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .mode-select {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      padding: 0.5rem 0.7rem;
+      font-size: 0.8rem;
+      min-width: 140px;
+      outline: none;
+    }
+
+    .mode-select:focus {
+      border-color: rgba(34, 197, 94, 0.5);
+    }
+
+    .control-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+    }
+
+    .control-status {
+      min-width: 72px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
     }
 
     .btn {
@@ -401,32 +442,104 @@
     }
 
     .btn:disabled {
-      opacity: 0.38;
+      opacity: 0.35;
       cursor: not-allowed;
       pointer-events: none;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #0ea5e9);
-      color: #1a0e00;
-      box-shadow: 0 4px 16px rgba(34, 211, 238, 0.2);
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #082018;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+      transition: all 0.25s;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(34, 197, 94, 0.3);
     }
 
     .btn-success {
       background: linear-gradient(135deg, var(--success), #3ecf8e);
       color: #082018;
       box-shadow: 0 4px 16px rgba(99, 214, 163, 0.2);
+      transition: all 0.25s;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 214, 163, 0.3);
     }
 
     .btn-secondary {
       background: var(--surface2);
       color: var(--text);
       border: 1px solid var(--border);
+      transition: all 0.2s;
     }
 
-    .btn:hover {
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
       transform: translateY(-1px);
     }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid rgba(241, 111, 111, 0.3);
+      transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+      border-color: var(--danger);
+      transform: translateY(-1px);
+    }
+
+    /* ── STATUS BAR (dashboard-style) ─────────────────────────────────── */
+    .status-bar {
+      margin-top: 0.75rem;
+      padding: 0.6rem 1rem;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 42px;
+      transition: border-color 0.3s;
+    }
+
+    .status-bar.has-msg {
+      border-color: var(--border);
+    }
+
+    .status-bar.ok {
+      border-color: rgba(99, 214, 163, 0.3);
+      background: var(--success-soft);
+    }
+
+    .status-bar.warn {
+      border-color: rgba(242, 196, 100, 0.3);
+      background: var(--warn-soft);
+    }
+
+    .status-bar.err {
+      border-color: rgba(241, 111, 111, 0.3);
+      background: var(--danger-soft);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-bar.ok .status-dot { background: var(--success); }
+    .status-bar.warn .status-dot { background: var(--warn); }
+    .status-bar.err .status-dot { background: var(--danger); }
 
     .status-msg {
       color: var(--text-dim);
@@ -435,17 +548,9 @@
       min-width: 220px;
     }
 
-    .status-msg.ok {
-      color: var(--success);
-    }
-
-    .status-msg.warn {
-      color: var(--warn);
-    }
-
-    .status-msg.err {
-      color: var(--danger);
-    }
+    .status-bar.ok .status-msg { color: var(--success); }
+    .status-bar.warn .status-msg { color: var(--warn); }
+    .status-bar.err .status-msg { color: var(--danger); }
 
     .stats-grid {
       display: none;
@@ -622,6 +727,8 @@
       transition: border-color 0.35s;
     }
 
+
+
     footer span {
       color: var(--text-dim);
     }
@@ -667,7 +774,7 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div>
           <h1>Recording Renamer</h1>
           <div class="header-sub">Processed Pre-Sales Sync export · Download & rename recordings</div>
@@ -739,7 +846,8 @@
         </label>
       </div>
 
-      <div class="action-bar">
+      <!-- Control bar (dashboard-style) -->
+      <div class="upload-controls">
         <button class="btn btn-primary" id="btnProcess" disabled onclick="processBatch()">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
@@ -748,14 +856,39 @@
         </button>
         <button class="btn btn-success" id="btnDownload" disabled onclick="downloadZip()">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
           </svg>
           Download ZIP
         </button>
+
+        <div class="control-group">
+          <span class="mode-label">Proxy</span>
+          <button class="btn btn-secondary" id="btnProxyToggle" onclick="toggleProxyMode()" style="border:none;background:transparent;min-height:auto;padding:0.2rem 0.4rem;font-size:0.72rem;font-weight:600;">
+            <span id="proxyStatusLabel">Off</span>
+          </button>
+        </div>
+
+        <div class="control-group">
+          <span class="mode-label">Date</span>
+          <select class="mode-select" id="dateFormatSelect" onchange="handleDateFormatChange()" style="min-width:120px;padding:0.35rem 0.55rem;font-size:0.72rem;">
+            <option value="auto">Auto Detect</option>
+            <option value="DMY">DD/MM/YYYY</option>
+            <option value="MDY">MM/DD/YYYY</option>
+          </select>
+          <span class="control-status" id="dateParserNote">Format: —</span>
+        </div>
+
         <button class="btn btn-secondary" id="btnReport" disabled onclick="downloadReport()">Download Report</button>
-        <button class="btn btn-secondary" onclick="resetAll()">Reset</button>
-        <span class="status-msg" id="statusMsg"></span>
+        <button class="btn btn-danger" onclick="resetAll()">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Reset
+        </button>
+      </div>
+
+      <!-- Status bar (dashboard-style) -->
+      <div class="status-bar" id="statusBar">
+        <span class="status-dot"></span>
+        <span class="status-msg" id="statusMsg">Ready to process</span>
       </div>
     </section>
 
@@ -819,7 +952,7 @@
     </section>
   </main>
 
-  <footer>AutoNage — Recording Renamer · Lead Operations Automation · <span>No backend · No install</span></footer>
+  <footer>AutoNage - Recording Renamer - Lead Operations Automation</footer>
 
   <script>
     const OUTPUT_HEADERS = [
@@ -838,6 +971,49 @@
     let resultRows = [];
     let matchedRows = [];
     let reportCsv = '';
+    let useCorsProxy = false;
+    let dateParseOrder = 'DMY';   // 'DMY' = DD/MM/YYYY, 'MDY' = MM/DD/YYYY
+
+    function getCorsProxyUrl() {
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.corsProxyUrl) {
+        var url = window.JEJO_CONFIG.corsProxyUrl.trim();
+        if (url) return url;
+      }
+      return '';
+    }
+
+    function toggleProxyMode() {
+      useCorsProxy = !useCorsProxy;
+      var label = document.getElementById('proxyStatusLabel');
+      var btn = document.getElementById('btnProxyToggle');
+      if (useCorsProxy) {
+        label.textContent = 'On';
+        btn.style.border = '1px solid var(--success)';
+        btn.style.color = 'var(--success)';
+        setStatus('Proxy mode ON — recording URLs will be fetched via CORS proxy.', 'ok');
+      } else {
+        label.textContent = 'Off';
+        btn.style.border = 'none';
+        btn.style.color = '';
+        setStatus('Proxy mode OFF — recording URLs fetched directly.', '');
+      }
+    }
+
+    function syncProxyToggle() {
+      var proxyUrl = getCorsProxyUrl();
+      var btn = document.getElementById('btnProxyToggle');
+      var label = document.getElementById('proxyStatusLabel');
+      if (btn && label) {
+        if (proxyUrl) {
+          btn.style.display = '';
+          useCorsProxy = false;
+          label.textContent = 'Off';
+          btn.title = 'CORS proxy: ' + proxyUrl;
+        } else {
+          btn.style.display = 'none';
+        }
+      }
+    }
 
     function normalizeHeader(value) {
       return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -914,11 +1090,19 @@
         if (ampm === 'pm' && hour !== 12) hour += 12;
         if (ampm === 'am' && hour === 12) hour = 0;
 
-        // Pre-Sales Sync exports Call_Date as DD/MM/YYYY. If that is impossible,
-        // accept an unambiguous MM/DD/YYYY value only when the swapped date validates.
+        // Use the user-selected date format (DMY = DD/MM/YYYY, MDY = MM/DD/YYYY)
+        if (dateParseOrder === 'MDY') {
+          // Parse as MM/DD/YYYY
+          const mdy = buildValidatedDate(year, first, secondPart, hour, minute, second);
+          if (mdy) return mdy;
+          // Fallback: try DD/MM if MM/DD is impossible
+          if (first > 12 && secondPart <= 12) return null;
+          return buildValidatedDate(year, secondPart, first, hour, minute, second);
+        }
+        // Default: DMY — parse as DD/MM/YYYY
         const ddmmyyyy = buildValidatedDate(year, secondPart, first, hour, minute, second);
         if (ddmmyyyy) return ddmmyyyy;
-
+        // Fallback: try MM/DD only when DD/MM is impossible
         if (first > 12 && secondPart <= 12) return null;
         const mmddyyyy = buildValidatedDate(year, first, secondPart, hour, minute, second);
         if (mmddyyyy) {
@@ -1157,6 +1341,7 @@
         if (!window.JSZip) throw new Error('JSZip library did not load.');
 
         parsedRows = await parseDataFile(dataFile);
+        applyDateFormat();
         const built = buildResults(parsedRows);
         resultRows = built.results;
         matchedRows = built.matches;
@@ -1182,10 +1367,25 @@
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    function buildFetchUrl(originalUrl) {
+      if (useCorsProxy) {
+        var proxyUrl = getCorsProxyUrl();
+        if (proxyUrl) {
+          return proxyUrl + '?url=' + encodeURIComponent(originalUrl);
+        }
+        // Proxy mode on but no URL configured — toggle off silently
+        useCorsProxy = false;
+        var pl = document.getElementById('proxyStatusLabel');
+        if (pl) pl.textContent = 'Off';
+      }
+      return originalUrl;
+    }
+
     async function fetchRecordingWithRetry(row, onAttempt) {
       const maxAttempts = RECORDING_FETCH_RETRIES + 1;
       let lastError = null;
       let lastTimedOut = false;
+      var fetchUrl = buildFetchUrl(row.url);
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (onAttempt) onAttempt(attempt, maxAttempts);
@@ -1198,7 +1398,7 @@
         }, RECORDING_FETCH_TIMEOUT_MS);
 
         try {
-          const response = await fetch(row.url, { signal: controller.signal });
+          const response = await fetch(fetchUrl, { signal: controller.signal });
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
           const blob = await response.blob();
@@ -1292,7 +1492,10 @@
       }
 
       if (error instanceof TypeError || /failed to fetch|network/i.test(String(error?.message || ''))) {
-        return 'Download failed: the browser could not fetch this cross-origin recording URL. Use a server/proxy download route or a browser extension that permits CORS, then retry.';
+        var proxyHint = useCorsProxy
+          ? 'CORS proxy enabled but still failed — check that your proxy server is reachable.'
+          : 'Toggle the CORS proxy button above, then retry. Or use a server/proxy download route or a browser extension that permits CORS.';
+        return 'Download failed: the browser could not fetch this cross-origin recording URL. ' + proxyHint;
       }
 
       return `Download failed: ${error?.message || 'unknown error'}`;
@@ -1419,8 +1622,13 @@
 
     function setStatus(message, type) {
       const el = document.getElementById('statusMsg');
+      const bar = document.getElementById('statusBar');
       el.textContent = message;
-      el.className = 'status-msg' + (type ? ` ${type}` : '');
+      if (type) {
+        bar.className = 'status-bar ' + type;
+      } else {
+        bar.className = 'status-bar';
+      }
     }
 
     function esc(value) {
@@ -1463,7 +1671,7 @@
       document.getElementById('dataZone').classList.add('has-file');
       document.getElementById('dataStatus').className = 'dz-status ok';
       document.getElementById('dataStatus').textContent = `Loaded: ${file.name}`;
-      setStatus('', '');
+      setStatus('Ready — upload a processed file to begin', '');
       updateProcessButton();
     });
 
@@ -1485,7 +1693,53 @@
     }
 
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
-  </script>
+    function detectDateFormat(dateStrings) {
+      var sampleLimit = Math.min(dateStrings.length, 250);
+      for (var i = 0; i < sampleLimit; i++) {
+        var s = String(dateStrings[i] || '').trim();
+        var m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+        if (!m) continue;
+        var a = parseInt(m[1], 10);
+        var b = parseInt(m[2], 10);
+        if (a > 12 && b <= 12) return 'DMY';
+        if (b > 12 && a <= 12) return 'MDY';
+      }
+      return 'DMY'; // default
+    }
+
+    function updateDateParserNote() {
+      var sel = document.getElementById('dateFormatSelect');
+      var note = document.getElementById('dateParserNote');
+      if (!sel || !note) return;
+      var mode = sel.value === 'auto' ? 'Auto' : 'Manual';
+      var label = dateParseOrder === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+      note.textContent = 'Format: ' + label + ' (' + mode + ')';
+    }
+
+    function applyDateFormat() {
+      var sel = document.getElementById('dateFormatSelect');
+      if (!sel) return;
+      if (sel.value === 'auto') {
+        var dates = parsedRows.map(function(r) {
+          return getRowValue(r, ['Call_Date', 'Call Date', 'Date', 'Updated']);
+        });
+        dateParseOrder = detectDateFormat(dates);
+        sel.dataset.detected = dateParseOrder;
+      } else {
+        dateParseOrder = sel.value;
+        delete sel.dataset.detected;
+      }
+      updateDateParserNote();
+    }
+
+    function handleDateFormatChange() {
+      applyDateFormat();
+      if (parsedRows.length) {
+        processBatch();
+      }
+    }
+
+    syncProxyToggle();
 </body>
 
 </html>

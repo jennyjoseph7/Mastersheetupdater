@@ -2,23 +2,22 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AutoEngage Formatter - AutoNage</title>
   <meta name="description"
     content="Convert dealership files into AutoEngage upload format using predefined column mappings." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../assets/lib/xlsx.full.min.js"></script>
   <style>
     :root,
     [data-theme="dark"] {
@@ -27,9 +26,9 @@
       --surface2: #1a1a1a;
       --surface3: #222222;
       --border: rgba(255, 255, 255, 0.08);
-      --accent: #a78bfa;
-      --accent-dim: #7c3aed;
-      --accent-soft: rgba(167, 139, 250, 0.14);
+      --accent: #3b82f6;
+      --accent-dim: #2563eb;
+      --accent-soft: rgba(59, 130, 246, 0.13);
       --success: #63d6a3;
       --success-soft: rgba(99, 214, 163, 0.12);
       --warn: #ffc857;
@@ -52,9 +51,9 @@
       --surface2: #f7f8fa;
       --surface3: #eef0f4;
       --border: rgba(0, 20, 50, 0.08);
-      --accent: #7c3aed;
-      --accent-dim: #6d28d9;
-      --accent-soft: rgba(124, 58, 237, 0.12);
+      --accent: #2563eb;
+      --accent-dim: #1d4ed8;
+      --accent-soft: rgba(37, 99, 235, 0.1);
       --success: #1a9960;
       --success-soft: rgba(26, 153, 96, 0.08);
       --warn: #c89520;
@@ -121,7 +120,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 8px 26px rgba(167, 139, 250, 0.2);
+      box-shadow: 0 8px 26px rgba(59, 130, 246, 0.2);
       overflow: hidden;
     }
     .brand-mark img {
@@ -135,7 +134,7 @@
     .header-badge {
       display: inline-flex;
       background: var(--accent-soft);
-      border: 1px solid rgba(167, 139, 250, 0.3);
+      border: 1px solid rgba(59, 130, 246, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -247,7 +246,7 @@
       width: 3px;
       height: calc(100% - 0.3rem);
       border-radius: 999px;
-      background: linear-gradient(180deg, var(--accent), #c4b5fd);
+      background: linear-gradient(180deg, var(--accent), #2563eb);
     }
 
     .controls {
@@ -281,9 +280,9 @@
 
     .btn-primary {
       border: 0;
-      background: linear-gradient(135deg, var(--accent), #c4b5fd);
-      color: #1a0e00;
-      box-shadow: 0 4px 16px rgba(167, 139, 250, 0.2);
+      background: linear-gradient(135deg, var(--accent), #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2);
     }
 
     .btn-primary:hover {
@@ -324,8 +323,8 @@
 
     .drop-zone.has-file {
       border-style: solid;
-      border-color: var(--success);
-      background: var(--success-soft);
+      border-color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .dz-label {
@@ -418,7 +417,7 @@
       font-size: 0.74rem;
       color: var(--text-dim);
       background: var(--accent-soft);
-      border: 1px solid rgba(167, 139, 250, 0.35);
+      border: 1px solid rgba(59, 130, 246, 0.35);
       border-radius: 10px;
       padding: 0.55rem 0.7rem;
       margin-bottom: 0.65rem;
@@ -683,7 +682,7 @@
   <header>
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div class="header-title-group">
           <h1>AutoEngage Formatter</h1>
           <div class="header-sub">Client file -> AutoEngage upload schema</div>

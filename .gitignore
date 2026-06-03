@@ -1,7 +1,20 @@
+# Config & secrets
+config.js
+.env
+.env.*
+*.local
+
+# Temp & cache
 set_key_temp.txt
 .chrome-profile/
 *.log
 .DS_Store
 Thumbs.db
-config.js
 
+# IDE
+.vscode/
+.idea/
+.vs/
+
+# Dependencies (if any)
+node_modules/

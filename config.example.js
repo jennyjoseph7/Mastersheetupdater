@@ -20,5 +20,13 @@ window.JEJO_CONFIG = {
   openRouterApiKey: "",
 
   // Optional: override the default DeepSeek model
-  openRouterModel: "deepseek/deepseek-v4-flash"
+  openRouterModel: "deepseek/deepseek-v4-flash",
+
+  // --- RECORDING DOWNLOAD PROXY (CORS FIX) ---
+  // Some recording URLs are hosted on servers that block cross-origin requests (CORS).
+  // Set this to a proxy endpoint (e.g., a Cloudflare Worker) that fetches the recording
+  // and returns it with permissive CORS headers.
+  // The proxy receives the target URL as a query param: <corsProxyUrl>?url=<encoded_recording_url>
+  // Example: "https://autonage-cors-proxy.yourname.workers.dev"
+  corsProxyUrl: ""
 };

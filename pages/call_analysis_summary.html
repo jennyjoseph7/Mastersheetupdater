@@ -2,22 +2,22 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
   <script>
     (function() {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Call Analysis Summary - AutoNage</title>
   <meta name="description" content="Import a processed Pre-Sales or Post-Sales Sync export and generate the call analysis summary." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../config.js"></script>
+  <script src="../assets/lib/xlsx.full.min.js"></script>
   <style>
     :root,
     [data-theme="dark"] {
@@ -29,10 +29,10 @@
       --surface-card-hover: rgba(26, 26, 26, 0.95);
       --border: rgba(255, 255, 255, 0.08);
       --border-subtle: rgba(255, 255, 255, 0.05);
-      --border-focus: rgba(244, 114, 182, 0.58);
-      --accent: #f472b6;
-      --accent-dim: #ec4899;
-      --accent-soft: rgba(244, 114, 182, 0.13);
+      --border-focus: rgba(168, 85, 247, 0.58);
+      --accent: #a855f7;
+      --accent-dim: #9333ea;
+      --accent-soft: rgba(168, 85, 247, 0.12);
       --accent2: #5b9cf5;
       --accent2-soft: rgba(91, 156, 245, 0.13);
       --success: #63d6a3;
@@ -70,10 +70,10 @@
       --surface-card-hover: rgba(255, 255, 255, 1);
       --border: rgba(0, 20, 50, 0.08);
       --border-subtle: rgba(0, 20, 50, 0.04);
-      --border-focus: rgba(219, 39, 119, 0.5);
-      --accent: #db2777;
-      --accent-dim: #be185d;
-      --accent-soft: rgba(219, 39, 119, 0.1);
+      --border-focus: rgba(124, 58, 237, 0.5);
+      --accent: #7c3aed;
+      --accent-dim: #6d28d9;
+      --accent-soft: rgba(124, 58, 237, 0.08);
       --accent2: #2d6fd6;
       --accent2-soft: rgba(45, 111, 214, 0.08);
       --success: #1a9960;
@@ -154,7 +154,7 @@
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      box-shadow: 0 8px 26px rgba(244, 114, 182, 0.2);
+      box-shadow: 0 8px 26px rgba(168, 85, 247, 0.2);
       flex-shrink: 0;
       overflow: hidden;
     }
@@ -170,7 +170,7 @@
       display: inline-flex;
       align-items: center;
       background: var(--accent-soft);
-      border: 1px solid rgba(244, 114, 182, 0.3);
+      border: 1px solid rgba(168, 85, 247, 0.3);
       border-radius: 999px;
       padding: 0.25rem 0.7rem;
       font-size: 0.68rem;
@@ -376,9 +376,9 @@
     }
 
     .drop-zone-dash.has-file {
-      border-color: var(--success);
+      border-color: var(--accent);
       border-style: solid;
-      background: var(--success-soft);
+      background: var(--accent-soft);
     }
 
     .drop-zone-dash .dz-icon {
@@ -386,7 +386,7 @@
       height: 40px;
       border-radius: 10px;
       background: var(--accent-soft);
-      border: 1px solid rgba(244, 114, 182, 0.3);
+      border: 1px solid rgba(168, 85, 247, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -418,9 +418,9 @@
     }
 
     .drop-zone-dash .dz-status.ok {
-      background: var(--success-soft);
-      border-color: rgba(99, 214, 163, 0.3);
-      color: var(--success);
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .drop-zone-dash .dz-status.err {
@@ -441,9 +441,9 @@
       font-weight: 700;
       cursor: pointer;
       border: none;
-      background: linear-gradient(135deg, var(--accent), #ec4899);
-      color: #1a0e00;
-      box-shadow: 0 4px 16px rgba(244, 114, 182, 0.2);
+      background: linear-gradient(135deg, var(--accent), #9333ea);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2);
       transition: transform 0.2s, box-shadow 0.2s;
       white-space: nowrap;
     }
@@ -602,11 +602,11 @@
     .kpi-card.purple .kpi-label { color: var(--purple); }
 
     .kpi-card.green::before { background: var(--success); }
-    .kpi-card.green .kpi-dot { background: var(--success); box-shadow: 0 0 8px rgba(99, 214, 163, 0.15); }
+    .kpi-card.green .kpi-dot { background: var(--success); box-shadow: 0 0 8px rgba(168, 85, 247, 0.15); }
     .kpi-card.green .kpi-label { color: var(--success); }
 
     .kpi-card.amber::before { background: var(--accent); }
-    .kpi-card.amber .kpi-dot { background: var(--accent); box-shadow: 0 0 8px rgba(244, 114, 182, 0.15); }
+    .kpi-card.amber .kpi-dot { background: var(--accent); box-shadow: 0 0 8px rgba(168, 85, 247, 0.15); }
     .kpi-card.amber .kpi-label { color: var(--accent); }
 
     .kpi-card.red::before { background: var(--danger); }
@@ -776,9 +776,9 @@
     .empty-dashboard {
       text-align: center;
       padding: 4rem 2rem;
-      border: 1px dashed rgba(244, 114, 182, 0.3);
+      border: 1px dashed rgba(168, 85, 247, 0.3);
       border-radius: var(--radius-lg);
-      background: rgba(244, 114, 182, 0.03);
+      background: rgba(168, 85, 247, 0.03);
     }
 
     .empty-dashboard .empty-icon {
@@ -786,7 +786,7 @@
       height: 64px;
       border-radius: 18px;
       background: var(--accent-soft);
-      border: 1px solid rgba(244, 114, 182, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.2);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -820,6 +820,13 @@
       color: var(--text-muted);
       border-top: 1px solid var(--border);
       transition: border-color 0.35s;
+    }
+
+    .date-parser-note {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      margin-top: 0.1rem;
     }
 
     footer span {
@@ -920,7 +927,7 @@
 
     <div class="header-inner">
       <div class="header-left">
-        <a class="brand-mark" href="index.html" aria-label="Go to home"><img src="AN Dark.png" data-light-logo="AN.png" data-dark-logo="AN Dark.png" alt="AutoNage"></a>
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
         <div>
           <h1>Call Analysis Summary</h1>
           <div class="header-sub">Generate call analysis summary</div>
@@ -972,6 +979,24 @@
           <option value="pre">Pre-Sales</option>
           <option value="post">Post-Sales</option>
         </select>
+        <span class="mode-label" style="margin-left:0.5rem;">Dealership</span>
+        <select id="dealerSelectCallAnalysis" class="mode-select" aria-label="Dealership">
+          <option value="perfect_riders_service">Perfect Riders</option>
+          <option value="fortune_service">Fortune</option>
+          <option value="ambal_service">Ambal</option>
+          <option value="bullmen_service">Bullmen</option>
+          <option value="pressana_service_feedback">Pressana</option>
+          <option value="pressana_post_service_feedback">Pressana Post</option>
+          <option value="suryabala_service">Suryabala</option>
+          <option value="icare_feedback">Icare</option>
+        </select>
+        <span class="mode-label" style="margin-left:0.5rem;">Date format</span>
+        <select id="dateFormatSelect" class="mode-select" aria-label="Date format" onchange="handleDateFormatChange()">
+          <option value="auto">Auto Detect</option>
+          <option value="DMY">DD/MM/YYYY</option>
+          <option value="MDY">MM/DD/YYYY</option>
+        </select>
+        <span class="date-parser-note" id="dateParserNote">Format: —</span>
       </div>
       <div class="upload-row">
         <div class="drop-zone-dash" id="dropZone" onclick="document.getElementById('fileInput').click()" role="button" tabindex="0">
@@ -1082,11 +1107,144 @@
     </div>
   </main>
 
-  <footer>AutoNage — Call Analysis Summary · Lead Operations Automation · <span>No backend · No install</span></footer>
+  <footer>AutoNage - Call Analysis Summary - Lead Operations Automation</footer>
 
   <script>
     const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
+
+    var DEALER_NAMES = {
+      perfect_riders_service: 'Perfect Riders',
+      fortune_service: 'Fortune',
+      ambal_service: 'Ambal',
+      bullmen_service: 'Bullmen',
+      pressana_service_feedback: 'Pressana',
+      pressana_post_service_feedback: 'Pressana Post',
+      suryabala_service: 'Suryabala',
+      icare_feedback: 'Icare'
+    };
+
+    var PRE_SALES_DISPOSITIONS = {
+      "Voicemail": "If the customer has asked to leave a message or voicemail.",
+      "Rejected": "If the customer has rejected the offer or to even speak with the agent.",
+      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+      "Is not decision maker": "the customer said they are not the right person to speak to about this in their family.",
+      "Will decide later, will purchase within 15 days": "The customer said they would decide to buy the vehicle within 15 days.",
+      "Will decide later, will purchase within 1 to 3 months": "The customer said they would decide to buy the vehicle within 1 to 3 months.",
+      "Will decide later, exploring options": "The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
+      "No buying intent": "the customer Do not want to purchase a car. Neither are the interested in the car.",
+      "Just Exploring": "the customer Only want to know about the vehicle but do not show intent to buy.",
+      "Will call showroom themselves": "the customer will contact the dealership or showroom themselves.",
+      "Requested Callback": "the customer Asked to call back at a later date and or time.",
+      "Purchased elsewhere": "the customer Already purchased a vehicle elsewhere.",
+      "Enquired for Pricing": "the customer by themselves asked for the price of the vehicle.",
+      "Enquired for Specifications": "the customer by themselves asked for the specifications of the vehicle.",
+      "Enquired for Test Drive": "the customer by themselves asked for a test drive of the vehicle.",
+      "Enquired for Showroom Visit": "the customer by themselves asked for a showroom visit of the vehicle.",
+      "Enquired for Brochure": "the customer by themselves asked for a brochure of the vehicle.",
+      "Enquired for Dealership Details": "the customer by themselves asked for dealership details.",
+      "Enquired for Others": "the customer by themselves asked for other details not listed above.",
+      "Comparing with another brand": "The customer by themselves is comparing the vehicle with another brand.",
+      "Call Disconnected": "The customer by themselves has disconnected the call.",
+      "Others": "All other disposition details not listed above.",
+      "General Inquiry": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
+      "Not Interested": "the customer Specifically said they are not interested in the vehicle.",
+      "Follow Up Required": "the customer Needs a follow up to convince them to complete the campaign objective.",
+      "No Response": "the customer did not say anything at all.",
+      "Lost to Competition": "the customer Bought a competitor brands vehicle.",
+      "Test Drive Completed": "the customer Already completed a test drive.",
+      "Invalid Lead": "the customer Not a valid lead.",
+      "Purchase Postponed": "the customer indicates that the Purchase has been postponed",
+      "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
+      "Showroom Visit Planned": "the customer Already booked a showroom visit.",
+      "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
+      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant.",
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
+    };
+
+    var POST_SALES_DISPOSITIONS = {
+      "Voicemail": "If the customer has asked to leave a message or voicemail.",
+      "Rejected": "If the customer has rejected the offer or to even speak with the agent. repeated rejection.",
+      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+      "Vehicle is commercial or part of a fleet": "The vehicle is a commercial vehicle and not applicable for the campaign purpose.",
+      "Vehicle is not being run": "Vehicle is unused and not being run.",
+      "Requires special spare parts": "The vehicle requires special spare parts for repair.",
+      "Others": "All other disposition details not listed above.",
+      "Wrong contact number": "Customer tells the agent they have the wrong person or number that was contacted",
+      "Has sold/given away the car": "The customer has sold or given away the vehicle.",
+      "Has moved to another location": "The customer has moved to another location.",
+      "Cannot make decision on servicing": "The customer the agent has called is not the right person to make the decision.",
+      "Will call workshop themselves": "The customer will contact the workshop themselves.",
+      "Requested Callback": "The customer asked the agent to call back at a later date and or time.",
+      "Looking for a discount": "The customer is looking for a discount on the campaign purpose.",
+      "Has serviced car in another dealership": "The customer has serviced the vehicle in another dealership.",
+      "Will decide tomorrow": "The customer said they would decide to service the vehicle tomorrow.",
+      "Will decide within 1 to 3 days": "The customer said they would decide to service the vehicle within 1 to 3 days.",
+      "Will decide within 4 to 7 days": "The customer said they would decide to service the vehicle within 4 to 7 days.",
+      "Will decide within 8 to 14 days": "The customer said they would decide to service the vehicle within 8 to 14 days.",
+      "Will decide within 15 to 30 days": "The customer said they would decide to service the vehicle within 15 to 30 days.",
+      "Will decide within 31 to 60 days": "The customer said they would decide to service the vehicle within 31 to 60 days.",
+      "Will decide within 61 to 90 days": "The customer said they would decide to service the vehicle within 61 to 90 days.",
+      "Will decide after 90 days": "The customer said they would decide to service the vehicle after 90 days.",
+      "Unsubscribed": "The customer asked to unsubscribed from the campaign.",
+      "Call Disconnected": "The call ended abruptly without completing the campaign objective.",
+      "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
+      "Call Quality Issue": "There was issues with the quality of the call.",
+      "Connection Issue": "There was issues with the connection between the customer and the agent.",
+      "Customer Busy": "The customer was busy.",
+      "No Response": "The customer did not say anything at all.",
+      "Price Inquiry": "The customer is interested in the price of the service.",
+      "Lost to Competition": "the customer already did the campaign objective from a competitors workshop",
+      "Invalid Lead": "Not a valid lead.",
+      "Not Interested": "The customer specifically said they are not interested or declined the offer/service.",
+      "Service Postponed": "They decided or implied they will postpone the service.",
+      "Showroom Visit Planned": "Already booked a showroom visit.",
+      "Existing Dealer Contact": "The customer already did the campaign objective from an existing dealership.",
+      "Contact Fatigue": "customer implied they were being contacted too many times by the agent.",
+      "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
+      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant.",
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
+    };
+
+    var POST_SALES_KPI_GROUPS = {
+      "Service Booked": ["Converted"],
+      "Service Completed": ["Has serviced car in another dealership", "Existing Dealer Contact"],
+      "Invalid Lead": ["Invalid Lead", "Not Interested", "Rejected"],
+      "Requested Callback": ["Requested Callback"],
+      "Follow Up Required": [
+        "Showroom Visit Planned", "Will call workshop themselves",
+        "Service Postponed", "Will decide tomorrow",
+        "Will decide within 1 to 3 days", "Will decide within 4 to 7 days",
+        "Will decide within 8 to 14 days", "Will decide within 15 to 30 days",
+        "Will decide within 31 to 60 days", "Will decide within 61 to 90 days",
+        "Will decide after 90 days", "Talk to Human"
+      ],
+      "Voicemail": ["Voicemail"]
+    };
+
+    function getPostDispositionKey(row) {
+      var ud = clean(row.updated_disposition);
+      if (ud && POST_SALES_DISPOSITIONS[ud]) return ud;
+      var d = clean(row.disposition_detail || row.disposition);
+      if (d && POST_SALES_DISPOSITIONS[d]) return d;
+      return null;
+    }
+
+    function isDispositionMatch(row, keys) {
+      var k = getPostDispositionKey(row);
+      return k && keys.indexOf(k) !== -1;
+    }
+
+    function getPreDispositionKey(row) {
+      var d = clean(row.disposition_detail || row.disposition);
+      if (d && PRE_SALES_DISPOSITIONS[d]) return d;
+      return null;
+    }
+
+    function isPreDispositionMatch(row, keys) {
+      var k = getPreDispositionKey(row);
+      return k && keys.indexOf(k) !== -1;
+    }
 
     let importedRows = [];
     let summaryItems = [];
@@ -1094,6 +1252,7 @@
     let bookingPreviewData = [];
     let completedPreviewData = [];
     let activeCampaignMode = 'pre';
+    let dateParseOrder = 'DMY';
 
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
@@ -1105,6 +1264,103 @@
           renderSummary(importedRows);
         }
       });
+    }
+
+    var dealerSelectCallAnalysis = document.getElementById('dealerSelectCallAnalysis');
+    if (dealerSelectCallAnalysis) {
+      dealerSelectCallAnalysis.addEventListener('change', function() {
+        if (importedRows.length) {
+          renderSummary(importedRows);
+        }
+      });
+    }
+
+    function detectDateFormat(dateStrings) {
+      var sampleLimit = Math.min(dateStrings.length, 250);
+      for (var i = 0; i < sampleLimit; i++) {
+        var s = String(dateStrings[i] || '').trim();
+        var m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+        if (!m) continue;
+        var a = parseInt(m[1], 10);
+        var b = parseInt(m[2], 10);
+        if (a > 12 && b <= 12) return 'DMY';
+        if (b > 12 && a <= 12) return 'MDY';
+      }
+      return 'DMY'; // default
+    }
+
+    function updateDateParserNote() {
+      var sel = document.getElementById('dateFormatSelect');
+      var note = document.getElementById('dateParserNote');
+      if (!sel || !note) return;
+      var mode = sel.value === 'auto' ? 'Auto' : 'Manual';
+      var label = dateParseOrder === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+      note.textContent = 'Format: ' + label + ' (' + mode + ')';
+    }
+
+    function handleDateFormatChange() {
+      var sel = document.getElementById('dateFormatSelect');
+      if (!sel) return;
+      if (sel.value === 'auto') {
+        if (importedRows.length) {
+          var dates = importedRows.map(function(r) { return r.call_date_raw || ''; });
+          dateParseOrder = detectDateFormat(dates);
+        }
+      } else {
+        dateParseOrder = sel.value;
+      }
+      updateDateParserNote();
+      if (importedRows.length) {
+        // Re-normalize dates from raw source using the (possibly detected) format
+        importedRows = importedRows.map(function(row) {
+          if (row.call_date_raw !== undefined) {
+            return Object.assign({}, row, { call_date: normalizeDateString(row.call_date_raw) });
+          }
+          return row;
+        });
+        renderSummary(importedRows);
+      }
+    }
+
+    function normalizeDateString(raw) {
+      if (!raw) return '';
+      var s = String(raw).trim();
+      var match = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (!match) return s;
+      var first = parseInt(match[1], 10);
+      var second = parseInt(match[2], 10);
+      var year = parseInt(match[3], 10);
+      if (year < 100) year += 2000;
+
+      if (dateParseOrder === 'MDY') {
+        // Try MM/DD/YYYY first
+        if (first >= 1 && first <= 12 && second >= 1 && second <= 31) {
+          var day = second < 10 ? '0' + second : '' + second;
+          var month = first < 10 ? '0' + first : '' + first;
+          return day + '/' + month + '/' + year;
+        }
+        // Fallback: try DD/MM/YYYY
+        if (second >= 1 && second <= 12 && first >= 1 && first <= 31) {
+          var day = first < 10 ? '0' + first : '' + first;
+          var month = second < 10 ? '0' + second : '' + second;
+          return day + '/' + month + '/' + year;
+        }
+        return s;
+      }
+
+      // Default: DMY — try DD/MM/YYYY first
+      if (second >= 1 && second <= 12 && first >= 1 && first <= 31) {
+        var day = first < 10 ? '0' + first : '' + first;
+        var month = second < 10 ? '0' + second : '' + second;
+        return day + '/' + month + '/' + year;
+      }
+      // Fallback: try MM/DD/YYYY
+      if (first >= 1 && first <= 12 && second >= 1 && second <= 31) {
+        var day = second < 10 ? '0' + second : '' + second;
+        var month = first < 10 ? '0' + first : '' + first;
+        return day + '/' + month + '/' + year;
+      }
+      return s;
     }
 
     fileInput.addEventListener('change', function() {
@@ -1158,6 +1414,15 @@
         if (!importedRows.length) {
           throw new Error('No usable rows found. Upload a processed Pre-Sales or Post-Sales sync output file.');
         }
+
+        // Auto-detect date format
+        var dateSel = document.getElementById('dateFormatSelect');
+        if (dateSel && dateSel.value === 'auto') {
+          var dates = importedRows.map(function(r) { return r.call_date_raw || ''; });
+          dateParseOrder = detectDateFormat(dates);
+        }
+
+        updateDateParserNote();
 
         renderSummary(importedRows);
         document.getElementById('rowCount').textContent = importedRows.length;
@@ -1220,7 +1485,8 @@
             ])),
             conversion: clean(get(['Conversion', 'conversion'])),
             session_summary: clean(get(['Session_Summary', 'Session Summary', 'session_summary'])),
-            call_date: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])),
+            call_date_raw: clean(get(['Call_Date', 'Call Date', 'created', 'start_time', 'date'])),
+            call_date: '', // computed below
             attempts: clean(get([
               'NUMBER OF ATTEMPTS',
               'NUMBER_OF_ATTEMPTS',
@@ -1231,6 +1497,11 @@
             next_service_due: clean(get(['NEXT_SERVICE_DUE', 'next_service_due', 'NEXT_SERVICE_DATE', 'next_service_date']))
           };
         });
+      // Normalize call_date from raw after the fact so format changes can re-normalize
+      rows.forEach(function(row) {
+        row.call_date = normalizeDateString(row.call_date_raw || '');
+      });
+      return rows;
     }
 
     function getWorkbookRows(workbook) {
@@ -1405,43 +1676,27 @@
     }
 
     function hasPostVoicemail(row) {
-      const ud = clean(row.updated_disposition);
-      const det = lower(row.disposition || '');
-      if (ud) {
-        const n = lower(ud);
-        return n.includes('voicemail') || n.includes('voice mail');
-      }
-      return det.includes('voicemail') || det.includes('voice mail');
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Voicemail"]);
     }
 
     function isPostServiceBooked(row) {
-      const ud = clean(row.updated_disposition);
-      const det = lower(row.disposition || '');
-      if (ud) {
-        const n = lower(ud);
-        return n === 'converted' || n === 'follow up required' || n === 'follow-up required';
-      }
-      return det === 'converted' || det === 'follow up required' || det === 'follow-up required';
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Service Booked"]);
     }
 
     function isPostServiceCompleted(row) {
-      const ud = clean(row.updated_disposition);
-      const det = lower(row.disposition || '');
-      if (ud) {
-        const n = lower(ud);
-        return n.includes('service done') || n.includes('service completed');
-      }
-      return det.includes('service done') || det.includes('service completed');
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Service Completed"]);
     }
 
     function isPostInvalidLead(row) {
-      const ud = clean(row.updated_disposition);
-      const det = lower(row.disposition || '');
-      if (ud) {
-        const n = lower(ud);
-        return n.includes('not interested') || n.includes('invalid lead');
-      }
-      return det.includes('not interested') || det.includes('invalid lead');
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Invalid Lead"]);
+    }
+
+    function isPostFollowUpRequired(row) {
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Follow Up Required"]);
+    }
+
+    function isPostRequestedCallback(row) {
+      return isDispositionMatch(row, POST_SALES_KPI_GROUPS["Requested Callback"]);
     }
 
     function countPostUniqueCalls(data) {
@@ -1484,6 +1739,8 @@
       const total = data.length;
 
       if (resolvedMode === 'post') {
+        var dealerSelect = document.getElementById('dealerSelectCallAnalysis');
+        var dealerName = dealerSelect ? (DEALER_NAMES[dealerSelect.value] || '') : '';
         const connected = data.filter(isPostConnected).length;
         const notConnectedCalls = data.filter(isPostNotConnected).length;
         const voicemail = data.filter(hasPostVoicemail).length;
@@ -1491,28 +1748,24 @@
         const serviceBooked = data.filter(isPostServiceBooked).length;
         const serviceCompleted = data.filter(isPostServiceCompleted).length;
         const invalidLead = data.filter(isPostInvalidLead).length;
-        const requestedCallbacks = data.filter(function(row) {
-          const d = lower(row.disposition);
-          const s = lower(getEffectiveSummary(row));
-          const ss = lower(row.session_summary);
-          return d.includes('call back') || d.includes('callback') || d.includes('call later') ||
-            s.includes('requested call back') || s.includes('callback requested') || s.includes('requested callback') ||
-            ss.includes('requested call back') || ss.includes('callback requested') || ss.includes('requested callback');
-        }).length;
+        const requestedCallbacks = data.filter(isPostRequestedCallback).length;
+        const followUpRequired = data.filter(isPostFollowUpRequired).length;
 
+        summaryTitleText = dateLabel + ' \u2014 Call Analysis Summary (' + modeLabel + ')' + (dealerName ? ' ' + dealerName : '');
         summaryItems = [
           { label: 'Total Calls Triggered', val: total, cls: 'purple', sub: 'Imported records' },
           { label: 'Connected Calls', val: connected, cls: 'green', sub: 'STATUS: attempted / completed' },
           { label: 'Not Connected Calls', val: notConnectedCalls, cls: 'red', sub: 'STATUS: busy' },
-          { label: 'Voicemail', val: voicemail, cls: 'amber', sub: 'Updated Disposition, else Disposition Details' },
+          { label: 'Voicemail', val: voicemail, cls: 'amber', sub: 'Exact disposition match: Voicemail' },
           { label: 'Unique Calls', val: uniqueCalls, cls: 'amber', sub: 'Attempt = 1 if column exists, else unique phones' },
-          { label: 'Service Booked', val: serviceBooked, cls: 'green', sub: 'Updated Disposition, else DISPOSITION_DETAILS' },
-          { label: 'Service Completed', val: serviceCompleted, cls: 'teal', sub: 'Updated Disposition, else Disposition Details' },
-          { label: 'Invalid Lead', val: invalidLead, cls: 'red', sub: 'Updated Disposition, else Disposition Details' },
-          { label: 'Requested Call Back', val: requestedCallbacks, cls: 'teal', sub: 'Disposition + summary' }
+          { label: 'Service Booked', val: serviceBooked, cls: 'green', sub: 'Exact disposition match: Converted' },
+          { label: 'Service Completed', val: serviceCompleted, cls: 'teal', sub: 'Exact disposition match: Has serviced car / Existing Dealer Contact' },
+          { label: 'Invalid Lead', val: invalidLead, cls: 'red', sub: 'Exact disposition match: Invalid Lead / Not Interested / Rejected' },
+          { label: 'Requested Call Back', val: requestedCallbacks, cls: 'teal', sub: 'Exact disposition match: Requested Callback' },
+          { label: 'Follow Up Required', val: followUpRequired, cls: 'amber', sub: 'Exact disposition match: Showroom Visit Planned / Will call workshop / Will decide / Talk to Human' }
         ];
 
-        document.getElementById('summaryTitle').innerHTML = escapeHtml(dateLabel) + ' <span>Call Analysis Summary</span>';
+        document.getElementById('summaryTitle').innerHTML = escapeHtml(dateLabel) + (dealerName ? ' ' + escapeHtml(dealerName) : '') + ' <span>Call Analysis Summary</span>';
         document.getElementById('summaryGrid').innerHTML = summaryItems.map(function(item, index) {
           return '<div class="kpi-card ' + item.cls + ' slide-up stagger-' + Math.min(index + 1, 7) + '">' +
             '<div><span class="kpi-dot"></span></div>' +
@@ -1528,12 +1781,13 @@
         renderRuleAudit([
           { label: 'Connected Calls', count: connected, detail: 'STATUS contains attempted or completed (matches Dashboard post-sales).' },
           { label: 'Not Connected Calls', count: notConnectedCalls, detail: 'STATUS contains busy.' },
-          { label: 'Voicemail', count: voicemail, detail: 'Updated Disposition contains voicemail; if blank, DISPOSITION_DETAILS.' },
+          { label: 'Voicemail', count: voicemail, detail: 'Exact disposition match against POST_SALES_DISPOSITIONS.' },
           { label: 'Unique Calls', count: uniqueCalls, detail: 'Same as Dashboard: NUMBER OF ATTEMPTS = 1 when present; otherwise distinct phone numbers.' },
-          { label: 'Service Booked', count: serviceBooked, detail: 'Updated Disposition CONVERTED / FOLLOW UP REQUIRED; if blank, same phrases in DISPOSITION_DETAILS.' },
-          { label: 'Service Completed', count: serviceCompleted, detail: 'SERVICE DONE / SERVICE COMPLETED in Updated Disposition or DISPOSITION_DETAILS.' },
-          { label: 'Invalid Lead', count: invalidLead, detail: 'NOT INTERESTED / INVALID LEAD in Updated Disposition or DISPOSITION_DETAILS.' },
-          { label: 'Requested Call Back', count: requestedCallbacks, detail: 'Callback language in disposition or summaries.' }
+          { label: 'Service Booked', count: serviceBooked, detail: 'Exact disposition match: Converted.' },
+          { label: 'Service Completed', count: serviceCompleted, detail: 'Exact disposition match: Has serviced car in another dealership / Existing Dealer Contact.' },
+          { label: 'Invalid Lead', count: invalidLead, detail: 'Exact disposition match: Invalid Lead / Not Interested / Rejected.' },
+          { label: 'Requested Call Back', count: requestedCallbacks, detail: 'Exact disposition match: Requested Callback.' },
+          { label: 'Follow Up Required', count: followUpRequired, detail: 'Exact disposition match: Showroom Visit Planned / Will call workshop themselves / Service Postponed / Will decide (all) / Talk to Human.' }
         ]);
         renderPreviewTables(data);
         return;
@@ -1719,7 +1973,7 @@
 
     function getBookingColumnsPost(row) {
       var disp = clean(row.updated_disposition) || clean(row.disposition);
-      if (lower(disp) === 'converted' || lower(disp).includes('follow up required')) {
+      if (disp === 'Converted') {
         disp = 'Service Booked';
       }
       return [
