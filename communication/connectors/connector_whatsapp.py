@@ -269,7 +269,7 @@ def post_contact_status(*args, **data):
 
     message_id = args[0] if args else None
     incoming_status = (data.get("message_status") or data.get("provider_status","")).lower()
-
+    phone_number = data.get("phone_number") or data.get('mobile_number')
     logger.info(f"[post_contact_status] Processing message_id={message_id} with incoming_status={incoming_status}")
     raw_channel = data.get("channel")
     channel = raw_channel.strip() if isinstance(raw_channel, str) else None
@@ -284,7 +284,7 @@ def post_contact_status(*args, **data):
             # person update
             person_d = list(pg.list_order_by(
                     "person",
-                    {"phone_number": data.get("phone_number")},
+                    {"phone_number": phone_number},
                     order_by="updated",
                     order="DESC",
                 )
@@ -323,23 +323,22 @@ def post_contact_status(*args, **data):
         
         records= list(pg.list_order_by(
                 "contact_status",
-                {"message_id": message_id},
+                {"phone_number": phone_number, "message_id": message_id},
                 order_by="updated",
                 order="DESC"
             ))
         if not records:
             logger.warning(
-                f"[post_contact_status] No contact_status found for message_id={message_id}"
+                f"[post_contact_status] No contact_status found for message_id={message_id} phone_number={phone_number}"
             )
             return
 
         existing = records[0]
-        logger.info(f"[post_contact_status] existing={existing}---- message_status ={existing.get('provider_status')}")
+        logger.info(f"[post_contact_status] phone_number={phone_number} message_id={message_id} existing={existing}---- message_status ={existing.get('provider_status')}")
         previous_status = (existing.get("provider_status") or "").lower()
         channel = existing.get("channel") or channel
 
         existing["provider_status"] = incoming_status
-        # existing["message_status"] = incoming_status
         existing["created"] = time.time()
         existing["updated"] = time.time()
 
