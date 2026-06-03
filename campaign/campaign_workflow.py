@@ -259,8 +259,7 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
     if not channel_type:
         raise ValueError(f"Invalid channel: {channel}, doing nothing.")
     if channel_type in ["phone_number"]:
-        if len(channel_identifier) <= 10:
-            channel_identifier = f"91{channel_identifier}"
+        channel_identifier = process_phone_number(channel_identifier, dealership_id)
     kws = {"channel": channel, channel_type: channel_identifier, "_sort_by": "updated", "_sort_reverse": True, "_as_option":True, "_page_size":100}
     if lead_id:
         kws["lead_id"] = lead_id

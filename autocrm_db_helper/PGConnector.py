@@ -20,7 +20,6 @@ class AutoCRMPGConnector(db.GrydPGConnector):
     
     # TODO: add a limit .
     def list_order_by(self, table_name, where, order_by="created", order="DESC"):
-        conditions = []
         filter_by_types = {}
         for k, v in where.items():
             if isinstance(v, (int, float)):

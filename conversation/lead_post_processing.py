@@ -251,11 +251,55 @@ def post_session_process(*args, **kwargs):
     # yield {"lead_data":updated_lead_data,"session_id":session_id,"session_summary":session_mdl_obj.get("summary",""),"session_transcript":session_mdl_obj.get("history",[]), 'sentiment_analyse': sentiment_classification}
     # return
 
-    session_update_data.update({k: v for k,v in {
-                                                    "sentiment_score": sentiment_score if sentiment_score != -1 else None,
-                                                    "emotion_analysis": emotion_analysis,
-                                                    "sentiment_classification": sentiment_classification}.items() if v})
+    session_update_data.update({
+        k: v for k, v in {
+            "sentiment_score": sentiment_score if sentiment_score != -1 else None,
+            "emotion_analysis": emotion_analysis,
+            "sentiment_classification": sentiment_classification
+        }.items() if v
+    })
     
+    if sentiment_score != -1:
+        session_update_data["sentiment_score"] = sentiment_score
+    if emotion_analysis:
+        session_update_data["emotion_analysis"] = emotion_analysis
+    if sentiment_classification:
+        session_update_data["sentiment_classification"] = sentiment_classification
+
+    try:
+        if sentiment_classification in ["negative", "neutral"]:
+            receiver_emails = [
+                "eshwar@iamdave.ai",
+                "sahib@iamdave.ai",
+                "shanjai@iamdave.ai",
+            ]
+
+            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
+            html = f"""
+            <p>Hi Team,</p>
+            <p>A customer interaction was classified as <b>{sentiment_classification}</b> for session <b>{session_id}</b>.</p>
+            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
+            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
+            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
+            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
+            <p><b>Conversation summary:</b></p>
+            <pre>{session_mdl_obj.get('summary','')}</pre>
+            <p>Message history:</p>
+            <pre>{json.dumps(session_mdl_obj.get('history',[]))}</pre>
+            <p>Please review the SOPs and take corrective action.</p>
+            """
+
+            email_payload = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {"name": "AutoCRM Alerts"},
+                "receiver": {"emails": receiver_emails},
+                "html_string": html,
+                "subject": subject,
+            }
+            from communication.connectors.email_communication import communication_sender
+            communication_sender(**email_payload)
+    except Exception as e:
+        mlogger.exception(f"Failed to send SOP alert email: {e}")
     appt_date_time_purpose = {}
     try:
         disp = (updated_lead_data.get("disposition") or "").lower()
@@ -1408,6 +1452,107 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
 
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id}, temperature = 0.2, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id})
     
+<<<<<<< HEAD
+=======
+    # The campaign can be in different langauages so LOOK AT THE CONVERSATION HISTORY TO UNDERSTAND THE LANGUAGE and THE CONTEXT of the conversation before coming to a conclusion.
+    
+    # Following are the list of languages in which the conversation can happen - Englis, Hindi, Tamil, Telugu, Kannada, Malayalam.
+    
+    {purpose_steps}
+    
+    # I want to know if the purpose of the campaign was met by the customer.
+    For example:
+        If campaign is about booking a test drive check if the customer booked a test drive.
+        If campaign is about buying a car check if the customer bought a car.
+        If campaign is about informing the user about an offer we are running check if the customer was informed about the offer.
+
+    # The summary of my conversation with the customer is as follows:\n
+    {session_summary}\n
+    # The conversation history between my agent and the costomer is ask follows:\n
+    {message_history}\n
+    # Now check if the objective of the campaign was met by the customer. 
+    If the objective was met the disposition should be converted.
+    In all other cases it should be engaged.
+    If the disposition is converted the prioritization score should be 100 and prioritization category should be COMPLETE. Other wise determine the interest the have shown during the call and put a score and pick from the categories for prioritization.
+    
+    # Possible values and description to qualify for disposition_detail are:
+    \n{disp_details_options[sentiment.upper()]}\n
+    Only pick ONE value from this above list for disposition details.
+    The disposition detail is a description of the status of the customer based on the conversation summary provided above. Not what the agent said. Only consider the customer's interaction to conclude on the final disposition detail value.,
+
+    # The disposition and disposition detail is for the customer and their intent shown in the conversation summary above.
+    # Special Cases:-
+    - if the user has asked for a callback or requested to speak with a human or a phone call in any way without completing the objective of the campaign then the Disposition Detail would be = 'Requested Callback'.
+    - if the user has not completed the objective of the campaign and has suggested they do not understand the language i am speaking or asked me to switch to a different language, the Disposition Detail would be = 'Language barrier'.
+    
+    CRITICAL RULES:
+    - Your response must be ONLY the JSON object string that i can convert to json using json.loads.
+    - Do NOT add code fences, do NOT add markdown formatting, do NOT add triple backticks, 
+    - Use ONLY the exact labels provided below.
+    - NEVER create new labels.
+    - NEVER summarize the conversation.
+    - NEVER explain reasoning.
+    - NEVER output anything outside the allowed values.
+    - If uncertain, choose the closest valid label.
+    - Do NOT prepend labels (like "json"). Output only valid JSON.
+
+    ALLOWED VALUES for disposition_detail based on sentiment category are as follows:
+
+    {{
+        "CONVERTED": [
+            "CONVERTED"
+        ],
+
+        "POSITIVE": [
+            "ENQUIRED FOR TEST DRIVE",
+            "SHOWROOM VISIT PLANNED",
+            "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS",
+            "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS",
+            "ENQUIRED FOR PRICING",
+            "ENQUIRED FOR SPECIFICATIONS",
+            "ENQUIRED FOR SHOWROOM VISIT",
+            "ENQUIRED FOR BROCHURE",
+            "ENQUIRED FOR DEALERSHIP DETAILS",
+            "INTERESTED IN ANOTHER CAR SAME DEALERSHIP",
+            "FOLLOW UP REQUIRED",
+            "REQUESTED CALLBACK"
+        ],
+
+        "NEUTRAL": [
+            "WILL DECIDE LATER, EXPLORING OPTIONS",
+            "JUST EXPLORING",
+            "WILL CALL SHOWROOM/WORKSHOP THEMSELVES",
+            "GENERAL INQUIRY",
+            "COMPARING WITH ANOTHER BRAND",
+            "LANGUAGE BARRIER",
+            "AUDIO ISSUE",
+            "TEST DRIVE COMPLETED",
+            "ENQUIRED FOR OTHERS",
+            "OTHERS"
+        ],
+
+        "NEGATIVE": [
+            "NO RESPONSE",
+            "CALL DISCONNECTED",
+            "VOICEMAIL",
+            "NOT INTERESTED",
+            "NO BUYING INTENT",
+            "PURCHASED ELSEWHERE",
+            "LOST TO COMPETITION",
+            "PURCHASE POSTPONED",
+            "INVALID LEAD",
+            "TALK TO HUMAN"
+        ]
+    }}
+
+     # Your response should be in the following JSON format:
+    {example_disposition_response}
+    """
+
+    mlogger.info("prompt == {}".format(prompt))
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"gcp-gemini-3.1-flash-lite-preview","session_id":session_id, "temperature": 0.2})
+    # mlogger.info("disposition prompt response ======= {}".format(resp))
+>>>>>>> staging
     return hp.json.loads(resp)
 
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):

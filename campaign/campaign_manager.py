@@ -71,14 +71,14 @@ class BaseCampaignCreater:
         '''
         raise NotImplementedError("Subclasses must implement the `create_media_template` method.")
     
-    def _format_mobile_number(self,number: str, country_code: str = "91") -> str:
-        
+    def _format_mobile_number(self, number: str, country_code: str = "91") -> str:
         number = str(number).strip()
         number = re.sub(r'[^0-9]', '', number)
         number = number.lstrip("0")
-        if len(number) == 10:
+        if len(number) <= 10:
             number = country_code + number
         return number
+
     @staticmethod
     def load_models(campaign_type, logger = None):
     
@@ -224,11 +224,10 @@ class BaseCampaignCreater:
         patch_user_data={}
         if channel in ["whatsapp", "whatsapp_chat"]:
             country_code=get_phone_code_from_dealership(campaign_details.get("dealership_id"),False)
-            mobile_number = f"{country_code}{mobile_number}"
-            # mobile_number = self._format_mobile_number(
-            #     mobile_number,
-            #     country_code=campaign_user_data.get("country_code", "91") or "91"
-            # )
+            mobile_number = self._format_mobile_number(
+                mobile_number,
+                country_code=campaign_user_data.get("country_code") or country_code
+            )
             patch_user_data = {"mobile_number":mobile_number,"template_message":campaign_details.get("template_message",'').format(**campaign_user_data)}
             # logger.info(f"Campaign Message patch_user_data: {patch_user_data}")
             send_data = self.create_campaign_payload(
@@ -408,9 +407,8 @@ class BaseCustomCampaignManager:
             logger.info(f"USER----------{user}")
             logger.info(f"CHANNEL ---{channel}")
             if channel.upper()=="WHATSAPP_CHAT":
-                # mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number,user.get("country_code","91"))
                 country_code=get_phone_code_from_dealership(campaign_data.get("dealership_id"),False)
-                mobile_number = f"{country_code}{mobile_number}"
+                mobile_number = BaseCampaignCreater()._format_mobile_number(mobile_number, user.get('country_code') or country_code)
                 logger.info(f"mobile_number after formatting-----{ mobile_number}")
             if not mobile_number:
                 logger.warning(f"[{count}] User record missing mobile_number: {user}")
@@ -1452,13 +1450,10 @@ def get_variable_values(template_variables, lead_data, selected_person=None):
             values[var] = lead_data.get(var)
     return values
 
-def format_number(number: str, country_code: str = "91", add_plus: str = None):
+def format_number(number: str, country_code: str = None, add_plus: str = None, dealership_id = None):
     number = str(number)
-    if len(number) <= 10:
-        number = country_code + number
-    if len(number) == 12 and add_plus:
-        number = "+" + number
-    return number
+    country_code = country_code or get_phone_code_from_dealership(dealership_id, add_plus)
+    return BaseCampaignCreater()._format_mobile_number(number, country_code)
     
 def format_email_payload(campaign_data,campaign_user,mobile_number):
     """

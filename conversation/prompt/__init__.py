@@ -19,8 +19,9 @@ def yield_primary_prompt(*args, **kwargs):
         return pr
     ###TODO check prompt template model to find the correct prompt for this user and campaign
     pr = setup_primary_prompt(*args, **kwargs)
-    if isinstance(pr,dict) and "status" in pr:
-        yield pr
+    if isinstance(pr,dict) and "status" in pr and pr.get("status") == "Error":
+        return pr
+    ###TODO check prompt template model to find the correct prompt for this user and campaign
     yield {"prompt":pr}
 
 def specific_prompt(*args, **kwargs):
@@ -64,7 +65,7 @@ def get_who_you_represent(*args, **kwargs):
         with get_pg_connector() as pg:
             campaign_data = pg.get(session_data.get("campaign_model"),f"{session_data.get('campaign_model')}_id",session_data.get("campaign_id")) 
     if not campaign_data:
-        return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_you_represent"]["no_campaign_data"]#"You represent Autobot and all dealers listed with the platform."
+        return "You represent Autobot and all dealers listed with the platform."
     dealership_name = campaign_data.get("dealership_name",campaign_data.get("dealer_name"))
     region = campaign_data.get("region_name")
     dealer_type = ""
@@ -76,8 +77,8 @@ def get_who_you_represent(*args, **kwargs):
         dealer_type = "workshop"
         shop_details = campaign_data.get("workshop_name","")
     
-    dealer_details = language_maps.MAP.get(kwargs.get("language","english"))["who_you_represent"]["dealer_data"].format(dealer_type=dealer_type,shop_details=shop_details,supported_brands=campaign_data.get("supported_brands",[])) if shop_details else language_maps.MAP.get(kwargs.get("language","english"))["who_you_represent"]["dealer_data_else"].format(dealer_type=dealer_type,supported_brands=campaign_data.get("supported_brands",[]))
-    return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["who_you_represent"]["overall"].format(dealership_name=dealership_name,dealer_details=dealer_details)   
+    dealer_details = "They have a {dealer_type} called {shop_details}. They support the brands as follows - {supported_brands}".format(dealer_type=dealer_type,shop_details=shop_details,supported_brands=campaign_data.get("supported_brands",[])) if shop_details else "They have a {dealer_type}. They support the following brands - {supported_brands}.".format(dealer_type=dealer_type,supported_brands=campaign_data.get("supported_brands",[]))
+    return "You represent {dealership_name}.{dealer_details}".format(dealership_name=dealership_name,dealer_details=dealer_details)   
 
 def get_user_info(*args, **kwargs):
     user_data = kwargs.get("user_data")
@@ -108,17 +109,14 @@ def get_purpose_and_steps(*args, **kwargs):
         if campaign_data.get("purpose_steps"):
             flow = campaign_data.get("purpose")
             steps = ', \n'.join(campaign_data.get("purpose_steps"))
-            # return "The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about vehicles that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}".format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,flow=flow,urgency_hooks=urgency_hooks)
-            return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["custom_purpose"].format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,urgency_hooks=urgency_hooks)
+            return f"The overall purpose of your conversation with the user is to help the customer {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}.Here are the steps you should go through to complete the purpose {flow}  :- \n{steps}\n\nRun through the flow one time. and in the sequence specified. Once complete continue assist the user with other questions.\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow and has not completed the purpose yet, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
     if flow == "service":
         steps = ["- Full Name \n- Vehicle Model \n- Date & Time \n- Service Type"]
     else:
         steps = ["- Full Name \n- Interested Model\n- Date & Time "]
     if campaign_type == "inbound":
-        return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["inbound"].format(date_time_ref=date_time_ref)
-        # return f"Your overall purpose is to help the customer with the information about vehicles that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a vehicle they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
-    return language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["purpose_and_steps"]["purpose_else"].format(flow=flow,steps=steps,date_time_ref=date_time_ref,offer=offer,urgency_hooks=urgency_hooks)
-    # return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about vehicles that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
+        return f"Your overall purpose is to help the customer with the information about cars that they desire while also trying to gather as much information about the user like their Name, approximate location, features of a car they like or require, their budget if applicable. Do not be pushy.{date_time_ref}"
+    return f"The overall purpose of your conversation with the user is to help the customer book {flow}. The offer we are providing to the user is {offer}. You can use hooks like {urgency_hooks}. Here are the details you should gather from the user when booking {flow}  :- \n{steps}\n\n You should help answer any and all questions that the customer asks about cars that are related to the dealer. If the user is not already in the middle of the purpose flow, you should always try to move the user to your original purpose but do not be pushy. {date_time_ref}"
 def get_cta_options(*args, **kwargs):
     ctas = kwargs.get("campaign_data").get("ctas")
     if not ctas:
@@ -274,7 +272,7 @@ def setup_primary_prompt(*args, **kwargs):
     campaign_name = campaign_data.get("campaign_name")
     campaign_objective = campaign_data.get("campaign_objective")
     dealer_name = campaign_data.get("workshop_name",campaign_data.get("dealer_name",campaign_data.get("dealership_name")))
-    dealer_description = "{dealer_name} is a dealer who sells vehicles from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
+    dealer_description = "{dealer_name} is a dealer who sells cars from their showrooms".format(dealer_name=dealer_name) if campaign_type == "pre-sales" else "{dealer_name} has a service center.".format(dealer_name=dealer_name)
     shop_id = campaign_data.get("workshop_id")
     showroom_workshop_desc = ""
 
