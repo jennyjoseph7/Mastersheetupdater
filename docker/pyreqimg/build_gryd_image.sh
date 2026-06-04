@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -euo pipefail
 
 BRANCH=$1
@@ -7,6 +6,11 @@ SERVICE=$2
 
 CONF_DIR="/mnta/autobot_agents/docker/pyreqimg/Conf"
 CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Config not found: $CONFIG_FILE"
+    exit 1
+fi
 
 source "$CONFIG_FILE"
 
@@ -17,54 +21,48 @@ update_repo() {
 }
 
 prepare_requirements() {
+    rm -f .req_files.tmp
 
     REQ_FILES=()
 
-    for var in $(compgen -v | grep REQUIREMENTS_SOURCE_); do
+    for var in $(compgen -v | grep REQUIREMENTS_SOURCE); do
         file="${!var}"
 
         if [ -n "$file" ] && [ -f "$file" ]; then
             cp "$file" .
-            REQ_FILES+=("$(basename "$file")")
+            base=$(basename "$file")
+            REQ_FILES+=("$base")
         fi
     done
 
-    echo "${REQ_FILES[@]}" > .req_files.tmp
+    printf "%s\n" "${REQ_FILES[@]}" > .req_files.tmp
 }
 
-generate_req_runs_file() {
-
-    > req_runs.txt
+generate_req_runs() {
+    REQ_RUNS=""
 
     while read -r req; do
         if [ -n "$req" ]; then
-            echo "RUN /root/pyenv/bin/pip install --ignore-installed -r $req" >> req_runs.txt
+            REQ_RUNS+="RUN /root/pyenv/bin/pip install --ignore-installed -r $req"$'\n'
         fi
     done < .req_files.tmp
+
+    # remove trailing newline issues
+    echo "$REQ_RUNS" > .req_runs.tmp
 }
 
 generate_dockerfile() {
+    REQ_RUNS_CONTENT=$(cat .req_runs.tmp)
 
-    # replace simple variables only
     sed \
         -e "s|__BASEIMAGE_TAG__|${BRANCH}|g" \
+        -e "s|__REQ_RUNS__|${REQ_RUNS_CONTENT}|g" \
         Dockerfile > Dockerfile.tmp
-
-    # append REQ RUNS safely (NO sed)
-    awk '
-        /__REQ_RUNS__/ {
-            while ((getline line < "req_runs.txt") > 0)
-                print line
-            next
-        }
-        { print }
-    ' Dockerfile.tmp > Dockerfile.final
 }
 
 build_image() {
-
     docker build \
-        -f Dockerfile.final \
+        -f Dockerfile.tmp \
         -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
         .
 
@@ -76,14 +74,14 @@ build_image() {
 }
 
 cleanup() {
-    rm -f Dockerfile.tmp Dockerfile.final .req_files.tmp req_runs.txt
+    rm -f Dockerfile.tmp .req_files.tmp .req_runs.tmp
     rm -f *_requirements.txt
 }
 
 main() {
     update_repo
     prepare_requirements
-    generate_req_runs_file
+    generate_req_runs
     generate_dockerfile
     build_image
     cleanup
