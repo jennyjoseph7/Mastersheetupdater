@@ -30,25 +30,35 @@ load_config() {
 
 prepare_requirements() {
 
-    if [ "$SERVICE" == "spark" ]; then
-        cp ../../spark/requirements.txt spark_requirements.txt
+    REQ_FILES=()
 
-    elif [ "$SERVICE" == "autobot_agents" ]; then
-        cp ../../requirements.txt requirements.txt
+    # auto-detect ALL REQUIREMENTS_SOURCE_* variables
+    for var in $(compgen -v | grep REQUIREMENTS_SOURCE_); do
+        file="${!var}"
 
-    elif [ "$SERVICE" == "document_processor" ]; then
-        cp ../../document_processor/requirment_document_processor.txt document_processor_requirements.txt
-        cp ../../brochure_pipeline/requirements.txt brochure_pipeline_requirements.txt
-    fi
+        if [ -n "$file" ] && [ -f "$file" ]; then
+            cp "$file" .
+            REQ_FILES+=("$(basename "$file")")
+        fi
+    done
+
+    printf "%s\n" "${REQ_FILES[@]}" > .req_files.tmp
 }
 
 prepare_dockerfile() {
 
+    PIP_RUNS=""
+
+    while read -r req; do
+        if [ -n "$req" ]; then
+            PIP_RUNS+="RUN /root/pyenv/bin/pip install --ignore-installed -r $req"$'\n'
+        fi
+    done < .req_files.tmp
+
     sed \
         -e "s|__BASEIMAGE_TAG__|${BRANCH}|g" \
-        -e "s|__REQ1__|${REQUIREMENTS_FILE_1}|g" \
-        -e "s|__REQ2__|${REQUIREMENTS_FILE_2}|g" \
-        Dockerfile > Dockerfile.tmp
+        -e "s|__PIP_RUNS__|${PIP_RUNS}|g" \
+        Dockerfile.template > Dockerfile.tmp
 }
 
 build_image() {
@@ -66,8 +76,8 @@ build_image() {
 }
 
 cleanup() {
-    rm -f Dockerfile.tmp
-    rm -f spark_requirements.txt requirements.txt document_processor_requirements.txt brochure_pipeline_requirements.txt
+    rm -f Dockerfile.tmp .req_files.tmp
+    rm -f *_requirements.txt
 }
 
 main() {
