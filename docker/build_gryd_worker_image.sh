@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+
 # -----------------------------
 # CONFIG
 # -----------------------------
 BUILD_CONF_FILE=${BUILD_CONF_FILE:-"./build.conf"}
 DOCKERFILE=${DOCKERFILE:-Dockerfile.og}
-DOCKER_BASE_IMG_TAG=${DOCKER_BASE_IMG_TAG:-latest}
 
 WORKING_DIR=$(pwd)
 WORKER_DIR=$(realpath ../)
@@ -14,13 +14,21 @@ WORKER_DIR=$(realpath ../)
 dir_status=-1
 SHA=0
 
+
 # -----------------------------
-# LOAD CONFIG
+# LOAD CONFIG (FIRST PRIORITY)
 # -----------------------------
 if [ -n "$BUILD_CONF_FILE" ] && [ -f "$BUILD_CONF_FILE" ]; then
     echo "Sourcing $BUILD_CONF_FILE"
     source "$BUILD_CONF_FILE"
 fi
+
+
+# -----------------------------
+# REQUIRED CONFIG VALIDATION (IMPORTANT FIX)
+# -----------------------------
+: "${DOCKER_BASE_IMG_TAG:?ERROR: DOCKER_BASE_IMG_TAG missing in build.conf}"
+
 
 # -----------------------------
 # VARIABLES
@@ -37,6 +45,7 @@ GCP_CREDS_DIR=${GCP_CREDS_DIR:-0}
 
 WORKER_DOCKER_IMAGE_NAME=$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG
 
+
 # -----------------------------
 # VALIDATE DIR
 # -----------------------------
@@ -49,6 +58,7 @@ function validate_directory() {
         export dir_status=0
     fi
 }
+
 
 # -----------------------------
 # CREATE SHA
@@ -69,6 +79,7 @@ function create_sha_file() {
     popd >/dev/null
 }
 
+
 # -----------------------------
 # ZIP REPO
 # -----------------------------
@@ -77,7 +88,6 @@ function zip_repo() {
     local zip_name=$2
 
     validate_directory "$dir_path"
-
     create_sha_file "$dir_path"
 
     pushd "$dir_path" >/dev/null
@@ -111,6 +121,7 @@ function zip_repo() {
     popd >/dev/null
 }
 
+
 # -----------------------------
 # BUILD DOCKER IMAGE
 # -----------------------------
@@ -128,6 +139,7 @@ function build_docker_image() {
 
     echo "Docker build completed."
 }
+
 
 # -----------------------------
 # PUSH IMAGE
@@ -147,6 +159,7 @@ function push_image_to_registry() {
         docker push "$rname:latest"
     fi
 }
+
 
 # -----------------------------
 # MAIN
