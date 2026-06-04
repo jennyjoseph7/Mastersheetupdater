@@ -273,6 +273,40 @@ app.register_blueprint(gryd_orchestration_bp)
 app.register_blueprint(campaign_test_routes)
 
 
+@app.route('/campaign/workflows', methods=["GET"])
+@app.route('/campaign/workflows/<frmt>', methods=["GET"])
+def get_campaign_workflows(frmt=None):
+    try:
+        # Load campaign objectives from server model
+        m = AutocrmModel('campaign_objective')
+        items = m.list() or []
+
+        from tabulate import tabulate
+        headers = ["Campaign Objective Name", "Campaign Type", "Campaign Sub Type", "Workflows"]
+        table = []
+        for it in items:
+            name = it.get('campaign_objective_name') or it.get('campaign_objective_id') or ''
+            ctype = it.get('campaign_type') or ''
+            csub = it.get('campaign_sub_type') or ''
+            wfs = it.get('workflows') or []
+            if isinstance(wfs, (list, tuple)):
+                wfs_val = ', '.join(wfs)
+            else:
+                wfs_val = str(wfs)
+            table.append((name, ctype, csub, wfs_val))
+
+        if not frmt:
+            user_agent = request.headers.get('User-Agent', '').lower()
+            frmt = 'html' if any(b in user_agent for b in ('mozilla', 'chrome', 'safari', 'firefox', 'edge')) else 'github'
+
+        if str(frmt).lower() == 'json':
+            return gryd_routes.jsonify({"status": "ok", "headers": headers, "rows": [list(r) for r in table]}), 200, {"Access-Control-Allow-Origin": "*"}
+        return tabulate(table, headers = headers, tablefmt=frmt), 200, {"Access-Control-Allow-Origin": "*"}
+    except Exception:
+        logger.exception("Failed to load campaign workflows")
+        return gryd_routes.jsonify({"status": "error", "message": "internal error"}), 500, {"Access-Control-Allow-Origin": "*"}
+
+
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:
     generated_signature = hmac.new(
         secret.encode("utf-8"),

@@ -4,21 +4,22 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME,AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_MESSAGE_DELIVERED_ITEM,AUTOCRM_MESSAGE_DELIVERED_PRICE,AUTOCRM_MESSAGE_DELIVERED_UNITS,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,WHATSAPP_PRICING_INR,AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel
 import config
-from gryd_worker import gryd, gryd_helpers as hp,gryd_audit_helper
+from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
 json = hp.json
-from conversation.yield_response import yield_result,yield_error, yield_status
-from conversation.prompt import run_prompt_sync
-# from campaign.campaign_manager import generate_uid
-# # from communication.connectors.communication_helpers import get_communication_credential,generate_uid
+from conversation.yield_response import yield_result, yield_error, yield_status
+from conversation.prompt import run_prompt_sync, get_prompt_file
+from campaign.campaign_manager import generate_uid
+# from communication.connectors.communication_helpers import get_communication_credential, generate_uid
 # ----
-from communication.common_functions import get_communication_credential,generate_uid
+from communication.common_functions import get_communication_credential, generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
 import time
+from agents.workflows import WorkflowFactory, send_sop_alert
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 THREADS_PER_SESSION = 0.1
 __version__ = "0.0.1"
@@ -267,75 +268,74 @@ def post_session_process(*args, **kwargs):
         session_update_data["sentiment_classification"] = sentiment_classification
 
     try:
-        if sentiment_classification in ["negative", "neutral"]:
-            receiver_emails = [
-                "eshwar@iamdave.ai",
-                "sahib@iamdave.ai",
-                "shanjai@iamdave.ai",
-            ]
+        summary_text = session_mdl_obj.get('summary') or ''
+        convo_msgs = messages[-8:] if isinstance(messages, list) else messages
+        convo_text = '\n'.join([m.get('message') or m.get('customer_response') or str(m) for m in convo_msgs])
 
-            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
-            html = f"""
-            <p>Hi Team,</p>
-            <p>A customer interaction was classified as <b>{sentiment_classification}</b> for session <b>{session_id}</b>.</p>
-            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
-            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
-            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
-            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
-            <p><b>Conversation summary:</b></p>
-            <pre>{session_mdl_obj.get('summary','')}</pre>
-            <p>Message history:</p>
-            <pre>{json.dumps(session_mdl_obj.get('history',[]))}</pre>
-            <p>Please review the SOPs and take corrective action.</p>
-            """
+        # Prefer shared prompt template loaded via helper
+        template = get_prompt_file('detect_intent.txt') or get_prompt_file('detect_intent')
+        if template:
+            prompt_text = template.format(summary=summary_text or '', conversation=convo_text)
+        else:
+            if summary_text:
+                prompt_text = f"Summary: {summary_text}"
+            else:
+                prompt_text = f"Conversation:\n{convo_text}"
 
-            email_payload = {
-                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
-                "sender": {"name": "AutoCRM Alerts"},
-                "receiver": {"emails": receiver_emails},
-                "html_string": html,
-                "subject": subject,
-            }
-            from communication.connectors.email_communication import communication_sender
-            communication_sender(**email_payload)
-    except Exception as e:
-        mlogger.exception(f"Failed to send SOP alert email: {e}")
+        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
+        intent_raw = ''
+        if isinstance(resp, dict):
+            intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
+        else:
+            intent_raw = str(resp)
+        import re
+        m = re.search(r"([a-zA-Z0-9_\- ]+)", intent_raw)
+        intent_phrase = m.group(1).strip().lower().replace(' ', '_') if m else intent_raw.strip().lower().replace(' ', '_')
+        if intent_phrase:
+            updated_lead_data['customer_intent'] = intent_phrase
+            session_update_data['customer_intent'] = intent_phrase
+            mlogger.info(f"Detected intent for session {session_id}: {intent_phrase}")
+
+            campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
+            if campaign_objective_id:
+                try:
+                    wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
+                    objective_model = AutocrmModel('campaign_objective')
+                    obj = objective_model.get(campaign_objective_id) or {}
+                    objective_wfs = obj.get('workflows') or []
+                    intent_tokens = set(re.split(r"[^a-z0-9]+", intent_phrase.lower()))
+                    for w in objective_wfs:
+                        wn = w.lower()
+                        w_tokens = set(re.split(r"[^a-z0-9]+", wn))
+                        if intent_tokens & w_tokens:
+                            try:
+                                mlogger.info(f"Triggering workflow '{w}' for campaign_objective_id={campaign_objective_id} due to intent={intent_phrase}")
+                                wf_obj.handle_workflow(w)
+                            except Exception:
+                                mlogger.exception(f"Failed to handle workflow {w}")
+                except Exception:
+                    mlogger.exception("Failed to load or trigger workflow based on intent")
+    except Exception:
+        mlogger.exception("Failed to detect customer intent via prompt")
+
     appt_date_time_purpose = {}
     try:
-        disp = (updated_lead_data.get("disposition") or "").lower()
-        if disp in ("negative", "neutral"):
-            receiver_emails = [
-                "eshwar@iamdave.ai",
-                "sahib@iamdave.ai",
-                "shanjai@iamdave.ai",
-            ]
 
-            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
-            html = f"""
-            <p>Hi Team,</p>
-            <p>A customer interaction was classified as <b>{disp}</b> for session <b>{session_id}</b>.</p>
-            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
-            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
-            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
-            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
-            <p><b>Conversation summary:</b></p>
-            <pre>{session_mdl_obj.get('summary','')}</pre>
-            <p>Message history:</p>
-            <pre>{json.dumps(session_mdl_obj.get('history',[]), indent=2, default=str)}</pre>
-            <p>Please review the SOPs and take corrective action.</p>
-            """
-
-            email_payload = {
-                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
-                "sender": {"name": "AutoCRM Alerts"},
-                "receiver": {"emails": receiver_emails},
-                "html_string": html,
-                "subject": subject,
-            }
-            from communication.connectors.email_communication import communication_sender
-            communication_sender(**email_payload)
+        campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
+        if campaign_objective_id:
+            try:
+                wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
+                wf_obj.handle_workflow('sop_alert', session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
+            except Exception:
+                mlogger.exception('Failed to invoke sop_alert workflow')
+        else:
+            try:
+                mlogger.info('No campaign_objective_id found; using send_sop_alert fallback')
+                send_sop_alert(session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
+            except Exception:
+                mlogger.exception('Failed to send sop alert via fallback')
     except Exception as e:
-        mlogger.exception(f"Failed to send SOP alert email: {e}")
+        mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)

@@ -203,6 +203,29 @@
       "option_others": true
     },
     {
+      "name": "workflows",
+      "type": "string_list",
+      "list_type": "text",
+      "title": "Post-processing Workflows",
+      "ui_element": "tags",
+      "options": [
+        "Product Discovery/launch",
+        "Showroom launch-l",
+        "Test drive booking-l",
+        "Test drive feedback",
+        "Test drive remainder",
+        "Post sales feedback-l",
+        "Lost Customer Reactivation-l",
+        "Service remainder-l",
+        "Insurance renewal-l",
+        "Post Service Feedback-l",
+        "ownership verification-l",
+        "Wishes-birthday/Festival",
+        "other"
+      ],
+      "option_others": true
+    },
+    {
       "name": "is_custom",
       "type": "bool",
       "default": false,
