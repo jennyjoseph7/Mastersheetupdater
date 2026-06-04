@@ -14,11 +14,6 @@ fi
 
 source "$CONFIG_FILE"
 
-if [ -z "${REQUIREMENTS_SOURCE:-}" ]; then
-    echo "REQUIREMENTS_SOURCE is not set in config"
-    exit 1
-fi
-
 update_repo() {
     git fetch origin "$BRANCH"
     git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
@@ -26,20 +21,16 @@ update_repo() {
 }
 
 generate_dockerfile() {
-    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
-
-    # Create clean dockerfile copy
     cp Dockerfile Dockerfile.tmp
-
-    # Replace base image tag
     sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
 
-    # Remove placeholder line if present
-    sed -i "/__REQ_RUNS__/d" Dockerfile.tmp
+    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
 
-    # Append pip install layers
     for item in "${items[@]}"; do
-        item=$(echo "$item" | xargs)  # trim spaces
+        item=$(echo "$item" | xargs)
+
+        item=${item#../../}
+
         echo "RUN /root/pyenv/bin/pip install -r $item" >> Dockerfile.tmp
     done
 }
@@ -59,7 +50,6 @@ build_image() {
 
 cleanup() {
     rm -f Dockerfile.tmp
-    rm -f *_requirements.txt || true
 }
 
 main() {
