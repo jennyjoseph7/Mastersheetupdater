@@ -8,4 +8,3 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 10
 
 RUN /root/pyenv/bin/pip install -U pip setuptools
 
-__REQ_RUNS__

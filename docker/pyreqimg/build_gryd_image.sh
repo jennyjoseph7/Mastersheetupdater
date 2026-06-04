@@ -14,50 +14,34 @@ fi
 
 source "$CONFIG_FILE"
 
+if [ -z "${REQUIREMENTS_SOURCE:-}" ]; then
+    echo "REQUIREMENTS_SOURCE is not set in config"
+    exit 1
+fi
+
 update_repo() {
     git fetch origin "$BRANCH"
     git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
     git pull origin "$BRANCH"
 }
 
-prepare_requirements() {
-    rm -f .req_files.tmp
-
-    REQ_FILES=()
-
-    for var in $(compgen -v | grep REQUIREMENTS_SOURCE); do
-        file="${!var}"
-
-        if [ -n "$file" ] && [ -f "$file" ]; then
-            cp "$file" .
-            base=$(basename "$file")
-            REQ_FILES+=("$base")
-        fi
-    done
-
-    printf "%s\n" "${REQ_FILES[@]}" > .req_files.tmp
-}
-
-generate_req_runs() {
-    REQ_RUNS=""
-
-    while read -r req; do
-        if [ -n "$req" ]; then
-            REQ_RUNS+="RUN /root/pyenv/bin/pip install --ignore-installed -r $req"$'\n'
-        fi
-    done < .req_files.tmp
-
-    # remove trailing newline issues
-    echo "$REQ_RUNS" > .req_runs.tmp
-}
-
 generate_dockerfile() {
-    REQ_RUNS_CONTENT=$(cat .req_runs.tmp)
+    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
 
-    sed \
-        -e "s|__BASEIMAGE_TAG__|${BRANCH}|g" \
-        -e "s|__REQ_RUNS__|${REQ_RUNS_CONTENT}|g" \
-        Dockerfile > Dockerfile.tmp
+    # Create clean dockerfile copy
+    cp Dockerfile Dockerfile.tmp
+
+    # Replace base image tag
+    sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
+
+    # Remove placeholder line if present
+    sed -i "/__REQ_RUNS__/d" Dockerfile.tmp
+
+    # Append pip install layers
+    for item in "${items[@]}"; do
+        item=$(echo "$item" | xargs)  # trim spaces
+        echo "RUN /root/pyenv/bin/pip install -r $item" >> Dockerfile.tmp
+    done
 }
 
 build_image() {
@@ -74,14 +58,12 @@ build_image() {
 }
 
 cleanup() {
-    rm -f Dockerfile.tmp .req_files.tmp .req_runs.tmp
-    rm -f *_requirements.txt
+    rm -f Dockerfile.tmp
+    rm -f *_requirements.txt || true
 }
 
 main() {
     update_repo
-    prepare_requirements
-    generate_req_runs
     generate_dockerfile
     build_image
     cleanup
