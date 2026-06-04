@@ -618,7 +618,7 @@
         },
         {
             "name": "preferred_communication_channel",
-            "type": "nested_object",
+            "type": "text",
             "default": {
                 "function": "get_from_model",
                 "args": [
