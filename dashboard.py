@@ -181,7 +181,7 @@ with tab2:
         if fig:
             st.markdown("### 📷 Propensity Chart")
             st.plotly_chart(fig, use_container_width=True)
-            st.image(propensity_img_url, width=1000,) # caption=" ### 📷 Propensity Score Radar Plot"
+            # st.image(propensity_img_url, width=1000,) # caption=" ### 📷 Propensity Score Radar Plot"
         # if propensity_img_url:
         #     st.write("Propensity Chart:")
         #     st.image(propensity_img_url, width=1000,)

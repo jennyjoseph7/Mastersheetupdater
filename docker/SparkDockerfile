@@ -1,4 +1,4 @@
-FROM asia-south1-docker.pkg.dev/dave-70c8e/document-processor-pyreq-image/autobot-pyreq-baseimage:master
+FROM asia-south1-docker.pkg.dev/dave-70c8e/spark-pyreq-image/autobot-pyreq-baseimage:<DOCKER_BASE_IMG_TAG>
 
 WORKDIR /root/
 COPY autobot-agents.zip /root/

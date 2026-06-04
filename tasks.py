@@ -161,7 +161,27 @@ def autobot_agents_trigger_generator(*args, **kwargs) -> Generator:
 # ---------- Global Agents Start ----------
         
 @AgentOrchestrator.register_agent(name=None, depends_on=[], expected_input={"source": "dict"})
-@gryd.is_a_task()
+@gryd.is_a_task(
+    is_agent=True, 
+    expected_input={
+        "source" : {
+            "type": ["object", "string"], 
+            "description": (
+                "Customer profile data. Can be either:\n"
+                "- A customer JSON object\n"
+                "- A URL pointing to customer data"
+            ),
+            "required": True
+            }
+        },
+        optional_input={
+            "model_identifier" : {
+                "type": "string", 
+                "description": "LLM Model for AEM Integration",
+                "default": "azure-gpt-4o"
+                }
+            },
+        )
 def aem_integration_agent(*args, **kwargs):
     """
     Enriches customer data with AEM data. AEM tracks customer interactions on the website (pages viewed, actions taken, preferences) and, with Adobe Analytics/AEP, builds a real-time profile to enable personalization and insights.
@@ -205,7 +225,27 @@ def dealer_locator_agent(*args, **kwargs):
         }
         return error_message
     
-@gryd.is_a_task()    
+@gryd.is_a_task(
+    is_agent=True, 
+    expected_input={
+        "source" : {
+            "type": ["object", "string"], 
+            "description": (
+                "Customer profile data. Can be either:\n"
+                "- A customer JSON object\n"
+                "- A URL pointing to customer data"
+            ),
+            "required": True
+            }
+        },
+        optional_input={
+            "model_identifier" : {
+                "type": "string", 
+                "description": "LLM Model for Propensity Agent",
+                "default": "azure-gpt-4o"
+                }
+            },
+)    
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def propensity_agent(*args, **kwargs):
     """
@@ -241,13 +281,46 @@ def propensity_agent(*args, **kwargs):
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
 
-@gryd.is_a_task()
+@gryd.is_a_task(
+        is_agent=True, 
+        expected_input={
+            "source" : {
+                "type": ["object", "string"], 
+                "description": (
+                    "Customer profile data. Can be either:\n"
+                    "- A customer JSON object\n"
+                    "- A URL pointing to customer data"
+                ),
+                "required": True
+            },
+            "propensity_agent_results" : {
+                "type": "object", 
+                "description": "Propensity Agent Results"
+                },
+            "sentiment_analysis_agent_results" : {
+                "type": "object", 
+                "description": "Sentiment Analysis Agent Results"
+                },
+            "prioritization_agent_results" : {
+                "type": "object", 
+                "description": "Prioritization Agent Results"
+                },
+            "competitor_analysis_agent_results" : {
+                "type": "object", 
+                "description": "Competitor Analysis Agent Results"
+                }
+        },
+        optional_input={
+            "model_identifier" : {
+                "type": "string", 
+                "description": "LLM Model for Personalization Agent",
+                "default": "azure-gpt-4o"
+                }
+            },
+)
 @AgentOrchestrator.register_agent(
     name=None, 
-    depends_on=[
-        "aem_integration_agent", "propensity_agent", 
-        "sentiment_analysis_agent", "prioritization_agent", 
-        "competitor_analysis_agent"],
+    depends_on=["aem_integration_agent", "propensity_agent", "sentiment_analysis_agent", "prioritization_agent", "competitor_analysis_agent"],
     expected_input={
         "source": "dict",
         "propensity_agent_results": "dict",
@@ -258,6 +331,10 @@ def propensity_agent(*args, **kwargs):
 def personalization_agent(*args, **kwargs):
     """
     Personalization agent generates a personalized email to the customer.
+    Generates a personalised email or message body for the customer.
+    Run after sentiment_analysis_agent, propensity_agent, and prioritization_agent.
+    Do not run this without sentiment and propensity_score — output quality degrades.
+
     """
     function_name = inspect.currentframe().f_code.co_name #get_function_name()
     try:
@@ -379,7 +456,27 @@ def recommendation_agent_v1(*args, **kwargs):
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
     
-@gryd.is_a_task()
+@gryd.is_a_task(
+    is_agent=True, 
+    expected_input={
+            "source" : {
+                "type": ["object", "string"], 
+                "description": (
+                    "Customer profile data. Can be either:\n"
+                    "- A customer JSON object\n"
+                    "- A URL pointing to customer data"
+                ),
+                "required": True
+            }
+    },
+    optional_input={
+        "model_identifier" : {
+            "type": "string", 
+            "description": "LLM Model for Prioritization Agent",
+            "default": "azure-gpt-4o"
+        }
+    },
+)
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "dict"})
 def prioritization_agent(*args, **kwargs):
     """
@@ -403,13 +500,41 @@ def prioritization_agent(*args, **kwargs):
         traceback.print_exc()
         return {"task": function_name, "error": str(e).strip()}
 
-@gryd.is_a_task()
+@gryd.is_a_task(
+    is_agent=True, 
+    expected_input={
+            "source" : {
+                "type": ["object", "string"], 
+                "description": (
+                    "Customer profile data. Can be either:\n"
+                    "- A customer JSON object\n"
+                    "- A URL pointing to customer data"
+                ),
+                "required": True
+            },
+        "prioritization_agent_results" : {
+            "type": "object", 
+            "description": "Prioritization Agent Results"
+            },
+        "personalization_agent_results" : {
+            "type": "object", 
+            "description": "Personalization Agent Results"
+            },
+        },
+    optional_input={
+        "model_identifier" : {
+            "type": "string", 
+            "description": "LLM Model for Communication Agent",
+            "default": "azure-gpt-4o"
+        }
+    },
+)
 @AgentOrchestrator.register_agent(
     name=None, depends_on=["aem_integration_agent", "prioritization_agent", "personalization_agent"],
     expected_input={"source": "dict", "prioritization_agent_results": "dict", "personalization_agent_results": "dict"})
 def communication_agent(*args, **kwargs):
     """
-    This agent sends final communication via email/WhatsApp to the customer.
+    This agent sends final communication via email to the customer.
     """
     function_name = inspect.currentframe().f_code.co_name #get_function_name()
     from agents.communication_agent import CommunicationAgent
@@ -468,7 +593,27 @@ def communication_agent(*args, **kwargs):
             "error": str(e)
         }
 
-@gryd.is_a_task()
+@gryd.is_a_task(
+    is_agent=True, 
+    expected_input={
+            "source" : {
+                "type": ["object", "string"], 
+                "description": (
+                    "Customer profile data. Can be either:\n"
+                    "- A customer JSON object\n"
+                    "- A URL pointing to customer data"
+                ),
+                "required": True
+            }
+        },
+    optional_input={
+        "model_identifier" : {
+            "type": "string", 
+            "description": "LLM Model for Sentiment Agent",
+            "default": "azure-gpt-4o"
+        }
+    },
+)
 @AgentOrchestrator.register_agent(name=None, depends_on=["aem_integration_agent"], expected_input={"source": "either string or dict"})
 def sentiment_analysis_agent(*args, **kwargs):
     """

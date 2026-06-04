@@ -183,7 +183,7 @@ def get_vehicle_id(vehicle_model, row, missing_reason = None, required_attribute
     for k in ('customer_score', 'odometer_reading'):
         # Tackle number type fields
         if is_valid_value(row, k):
-            row[k] = int(row[k])
+            row[k] = int(hp.try_number(row[k]))
             data[k] = row[k]
     for k in ('purpose_of_visit',):
         # Tackle list type fields
@@ -487,7 +487,8 @@ def get_persons_involved(row, models, missing_reason = None, logger = None):
         else:
             logger.info("Posting person involved: %s", person)
             persons_involved.append(person)
-
+    if persons_involved:
+        row['persons_involved'] = persons_involved
     return row, missing_reason
 
 
