@@ -30,8 +30,16 @@ load_config() {
 
 prepare_requirements() {
 
-    if [ -n "${REQUIREMENTS_SOURCE:-}" ]; then
-        cp "$REQUIREMENTS_SOURCE" "$REQUIREMENTS_FILE"
+    if [ "$SERVICE" == "spark" ]; then
+        cp ../../spark/requirements.txt spark_requirements.txt
+
+    elif [ "$SERVICE" == "autobot_agents" ]; then
+        cp ../../requirements.txt requirements.txt
+
+    elif [ "$SERVICE" == "document_processor" ]; then
+        cp ../../document_processor/requirment_document_processor.txt document_processor_requirements.txt
+        cp ../../brochure_pipeline/requirements.txt brochure_pipeline_requirements.txt
+        cat document_processor_requirements.txt brochure_pipeline_requirements.txt > requirements_combined.txt
     fi
 }
 
