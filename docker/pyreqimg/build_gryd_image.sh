@@ -39,7 +39,6 @@ prepare_requirements() {
     elif [ "$SERVICE" == "document_processor" ]; then
         cp ../../document_processor/requirment_document_processor.txt document_processor_requirements.txt
         cp ../../brochure_pipeline/requirements.txt brochure_pipeline_requirements.txt
-        cat document_processor_requirements.txt brochure_pipeline_requirements.txt > requirements_combined.txt
     fi
 }
 
@@ -47,7 +46,8 @@ prepare_dockerfile() {
 
     sed \
         -e "s|__BASEIMAGE_TAG__|${BRANCH}|g" \
-        -e "s|__REQUIREMENTS_FILE__|${REQUIREMENTS_FILE}|g" \
+        -e "s|__REQ1__|${REQUIREMENTS_FILE_1}|g" \
+        -e "s|__REQ2__|${REQUIREMENTS_FILE_2}|g" \
         Dockerfile > Dockerfile.tmp
 }
 
@@ -67,7 +67,7 @@ build_image() {
 
 cleanup() {
     rm -f Dockerfile.tmp
-    rm -f spark_requirements.txt requirements.txt document_processor_requirements.txt brochure_pipeline_requirements.txt requirements_combined.txt
+    rm -f spark_requirements.txt requirements.txt document_processor_requirements.txt brochure_pipeline_requirements.txt
 }
 
 main() {
