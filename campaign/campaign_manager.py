@@ -730,7 +730,7 @@ def trigger_campaign(*args, **kwargs):
     logger.info(f"Total leads fetched: {total_leads}")
     valid_leads = 0
     # if the lead_data doesnt have a phone number(pre sales) or persons_involved (post sales), skip it
-    for lead in lead_model.yield_list(_as_option = True, _sort_by = 'created', **filters):
+    for lead in lead_model.filter(_as_option = True, _sort_by = 'created', **filters):
         lead_id = lead.get(lead_table_id)
         if campaign_type == "post-sales":
             for _ in range(2):
