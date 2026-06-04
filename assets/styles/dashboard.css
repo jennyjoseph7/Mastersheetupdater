@@ -1545,14 +1545,22 @@
        (gradients are disabled for capture stability). */
     .pdf-export-mode .chart-bar {
       background: #5b9cf5 !important;
-    }
-
-    .pdf-export-mode .hbar-fill.blue { background: #5b9cf5 !important; }
-    .pdf-export-mode .hbar-fill.purple { background: #eab308 !important; }
-    .pdf-export-mode .hbar-fill.green { background: #63d6a3 !important; }
-    .pdf-export-mode .hbar-fill.amber { background: #e6a456 !important; }
-    .pdf-export-mode .hbar-fill.red { background: #f16f6f !important; }
-    .pdf-export-mode .hbar-fill.teal { background: #5eead4 !important; }    .pdf-export-mode {
+    }    .pdf-export-mode .hbar-fill.blue { background: #5b9cf5 !important; }
+    .pdf-export-mode .hbar-fill.purple { background: #eab308 !important; }
+    .pdf-export-mode .hbar-fill.green { background: #63d6a3 !important; }
+    .pdf-export-mode .hbar-fill.amber { background: #e6a456 !important; }
+    .pdf-export-mode .hbar-fill.red { background: #f16f6f !important; }
+    .pdf-export-mode .hbar-fill.teal { background: #5eead4 !important; }
+    /* Solid color fallbacks for Disposition Intelligence bars */
+    .pdf-export-mode .disp-fill.blue { background: #5b9cf5 !important; }
+    .pdf-export-mode .disp-fill.purple { background: #eab308 !important; }
+    .pdf-export-mode .disp-fill.green { background: #63d6a3 !important; }
+    .pdf-export-mode .disp-fill.amber { background: #e6a456 !important; }
+    .pdf-export-mode .disp-fill.red { background: #f16f6f !important; }
+    .pdf-export-mode .disp-fill.teal { background: #5eead4 !important; }
+    .pdf-export-mode .disp-fill.positive { background: #63d6a3 !important; }
+    .pdf-export-mode .disp-fill.neutral { background: #e6a456 !important; }
+    .pdf-export-mode .disp-fill.negative { background: #f16f6f !important; }    .pdf-export-mode {
       --bg: #ffffff !important;
       --surface: #ffffff !important;
       --surface2: #ffffff !important;
@@ -1718,37 +1726,70 @@
       .upload-section {
         break-inside: avoid;
         page-break-inside: avoid;
-      }
-
-      .data-panels {
-        display: flex !important;
-        gap: 0.35rem !important;
-        align-items: stretch !important;
-      }
-
-      .data-panels .data-panel {
-        flex: 1 1 0 !important;
-        min-width: 0 !important;
-        break-inside: auto !important;
-        page-break-inside: auto !important;
+      }      .data-panels {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 0.35rem !important;
+        align-items: stretch !important;
+      }
+
+      .data-panels .data-panel {
+        flex: 1 !important;
+        min-width: 0 !important;
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+      }
+
+      /* Vehicles Contacted panel takes full width on its own row during print */
+      .data-panels .data-panel:nth-child(2) {
+        flex: 0 0 100% !important;
       }
 
       .kpi-grid {
         gap: 0.4rem !important;
         margin-bottom: 0.5rem !important;
-      }
-
-      .data-panel {
-        padding: 0.75rem !important;
-      }
-
-      .chart-bars {
-        height: 112px !important;
-      }
-
-      .hbar-list { gap: 0.45rem !important; }
-      .hbar-row { gap: 0.45rem !important; }
-      .hbar-track { height: 18px !important; }
+      }      .data-panel {
+        padding: 0.75rem !important;
+        overflow: visible !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+      }
+
+      /* Prevent clipping in all card/panel containers */
+      .kpi-card,
+      .exec-summary,
+      .intel-banner,
+      .insight-panel,
+      .voice-card,
+      .anomaly-card,
+      .rec-card,
+      .data-panel {
+        overflow: visible !important;
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+      }
+      .exec-narrative {
+        max-width: none !important;
+      }
+
+      .chart-bars {
+        height: 112px !important;
+      }      .hbar-list { gap: 0.35rem !important; }
+      .hbar-row {
+        gap: 0.35rem !important;
+        grid-template-columns: 110px 1fr 50px !important;
+      }
+      .hbar-label {
+        font-size: 0.7rem !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        word-break: break-word !important;
+        line-height: 1.3 !important;
+      }
+      .hbar-track { height: 16px !important; }
+      .hbar-value { font-size: 0.75rem !important; }
+      .hbar-pct { font-size: 0.6rem !important; }
       .pdata-list { gap: 0.45rem !important; }
       .pdata-item { padding: 0.45rem 0.6rem !important; }
       .pdata-highlight { padding: 0.55rem 0.75rem !important; }
@@ -2537,3 +2578,43 @@
     .phase-value { font-family: var(--mono); font-size: 0.78rem; font-weight: 700; color: var(--text); }
     .phase-stat { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.15rem; }
   
+/* Layout fixes for dashboard chart and cards */
+.data-panel.full-width-chart {
+  grid-column: 1 / -1; /* Span all columns in grid */
+}
+
+/* Two-column layout for cards */
+.data-panels.two-column {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Ensure chart can handle many dates */
+.chart-bars {
+  overflow-x: auto; /* Allow horizontal scrolling if needed */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  scrollbar-width: thin; /* Firefox */
+}
+
+.chart-bars::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chart-bars::-webkit-scrollbar-track {
+  background: var(--surface2);
+}
+
+.chart-bars::-webkit-scrollbar-thumb {
+  background-color: var(--surface3);
+  border-radius: 4px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 800px) {
+  .data-panels.two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .data-panels.two-column .data-panel:last-child {
+    grid-column: 1 / -1;
+  }
+}
