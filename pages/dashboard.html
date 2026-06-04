@@ -12,9 +12,9 @@
 
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
 
-  <meta http-equiv="X-Frame-Options" content="DENY" />
+  
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://openrouter.ai https:; form-action 'self'; frame-ancestors 'none';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev; form-action 'self'; " />
 
   <script>
 
@@ -40,7 +40,7 @@
 
   <script src="../assets/lib/xlsx.full.min.js"></script>
 
-  <script src="../assets/lib/openrouter-batch-runner.js"></script>
+  <script src="../assets/lib/llm-batch-runner.js"></script>
 
   <script src="../assets/lib/html2canvas.min.js"></script>
 
@@ -184,15 +184,15 @@
 
         </select>
 
-        <div class="ai-key-control" title="When saved, call summaries are sent to OpenRouter for DeepSeek classification.">
+        <div class="ai-key-control" title="When saved, call summaries are sent to NVIDIA API for Mistral classification.">
 
           <span class="mode-label">AI Key</span>
 
-          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="OpenRouter API key" autocomplete="off" spellcheck="false">
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
 
-          <button type="button" class="api-key-btn" onclick="saveOpenRouterApiKey()">Save</button>
+          <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
 
-          <button type="button" class="api-key-btn subtle" onclick="clearOpenRouterApiKey()">Clear</button>
+          <button type="button" class="api-key-btn subtle" onclick="clearNvidiaApiKey()">Clear</button>
 
           <span class="api-key-status" id="apiKeyStatus">Optional</span>
 
@@ -318,7 +318,7 @@
 
             <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.25rem;">
 
-              <span style="font-size:0.7rem;color:var(--text-muted);" id="aiStatusText">Analyzing with DeepSeek...</span>
+              <span style="font-size:0.7rem;color:var(--text-muted);" id="aiStatusText">Analyzing with Mistral...</span>
 
               <span style="display:none;font-size:0.65rem;font-weight:700;padding:0.15rem 0.45rem;border-radius:999px;background:var(--success-soft);border:1px solid rgba(99,214,163,0.25);color:var(--success);font-family:var(--mono);" id="aiStatusCorrected"></span>
 
@@ -399,6 +399,32 @@
         <div class="chart-bars" id="dailyChart"></div>
 
       </div>
+
+
+
+      <!-- Vehicle Models -->
+
+      <div class="data-panels two-column" style="display:grid;gap:0.75rem;margin-bottom:0.75rem;">
+
+        <div class="data-panel slide-up stagger-6">
+
+          <div class="panel-title">Vehicle Models</div>
+
+          <div id="vehicleChart"></div>
+
+        </div>
+
+        <div class="data-panel slide-up stagger-7">
+
+          <div class="panel-title">Pending Follow-ups</div>
+
+          <div id="pendingPanel"></div>
+
+        </div>
+
+      </div>
+
+
 
       <!-- What Customers Are Saying -->
 
@@ -592,7 +618,7 @@
 
         <div class="insight-section-title">
 
-          AI-Powered Recommendations <span class="llm-badge">DEEPSEEK</span>
+          AI-Powered Recommendations <span class="llm-badge">AI</span>
 
         </div>
 
@@ -1229,21 +1255,43 @@
 
     /* ═══════════════════════════════════════════════════════════════════════
 
-       LLM CONFIG — OpenRouter / DeepSeek (free)
+       LLM CONFIG — NVIDIA / Mistral
 
        ═══════════════════════════════════════════════════════════════════════ */
 
-    var OPENROUTER_MODEL = (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterModel) 
+    const NVIDIA_DIRECT_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
+    const OPENROUTER_DIRECT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
-      ? window.JEJO_CONFIG.openRouterModel 
+    function getConfigNumber(key, fallback) {
+      var cfg = window.JEJO_CONFIG || {};
+      var value = Number(cfg[key]);
+      return Number.isFinite(value) && value > 0 ? value : fallback;
+    }
 
-      : 'deepseek/deepseek-v4-flash';
+    function getLlmModel() {
+      var cfg = window.JEJO_CONFIG || {};
+      return cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+    }
 
-    const LLM_BATCH_SIZE = 20;
+    function isProxyEndpoint(endpoint) {
+      return endpoint !== NVIDIA_DIRECT_ENDPOINT && endpoint !== OPENROUTER_DIRECT_ENDPOINT;
+    }
 
-    const LLM_MAX_CONCURRENT = 2;
+    var NVIDIA_MODEL = getLlmModel();
 
-    const LLM_REQUEST_TIMEOUT_MS = 45000;
+    const LLM_BATCH_SIZE = getConfigNumber('llmBatchSize', 12);
+
+    const LLM_MAX_CONCURRENT = getConfigNumber('llmMaxConcurrent', 2);
+
+    const LLM_MAX_RETRIES = getConfigNumber('llmMaxRetries', 1);
+
+    const LLM_REQUEST_TIMEOUT_MS = getConfigNumber('llmRequestTimeoutMs', 70000);
+
+    const LLM_PROMPT_CHAR_LIMIT = getConfigNumber('llmPromptCharLimit', 1200);
+
+    const LLM_THEME_BATCH_SIZE = getConfigNumber('llmThemeBatchSize', LLM_BATCH_SIZE);
+
+    const LLM_MAX_OUTPUT_TOKENS = getConfigNumber('llmMaxOutputTokens', 1600);
 
     let aiValidationController = null;
 
@@ -1251,9 +1299,10 @@
 
     let _aiStatusTimer = null;
 
-    const LLM_CACHE_VERSION = 'deepseek-dispo-v2';
+    const LLM_CACHE_VERSION = 'nvidia-dispo-v3';
 
-    const OPENROUTER_KEY_STORAGE = 'llm-api-key';
+    const NVIDIA_KEY_STORAGE = 'llm-api-key';
+    let _inMemoryApiKey = localStorage.getItem(NVIDIA_KEY_STORAGE) || '';
 
 
 
@@ -1267,7 +1316,7 @@
 
       }
 
-      return 'https://openrouter.ai/api/v1/chat/completions';
+      return NVIDIA_DIRECT_ENDPOINT;
 
     }
 
@@ -1275,27 +1324,37 @@
 
     function getApiKey() {
 
-      if (getApiEndpoint() !== 'https://openrouter.ai/api/v1/chat/completions') {
+      if (isProxyEndpoint(getApiEndpoint())) {
 
         return 'PROXY_ACTIVE';
 
       }
 
+      if (_inMemoryApiKey) return _inMemoryApiKey;
+
       const input = document.getElementById('openRouterApiKey');
 
       const typedKey = input ? input.value.trim() : '';
 
-      if (typedKey) return typedKey;
+      if (typedKey) {
 
-      if (window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey) {
+        _inMemoryApiKey = typedKey;
 
-        const key = window.JEJO_CONFIG.openRouterApiKey.trim();
-
-        if (key && key !== 'YOUR_OPENROUTER_API_KEY_HERE') return key;
+        return typedKey;
 
       }
 
-      return (localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+      if (window.JEJO_CONFIG && (window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey)) {
+
+        const key = String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim();
+
+        if (key && key !== 'YOUR_NVIDIA_API_KEY_HERE') return key;
+
+      }
+
+      var saved = (localStorage.getItem(NVIDIA_KEY_STORAGE) || '').trim();
+      if (saved) _inMemoryApiKey = saved;
+      return saved;
 
     }
 
@@ -1317,15 +1376,17 @@
 
       const endpoint = getApiEndpoint();
 
-      const isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+      const isProxy = isProxyEndpoint(endpoint);
 
       
 
-      const keyFromConfig = window.JEJO_CONFIG && window.JEJO_CONFIG.openRouterApiKey && 
+      const configuredKey = window.JEJO_CONFIG
+        ? String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim()
+        : '';
 
-                           window.JEJO_CONFIG.openRouterApiKey !== 'YOUR_OPENROUTER_API_KEY_HERE' && 
-
-                           window.JEJO_CONFIG.openRouterApiKey.trim();
+      const keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
+        ? configuredKey
+        : '';
 
       
 
@@ -1373,13 +1434,13 @@
 
         
 
-        const hasSavedKey = !!(localStorage.getItem(OPENROUTER_KEY_STORAGE) || '').trim();
+        const hasSavedKey = !!_inMemoryApiKey;
 
         if (input) {
 
           input.value = '';
 
-          input.placeholder = hasSavedKey ? 'OpenRouter key saved' : 'OpenRouter API key';
+          input.placeholder = hasSavedKey ? 'NVIDIA key saved' : 'NVIDIA API key';
 
         }
 
@@ -1399,7 +1460,7 @@
 
 
 
-    function saveOpenRouterApiKey() {
+    function saveNvidiaApiKey() {
 
       const input = document.getElementById('openRouterApiKey');
 
@@ -1413,7 +1474,7 @@
 
       }
 
-      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      _inMemoryApiKey = key;
 
       syncApiKeyControl('Saved locally', 'ok');
 
@@ -1429,7 +1490,7 @@
 
       if (!key) return false;
 
-      localStorage.setItem(OPENROUTER_KEY_STORAGE, key);
+      _inMemoryApiKey = key;
 
       syncApiKeyControl('Saved locally', 'ok');
 
@@ -1439,9 +1500,9 @@
 
 
 
-    function clearOpenRouterApiKey() {
+    function clearNvidiaApiKey() {
 
-      localStorage.removeItem(OPENROUTER_KEY_STORAGE);
+      _inMemoryApiKey = '';
 
       syncApiKeyControl('Cleared', 'warn');
 
@@ -1527,7 +1588,7 @@
 
         }
 
-        if (txt) txt.textContent = msg || 'Analyzing with DeepSeek... ' + current + '/' + total;
+        if (txt) txt.textContent = msg || 'Analyzing with Mistral... ' + current + '/' + total;
 
         if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
 
@@ -1637,7 +1698,7 @@
 
       s = s.replace(/output\s+(format|as|in)\s+json/i, '[REDACTED]');
 
-      if (s.length > 5000) s = s.substring(0, 5000) + '...[truncated]';
+      if (s.length > LLM_PROMPT_CHAR_LIMIT) s = s.substring(0, LLM_PROMPT_CHAR_LIMIT) + '...[truncated]';
 
       return s;
 
@@ -1759,19 +1820,21 @@
 
     /* ═══════════════════════════════════════════════════════════════════════
 
-       DEEPSEEK BATCH CLASSIFICATION
+       AI BATCH CLASSIFICATION
 
        ═══════════════════════════════════════════════════════════════════════ */
 
-    function buildOpenRouterHeaders(apiKey) {
+    function buildNvidiaHeaders(apiKey) {
 
       var endpoint = getApiEndpoint();
 
-      var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+      var isProxy = isProxyEndpoint(endpoint);
 
       var headers = {
 
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+
+        'Accept': 'application/json'
 
       };
 
@@ -1803,6 +1866,36 @@
 
 
 
+    async function fetchLlmCompletion(apiKey, body, timeoutMs) {
+
+      var controller = new AbortController();
+
+      var timeout = setTimeout(function() { controller.abort(); }, timeoutMs || LLM_REQUEST_TIMEOUT_MS);
+
+      try {
+
+        return await fetch(getApiEndpoint(), {
+
+          method: 'POST',
+
+          headers: buildNvidiaHeaders(apiKey),
+
+          signal: controller.signal,
+
+          body: JSON.stringify(body)
+
+        });
+
+      } finally {
+
+        clearTimeout(timeout);
+
+      }
+
+    }
+
+
+
     function getChoiceText(data) {
 
       if (!data || !data.choices || !data.choices.length) return '';
@@ -1827,7 +1920,7 @@
 
 
 
-    function isRetryableOpenRouterError(status) {
+    function isRetryableNvidiaError(status) {
 
       return status === 408 || status === 409 || status === 425 || status === 429 ||
 
@@ -1837,15 +1930,15 @@
 
 
 
-    function isNonRetryableOpenRouterErrorMessage(message) {
+    function isNonRetryableNvidiaErrorMessage(message) {
 
-      var m = String(message || '').match(/^OpenRouter\s+(\d+)/);
+      var m = String(message || '').match(/^NVIDIA\s+(\d+)/);
 
       if (!m) return false;
 
       var status = Number(m[1]);
 
-      return status >= 400 && status < 500 && !isRetryableOpenRouterError(status);
+      return status >= 400 && status < 500 && !isRetryableNvidiaError(status);
 
     }
 
@@ -1959,7 +2052,7 @@
 
 
 
-    async function classifyWithDeepSeek(allSummaries, isPostSales, apiKey) {
+    async function classifyWithLlm(allSummaries, isPostSales, apiKey) {
 
       var systemPrompt = buildLlmSystemPrompt(isPostSales);
 
@@ -2011,9 +2104,24 @@
 
 
 
+      var llmResults = null;
+
+      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length }));
+
+      // Check cache first — return immediately if this exact set was processed before
+      var cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          var parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length === allSummaries.length) {
+            return parsed;
+          }
+        } catch(e) {}
+      }
+
       _aiStatusStartTime = Date.now();
 
-      updateAiStatus(0, batches.length, 'Starting DeepSeek classification...');
+      updateAiStatus(0, batches.length, 'Starting NVIDIA classification...');
 
       
 
@@ -2025,7 +2133,7 @@
 
       var batchSize = LLM_BATCH_SIZE;
 
-      var runnerResult = await runOpenRouterBatches({
+      var runnerResult = await runLlmBatches({
 
         items: allSummaries,
 
@@ -2035,11 +2143,12 @@
 
         minGapMs: 150,
 
-        maxRetries: 3,
+        maxRetries: LLM_MAX_RETRIES,
 
         requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
 
         cachedData: null,
+        signal: aiValidationController.signal,
 
         buildPrompt: function(batch, batchIndex) {
 
@@ -2057,7 +2166,7 @@
 
             temperature: 0.1,
 
-            maxCompletionTokens: 4096
+            maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS
 
           };
 
@@ -2071,7 +2180,7 @@
 
         buildHeaders: function() {
 
-          return buildOpenRouterHeaders(apiKey);
+          return buildNvidiaHeaders(apiKey);
 
         },
 
@@ -2165,9 +2274,10 @@
         try { localStorage.setItem(cacheKey, JSON.stringify(llmResults)); } catch(cacheErr) {}
       } catch(e) {
         console.warn('LLM failed, falling back to keywords:', e);
-        showAiNotice('DeepSeek failed. Using local keyword analysis.', true);
+        showAiNotice('AI classification failed. Using local keyword analysis.', true);
         llmResults = null;
       }
+      return llmResults;
     }    async function generateVoiceInsights(themes) {
 
       const apiKey = getApiKey();
@@ -2205,15 +2315,9 @@
 
       try {
 
-        const response = await fetch(getApiEndpoint(), {
+        const response = await fetchLlmCompletion(apiKey, {
 
-          method: 'POST',
-
-          headers: buildOpenRouterHeaders(apiKey),
-
-          body: JSON.stringify({
-
-            model: OPENROUTER_MODEL,
+            model: NVIDIA_MODEL,
 
             messages: [
 
@@ -2225,11 +2329,9 @@
 
             temperature: 0.3,
 
-            max_tokens: 1000
+            max_tokens: Math.min(1000, LLM_MAX_OUTPUT_TOKENS)
 
-          })
-
-        });
+          }, LLM_REQUEST_TIMEOUT_MS);
 
 
 
@@ -2323,7 +2425,7 @@
 
         const themeDesc = topThemes.map(t => `<strong>${t.count}</strong> ${t.label.toLowerCase()}`).join(', ');
 
-        parts.push(`The dominant customer signals are: ${themeDesc}. ${topThemes[0].explanation}. This affects conversion because ${topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1)}`);
+        if (topThemes[0].explanation && topThemes[0].interpretation) { parts.push(`The dominant customer signals are: ${themeDesc}. ${topThemes[0].explanation}. This affects conversion because ${topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1)}`); } else { parts.push(`The dominant customer signals are: ${themeDesc}.`); }
 
       }
 
@@ -3242,15 +3344,9 @@
 
       try {
 
-        const response = await fetch(getApiEndpoint(), {
+        const response = await fetchLlmCompletion(apiKey, {
 
-          method: 'POST',
-
-          headers: buildOpenRouterHeaders(apiKey),
-
-          body: JSON.stringify({
-
-            model: OPENROUTER_MODEL,
+            model: NVIDIA_MODEL,
 
             messages: [
 
@@ -3262,11 +3358,9 @@
 
             temperature: 0.3,
 
-            max_tokens: 1200
+            max_tokens: Math.min(1200, LLM_MAX_OUTPUT_TOKENS)
 
-          })
-
-        });
+          }, LLM_REQUEST_TIMEOUT_MS);
 
 
 
@@ -3434,7 +3528,7 @@
 
       `;
 
-      narrative.textContent = `Call volume ${trends.direction === 'up' ? 'increased' : 'decreased'} by ${Math.abs(trends.pctChange)}% between the early and late campaign phases (${trends.firstAvg.toFixed(0)} to ${trends.secondAvg.toFixed(0)} calls/day on average).`;
+      narrative.textContent = `Call volume ${trends.direction === 'up' ? 'increased' : trends.direction === 'down' ? 'decreased' : 'remained unchanged'} by ${Math.abs(trends.pctChange)}% between the early and late campaign phases (${trends.firstAvg.toFixed(0)} to ${trends.secondAvg.toFixed(0)} calls/day on average).`;
 
     }
 
@@ -4494,12 +4588,22 @@
 
       try {
 
-        var summaries = rows.map(function(r, i) {
+        // Only process connected calls - non-connected calls have no meaningful summary
+        var connectedRows = rows.filter(function(r) {
+          var st = String(colMap.status ? r[colMap.status] : '').toLowerCase();
+          var ot = String(colMap.outcome ? r[colMap.outcome] : '').toLowerCase();
+          // Exclude explicitly "not connected" before checking positive signals
+          if (st.indexOf('not connected') >= 0 || st.indexOf('notconnected') >= 0 || st.indexOf('not_connected') >= 0 || ot.indexOf('not connected') >= 0 || ot.indexOf('notconnected') >= 0 || ot.indexOf('not_connected') >= 0) return false;
+          return st.indexOf('completed') >= 0 || st.indexOf('attempted') >= 0 || st.indexOf('connected') >= 0 || ot.indexOf('connected') >= 0;
+        });
 
+        if (connectedRows.length === 0) {
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+        }
+
+        var summaries = connectedRows.map(function(r, i) {
           var vals = Object.keys(colMap).map(function(k) { return r[colMap[k]] || ''; });
-
           return { rowIndex: i, text: vals.join(' ').trim() };
-
         }).filter(function(s) { return s.text && s.text.length > 10; });
 
         if (summaries.length === 0) {
@@ -4516,7 +4620,7 @@
 
         var promptBatches = [];
 
-        var batchSize = 50;
+        var batchSize = LLM_THEME_BATCH_SIZE;
 
         for (var bi = 0; bi < summaries.length; bi += batchSize) {
 
@@ -4532,21 +4636,25 @@
         }
 
         // Show AI status for theme mining
+        // Create abort controller for this run
+        aiValidationController = new AbortController();
+
         updateAiStatus(0, 0, 'Preparing themes...');
 
-        var runnerResult = await runOpenRouterBatches({
+        var runnerResult = await runLlmBatches({
 
           items: summaries,
 
           batchSize: batchSize,
 
-          maxConcurrent: 2,
+          maxConcurrent: LLM_MAX_CONCURRENT,
 
           minGapMs: 150,
 
-          maxRetries: 2,
+          maxRetries: LLM_MAX_RETRIES,
 
-          requestTimeoutMs: 45000,
+          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+        signal: aiValidationController.signal,
 
           buildPrompt: function(batch, batchIndex) {
 
@@ -4556,27 +4664,21 @@
 
             }).join('\n');
 
-            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: 4096 };
+            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS };
 
           },
 
           parseResponse: function(text, batch, batchIndex) {
 
-            if (!text) return [];
-
             try {
 
-              var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+              return parseLlmJsonResults(text, batch);
 
-              var match = cleaned.match(/\{[\s\S]*\}/);
+            } catch(e) {
 
-              if (!match) return [];
+              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
 
-              var result = JSON.parse(match[0]);
-
-              return Array.isArray(result.dispositions) ? result.dispositions : [];
-
-            } catch(e) { return []; }
+            }
 
           },
 
@@ -4601,37 +4703,9 @@
 
         if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
 
-        var themes = {};
-
-        var themeKeys = Object.keys(DISPO_TO_THEME);
-
-        for (var ti = 0; ti < themeKeys.length; ti++) {
-
-          var key = themeKeys[ti];
-
-          var tid = DISPO_TO_THEME[key];
-
-          if (!themes[tid]) {
-
-            themes[tid] = { label: tid.split('_').map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '), count: 0, excerpts: [], competitorNames: [], callbackTimes: [], timeframes: [] };
-
-          }
-
-        }
-
-        var llmLookup = {};
-
-        for (var li = 0; li < llmResults.length; li++) {
-
-          var item = llmResults[li];
-
-          if (Array.isArray(item)) llmLookup[li] = item;
-
-          else if (item && item.rowIndex !== undefined) llmLookup[item.rowIndex] = item.dispositions || [];
-
-        }
-
-        for (var mi = 0; mi < summaries.length; mi++) {
+      // Clean up abort controller
+      aiValidationController = null;
+    }     for (var mi = 0; mi < summaries.length; mi++) {
 
           var s = summaries[mi];
 
@@ -4691,7 +4765,7 @@
 
         // Hide AI status on success
         updateAiStatus(0, 0, '');
-        return { themes: themeList, total: total, topTheme: topTheme, engine: 'openrouter' };
+        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
 
       } catch(e) {
 
@@ -4738,13 +4812,13 @@
 
       if (analysisBadge) {
 
-        analysisBadge.textContent = themes.engine === 'openrouter'
+        analysisBadge.textContent = themes.engine === 'nvidia'
 
-          ? 'DEEPSEEK AI ANALYSIS'
+          ? 'AI ANALYSIS'
 
           : themes.engine === 'cache'
 
-            ? 'CACHED DEEPSEEK ANALYSIS'
+            ? 'CACHED AI ANALYSIS'
 
             : 'LOCAL KEYWORD ANALYSIS';
 
@@ -5316,6 +5390,8 @@
 
       const container = document.getElementById('vehicleChart');
 
+      if (!container) return;
+
       container.innerHTML = '';
 
       const panel = container.closest('.data-panel');
@@ -5499,6 +5575,8 @@
     function renderPendingPanel(data) {
 
       const container = document.getElementById('pendingPanel');
+
+      if (!container) return;
 
       container.innerHTML = `
 

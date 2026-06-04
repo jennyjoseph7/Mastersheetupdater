@@ -1,5 +1,5 @@
 /**
- * OpenRouter Batch Runner — shared adaptive scheduler for all AutoNage tools.
+ * NVIDIA API Batch Runner — shared adaptive scheduler for all AutoNage tools.
  *
  * Replaces:
  *  - Fixed 2s sleep between batches (pre-sales / post-sales sync)
@@ -15,7 +15,7 @@
  *  - Returns ordered results (same order as input items)
  *
  * Usage
- *  runOpenRouterBatches({
+ *  runLlmBatches({
  *    items,               // array of candidate objects
  *    batchSize: 10,       // items per API request
  *    maxConcurrent: 2,    // how many requests at once
@@ -25,7 +25,7 @@
  *    getCacheKey,         // (items) => string | null
  *    cachedData,          // previously cached result (skip API if valid)
  *    buildPrompt,         // (batch, batchIndex) => { system, user }
- *    buildHeaders,        // () => object (optional, default uses OpenRouter auth)
+ *    buildHeaders,        // () => object (optional, default uses NVIDIA auth)
  *    parseResponse,       // (text, batch) => array of per-item results
  *    onProgress,          // (done, total, message, pct) => void
  *    signal               // AbortSignal (optional)
@@ -33,13 +33,16 @@
  *  => { results: Map<itemIndex, parsedResult>, correctedCount: number, failedBatches: number[] }
  */
 (function () {
-  if (typeof window !== 'undefined' && window.runOpenRouterBatches) return;
+  if (typeof window !== 'undefined' && window.runLlmBatches) return;
+
+  var MIN_SPLIT_SIZE = 5;  // When a batch fails, split into halves until this size
 
   // ── helpers ──────────────────────────────────────────────────────────────
   function isRetryableStatus(status) {
     return status === 408 || status === 409 || status === 425 ||
            status === 429 || status === 500 || status === 502 ||
-           status === 503 || status === 504;
+           status === 503 || status === 504 || status === 523 ||
+           status === 524;
   }
 
   function isClientError(status) {
@@ -88,8 +91,21 @@
     state.cooldownUntil = Date.now() + (retryAfterMs || state.gapMs);
   }
 
+  var NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
+  var OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+
+  function isProxyEndpoint(endpoint) {
+    return endpoint !== NVIDIA_ENDPOINT && endpoint !== OPENROUTER_ENDPOINT;
+  }
+
+  function getConfiguredModel() {
+    var cfg = window.JEJO_CONFIG || {};
+    if (typeof window.getLlmModel === 'function') return window.getLlmModel();
+    return window.NVIDIA_MODEL || cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+  }
+
   // ── main runner ──────────────────────────────────────────────────────────
-  function runOpenRouterBatches(opts) {
+  function runLlmBatches(opts) {
     return new Promise(function (resolve, reject) {
       var items           = opts.items || [];
       var batchSize       = opts.batchSize || 10;
@@ -106,7 +122,7 @@
       var signal          = opts.signal || null;
 
       if (!buildPrompt || !parseResponse) {
-        reject(new Error('runOpenRouterBatches requires buildPrompt and parseResponse'));
+        reject(new Error('runLlmBatches requires buildPrompt and parseResponse'));
         return;
       }
 
@@ -147,19 +163,21 @@
       var aborted = false;
 
       // Track the currently-active per-request controller so the caller's signal can cancel it
-      var activeController = null;
+      var activeControllers = new Set();
 
       if (signal) {
         signal.addEventListener('abort', function () {
           aborted = true;
-          if (activeController) {
-            try { activeController.abort(); } catch (_) {}
-          }
+          activeControllers.forEach(function(controller) {
+            try { controller.abort(); } catch (_) {}
+          });
+          activeControllers.clear();
         });
       }
 
-      // ── single batch request with retries ────────────────────────────
-      async function sendBatch(batch, batchIndex) {
+      // ── single batch request with retries and smart split-on-failure ─
+      async function sendBatch(batch, batchIndex, trackFailure) {
+        if (trackFailure === undefined) trackFailure = true;
         var prompt = buildPrompt(batch, batchIndex);
         if (!prompt) {
           return { ok: false, reason: 'buildPrompt returned null/undefined' };
@@ -193,45 +211,40 @@
           var timeoutId = null;
           if (controller) {
             timeoutId = setTimeout(function () { controller.abort(); }, requestTimeout);
-            activeController = controller;
+            activeControllers.add(controller);
           }
 
           try {
             var endpoint = typeof window.getApiEndpoint === 'function'
               ? window.getApiEndpoint()
-              : 'https://openrouter.ai/api/v1/chat/completions';
+              : NVIDIA_ENDPOINT;
 
             var headers = {};
             if (typeof buildHeaders === 'function') {
               headers = buildHeaders() || {};
             } else {
-              // default: mirror the pattern used by sync tools
-              var isProxy = endpoint !== 'https://openrouter.ai/api/v1/chat/completions';
+              // default: NVIDIA API or proxy
               headers['Content-Type'] = 'application/json';
-              if (isProxy) {
+              headers['Accept'] = 'application/json';
+              if (isProxyEndpoint(endpoint)) {
                 var cfg = window.JEJO_CONFIG || {};
                 headers['X-Handshake-Token'] = cfg.proxyHandshakeToken || 'jejo-secure-handshake';
               } else {
                 var apiKey = typeof window.getApiKey === 'function' ? window.getApiKey() : '';
                 if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
-                headers['HTTP-Referer'] = window.location.origin;
               }
             }
 
             var bodyObj = {
-              model: window.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash',
+              model: getConfiguredModel(),
+              top_p: 1.00,
               messages: [
                 { role: 'system', content: prompt.system },
                 { role: 'user', content: prompt.user }
               ],
-              temperature: prompt.temperature !== undefined ? prompt.temperature : 0.3,
-              max_tokens: prompt.maxTokens || 3000
+              temperature: prompt.temperature !== undefined ? prompt.temperature : 0.7,
+              max_tokens: prompt.maxTokens || prompt.maxCompletionTokens || 8192
             };
-            // Support max_completion_tokens (for dashboard which uses newer param name)
-            if (prompt.maxCompletionTokens) {
-              bodyObj.max_completion_tokens = prompt.maxCompletionTokens;
-              delete bodyObj.max_tokens;
-            }
 
             var response = await fetch(endpoint, {
               method: 'POST',
@@ -242,7 +255,7 @@
 
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = null;
-            activeController = null;
+            if (controller) activeControllers.delete(controller);
 
             if (response.ok) {
               var data = await response.json();
@@ -261,7 +274,7 @@
             // Non-OK response
             var errText = '';
             try { errText = await response.text(); } catch (_) {}
-            var errMsg = 'OpenRouter ' + response.status + ': ' + (errText || 'unknown error').slice(0, 300);
+            var errMsg = 'API ' + response.status + ': ' + (errText || 'unknown error').slice(0, 300);
 
             if (isClientError(response.status)) {
               // Non-retryable client error — mark so the catch rethrows immediately
@@ -282,11 +295,11 @@
           } catch (e) {
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = null;
-            activeController = null;
+            if (controller) activeControllers.delete(controller);
 
             // Non-retryable client error — bail immediately
             if (e.nonRetryable) {
-              failedBatches.push(batchIndex);
+              if (trackFailure) failedBatches.push(batchIndex);
               return { ok: false, reason: e.message };
             }
 
@@ -300,8 +313,23 @@
           }
         }
 
-        // All retries exhausted
-        failedBatches.push(batchIndex);
+        // All retries exhausted — try splitting batch in half and retrying
+        if (batch.length > MIN_SPLIT_SIZE) {
+          var mid = Math.ceil(batch.length / 2);
+          var leftResult = await sendBatch(batch.slice(0, mid), batchIndex, false);
+          var rightResult = await sendBatch(batch.slice(mid), batchIndex, false);
+
+          var combinedData = [];
+          if (leftResult && leftResult.ok) combinedData = leftResult.data;
+          if (rightResult && rightResult.ok) combinedData = combinedData.concat(rightResult.data);
+
+          if (combinedData.length > 0) {
+            return { ok: true, data: combinedData };
+          }
+        }
+
+        // Even after splitting, still failed
+        if (trackFailure) failedBatches.push(batchIndex);
         return { ok: false, reason: lastErr ? lastErr.message : 'Max retries exceeded' };
       }
 
@@ -364,5 +392,5 @@
     });
   }
 
-  window.runOpenRouterBatches = runOpenRouterBatches;
+  window.runLlmBatches = runLlmBatches;
 })();
