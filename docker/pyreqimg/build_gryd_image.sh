@@ -4,8 +4,11 @@ set -euo pipefail
 BRANCH=$1
 SERVICE=$2
 
-CONF_DIR="/mnta/autobot_agents/docker/pyreqimg/Conf"
+BASE_DIR="/mnta/autobot_agents/docker/pyreqimg"
+CONF_DIR="$BASE_DIR/Conf"
 CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
+
+cd "$BASE_DIR"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Config not found: $CONFIG_FILE"
@@ -14,13 +17,18 @@ fi
 
 source "$CONFIG_FILE"
 
+if [ -z "${REQUIREMENTS_SOURCE:-}" ]; then
+    echo "REQUIREMENTS_SOURCE is not set"
+    exit 1
+fi
+
 update_repo() {
     git fetch origin "$BRANCH"
     git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
     git pull origin "$BRANCH"
 }
 
-generate_dockerfile() {
+generate_dockerfile_and_context() {
     cp Dockerfile Dockerfile.tmp
     sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
 
@@ -29,9 +37,19 @@ generate_dockerfile() {
     for item in "${items[@]}"; do
         item=$(echo "$item" | xargs)
 
-        item=${item#../../}
+        # HOST PATH (works on your machine)
+        if [ ! -f "$item" ]; then
+            echo "Missing file on host: $item"
+            exit 1
+        fi
 
-        echo "RUN /root/pyenv/bin/pip install -r $item" >> Dockerfile.tmp
+        filename=$(basename "$item")
+
+        # COPY INTO BUILD CONTEXT
+        cp "$item" "$BASE_DIR/$filename"
+
+        # USE RELATIVE PATH INSIDE DOCKER
+        echo "RUN /root/pyenv/bin/pip install -r $filename" >> Dockerfile.tmp
     done
 }
 
@@ -50,11 +68,18 @@ build_image() {
 
 cleanup() {
     rm -f Dockerfile.tmp
+
+    # remove copied requirement files only
+    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
+    for item in "${items[@]}"; do
+        filename=$(basename "$item")
+        rm -f "$BASE_DIR/$filename"
+    done
 }
 
 main() {
     update_repo
-    generate_dockerfile
+    generate_dockerfile_and_context
     build_image
     cleanup
 }
