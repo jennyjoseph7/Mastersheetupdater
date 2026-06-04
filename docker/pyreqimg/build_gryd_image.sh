@@ -5,13 +5,13 @@ set -euo pipefail
 BRANCH=$1
 SERVICE=$2
 
-CONF_DIR="/mnta/autobot_agents/docker/pyreqimg/Conf"
-CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
-
 if [ -z "$BRANCH" ] || [ -z "$SERVICE" ]; then
     echo "Usage: bash build_gryd_image.sh <branch> <service>"
     exit 1
 fi
+
+CONF_DIR="/mnta/autobot_agents/docker/pyreqimg/Conf"
+CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
 
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Config not found: $CONFIG_FILE"
@@ -28,9 +28,14 @@ load_config() {
     source "$CONFIG_FILE"
 }
 
-prepare_dockerfile() {
+prepare_requirements() {
 
-    BASE_IMAGE="asia-south1-docker.pkg.dev/dave-70c8e/autobot-base-image/base_image:${BRANCH}"
+    if [ -n "${REQUIREMENTS_SOURCE:-}" ]; then
+        cp "$REQUIREMENTS_SOURCE" "$REQUIREMENTS_FILE"
+    fi
+}
+
+prepare_dockerfile() {
 
     sed \
         -e "s|__BASEIMAGE_TAG__|${BRANCH}|g" \
@@ -54,11 +59,13 @@ build_image() {
 
 cleanup() {
     rm -f Dockerfile.tmp
+    rm -f spark_requirements.txt requirements.txt document_processor_requirements.txt brochure_pipeline_requirements.txt requirements_combined.txt
 }
 
 main() {
     update_repo
     load_config
+    prepare_requirements
     prepare_dockerfile
     build_image
     cleanup
