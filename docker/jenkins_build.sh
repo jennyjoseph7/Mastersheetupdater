@@ -1,10 +1,18 @@
 #!/bin/bash
+set -euo pipefail
+
+# =========================
+# CONFIG LOADING
+# =========================
 
 BUILD_CONF_FILE="${BUILD_CONF_FILE:-./build.conf}"
 
 if [ -n "$BUILD_CONF_FILE" ] && [ -f "$BUILD_CONF_FILE" ]; then
     echo "Sourcing $BUILD_CONF_FILE"
     source "$BUILD_CONF_FILE"
+else
+    echo "ERROR: build.conf not found at $BUILD_CONF_FILE"
+    exit 1
 fi
 
 DOCKER_BASE_IMG_TAG="${1:-latest}"
@@ -48,7 +56,7 @@ GCP_CREDS_DIR="${GCP_CREDS_DIR:-0}"
 export GCP_CREDS_PATH=0
 
 WORKING_DIR="$(pwd)"
-WORKER_DIR="$(realpath ../)"
+WORKER_DIR="$(git rev-parse --show-toplevel 2>/dev/null || realpath ../)"
 
 dir_status=-1
 SHA=0
@@ -97,16 +105,11 @@ function create_sha_file() {
 
     pushd "$dir_name" >/dev/null || exit 1
 
-    sha=$(git log -1 --pretty=format:%h)
-    sha_status=$?
-
-    if [ "$sha_status" -ne 0 ]; then
-        sha="latest"
-    fi
+    sha=$(git log -1 --pretty=format:%h || echo "latest")
 
     echo "$sha" > "$(basename "$dir_name").sha"
 
-    gbsha=$(git log -1 --pretty=format:"%H:%aI")
+    gbsha=$(git log -1 --pretty=format:"%H:%aI" || echo "latest")
     echo "$gbsha" > version.sha
 
     SHA="$sha"
@@ -178,15 +181,24 @@ function build_docker_image() {
     WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
     if [ "$GCP_CREDS_PATH" != "0" ]; then
-        cp -v "$GCP_CREDS_PATH" ./
+        cp -v "$GCP_CREDS_PATH" ./ || true
     fi
 
-    docker build -f Dockerfile.build -t "$WORKER_DOCKER_IMAGE_NAME" .
-
-    if [ $? -ne 0 ]; then
-        echo "Build Failed"
+    if [ ! -f Dockerfile.build ]; then
+        echo "ERROR: Dockerfile.build not found"
         exit 1
     fi
+
+    if [ ! -s Dockerfile.build ]; then
+        echo "ERROR: Dockerfile.build is empty"
+        exit 1
+    fi
+
+    docker build \
+        --no-cache \
+        -f Dockerfile.build \
+        -t "$WORKER_DOCKER_IMAGE_NAME" .
+
 }
 
 function do_registry_authentication() {
@@ -225,6 +237,16 @@ function push_image_to_registry() {
 
 function main() {
 
+    if [ ! -f Dockerfile ]; then
+        echo "ERROR: Dockerfile not found"
+        exit 1
+    fi
+
+    if [ ! -f start_worker_config.json ]; then
+        echo "ERROR: start_worker_config.json not found"
+        exit 1
+    fi
+
     cp Dockerfile Dockerfile.wk
 
     sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
@@ -236,7 +258,14 @@ function main() {
     fi
 
     if [ "$ONLY_PUSH" = "0" ]; then
+
         sed "s#<zipname>#$WORKER_NAME#g" Dockerfile.wk > Dockerfile.build
+
+        if [ ! -s Dockerfile.build ]; then
+            echo "ERROR: Dockerfile.build generation failed"
+            exit 1
+        fi
+
         zip_repo "$WORKER_DIR" "$WORKER_NAME.zip"
         build_docker_image
     fi
@@ -244,10 +273,6 @@ function main() {
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
         push_image_to_registry
     fi
-
-    # =========================
-    # SAVE IMAGE TAG (ADDED)
-    # =========================
 
     echo "Saving current image full path..."
 
@@ -258,11 +283,6 @@ function main() {
     FULL_IMAGE_NAME="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
     echo "$FULL_IMAGE_NAME" > /home/dave/autobot/current_image_tag.txt
-
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Failed to save image name"
-        exit 1
-    fi
 
     echo "Image saved: $FULL_IMAGE_NAME"
 }
