@@ -220,16 +220,25 @@ function push_image_to_registry() {
 }
 
 # =========================
-# MAIN (FULL UPDATED)
+# MAIN
 # =========================
 
 function main() {
 
     echo "Creating working Dockerfile..."
-    cp Dockerfile Dockerfile.wk
+
+    # FIX: support both Dockerfile names
+    if [ -f "Dockerfile" ]; then
+        cp Dockerfile Dockerfile.wk
+    elif [ -f "Dockefile" ]; then
+        cp Dockefile Dockerfile.wk
+    else
+        echo "ERROR: Dockerfile not found"
+        exit 1
+    fi
 
     # -------------------------
-    # VALIDATION (ADDED)
+    # VALIDATION
     # -------------------------
 
     if [ -z "$BUILD_ENVIRONMENT" ] || [ "$BUILD_ENVIRONMENT" = "0" ]; then
@@ -243,11 +252,12 @@ function main() {
     fi
 
     # -------------------------
-    # GCP CREDS HANDLING (ADDED)
+    # GCP CREDS HANDLING
     # -------------------------
 
     if [ -z "$GCP_CREDS_DIR" ] || [ "$GCP_CREDS_DIR" = "0" ]; then
         echo "WARNING: GCP Creds dir not set."
+        export GCP_CREDS_PATH=0
     else
         export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
 
@@ -267,7 +277,7 @@ function main() {
     sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
 
     # -------------------------
-    # BUILD FLOW
+    # BUILD
     # -------------------------
 
     if [ "$ONLY_PUSH" = "0" ]; then
@@ -280,7 +290,7 @@ function main() {
     fi
 
     # -------------------------
-    # PUSH FLOW
+    # PUSH
     # -------------------------
 
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
@@ -294,7 +304,7 @@ function main() {
     fi
 
     # -------------------------
-    # SAVE IMAGE TAG (ADDED)
+    # SAVE IMAGE TAG
     # -------------------------
 
     echo "Saving current image full path..."
