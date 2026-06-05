@@ -1584,7 +1584,7 @@ def get_queue_length(channel,dealership_id=None):
             return ql
 
     
-def get_all_dealerships(pg, channel_filter=None):
+def get_all_dealerships(pg, channel_filter=None, **kwargs):
     # query = """
     #     SELECT DISTINCT ON (dict->>'dealership_id')
     #         dict->>'dealership_id' AS dealership_id,
@@ -1592,8 +1592,10 @@ def get_all_dealerships(pg, channel_filter=None):
     #     FROM dealership
     #     ORDER BY dict->>'dealership_id'
     # """
-    result = list(pg.list("dealership", {"dealer_status": "active"}))
-    # result = list(pg.list("dealership", {}))
+    kwargs.update({"dealer_status": "active"})
+    logger.info("Dealership filter: %s", kwargs)
+    result = list(pg.list("dealership", kwargs))
+    logger.info("Got %s dealers matching with filter %s", len(result), kwargs)
     
     dealerships = []
 
@@ -1612,7 +1614,7 @@ def get_all_dealerships(pg, channel_filter=None):
             "id": dealership_id,
             "channels": channels
         })
-
+    logger.info("Got %s dealers matching with channels %s", len(dealerships), channels)
     return dealerships
 
 @gryd.is_a_task(function_name="mark_inactive_dealerships")
@@ -1822,7 +1824,7 @@ def test_campaign_workflow(*args, **kwargs):
     }
 
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
-def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None):  
+def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None, **kwargs):  
     
     """
     First get all the dealerships with the channel filter voice_phone and dealer_status is active.
@@ -1844,8 +1846,8 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
         mlogger.info("Outside allowed execution window for channel - voice_phone.So exiting...")
         return
     with get_pg_connector() as pg:
-        dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS)
-        mlogger.info(f"Total dealerships for channel - voice_phone = {len(dealerships)}")
+        dealerships = get_all_dealerships(pg, channel_filter=VOICE_CHANNELS, **kwargs)
+        mlogger.info(f"Total dealerships for channel - voice_phone in triggering scheduled calls/messages = {len(dealerships)}")
         for dealership in dealerships:
             dealership_id = dealership["id"]
             channels = dealership["channels"]
@@ -1873,7 +1875,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
 
                 
 @gryd.is_a_task(function_name="process_dealerships_non_voice")
-def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None):
+def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,non_voice_start_time=None,non_voice_end_time=None, **kwargs):
     
     """
     First get all the dealerships with the channel filter non voice_phone(whatsapp_chat,email,rcs etc..) and dealer_status is active.
@@ -1895,7 +1897,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,
         mlogger.info("Outside allowed execution window for channel - non voice.So exiting...")
         return
     with get_pg_connector() as pg:
-        dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS)
+        dealerships = get_all_dealerships(pg, channel_filter=NON_VOICE_CHANNELS, **kwargs)
 
         mlogger.info(f"Total dealerships for non voice channels = {len(dealerships)}")
         
