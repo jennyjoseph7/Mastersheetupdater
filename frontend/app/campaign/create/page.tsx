@@ -1830,35 +1830,21 @@ const handleProceed = async () => {
 
                    <Card
                       className={cn(
-                        "cursor-pointer hover:border-primary transition-all text-center p-4",
-                        audienceSourceType === "previous" && "border-primary bg-primary/5"
+                        "opacity-50 cursor-not-allowed transition-all text-center p-4 bg-muted/5 border-muted/50"
                       )}
-                      onClick={() => {
-                        setAudienceSourceType("previous");
-                        setTargetAudience([]);
-                        setSelectedAudienceDetails(null);
-                        setPage(1); // Force back to page 1 on switch
-                      }}
                     >
-                      <Database className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h4 className="font-semibold text-sm">Previously Used</h4>
+                      <Database className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <h4 className="font-semibold text-sm text-muted-foreground">Previously Used</h4>
                       <p className="text-xs text-muted-foreground mt-1">Clone from past campaigns</p>
                     </Card>
 
                     <Card
                       className={cn(
-                        "cursor-pointer hover:border-primary transition-all text-center p-4",
-                        audienceSourceType === "fresh" && "border-primary bg-primary/5"
+                        "opacity-50 cursor-not-allowed transition-all text-center p-4 bg-muted/5 border-muted/50"
                       )}
-                      onClick={() => {
-                        setAudienceSourceType("fresh");
-                        setTargetAudience([]);
-                        setSelectedAudienceDetails(null);
-                        setPage(1); // Force back to page 1 on switch
-                      }}
                     >
-                      <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
-                      <h4 className="font-semibold text-sm">Unused Fresh Set</h4>
+                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <h4 className="font-semibold text-sm text-muted-foreground">Unused Fresh Set</h4>
                       <p className="text-xs text-muted-foreground mt-1">Select unused leads</p>
                     </Card>
                   </div>
