@@ -105,7 +105,6 @@ function create_sha_file() {
     fi
 
     echo "$sha" > "$(basename "$dir_name").sha"
-
     gbsha=$(git log -1 --pretty=format:"%H:%aI")
     echo "$gbsha" > version.sha
 
@@ -181,10 +180,6 @@ function build_docker_image() {
         cp -v "$GCP_CREDS_PATH" ./ || true
     fi
 
-    # =========================
-    # FIX: ensure Dockerfile.wk exists
-    # =========================
-
     if [ ! -f Dockerfile.wk ]; then
         echo "ERROR: Dockerfile.wk not found"
         exit 1
@@ -195,12 +190,10 @@ function build_docker_image() {
         exit 1
     fi
 
-    # FIXED TEMPLATE REPLACEMENT
     sed "s#<zipname>#${WORKER_NAME}#g" Dockerfile.wk > Dockerfile.build
 
-    # GUARANTEE NOT EMPTY
     if [ ! -s Dockerfile.build ]; then
-        echo "ERROR: Dockerfile.build is empty (template failed)"
+        echo "ERROR: Dockerfile.build is empty"
         cat Dockerfile.wk
         exit 1
     fi
@@ -272,18 +265,6 @@ function main() {
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
         push_image_to_registry
     fi
-
-    echo "Saving current image full path..."
-
-    if [ -z "$WORKER_DOCKER_IMAGE_TAG" ] || [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
-        WORKER_DOCKER_IMAGE_TAG="$SHA"
-    fi
-
-    FULL_IMAGE_NAME="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
-
-    echo "$FULL_IMAGE_NAME" > /home/dave/autobot/current_image_tag.txt
-
-    echo "Image saved: $FULL_IMAGE_NAME"
 }
 
 main
