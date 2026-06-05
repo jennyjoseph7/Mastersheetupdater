@@ -225,87 +225,29 @@ function push_image_to_registry() {
 
 function main() {
 
-    echo "Creating working Dockerfile..."
-
-    # FIX: support both Dockerfile names
-    if [ -f "Dockerfile" ]; then
-        cp Dockerfile Dockerfile.wk
-    elif [ -f "Dockefile" ]; then
-        cp Dockefile Dockerfile.wk
-    else
-        echo "ERROR: Dockerfile not found"
-        exit 1
-    fi
-
-    # -------------------------
-    # VALIDATION
-    # -------------------------
-
-    if [ -z "$BUILD_ENVIRONMENT" ] || [ "$BUILD_ENVIRONMENT" = "0" ]; then
-        echo "ERROR: Build environment not set."
-        exit 1
-    fi
-
-    if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "0" ]; then
-        echo "ERROR: Invalid worker name."
-        exit 1
-    fi
-
-    # -------------------------
-    # GCP CREDS HANDLING
-    # -------------------------
-
-    if [ -z "$GCP_CREDS_DIR" ] || [ "$GCP_CREDS_DIR" = "0" ]; then
-        echo "WARNING: GCP Creds dir not set."
-        export GCP_CREDS_PATH=0
-    else
-        export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
-
-        if [[ ! -f "$GCP_CREDS_PATH" ]]; then
-            echo "WARNING: GCP Creds Not Found at $GCP_CREDS_PATH"
-            export GCP_CREDS_PATH=0
-        else
-            echo "Using GCP creds: $GCP_CREDS_PATH"
-        fi
-    fi
-
-    # -------------------------
-    # PATCH DOCKERFILE
-    # -------------------------
+    cp Dockerfile Dockerfile.wk
 
     sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
     sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
 
-    # -------------------------
-    # BUILD
-    # -------------------------
+    if [ "$BUILD_ENVIRONMENT" = "0" ]; then
+        echo "Build environment not set"
+        exit 1
+    fi
 
     if [ "$ONLY_PUSH" = "0" ]; then
-
         sed "s#<zipname>#$WORKER_NAME#g" Dockerfile.wk > Dockerfile.build
-
         zip_repo "$WORKER_DIR" "$WORKER_NAME.zip"
-
         build_docker_image
     fi
 
-    # -------------------------
-    # PUSH
-    # -------------------------
-
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
-
-        if [ "$DOCKER_REGISTRY" = "0" ]; then
-            echo "ERROR: Docker registry not given. Aborting."
-            exit 1
-        fi
-
         push_image_to_registry
     fi
 
-    # -------------------------
-    # SAVE IMAGE TAG
-    # -------------------------
+    # =========================
+    # SAVE IMAGE TAG (ADDED)
+    # =========================
 
     echo "Saving current image full path..."
 
@@ -313,7 +255,7 @@ function main() {
         WORKER_DOCKER_IMAGE_TAG="$SHA"
     fi
 
-    FULL_IMAGE_NAME="$REGISTRY_LINK_PREFIX/$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG"
+    FULL_IMAGE_NAME="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
     echo "$FULL_IMAGE_NAME" > /home/dave/autobot/current_image_tag.txt
 
