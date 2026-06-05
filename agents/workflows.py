@@ -43,10 +43,9 @@ class BaseWorkflow(ABC):
         Returns a short intent phrase (underscore_separated) or empty string.
         """
         try:
-            # import prompt helpers here to avoid circular imports at module load
-            from conversation.prompt import run_prompt_sync, get_prompt_file
+            from conversation.prompt import run_prompt_sync
+            from conversation.lead_post_processing import get_prompt_file
 
-            # load template from prompts folder using shared helper
             template = get_prompt_file('detect_intent.txt') or get_prompt_file('detect_intent')
 
             convo_msgs = messages[-8:] if isinstance(messages, list) else messages or []

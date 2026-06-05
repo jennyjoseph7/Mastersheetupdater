@@ -10,7 +10,7 @@ from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result, yield_error, yield_status
-from conversation.prompt import run_prompt_sync, get_prompt_file
+from conversation.prompt import run_prompt_sync
 from campaign.campaign_manager import generate_uid
 # from communication.connectors.communication_helpers import get_communication_credential, generate_uid
 # ----
