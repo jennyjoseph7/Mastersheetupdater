@@ -13,7 +13,7 @@ DOCKER_BASE_IMG_TAG="${1:-latest}"
 REPO_NAME="${2:?Repository name is required}"
 
 # =========================
-# VALIDATION (NEW RULE)
+# VALIDATION
 # =========================
 
 if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "0" ]; then
