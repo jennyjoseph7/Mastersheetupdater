@@ -78,9 +78,7 @@ function print_worker_git_info() {
         echo "$date|$worker|$sha|$author|$message"
 
     done | sort -r | while IFS="|" read -r date worker sha author message; do
-
         printf "%-20s %-10s %-18s %-12s %s\n" "$worker" "$sha" "$author" "$date" "$message"
-
     done
 }
 
@@ -180,7 +178,31 @@ function build_docker_image() {
     WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
     if [ "$GCP_CREDS_PATH" != "0" ]; then
-        cp -v "$GCP_CREDS_PATH" ./
+        cp -v "$GCP_CREDS_PATH" ./ || true
+    fi
+
+    # =========================
+    # FIX: ensure Dockerfile.wk exists
+    # =========================
+
+    if [ ! -f Dockerfile.wk ]; then
+        echo "ERROR: Dockerfile.wk not found"
+        exit 1
+    fi
+
+    if [ ! -s Dockerfile.wk ]; then
+        echo "ERROR: Dockerfile.wk is empty"
+        exit 1
+    fi
+
+    # FIXED TEMPLATE REPLACEMENT
+    sed "s#<zipname>#${WORKER_NAME}#g" Dockerfile.wk > Dockerfile.build
+
+    # GUARANTEE NOT EMPTY
+    if [ ! -s Dockerfile.build ]; then
+        echo "ERROR: Dockerfile.build is empty (template failed)"
+        cat Dockerfile.wk
+        exit 1
     fi
 
     docker build -f Dockerfile.build -t "$WORKER_DOCKER_IMAGE_NAME" .
@@ -221,7 +243,16 @@ function push_image_to_registry() {
     fi
 }
 
+# =========================
+# MAIN
+# =========================
+
 function main() {
+
+    if [ ! -f Dockerfile ]; then
+        echo "ERROR: Dockerfile not found"
+        exit 1
+    fi
 
     cp Dockerfile Dockerfile.wk
 
@@ -234,7 +265,6 @@ function main() {
     fi
 
     if [ "$ONLY_PUSH" = "0" ]; then
-        sed "s#<zipname>#$WORKER_NAME#g" Dockerfile.wk > Dockerfile.build
         zip_repo "$WORKER_DIR" "$WORKER_NAME.zip"
         build_docker_image
     fi
@@ -242,6 +272,18 @@ function main() {
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
         push_image_to_registry
     fi
+
+    echo "Saving current image full path..."
+
+    if [ -z "$WORKER_DOCKER_IMAGE_TAG" ] || [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
+        WORKER_DOCKER_IMAGE_TAG="$SHA"
+    fi
+
+    FULL_IMAGE_NAME="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
+
+    echo "$FULL_IMAGE_NAME" > /home/dave/autobot/current_image_tag.txt
+
+    echo "Image saved: $FULL_IMAGE_NAME"
 }
 
 main
