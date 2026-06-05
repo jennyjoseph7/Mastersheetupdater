@@ -176,25 +176,31 @@ function build_docker_image() {
 
     WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
+    # copy creds if needed
     if [ "$GCP_CREDS_PATH" != "0" ]; then
         cp -v "$GCP_CREDS_PATH" ./ || true
     fi
 
-    if [ ! -f Dockerfile.wk ]; then
-        echo "ERROR: Dockerfile.wk not found"
+    # =========================
+    # FIXED PART (IMPORTANT)
+    # =========================
+
+    if [ ! -f Dockerfile ]; then
+        echo "ERROR: Dockerfile not found"
         exit 1
     fi
 
-    if [ ! -s Dockerfile.wk ]; then
-        echo "ERROR: Dockerfile.wk is empty"
-        exit 1
-    fi
+    cp Dockerfile Dockerfile.wk
 
+    # inject PYREQ IMAGE FROM build.conf
+    sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
+    sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
+
+    # inject zip name
     sed "s#<zipname>#${WORKER_NAME}#g" Dockerfile.wk > Dockerfile.build
 
     if [ ! -s Dockerfile.build ]; then
         echo "ERROR: Dockerfile.build is empty"
-        cat Dockerfile.wk
         exit 1
     fi
 
@@ -246,11 +252,6 @@ function main() {
         echo "ERROR: Dockerfile not found"
         exit 1
     fi
-
-    cp Dockerfile Dockerfile.wk
-
-    sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
-    sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
 
     if [ "$BUILD_ENVIRONMENT" = "0" ]; then
         echo "Build environment not set"
