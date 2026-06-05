@@ -11,6 +11,10 @@ DOCKER_BASE_IMG_TAG="${1:-latest}"
 
 REPO_NAME="${2:?Repository name is required}"
 
+# =========================
+# VALIDATION
+# =========================
+
 if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "0" ]; then
     echo "ERROR: WORKER_NAME not set in build.conf"
     exit 1
@@ -22,6 +26,10 @@ if [ "$WORKER_NAME" != "$REPO_NAME" ]; then
     echo "CLI argument (2nd arg) = $REPO_NAME"
     exit 1
 fi
+
+# =========================
+# CONFIG VARIABLES
+# =========================
 
 WORKER_DOCKER_IMAGE_TAG="${WORKER_DOCKER_IMAGE_TAG:-0}"
 WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
@@ -44,6 +52,51 @@ WORKER_DIR="$(realpath ../)"
 dir_status=-1
 SHA=0
 
+# =========================
+# FUNCTIONS
+# =========================
+
+create_previous_image_backup() {
+    local file="/home/dave/autobot/current_image_tag.txt"
+    if [ -f "$file" ]; then
+        cp "$file" /home/dave/autobot/previous_image.txt
+    fi
+}
+
+print_worker_git_info() {
+
+    printf "%-20s %-10s %-18s %-12s %s\n" "WORKER" "SHA" "AUTHOR" "DATE" "MESSAGE"
+    echo "-----------------------------------------------------------------------------------------------"
+
+    grep '"name"' start_worker_config.json \
+    | sed 's/.*"\(.*\)".*/\1/' \
+    | sort -u \
+    | while read -r worker; do
+
+        commit=$(git log -1 --date=short --pretty=format:"%H|%an|%ad|%s" -- "$worker")
+
+        [ -z "$commit" ] && continue
+
+        IFS="|" read -r sha author date message <<< "$commit"
+
+        echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
+
+        echo "$date|$worker|$sha|$author|$message"
+
+    done | sort -r | while IFS="|" read -r date worker sha author message; do
+        printf "%-20s %-10s %-18s %-12s %s\n" "$worker" "$sha" "$author" "$date" "$message"
+    done
+}
+
+validate_directory() {
+    local dir_name="$1"
+    echo "Validating directory $dir_name"
+
+    dir_status=1
+    if [ -d "$dir_name" ]; then
+        dir_status=0
+    fi
+}
 
 create_sha_file() {
     local dir_name="$1"
@@ -62,11 +115,17 @@ create_sha_file() {
     popd >/dev/null || exit 1
 }
 
-
 zip_repo() {
 
     local dir_path="$1"
     local zip_name="$2"
+
+    validate_directory "$dir_path"
+
+    if [ "$dir_status" -ne 0 ]; then
+        echo "Directory does not exist"
+        exit 1
+    fi
 
     create_sha_file "$dir_path"
 
@@ -88,7 +147,6 @@ zip_repo() {
     popd >/dev/null || exit 1
 }
 
-
 build_docker_image() {
 
     if [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
@@ -101,19 +159,43 @@ build_docker_image() {
         cp -v "$GCP_CREDS_PATH" ./ || true
     fi
 
+    # =========================
+    # FIX: SAFE Dockerfile generation
+    # =========================
+
+    if [ ! -f Dockerfile.wk ]; then
+        echo "ERROR: Dockerfile.wk missing"
+        exit 1
+    fi
+
+    if [ ! -s Dockerfile.wk ]; then
+        echo "ERROR: Dockerfile.wk is empty"
+        exit 1
+    fi
+
+    sed "s#<zipname>#${WORKER_NAME}#g" Dockerfile.wk > Dockerfile.build
+
+    if [ ! -s Dockerfile.build ]; then
+        echo "ERROR: Dockerfile.build is empty (sed failed)"
+        exit 1
+    fi
+
     docker build \
         --no-cache \
         -f Dockerfile.build \
         -t "$WORKER_DOCKER_IMAGE_NAME" .
 }
 
+do_registry_authentication() {
+    gcloud auth activate-service-account --key-file=/home/ubuntu/firebase.json
+}
 
 push_image_to_registry() {
 
     rname="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}"
     imagePushTag="${rname}:${WORKER_DOCKER_IMAGE_TAG}"
 
-    gcloud auth activate-service-account --key-file=/home/ubuntu/firebase.json
+    do_registry_authentication
 
     docker tag "$WORKER_DOCKER_IMAGE_NAME" "$imagePushTag"
     docker push "$imagePushTag"
@@ -127,10 +209,13 @@ push_image_to_registry() {
     fi
 }
 
+# =========================
+# MAIN
+# =========================
 
 main() {
 
-    cp Dockerfile Dockerfile.wk
+    cp -f Dockerfile Dockerfile.wk
 
     sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
     sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
@@ -141,16 +226,24 @@ main() {
     fi
 
     if [ "$ONLY_PUSH" = "0" ]; then
-
-        sed "s#<zipname>#$WORKER_NAME#g" Dockerfile.wk > Dockerfile.build
-
         zip_repo "$WORKER_DIR" "$WORKER_NAME.zip"
-
         build_docker_image
     fi
 
     if [ "$PUSH_TO_REGISTRY" = "1" ]; then
         push_image_to_registry
+    fi
+
+    # =========================
+    # IMAGE TRACKING FIXED
+    # =========================
+
+    echo "Saving current image full path..."
+
+    create_previous_image_backup
+
+    if [ -z "$WORKER_DOCKER_IMAGE_TAG" ] || [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
+        WORKER_DOCKER_IMAGE_TAG="$SHA"
     fi
 
     FULL_IMAGE_NAME="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
