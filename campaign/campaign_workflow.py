@@ -711,13 +711,13 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--lead-id", type=str, default="123")
-    parser.add_argument("--debug", action="store_true", default=True)
+    parser.add_argument("--no-debug", action="store_false", default=True)
     parser.add_argument("--channel-identifier", type=str, default=None)
     parser.add_argument("--campaign-type", type=str, default="pre-sales")
     parser.add_argument("--disposition", type=str, default="converted")
     args = parser.parse_args()
     lead_id = args.lead_id
-    debug = args.debug
+    debug = args.no_debug
     channel_identifier = args.channel_identifier
     if lead_id == "123":
         channel_identifier = "919108310847"
