@@ -1,9 +1,0 @@
-FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-pyreq-baseimage/autobot-pyreq-baseimage:<DOCKER_BASE_IMG_TAG>
-
-WORKDIR /root/
-COPY <zipname>.zip /root/
-COPY generate_logio_conf.py /root/
-RUN unzip <zipname>.zip -d app/
-WORKDIR /root/app/
-
-CMD [ "bash" , "./start_process_container.sh" ]
