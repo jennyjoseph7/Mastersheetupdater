@@ -11,9 +11,6 @@ from autocrm_db_helper import get_pg_connector
 json = hp.json
 from conversation.yield_response import yield_result, yield_error, yield_status
 from conversation.prompt import run_prompt_sync
-from campaign.campaign_manager import generate_uid
-# from communication.connectors.communication_helpers import get_communication_credential, generate_uid
-# ----
 from communication.common_functions import get_communication_credential, generate_uid
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
