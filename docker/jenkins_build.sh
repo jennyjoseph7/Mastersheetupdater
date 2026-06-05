@@ -1,36 +1,61 @@
 #!/bin/bash
-BUILD_CONF_FILE=${BUILD_CONF_FILE:-"./build.conf"}
 
-if [ -z $BUILD_CONF_FILE ];then
-    echo "No build conf file given. Assuming parameters are set in environment variables."
-else
+BUILD_CONF_FILE="${BUILD_CONF_FILE:-./build.conf}"
+
+if [ -n "$BUILD_CONF_FILE" ] && [ -f "$BUILD_CONF_FILE" ]; then
     echo "Sourcing $BUILD_CONF_FILE"
-    source $BUILD_CONF_FILE
-    # printenv
+    source "$BUILD_CONF_FILE"
 fi
 
-WORKER_NAME=${WORKER_NAME:-0}
-WORKER_DOCKER_IMAGE_TAG=${WORKER_DOCKER_IMAGE_TAG:-0}
-WORKER_DOCKER_IMAGE_NAME=$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG
-DOCKER_REGISTRY=${DOCKER_REGISTRY:-0}
-PUSH_AS_LATEST=${PUSH_AS_LATEST:-0}
-AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-0}
-GCP_ACCOUNT_ID=${GCP_ACCOUNT_ID:-0}
-REGISTRY_LINK_PREFIX=${REGISTRY_LINK_PREFIX:-0}
-ONLY_PUSH=${ONLY_PUSH:-0}
-PUSH_TO_REGISTRY=${PUSH_TO_REGISTRY:-0}
-BUILD_ENVIRONMENT=${BUILD_ENVIRONMENT:-0}
-GCP_CREDS_DIR=${GCP_CREDS_DIR:-0}
-DOCKER_BASE_IMG_TAG=${DOCKER_BASE_IMG_TAG:-lastest}
+DOCKER_BASE_IMG_TAG="${1:-latest}"
+
+# 2nd argument (must match WORKER_NAME)
+REPO_NAME="${2:?Repository name is required}"
+
+# =========================
+# VALIDATION
+# =========================
+
+if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "0" ]; then
+    echo "ERROR: WORKER_NAME not set in build.conf"
+    exit 1
+fi
+
+if [ "$WORKER_NAME" != "$REPO_NAME" ]; then
+    echo "ERROR: WORKER_NAME mismatch"
+    echo "build.conf WORKER_NAME = $WORKER_NAME"
+    echo "CLI argument (2nd arg) = $REPO_NAME"
+    exit 1
+fi
+
+# =========================
+# CONFIG VARIABLES
+# =========================
+
+WORKER_DOCKER_IMAGE_TAG="${WORKER_DOCKER_IMAGE_TAG:-0}"
+WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
+
+DOCKER_REGISTRY="${DOCKER_REGISTRY:-0}"
+PUSH_AS_LATEST="${PUSH_AS_LATEST:-0}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-0}"
+GCP_ACCOUNT_ID="${GCP_ACCOUNT_ID:-0}"
+REGISTRY_LINK_PREFIX="${REGISTRY_LINK_PREFIX:-0}"
+ONLY_PUSH="${ONLY_PUSH:-0}"
+PUSH_TO_REGISTRY="${PUSH_TO_REGISTRY:-0}"
+BUILD_ENVIRONMENT="${BUILD_ENVIRONMENT:-0}"
+GCP_CREDS_DIR="${GCP_CREDS_DIR:-0}"
 
 export GCP_CREDS_PATH=0
-WORKING_DIR=$(pwd)
-WORKER_DIR=$(realpath ../)
+
+WORKING_DIR="$(pwd)"
+WORKER_DIR="$(realpath ../)"
 
 dir_status=-1
-create_sha_status=-1
 SHA=0
 
+# =========================
+# FUNCTIONS
+# =========================
 
 function print_worker_git_info() {
 
@@ -40,230 +65,254 @@ function print_worker_git_info() {
     grep '"name"' start_worker_config.json \
     | sed 's/.*"\(.*\)".*/\1/' \
     | sort -u \
-    | while read worker; do
+    | while read -r worker; do
 
         commit=$(git log -1 --date=short --pretty=format:"%H|%an|%ad|%s" -- "$worker")
 
         [ -z "$commit" ] && continue
 
-        IFS="|" read sha author date message <<< "$commit"
+        IFS="|" read -r sha author date message <<< "$commit"
 
         echo "$(git log -1 --pretty=format:"%H - %an, %ad : %s" -- "$worker")" > "$worker/version.sha"
 
         echo "$date|$worker|$sha|$author|$message"
 
-    done | sort -r | while IFS="|" read date worker sha author message; do
-
-        printf "%-20s %-10s %-18s %-12s %s\n" \
-            "$worker" "$sha" "$author" "$date" "$message"
-
+    done | sort -r | while IFS="|" read -r date worker sha author message; do
+        printf "%-20s %-10s %-18s %-12s %s\n" "$worker" "$sha" "$author" "$date" "$message"
     done
 }
 
 function validate_directory() {
-    dir_name=$1
-    echo "Validating directory $1"
-    export dir_status=1
+    local dir_name="$1"
+    echo "Validating directory $dir_name"
 
-    if [ -d $dir_name ];then
-        export dir_status=0
+    dir_status=1
+    if [ -d "$dir_name" ]; then
+        dir_status=0
     fi
 }
 
 function create_sha_file() {
-    dir_name=$1
+    local dir_name="$1"
 
-    pushd $dir_name
-        sha=`git log -1 --pretty=format:%h`
-        sha_status=$?
+    pushd "$dir_name" >/dev/null || exit 1
 
-        if [ $sha_status -ne 0 ];then
-            echo "Unable to get SHA assuming latest"
-            sha="latest"
-        fi
+    sha=$(git log -1 --pretty=format:%h)
+    sha_status=$?
 
-        echo $sha > $(basename $dir_name).sha
-        gbsha=`git log -1 --pretty=format:"%H:%aI"`
-        echo $gbsha > version.sha
-        export SHA=$sha
+    if [ "$sha_status" -ne 0 ]; then
+        sha="latest"
+    fi
 
-        print_worker_git_info
-    popd
+    echo "$sha" > "$(basename "$dir_name").sha"
+
+    gbsha=$(git log -1 --pretty=format:"%H:%aI")
+    echo "$gbsha" > version.sha
+
+    SHA="$sha"
+
+    print_worker_git_info
+
+    popd >/dev/null || exit 1
 }
 
 function zip_repo() {
-    dir_path=$1
-    zip_name=$2
 
-    if [[ $zip_name =~ \.zip ]];then
-        echo "Valid filename"
-    else
-        echo "Invalid zip filenmae given. Aborting."
+    local dir_path="$1"
+    local zip_name="$2"
+
+    if [[ ! "$zip_name" =~ \.zip$ ]]; then
+        echo "Invalid zip filename"
         exit 1
     fi
 
-    validate_directory $dir_path
+    validate_directory "$dir_path"
 
-    if [ $dir_status -eq 0 ];then
-        echo "$dir_path exists."
-    else
-        echo "$dir_path does not exists."
+    if [ "$dir_status" -ne 0 ]; then
+        echo "Directory does not exist"
+        exit 1
     fi
 
-    echo "Zipping the repo."
-    
-    if [ $zip_name == 0 ];then
-        zip_name="$(basename $dir_path).zip"
+    if [ "$zip_name" = "0" ]; then
+        zip_name="$(basename "$dir_path").zip"
     fi
-    
-    create_sha_file $dir_path
 
-    pushd $dir_path
+    create_sha_file "$dir_path"
 
-        if [ -f $zip_name ];then
-            rm -rf $zip_name  
-        fi
+    pushd "$dir_path" >/dev/null || exit 1
 
-        zip -r --exclude=*frontend* --exclude=*creds* --exclude=*recordings* --exclude=*config.sh* --exclude=*local* --exclude=*results* --exclude=*.pid* --exclude=*stats* --exclude=*.whl* --exclude=*.zip* --exclude=*.log* --exclude=*.git* --exclude=*docker* --exclude=*venv* --exclude=*pyenv* --exclude=*logs* --exclude=*keys* --exclude=*__pycache__* --exclude=*py.swp* $zip_name ./
+    rm -f "$zip_name"
 
-        cp $zip_name $WORKING_DIR
-    popd
+    zip -r "$zip_name" ./ \
+        --exclude='*frontend*' \
+        --exclude='*creds*' \
+        --exclude='*recordings*' \
+        --exclude='*config.sh*' \
+        --exclude='*local*' \
+        --exclude='*results*' \
+        --exclude='*.pid*' \
+        --exclude='*stats*' \
+        --exclude='*.whl*' \
+        --exclude='*.zip*' \
+        --exclude='*.log*' \
+        --exclude='*.git*' \
+        --exclude='*docker*' \
+        --exclude='*venv*' \
+        --exclude='*pyenv*' \
+        --exclude='*logs*' \
+        --exclude='*keys*' \
+        --exclude='*__pycache__*' \
+        --exclude='*.swp'
+
+    cp "$zip_name" "$WORKING_DIR"
+
+    popd >/dev/null || exit 1
 }
 
 function build_docker_image() {
 
-    if [ $WORKER_DOCKER_IMAGE_TAG == 0 ];then
-        WORKER_DOCKER_IMAGE_TAG=$SHA
+    if [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
+        WORKER_DOCKER_IMAGE_TAG="$SHA"
     fi
 
-    export WORKER_DOCKER_IMAGE_NAME=$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG
+    WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
-    if [ $GCP_CREDS_PATH != 0 ];then
-        cp -v $GCP_CREDS_PATH ./
+    if [ "$GCP_CREDS_PATH" != "0" ]; then
+        cp -v "$GCP_CREDS_PATH" ./
     fi
 
-    docker build -t $WORKER_DOCKER_IMAGE_NAME .
-    image_build_status=$?
+    docker build -f Dockerfile.build -t "$WORKER_DOCKER_IMAGE_NAME" .
 
-    if [ "$image_build_status" != 0 ];then
-        echo "Build Failed."
+    if [ $? -ne 0 ]; then
+        echo "Build Failed"
         exit 1
-    else
-        echo "Docker build completed."
     fi
 }
 
 function do_registry_authentication() {
-    echo "Doing auth for $1"
     gcloud auth activate-service-account --key-file=/home/ubuntu/firebase.json
-}
-
-function checkout_sha() {
-    dir_path=$1
-    sha=$2
-
-    echo "Checking out $dir_path to SHA $sha"
-    pushd $dir_path
-        git fetch --all
-        git checkout $sha
-        if [ $? -ne 0 ]; then
-            echo "Failed to checkout $sha in $dir_path. Aborting."
-            exit 1
-        fi
-    popd
 }
 
 function push_image_to_registry() {
 
-    if [ $REGISTRY_LINK_PREFIX == 0 ];then
-        echo "Invalid registry link prefix."
+    if [ "$REGISTRY_LINK_PREFIX" = "0" ]; then
+        echo "Invalid registry link prefix"
         exit 1
     fi
 
-    rname=$REGISTRY_LINK_PREFIX"/"$WORKER_NAME
-    imagePushTag=$rname:$WORKER_DOCKER_IMAGE_TAG
-    echo "Pushing the docker image $imagePushTag, to $DOCKER_REGISTRY"
+    rname="${REGISTRY_LINK_PREFIX}/${WORKER_NAME}"
+    imagePushTag="${rname}:${WORKER_DOCKER_IMAGE_TAG}"
 
-    do_registry_authentication $DOCKER_REGISTRY
+    do_registry_authentication
 
-    echo "Tagging $WORKER_DOCKER_IMAGE_NAME as $imagePushTag."
-    docker tag $WORKER_DOCKER_IMAGE_NAME $imagePushTag
-    docker push $imagePushTag
+    docker tag "$WORKER_DOCKER_IMAGE_NAME" "$imagePushTag"
+    docker push "$imagePushTag"
 
-    build_env_tag=$rname:$BUILD_ENVIRONMENT
-    docker tag $WORKER_DOCKER_IMAGE_NAME $build_env_tag
-    docker push $build_env_tag
+    build_env_tag="${rname}:${BUILD_ENVIRONMENT}"
 
-    if [ $PUSH_AS_LATEST == 1 ];then
-        echo "Adding latest tag to this image and pushing."
-        docker tag $imagePushTag $rname:latest
-        docker push $rname:latest
+    docker tag "$WORKER_DOCKER_IMAGE_NAME" "$build_env_tag"
+    docker push "$build_env_tag"
+
+    if [ "$PUSH_AS_LATEST" = "1" ]; then
+        docker tag "$imagePushTag" "${rname}:latest"
+        docker push "${rname}:latest"
     fi
 }
 
-function main() {
-    echo "Creting working dockerfile."
-    cat Dockerfile.og > Dockerfile.wk
+# =========================
+# MAIN (FULL UPDATED)
+# =========================
 
-    if [ $BUILD_ENVIRONMENT == 0 ];then
-        echo "Build environment is not set."
+function main() {
+
+    echo "Creating working Dockerfile..."
+    cp Dockerfile Dockerfile.wk
+
+    # -------------------------
+    # VALIDATION (ADDED)
+    # -------------------------
+
+    if [ -z "$BUILD_ENVIRONMENT" ] || [ "$BUILD_ENVIRONMENT" = "0" ]; then
+        echo "ERROR: Build environment not set."
         exit 1
     fi
 
-    if [ $GCP_CREDS_DIR == 0 ];then
-        echo "GCP Creds dir not set."
+    if [ -z "$WORKER_NAME" ] || [ "$WORKER_NAME" = "0" ]; then
+        echo "ERROR: Invalid worker name."
+        exit 1
+    fi
+
+    # -------------------------
+    # GCP CREDS HANDLING (ADDED)
+    # -------------------------
+
+    if [ -z "$GCP_CREDS_DIR" ] || [ "$GCP_CREDS_DIR" = "0" ]; then
+        echo "WARNING: GCP Creds dir not set."
     else
         export GCP_CREDS_PATH="$GCP_CREDS_DIR/$BUILD_ENVIRONMENT/credentials.json"
-        if [[ ! -f $GCP_CREDS_PATH ]];then
-            echo "GCP Creds Not Found in $GCP_CREDS_PATH."
+
+        if [[ ! -f "$GCP_CREDS_PATH" ]]; then
+            echo "WARNING: GCP Creds Not Found at $GCP_CREDS_PATH"
+            export GCP_CREDS_PATH=0
+        else
+            echo "Using GCP creds: $GCP_CREDS_PATH"
         fi
     fi
 
-    if [ $WORKER_NAME == 0 ];then
-        echo "Invalid worker name."
-        exit 1
-    elif [ -z $WORKER_NAME ];then
-        echo "Worker name is empty."
-        exit 1
-    fi
+    # -------------------------
+    # PATCH DOCKERFILE
+    # -------------------------
 
-    echo "Patching base image tag."
-    sed -i "s/<DOCKER_BASE_IMG_TAG>/$DOCKER_BASE_IMG_TAG/g" Dockerfile.wk
+    sed -i "s#<PYREQ_IMAGE>#$PYREQ_IMAGE#g" Dockerfile.wk
+    sed -i "s#<DOCKER_BASE_IMG_TAG>#$DOCKER_BASE_IMG_TAG#g" Dockerfile.wk
 
-    if [ $ONLY_PUSH == 0 ];then
-        echo "Patching zipname."
-        sed "s/<zipname>/$WORKER_NAME/g" Dockerfile.wk > Dockerfile
-        zip_repo $WORKER_DIR $WORKER_NAME.zip
-    
+    # -------------------------
+    # BUILD FLOW
+    # -------------------------
+
+    if [ "$ONLY_PUSH" = "0" ]; then
+
+        sed "s#<zipname>#$WORKER_NAME#g" Dockerfile.wk > Dockerfile.build
+
+        zip_repo "$WORKER_DIR" "$WORKER_NAME.zip"
+
         build_docker_image
     fi
 
-    if [ $PUSH_TO_REGISTRY == 1 ];then
+    # -------------------------
+    # PUSH FLOW
+    # -------------------------
 
-        if [ $DOCKER_REGISTRY == 0 ];then
-            echo "Docker registry not given. Aborting."
+    if [ "$PUSH_TO_REGISTRY" = "1" ]; then
+
+        if [ "$DOCKER_REGISTRY" = "0" ]; then
+            echo "ERROR: Docker registry not given. Aborting."
             exit 1
         fi
 
         push_image_to_registry
     fi
 
+    # -------------------------
+    # SAVE IMAGE TAG (ADDED)
+    # -------------------------
+
     echo "Saving current image full path..."
 
-    if [ $WORKER_DOCKER_IMAGE_TAG == 0 ]; then
-        WORKER_DOCKER_IMAGE_TAG=$SHA
+    if [ -z "$WORKER_DOCKER_IMAGE_TAG" ] || [ "$WORKER_DOCKER_IMAGE_TAG" = "0" ]; then
+        WORKER_DOCKER_IMAGE_TAG="$SHA"
     fi
 
     FULL_IMAGE_NAME="$REGISTRY_LINK_PREFIX/$WORKER_NAME:$WORKER_DOCKER_IMAGE_TAG"
 
-    echo $FULL_IMAGE_NAME > /home/dave/autobot/current_image_tag.txt
+    echo "$FULL_IMAGE_NAME" > /home/dave/autobot/current_image_tag.txt
 
     if [ $? -ne 0 ]; then
-        echo "Failed to save image name"
+        echo "ERROR: Failed to save image name"
         exit 1
-    else
-        echo "Image saved: $FULL_IMAGE_NAME"
     fi
+
+    echo "Image saved: $FULL_IMAGE_NAME"
 }
 
 main
