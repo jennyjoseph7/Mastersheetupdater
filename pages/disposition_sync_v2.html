@@ -2569,48 +2569,126 @@
         for (const [phone, sessions] of Object.entries(sessionGroups)) {
 
           let best = null;
-
           let selectionReason = 'fallback';
 
-          for (const s of sessions) {
+          // ── Content-first session ranking ──
+          // Keywords that indicate a real human conversation happened
+          const STRONG_WORDS = ['spoke', 'discussed', 'explained', 'interested', 'booked',
+            'confirmed', 'agreed', 'scheduled', 'test drive', 'demo', 'follow up',
+            'quote', 'visit', 'converted', 'enquired', 'purchased',
+            'selected', 'wants', 'wanted', 'asked for', 'requested', 'decided',
+            'showroom', 'inquiry', 'pricing', 'financing', 'test drove'];
+          // Keywords that indicate a junk/non-conversation
+          const JUNK_WORDS = ['voicemail', 'no response', 'busy', 'unreachable',
+            'wrong number', 'silent', 'already talked', 'callback only', 'auto call',
+            'disconnected', 'missed', 'not reachable', 'could not connect',
+            'no answer', 'not answered', 'call dropped', 'no reply',
+            'customer did not respond', 'call failed', 'system generated',
+            'no one spoke', 'no conversation', 'did not speak', 'did not answer',
+            'not connected', 'call not completed'];
 
-            const rec = detectRecording(s);
-
-            if (rec) {
-
-              best = s;
-
-              selectionReason = 'recording';
-
-              break;
-
+          function getSessionBucket(s) {
+            var summ = (detectSummary(s) || '').trim().toLowerCase();
+            var dur = parseInt(detectDuration(s), 10);
+            var hasDuration = Number.isFinite(dur) && dur > 0;
+            for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
+              if (summ.indexOf(STRONG_WORDS[wi]) >= 0) return 'strong';
             }
+            for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
+              if (summ.indexOf(JUNK_WORDS[wj]) >= 0) return 'junk';
+            }
+            if (summ.length > 3) return 'weak';
+            if (hasDuration) return 'weak';
+            return 'junk';
+          }
 
+          function scoreSession(s) {
+            var summ = (detectSummary(s) || '').trim().toLowerCase();
+            var score = 0;
+            for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
+              if (summ.indexOf(STRONG_WORDS[wi]) >= 0) { score += 1000; break; }
+            }
+            for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
+              if (summ.indexOf(JUNK_WORDS[wj]) >= 0) { score -= 800; break; }
+            }
+            if (summ.length > 5) score += 200;
+            var dur = parseInt(detectDuration(s), 10);
+            if (Number.isFinite(dur) && dur > 0) {
+              score += Math.min(dur, 120);
+            }
+            // Tiny recency tiebreaker — only matters when all other signals are identical
+            var dateStr = detectDate(s) || s['start_time'] || '';
+            var d = parseAutoEngageDate(dateStr);
+            if (d) {
+              score += d.getTime() / 1000000000000;
+            }
+            return score;
+          }
+
+          // Get a numeric timestamp for sorting by recency
+          function sessionTimestamp(s) {
+            var d = parseAutoEngageDate(detectDate(s) || s['start_time'] || '');
+            return d ? d.getTime() : 0;
+          }
+
+          // First, always prefer a session with a recording (direct evidence)
+          for (var si = 0; si < sessions.length; si++) {
+            var s = sessions[si];
+            var rec = detectRecording(s);
+            if (rec) {
+              best = s;
+              selectionReason = 'recording';
+              break;
+            }
           }
 
           if (!best) {
+            var scored = sessions.map(function(s) {
+              return { session: s, bucket: getSessionBucket(s), score: scoreSession(s) };
+            });
 
-            for (const s of sessions) {
+            var strong = scored.filter(function(s) { return s.bucket === 'strong'; });
+            var weak = scored.filter(function(s) { return s.bucket === 'weak'; });
+            var junk = scored.filter(function(s) { return s.bucket === 'junk'; });
 
-              const summ = detectSummary(s);
-
-              if (summ) {
-
-                best = s;
-
-                selectionReason = 'summary';
-
-                break;
-
+            if (strong.length > 0) {
+              // Strongest conversation with highest score
+              strong.sort(function(a, b) { return b.score - a.score; });
+              best = strong[0].session;
+              selectionReason = 'summary';
+            } else if (weak.length > 0) {
+              // Among weak conversations, pick the one with longest meaningful duration
+              var bestDur = -1;
+              for (var wi2 = 0; wi2 < weak.length; wi2++) {
+                var d = parseInt(detectDuration(weak[wi2].session), 10);
+                if (Number.isFinite(d) && d > bestDur) {
+                  best = weak[wi2].session;
+                  bestDur = d;
+                }
               }
-
+              if (!best) best = weak[weak.length - 1].session;
+              selectionReason = 'summary';
+            } else {
+              // All junk — pick the latest session by timestamp
+              var latestTs = -1;
+              for (var ji = 0; ji < junk.length; ji++) {
+                var ts = sessionTimestamp(junk[ji].session);
+                if (ts > latestTs) {
+                  best = junk[ji].session;
+                  latestTs = ts;
+                }
+              }
+              if (!best) best = sessions[sessions.length - 1];
+              selectionReason = 'fallback';
             }
-
           }
 
-          if (!best) best = sessions[sessions.length - 1];
+          if (!best) {
+            best = sessions[sessions.length - 1];
+            selectionReason = 'fallback';
+          }
 
-          var histRaw = detectHistory(best);
+                    var histRaw = detectHistory(best);
 
 
 
