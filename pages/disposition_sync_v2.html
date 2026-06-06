@@ -2928,6 +2928,18 @@
 
 
 
+      // Normalize disposition_detail casing to match the valid dispositions list
+      function normalizeDisposition(disp) {
+        if (!disp) return disp;
+        var dispLower = disp.trim().toLowerCase();
+        for (var key in ALL_DISPOSITIONS) {
+          if (key.toLowerCase() === dispLower) {
+            return key;
+          }
+        }
+        return disp;
+      }
+
       function hasValidSummary(r) {
         var summ = (r.session_summary || '').trim();
         var hist = (r.session_history || '').trim();
@@ -2948,9 +2960,14 @@
 
         var disp = (r.disposition_detail || '').trim();
 
+        // Skip rows where disposition_detail is 'No Response' — no actual conversation happened
+        if (disp.toLowerCase() === 'no response') continue;
+
         if (hasValidSummary(r) && disp && r.outcome === 'Connected') {
 
-          candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
+          var normalizedDisp = normalizeDisposition(disp);
+
+          candidates.push({ index: i, summary: summ, history: hist, currentDisp: normalizedDisp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
 
         }
 
@@ -3062,7 +3079,7 @@
 
 
 
-            var systemMsg = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is also provided — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.';
+            var systemMsg = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is also provided — use it to rule out impossible dispositions. Default to "correct" unless the summary or history clearly contradicts the disposition. Only suggest a correction when you are highly confident.';
 
 
 
