@@ -2566,71 +2566,71 @@
 
         const sessionMap = {};
 
-        for (const [phone, sessions] of Object.entries(sessionGroups)) {
+                  // ── Content-first session ranking ──
+        // Keywords that indicate a real human conversation happened
+        const STRONG_WORDS = ['spoke', 'discussed', 'explained', 'interested', 'booked',
+          'confirmed', 'agreed', 'scheduled', 'test drive', 'demo', 'follow up',
+          'quote', 'visit', 'converted', 'enquired', 'purchased',
+          'selected', 'wants', 'wanted', 'asked for', 'requested', 'decided',
+          'showroom', 'inquiry', 'pricing', 'financing', 'test drove'];
+        // Keywords that indicate a junk/non-conversation
+        const JUNK_WORDS = ['voicemail', 'no response', 'busy', 'unreachable',
+          'wrong number', 'silent', 'already talked', 'callback only', 'auto call',
+          'disconnected', 'missed', 'not reachable', 'could not connect',
+          'no answer', 'not answered', 'call dropped', 'no reply',
+          'customer did not respond', 'call failed', 'system generated',
+          'no one spoke', 'no conversation', 'did not speak', 'did not answer',
+          'not connected', 'call not completed'];
+
+        function getSessionBucket(s) {
+          var summ = (detectSummary(s) || '').trim().toLowerCase();
+          var dur = parseInt(detectDuration(s), 10);
+          var hasDuration = Number.isFinite(dur) && dur > 0;
+          for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
+            if (summ.indexOf(STRONG_WORDS[wi]) >= 0) return 'strong';
+          }
+          for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
+            if (summ.indexOf(JUNK_WORDS[wj]) >= 0) return 'junk';
+          }
+          if (summ.length > 3) return 'weak';
+          if (hasDuration) return 'weak';
+          return 'junk';
+        }
+
+        function scoreSession(s) {
+          var summ = (detectSummary(s) || '').trim().toLowerCase();
+          var score = 0;
+          for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
+            if (summ.indexOf(STRONG_WORDS[wi]) >= 0) { score += 1000; break; }
+          }
+          for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
+            if (summ.indexOf(JUNK_WORDS[wj]) >= 0) { score -= 800; break; }
+          }
+          if (summ.length > 5) score += 200;
+          var dur = parseInt(detectDuration(s), 10);
+          if (Number.isFinite(dur) && dur > 0) {
+            score += Math.min(dur, 120);
+          }
+          var dateStr = detectDate(s) || s['start_time'] || '';
+          var d = parseAutoEngageDate(dateStr);
+          if (d) {
+            score += d.getTime() / 1000000000000;
+          }
+          return score;
+        }
+
+        function sessionTimestamp(s) {
+          var d = parseAutoEngageDate(detectDate(s) || s['start_time'] || '');
+          return d ? d.getTime() : 0;
+        }
+
+for (const [phone, sessions] of Object.entries(sessionGroups)) {
 
           let best = null;
           let selectionReason = 'fallback';
 
           // ── Content-first session ranking ──
           // Keywords that indicate a real human conversation happened
-          const STRONG_WORDS = ['spoke', 'discussed', 'explained', 'interested', 'booked',
-            'confirmed', 'agreed', 'scheduled', 'test drive', 'demo', 'follow up',
-            'quote', 'visit', 'converted', 'enquired', 'purchased',
-            'selected', 'wants', 'wanted', 'asked for', 'requested', 'decided',
-            'showroom', 'inquiry', 'pricing', 'financing', 'test drove'];
-          // Keywords that indicate a junk/non-conversation
-          const JUNK_WORDS = ['voicemail', 'no response', 'busy', 'unreachable',
-            'wrong number', 'silent', 'already talked', 'callback only', 'auto call',
-            'disconnected', 'missed', 'not reachable', 'could not connect',
-            'no answer', 'not answered', 'call dropped', 'no reply',
-            'customer did not respond', 'call failed', 'system generated',
-            'no one spoke', 'no conversation', 'did not speak', 'did not answer',
-            'not connected', 'call not completed'];
-
-          function getSessionBucket(s) {
-            var summ = (detectSummary(s) || '').trim().toLowerCase();
-            var dur = parseInt(detectDuration(s), 10);
-            var hasDuration = Number.isFinite(dur) && dur > 0;
-            for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
-              if (summ.indexOf(STRONG_WORDS[wi]) >= 0) return 'strong';
-            }
-            for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
-              if (summ.indexOf(JUNK_WORDS[wj]) >= 0) return 'junk';
-            }
-            if (summ.length > 3) return 'weak';
-            if (hasDuration) return 'weak';
-            return 'junk';
-          }
-
-          function scoreSession(s) {
-            var summ = (detectSummary(s) || '').trim().toLowerCase();
-            var score = 0;
-            for (var wi = 0; wi < STRONG_WORDS.length; wi++) {
-              if (summ.indexOf(STRONG_WORDS[wi]) >= 0) { score += 1000; break; }
-            }
-            for (var wj = 0; wj < JUNK_WORDS.length; wj++) {
-              if (summ.indexOf(JUNK_WORDS[wj]) >= 0) { score -= 800; break; }
-            }
-            if (summ.length > 5) score += 200;
-            var dur = parseInt(detectDuration(s), 10);
-            if (Number.isFinite(dur) && dur > 0) {
-              score += Math.min(dur, 120);
-            }
-            // Tiny recency tiebreaker — only matters when all other signals are identical
-            var dateStr = detectDate(s) || s['start_time'] || '';
-            var d = parseAutoEngageDate(dateStr);
-            if (d) {
-              score += d.getTime() / 1000000000000;
-            }
-            return score;
-          }
-
-          // Get a numeric timestamp for sorting by recency
-          function sessionTimestamp(s) {
-            var d = parseAutoEngageDate(detectDate(s) || s['start_time'] || '');
-            return d ? d.getTime() : 0;
-          }
-
           // First, always prefer a session with a recording (direct evidence)
           for (var si = 0; si < sessions.length; si++) {
             var s = sessions[si];
@@ -3021,6 +3021,12 @@
       function hasValidSummary(r) {
         var summ = (r.session_summary || '').trim();
         var hist = (r.session_history || '').trim();
+        var leadSumm = (r.summary || '').trim();
+        if (!summ || summ === 'No Response' || summ === 'The session history is empty and contains no content to summarize.') {
+          if (leadSumm && leadSumm !== 'No Response' && leadSumm.length > 3) {
+            return true;
+          }
+        }
         return (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
       }
 
@@ -3042,7 +3048,13 @@
         if (disp.toLowerCase() === 'no response') continue;
 
         if (hasValidSummary(r) && disp && r.outcome === 'Connected') {
-
+          // Fall back to lead file summary when session summary is empty
+          if (!summ || summ === 'No Response' || summ === 'The session history is empty and contains no content to summarize.') {
+            var leadFallback = (r.summary || '').trim();
+            if (leadFallback && leadFallback !== 'No Response' && leadFallback.length > 3) {
+              summ = leadFallback;
+            }
+          }
           var normalizedDisp = normalizeDisposition(disp);
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: normalizedDisp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
@@ -3295,11 +3307,37 @@
 
         
 
+        // Check for failed batches — don't silently treat failures as "correct"
+
+        var failedCount = runnerResult.failedBatches ? runnerResult.failedBatches.length : 0;
+
+        var totalBatches = Math.ceil(candidates.length / BATCH_SIZE);
+
+        if (failedCount >= totalBatches) {
+
+          hideAiStatusBar(correctedResults);
+
+          setStatus('globalStatus', 'AI validation failed: all ' + totalBatches + ' batch(es) returned errors. Check your API key and proxy configuration, then try again.', 'err');
+
+          return;
+
+        }
+
+        if (failedCount > 0) {
+
+          console.warn('[AI Validation] ' + failedCount + ' of ' + totalBatches + ' batch(es) failed. Results are partial.');
+
+        }
+
+        
+
         corrected = runnerResult.correctedCount;
 
 
 
         // Build cache array from runner results and candidates
+
+        // IMPORTANT: only cache results for rows that were actually processed (skip failed)
 
         var cacheArray = [];
 
@@ -3313,7 +3351,23 @@
 
             cacheArray.push({ rowIndex: idx, isCorrect: false, correctedDisposition: decision.correctedDisposition });
 
-          } else {
+          } else if (decision) {
+
+            cacheArray.push({ rowIndex: idx, isCorrect: true, correctedDisposition: null });
+
+          }
+
+          // If decision is undefined (batch failed), do NOT cache — forces re-run next time
+
+        }
+
+        if (cacheArray.length > 0) {
+
+          try { localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch(e) {}
+
+        }
+
+      } else { {
 
             cacheArray.push({ rowIndex: idx, isCorrect: true, correctedDisposition: null });
 
@@ -3923,8 +3977,10 @@
         if (r.outcome !== 'Connected') return false;
         var summ = (r.session_summary || '').trim();
         var hist = (r.session_history || '').trim();
-        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
-        return hasText && (r.disposition_detail || '').trim();
+        var leadSumm = (r.summary || '').trim();
+        var hasLeadFallback = leadSumm && leadSumm !== 'No Response' && leadSumm.length > 3;
+        var hasSession = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
+        return (hasSession || hasLeadFallback) && (r.disposition_detail || '').trim();
       }).length;
 
       const skipped = connected - aiReady;
