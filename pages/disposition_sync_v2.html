@@ -4276,11 +4276,12 @@
 
       bar.className = 'ai-status-bar';
 
-      msg.textContent = 'AI validating dispositions…';
+      msg.textContent = 'AI validating ' + total + ' dispositions…';
 
       msg.className = 'ai-status-msg';
 
-      batch.textContent = '0/' + total;
+      var numBatches = Math.ceil(total / LLM_DISPOSITION_BATCH_SIZE);
+      batch.textContent = '0/' + numBatches + ' batches';
 
       batch.className = 'ai-status-badge';
 
