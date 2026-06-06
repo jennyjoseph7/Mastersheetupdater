@@ -70,7 +70,8 @@
 
           <h1>Campaign Dashboard</h1>
 
-          <div class="header-sub">Upload Zoho export to generate insights</div>
+          <div class="header-sub">Upload Zoho export to generate insights
+        </div>
 
         </div>
 
@@ -228,13 +229,19 @@
 
         </div>
 
-        <button class="btn-generate" id="btnGenerate" disabled onclick="generateDashboard()">
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn-generate" id="btnGenerate" disabled onclick="generateDashboard()">
 
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
 
           Generate Dashboard
 
         </button>
+          <button class="btn-generate" id="btnAiSummary" disabled onclick="runAiAnalysis()" style="background:linear-gradient(135deg,var(--purple,#a78bfa),var(--accent2,#5b9cf5));color:#fff;box-shadow:0 4px 16px rgba(167,139,250,0.2);">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          AI Summary
+        </button>
+        </div>
 
       </div>
 
@@ -1283,7 +1290,7 @@
 
     const LLM_MAX_CONCURRENT = getConfigNumber('llmMaxConcurrent', 2);
 
-    const LLM_MAX_RETRIES = getConfigNumber('llmMaxRetries', 1);
+    const LLM_MAX_RETRIES = getConfigNumber('llmMaxRetries', 3);
 
     const LLM_REQUEST_TIMEOUT_MS = getConfigNumber('llmRequestTimeoutMs', 70000);
 
@@ -2141,7 +2148,7 @@
 
         maxConcurrent: LLM_MAX_CONCURRENT,
 
-        minGapMs: 150,
+        minGapMs: 300,
 
         maxRetries: LLM_MAX_RETRIES,
 
@@ -3772,7 +3779,233 @@
 
        ═══════════════════════════════════════════════════════════════════════ */
 
-    async function generateDashboard() {
+    
+    async function mineCustomerThemes(rows, colMap, isPostSales, llmLookup) {
+
+      if (!rows || !rows.length || !colMap) {
+
+        return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+
+      }
+
+      try {
+
+        // Only process connected calls - non-connected calls have no meaningful summary
+        var connectedRows = [];
+        var connectedRowIndices = [];
+        rows.forEach(function(r, origIdx) {
+          var st = String(colMap.status ? r[colMap.status] : '').toLowerCase();
+          var ot = String(colMap.outcome ? r[colMap.outcome] : '').toLowerCase();
+          // Exclude explicitly "not connected" before checking positive signals
+          if (st.indexOf('not connected') >= 0 || st.indexOf('notconnected') >= 0 || st.indexOf('not_connected') >= 0 || ot.indexOf('not connected') >= 0 || ot.indexOf('notconnected') >= 0 || ot.indexOf('not_connected') >= 0) return;
+          if (st.indexOf('completed') >= 0 || st.indexOf('attempted') >= 0 || st.indexOf('connected') >= 0 || ot.indexOf('connected') >= 0) {
+            connectedRows.push(r);
+            connectedRowIndices.push(origIdx);
+          }
+        });
+
+        if (connectedRows.length === 0) {
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+        }
+
+        var summaries = connectedRows.map(function(r, i) {
+          var vals = Object.keys(colMap).map(function(k) { return r[colMap[k]] || ''; });
+          return { rowIndex: i, text: vals.join(' ').trim(), originalRowIndex: connectedRowIndices[i] };
+        }).filter(function(s) { return s.text && s.text.length > 10; });
+
+        if (summaries.length === 0) {
+
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+
+        }
+
+        var apiKey = getApiKey();
+
+        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+        var systemPrompt = buildLlmSystemPrompt(isPostSales);
+
+        var promptBatches = [];
+
+        var batchSize = LLM_THEME_BATCH_SIZE;
+
+        for (var bi = 0; bi < summaries.length; bi += batchSize) {
+
+          promptBatches.push(summaries.slice(bi, bi + batchSize));
+
+        }
+
+        // Cache key for theme mining results
+        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length }));
+        var cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          try { return JSON.parse(cached); } catch(e) {}
+        }
+
+        // If llmLookup was pre-computed from classifyWithLlm, skip the duplicate API call
+        if (Object.keys(llmLookup || {}).length > 0) {
+          // Build runnerResult using summaries' originalRowIndex to correctly map into llmLookup
+          var llmResults = [];
+          for (var si = 0; si < summaries.length; si++) {
+            var s = summaries[si];
+            var dispo = (llmLookup || {})[s.originalRowIndex] || [];
+            if (dispo.length > 0) {
+              llmResults.push({ rowIndex: s.rowIndex, dispositions: dispo });
+            }
+          }
+          var runnerResult = {
+            results: new Map(llmResults.map(function(r) { return [r.rowIndex, r]; })),
+            aborted: false,
+            failedBatches: []
+          };
+        } else {
+        // Show AI status for theme mining
+        // Create abort controller for this run
+        aiValidationController = new AbortController();
+
+        updateAiStatus(0, 0, 'Preparing themes...');
+
+        var runnerResult = await runLlmBatches({
+
+          items: summaries,
+
+          batchSize: batchSize,
+
+          maxConcurrent: LLM_MAX_CONCURRENT,
+
+          minGapMs: 300,
+
+          maxRetries: LLM_MAX_RETRIES,
+
+          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+        signal: aiValidationController.signal,
+
+          buildPrompt: function(batch, batchIndex) {
+
+            var rowsPrompt = batch.map(function(s) {
+
+              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
+
+            }).join('\n');
+
+            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS };
+
+          },
+
+          parseResponse: function(text, batch, batchIndex) {
+
+            try {
+
+              return parseLlmJsonResults(text, batch);
+
+            } catch(e) {
+
+              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
+
+            }
+
+          },
+
+          onProgress: function(done, total, message) {
+            // Show theme mining progress to user
+            updateAiStatus(done, total, message || 'Mining themes... ' + done + '/' + total + ' batches');
+          }
+
+        });
+
+        if (!runnerResult || !runnerResult.results) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+        var llmResults = [];
+
+        for (var ri = 0; ri < summaries.length; ri++) {
+
+          var part = runnerResult.results.get(ri);
+
+          if (part) llmResults.push(part);
+
+        }
+
+        if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+      // Clean up abort controller
+      aiValidationController = null;
+         for (var mi = 0; mi < summaries.length; mi++) {
+
+          var s = summaries[mi];
+
+          var dispo = (llmLookup || {})[s.originalRowIndex] || [];
+
+          if (dispo.length === 0) continue;
+
+          var text = s.text;
+
+          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
+
+          var parsed = parseSummary(text);
+
+          var seenThemes = {};
+
+          for (var di = 0; di < dispo.length; di++) {
+
+            var key = dispo[di].toLowerCase().trim();
+
+            var themeId = DISPO_TO_THEME[key] || null;
+
+            if (themeId && themes[themeId] && !seenThemes[themeId]) {
+
+              seenThemes[themeId] = true;
+
+              themes[themeId].count++;
+
+              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
+
+              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
+
+                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
+
+              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
+
+                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
+
+              if (themeId === 'deferred') {
+
+                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+
+                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
+
+              }
+
+            }
+
+          }
+
+        }
+
+        var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+
+        var total = themeList.reduce(function(a, t) { return a + t.count; }, 0);
+
+        var topTheme = themeList.length > 0 ? themeList[0].label : 'General';
+
+        // Hide AI status on success
+        updateAiStatus(0, 0, '');
+        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
+
+      } catch(e) {
+
+        console.warn('mineCustomerThemes failed:', e);
+
+        // Hide AI status
+        updateAiStatus(0, 0, '');
+
+        return { themes: [], total: 0, topTheme: "General", engine: "local" };
+
+      }
+
+    }
+
+async function generateDashboard() {
+
 
       if (!dashData || dashData.length === 0) return;
 
@@ -4574,227 +4807,9 @@
 
 
 
-      // ── STORYTELLING ENGINE ─────────────────────────────────────────────────
-
-    /* ── CUSTOMER THEME MINING ─────────────────────────────────── */
-
-    async function mineCustomerThemes(rows, colMap, isPostSales) {
-
-      if (!rows || !rows.length || !colMap) {
-
-        return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-
-      }
-
-      try {
-
-        // Only process connected calls - non-connected calls have no meaningful summary
-        var connectedRows = rows.filter(function(r) {
-          var st = String(colMap.status ? r[colMap.status] : '').toLowerCase();
-          var ot = String(colMap.outcome ? r[colMap.outcome] : '').toLowerCase();
-          // Exclude explicitly "not connected" before checking positive signals
-          if (st.indexOf('not connected') >= 0 || st.indexOf('notconnected') >= 0 || st.indexOf('not_connected') >= 0 || ot.indexOf('not connected') >= 0 || ot.indexOf('notconnected') >= 0 || ot.indexOf('not_connected') >= 0) return false;
-          return st.indexOf('completed') >= 0 || st.indexOf('attempted') >= 0 || st.indexOf('connected') >= 0 || ot.indexOf('connected') >= 0;
-        });
-
-        if (connectedRows.length === 0) {
-          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-        }
-
-        var summaries = connectedRows.map(function(r, i) {
-          var vals = Object.keys(colMap).map(function(k) { return r[colMap[k]] || ''; });
-          return { rowIndex: i, text: vals.join(' ').trim() };
-        }).filter(function(s) { return s.text && s.text.length > 10; });
-
-        if (summaries.length === 0) {
-
-          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-
-        }
-
-        var apiKey = getApiKey();
-
-        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-        var systemPrompt = buildLlmSystemPrompt(isPostSales);
-
-        var promptBatches = [];
-
-        var batchSize = LLM_THEME_BATCH_SIZE;
-
-        for (var bi = 0; bi < summaries.length; bi += batchSize) {
-
-          promptBatches.push(summaries.slice(bi, bi + batchSize));
-
-        }
-
-        // Cache key for theme mining results
-        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length }));
-        var cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try { return JSON.parse(cached); } catch(e) {}
-        }
-
-        // Show AI status for theme mining
-        // Create abort controller for this run
-        aiValidationController = new AbortController();
-
-        updateAiStatus(0, 0, 'Preparing themes...');
-
-        var runnerResult = await runLlmBatches({
-
-          items: summaries,
-
-          batchSize: batchSize,
-
-          maxConcurrent: LLM_MAX_CONCURRENT,
-
-          minGapMs: 150,
-
-          maxRetries: LLM_MAX_RETRIES,
-
-          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
-        signal: aiValidationController.signal,
-
-          buildPrompt: function(batch, batchIndex) {
-
-            var rowsPrompt = batch.map(function(s) {
-
-              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
-
-            }).join('\n');
-
-            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS };
-
-          },
-
-          parseResponse: function(text, batch, batchIndex) {
-
-            try {
-
-              return parseLlmJsonResults(text, batch);
-
-            } catch(e) {
-
-              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
-
-            }
-
-          },
-
-          onProgress: function(done, total, message) {
-            // Show theme mining progress to user
-            updateAiStatus(done, total, message || 'Mining themes... ' + done + '/' + total + ' batches');
-          }
-
-        });
-
-        if (!runnerResult || !runnerResult.results) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-        var llmResults = [];
-
-        for (var ri = 0; ri < summaries.length; ri++) {
-
-          var part = runnerResult.results.get(ri);
-
-          if (part) llmResults.push(part);
-
-        }
-
-        if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-      // Clean up abort controller
-      aiValidationController = null;
-    }     for (var mi = 0; mi < summaries.length; mi++) {
-
-          var s = summaries[mi];
-
-          var dispo = llmLookup[s.rowIndex] || [];
-
-          if (dispo.length === 0) continue;
-
-          var text = s.text;
-
-          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
-
-          var parsed = parseSummary(text);
-
-          var seenThemes = {};
-
-          for (var di = 0; di < dispo.length; di++) {
-
-            var key = dispo[di].toLowerCase().trim();
-
-            var themeId = DISPO_TO_THEME[key] || null;
-
-            if (themeId && themes[themeId] && !seenThemes[themeId]) {
-
-              seenThemes[themeId] = true;
-
-              themes[themeId].count++;
-
-              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
-
-              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
-
-                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
-
-              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
-
-                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
-
-              if (themeId === 'deferred') {
-
-                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
-
-                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
-
-              }
-
-            }
-
-          }
-
-        }
-
-        var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
-
-        var total = themeList.reduce(function(a, t) { return a + t.count; }, 0);
-
-        var topTheme = themeList.length > 0 ? themeList[0].label : 'General';
-
-        // Hide AI status on success
-        updateAiStatus(0, 0, '');
-        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
-
-      } catch(e) {
-
-        console.warn('mineCustomerThemes failed:', e);
-
-        // Hide AI status
-        updateAiStatus(0, 0, '');
-
-        return { themes: [], total: 0, topTheme: "General", engine: "local" };
-
-      }
-
-    }
-
-
-
-      const themes = await mineCustomerThemes(rows, colMap, isPostSales);
+      
 
       const agents = analyzeAgentPerformance(rows, colMap);
-
-      const headline = generateStoryHeadline(themes, funnel, healthScore);
-
-      const execNarrative = generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents);
-
-      const recs = generateRecommendations(themes, funnel, competitors, callbacks, trends);
-
-      const llmRecs = await generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap);
-
-
 
       const connPct = rows.length > 0 ? (funnel.connected / rows.length * 100).toFixed(0) : '0';
 
@@ -4808,25 +4823,7 @@
 
       if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
 
-      const analysisBadge = document.getElementById('analysisEngineBadge');
-
-      if (analysisBadge) {
-
-        analysisBadge.textContent = themes.engine === 'nvidia'
-
-          ? 'AI ANALYSIS'
-
-          : themes.engine === 'cache'
-
-            ? 'CACHED AI ANALYSIS'
-
-            : 'LOCAL KEYWORD ANALYSIS';
-
-      }
-
-      document.getElementById('storyHeadline').textContent = headline;
-
-      document.getElementById('execNarrative').innerHTML = execNarrative;
+      
 
       const hsEl = document.getElementById('healthScore');
 
@@ -4882,9 +4879,7 @@
 
       // Customer Voice
 
-      const voiceAI = await generateVoiceInsights(themes);
-
-      renderCustomerVoice(themes, voiceAI);
+      
 
 
 
@@ -4956,19 +4951,23 @@
 
       // Recommended Actions
 
-      renderRecommendations(recs);
+
 
 
 
       // AI-Powered Recommendations
 
-      renderLlmRecommendations(llmRecs);
+
 
 
 
       // Trend indicator
 
       renderTrendIndicators(trends);
+
+      // Daily & Vehicle Charts
+      renderDailyChart(dailyCounts);
+      renderVehicleChart(modelCounts);
 
 
 
@@ -4978,6 +4977,21 @@
 
       }
 
+    
+        // Store data for AI Summary
+        window._dashRows = rows;
+        window._dashColMap = colMap;
+        window._dashIsPostSales = isPostSales;
+        window._dashFunnel = funnel;
+        window._dashCompetitors = competitors;
+        window._dashCallbacks = callbacks;
+        window._dashTrends = trends;
+        window._dashHealthScore = healthScore;
+        window._dashHealthClass = healthClass;
+      window._dashAgents = agents;
+      window._dashAgents = agents;
+    window._dashAgents = agents;
+        document.getElementById('btnAiSummary').disabled = false;
     }
 
 
@@ -6634,7 +6648,67 @@
       flushOpenKpiEdits(true);
 
     });
-
+    async function runAiAnalysis() {
+      var rows = window._dashRows;
+      var colMap = window._dashColMap;
+      var isPostSales = window._dashIsPostSales;
+      
+      if (!rows || !colMap) {
+        showAiNotice('No dashboard data. Click Generate Dashboard first.', true);
+        return;
+      }
+      document.getElementById('btnAiSummary').disabled = true;
+      try {
+        // Build summaries and classify with LLM, then pass llmLookup to mineCustomerThemes
+        var apiKey = getApiKey();
+        var summaries = [];
+        for (var ri = 0; ri < rows.length; ri++) {
+          var rowText = String(colMap.summary ? rows[ri][colMap.summary] : rows[ri][colMap.detail] || rows[ri][colMap.outcome] || '').trim();
+          if (rowText) summaries.push({ rowIndex: ri, text: rowText });
+        }
+        var llmResults = apiKey && summaries.length > 0 ? await classifyWithLlm(summaries, isPostSales, apiKey) : null;
+        var llmLookup = {};
+        if (llmResults && Array.isArray(llmResults)) {
+          for (var ri2 = 0; ri2 < llmResults.length; ri2++) {
+            var item = llmResults[ri2];
+            if (item && item.rowIndex !== undefined && item.dispositions) {
+              llmLookup[item.rowIndex] = item.dispositions;
+            }
+          }
+        }
+        var themes = await mineCustomerThemes(rows, colMap, isPostSales, llmLookup);
+        var funnel = window._dashFunnel;
+        var healthScore = window._dashHealthScore;
+        var healthClass = window._dashHealthClass;
+        var competitors = window._dashCompetitors;
+        var callbacks = window._dashCallbacks;
+        var trends = window._dashTrends;
+        var agents = window._dashAgents;
+        var headline = generateStoryHeadline(themes, funnel, healthScore);
+        var execNarrative = generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents);
+        var execEl = document.getElementById('execSummary');
+        if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
+        var badge = document.getElementById('analysisEngineBadge');
+        if (badge) { badge.textContent = themes.engine === 'nvidia' ? 'AI ANALYSIS' : themes.engine === 'cache' ? 'CACHED AI ANALYSIS' : 'LOCAL KEYWORD ANALYSIS'; }
+        document.getElementById('storyHeadline').textContent = headline;
+        document.getElementById('execNarrative').innerHTML = execNarrative;
+        var hsEl = document.getElementById('healthScore');
+        if (hsEl) { hsEl.textContent = healthScore + '/100'; hsEl.setAttribute('fill', healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'); }
+        var ring = document.querySelector('.health-ring');
+        if (ring) { var c = 150; ring.style.strokeDashoffset = c - (healthScore / 100) * c; ring.style.stroke = healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'; }
+        var voiceAI = await generateVoiceInsights(themes);
+        renderCustomerVoice(themes, voiceAI);
+        var recs = generateRecommendations(themes, funnel, competitors, callbacks, trends);
+        renderRecommendations(recs);
+        var llmRecs = await generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap);
+        renderLlmRecommendations(llmRecs);
+      } catch(e) {
+        console.error('AI analysis failed:', e);
+        showAiNotice('AI analysis failed: ' + e.message, true);
+      } finally {
+        document.getElementById('btnAiSummary').disabled = false;
+      }
+    }
   </script>
 
 

@@ -173,7 +173,7 @@ server.listen(PORT, () => {
   ║         AutoNage Local CORS Proxy               ║
   ║──────────────────────────────────────────────────║
   ║  Proxy:   http://localhost:${PORT}/v1/chat/completions  ║
-  ║  Upstream: ${NVIDIA_ENDPOINT.slice(0, 35)}  ║
+  ║  Upstream: ${NVIDIA_ENDPOINT}             ║
   ║  CORS:    Enabled (all origins)                 ║
   ╚══════════════════════════════════════════════════╝
   `);

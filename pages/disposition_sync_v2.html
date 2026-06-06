@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com http://localhost:3456 https:; form-action 'self'; " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev http://localhost:3456; form-action 'self' " />
 
   <script>
 
@@ -363,6 +363,7 @@
               <option value="anant_cars">Anant Cars</option>
 
               <option value="chennai_ev">ChennaiEV</option>
+              <option value="singhal">Singhal</option>
 
               <option value="fortune_hyryder">Fortune Hyryder</option>
 
@@ -850,7 +851,7 @@
 
         aiValidationController.abort();
 
-        aiValidationController = null;
+        // Don't null here — hideAiStatusBar detects signal.aborted and cleans up
 
       }
 
@@ -1087,6 +1088,7 @@
       anant_cars:      { name: 'Anant Cars',      summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
 
       chennai_ev:      { name: 'ChennaiEV',        summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+      singhal:         { name: 'Singhal',          summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
 
       fortune_hyryder: { name: 'Fortune Hyryder',  summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
 
@@ -3217,7 +3219,7 @@
 
           if (dec && dec.isCorrect === false && dec.correctedDisposition) {
 
-            correctedResults[ri] = dec.correctedDisposition;
+            correctedResults[candidates[ri].rowIndex] = dec.correctedDisposition;
 
           }
 
@@ -3453,7 +3455,7 @@
 
               var href = String(recording).startsWith('http') || String(recording).startsWith('s3:') ? recording : 'https://' + recording;
 
-              colsHtml += '<td><a class="cell-url" href="' + esc(href) + '" target="_blank" title="' + esc(recording) + '">Recording</a></td>';
+              colsHtml += '<td><a class="cell-url" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer" title="' + esc(recording) + '">Recording</a></td>';
 
             } else {
 

@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com http://localhost:3456 https:; form-action 'self'; " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev http://localhost:3456; form-action 'self' " />
 
   <script>
 
@@ -3540,21 +3540,9 @@
 
         aiValidationController.abort();
 
-        aiValidationController = null;
+        // Don't null here — hideAiStatusBar detects signal.aborted and cleans up
 
       }
-
-      var sb = document.getElementById("aiStatusBar");
-
-      var cb = document.getElementById("aiStatusCancel");
-
-      if (sb) sb.style.display = "none";
-
-      if (cb) cb.style.display = "none";
-
-      var msg = document.getElementById("aiStatusMsg");
-
-      if (msg) msg.textContent = "AI validation cancelled.";
 
     }
 
@@ -4410,7 +4398,7 @@
 
 
 
-            var examples = 'Example 1:\nTranscript: "Customer said they will bring the car next week for service"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Service Booked"\nReason: Customer intends to service — they did not refuse.\n\n' +
+            var examples = 'Example 1:\nTranscript: "Customer said they will bring the car next week for service"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Converted"\nReason: Customer intends to service — they did not refuse.\n\n' +
 
               'Example 2:\nTranscript: "Customer complained about poor service quality and long wait times"\nCurrent Disposition: "Feedback Given"\n→ isCorrect: false, correctedDisposition: "Complaint / Escalation"\nReason: This is a complaint, not neutral feedback.\n\n' +
 

@@ -24,7 +24,8 @@
  *    requestTimeoutMs: 60000,
  *    getCacheKey,         // (items) => string | null
  *    cachedData,          // previously cached result (skip API if valid)
- *    buildPrompt,         // (batch, batchIndex) => { system, user }
+ *    buildPrompt,         // (batch, batchIndex) => { system, user, temperature?, maxTokens?, maxCompletionTokens? }
+     *    //   temperature defaults to 0.7 when undefined; maxTokens/maxCompletionTokens fallback to 8192 when neither is provided
  *    buildHeaders,        // () => object (optional, default uses NVIDIA auth)
  *    parseResponse,       // (text, batch) => array of per-item results
  *    onProgress,          // (done, total, message, pct) => void
@@ -348,6 +349,7 @@
           if (result.ok) {
             onProgress(completed, total, msg, pct);
           } else {
+            console.error('Batch ' + (idx + 1) + ' failed:', result && result.reason);
             onProgress(completed, total, 'Batch ' + (idx + 1) + ' failed, continuing…', pct);
           }
         }

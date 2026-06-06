@@ -80,6 +80,10 @@ export default {
 
     // ── Health check ────────────────────────────────────────────────────
     if (method === 'GET') {
+      const url = new URL(request.url);
+      if (url.pathname !== '/health') {
+        return jsonResponse(404, { error: 'Not found. Use GET /health' });
+      }
       return jsonResponse(200, { status: 'ok', proxy: 'autonage-cloudflare' });
     }
 

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com http://localhost:3456 https:; form-action 'self'; " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com http://localhost:3456; form-action 'self' " />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
@@ -276,6 +276,23 @@
         outputOrder: ['showroom_code', 'region_name', 'dealership_id', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city', 'pincode', 'subdivision_name', 'alt_phone_number_2', 'lead_source'],
         defaults: { interested_vehicle_brand_name: 'Mahindra' },
         normalizeMahindraModels: true
+      },
+      singhal_sales: {
+        label: 'Singhal - Sales / Lead Campaign',
+        sourceToTarget: {
+          'CUSTOMER NAME': 'person_name',
+          'MOBILE NUMBER': 'phone_number',
+          'MODEL': 'model_name',
+          'ADDRESS': 'city'
+        },
+        multiSource: {
+          person_name: ['CUSTOMER NAME', 'Customer Name', 'CUSTOMERNAME', 'NAME', 'Full Name', 'CUSTOMER NAME'],
+          phone_number: ['MOBILE NUMBER', 'Mobile Number', 'PHONE', 'CONTACT NUMBER', 'MOBILE', 'MOBILE NO', 'CONTACT'],
+          model_name: ['MODEL', 'Model', 'VEHICLE MODEL', 'CAR MODEL', 'MODEL NAME'],
+          city: ['ADDRESS', 'Address', 'CITY', 'City', 'LOCATION']
+        },
+        outputOrder: ['person_name', 'phone_number', 'model_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city'],
+        defaults: { interested_vehicle_brand_name: 'Volkswagen' }
       },
       fortune_hyryder_sales: {
         label: 'Fortune Hyryder - Sales / Lead Campaign',
