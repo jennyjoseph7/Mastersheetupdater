@@ -49,7 +49,7 @@ generate_dockerfile_and_context() {
         cp "$item" "$BASE_DIR/$filename"
 
         # USE RELATIVE PATH INSIDE DOCKER
-        echo "RUN /root/pyenv/bin/pip install -r $filename" >> Dockerfile.tmp
+	echo "RUN /root/pyenv/bin/pip install --upgrade --force-reinstall --no-cache-dir -r $filename" >> Dockerfile.tmp
     done
 }
 
