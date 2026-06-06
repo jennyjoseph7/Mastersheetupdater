@@ -282,16 +282,16 @@
         sourceToTarget: {
           'CUSTOMER NAME': 'person_name',
           'MOBILE NUMBER': 'phone_number',
-          'MODEL': 'model_name',
+          'MODEL': 'interested_vehicle_name',
           'ADDRESS': 'city'
         },
         multiSource: {
           person_name: ['CUSTOMER NAME', 'Customer Name', 'CUSTOMERNAME', 'NAME', 'Full Name', 'CUSTOMER NAME'],
           phone_number: ['MOBILE NUMBER', 'Mobile Number', 'PHONE', 'CONTACT NUMBER', 'MOBILE', 'MOBILE NO', 'CONTACT'],
-          model_name: ['MODEL', 'Model', 'VEHICLE MODEL', 'CAR MODEL', 'MODEL NAME'],
+          interested_vehicle_name: ['MODEL', 'Model', 'VEHICLE MODEL', 'CAR MODEL', 'MODEL NAME'],
           city: ['ADDRESS', 'Address', 'CITY', 'City', 'LOCATION']
         },
-        outputOrder: ['person_name', 'phone_number', 'model_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city'],
+        outputOrder: ['person_name', 'phone_number', 'interested_vehicle_name', 'interested_vehicle_brand_name', 'seating_capacity_preference', 'city'],
         defaults: { interested_vehicle_brand_name: 'Volkswagen' }
       },
       fortune_hyryder_sales: {

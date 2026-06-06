@@ -1,11 +1,7 @@
 {
-  "dependencies": {
-    "acorn": "^8.16.0"
-  },
   "name": "mastersheetupdater",
   "version": "1.0.0",
-  "description": "A suite of browser-based tools for automotive lead operations. Each tool is a self-contained HTML file with no backend dependencies — everything runs locally in the browser. All external resources (fonts, JavaScript libraries) are self-hosted for offline use and security compliance.",
-  "main": "config.example.js",
+  "description": "Browser-based tools for automotive lead operations. Self-contained HTML files with no backend — everything runs locally. External resources (fonts, JS libraries) are self-hosted for offline use and security compliance.",
   "directories": {
     "doc": "docs"
   },
@@ -19,7 +15,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/jennyjoseph7/Mastersheetupdater/issues"
   },

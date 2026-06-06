@@ -3927,9 +3927,19 @@
 
         if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
 
-      // Clean up abort controller
-      aiValidationController = null;
-         for (var mi = 0; mi < summaries.length; mi++) {
+        // Build llmLookup from LLM results for the aggregation loop below
+        if (!llmLookup) llmLookup = {};
+        for (var lri = 0; lri < llmResults.length; lri++) {
+          var lr = llmResults[lri];
+          if (lr && lr.rowIndex !== undefined && lr.dispositions) {
+            llmLookup[lr.rowIndex] = lr.dispositions;
+          }
+        }
+
+        // Clean up abort controller
+        aiValidationController = null;
+
+        for (var mi = 0; mi < summaries.length; mi++) {
 
           var s = summaries[mi];
 
@@ -4989,8 +4999,6 @@ async function generateDashboard() {
         window._dashHealthScore = healthScore;
         window._dashHealthClass = healthClass;
       window._dashAgents = agents;
-      window._dashAgents = agents;
-    window._dashAgents = agents;
         document.getElementById('btnAiSummary').disabled = false;
     }
 

@@ -935,7 +935,7 @@
 
           { label: 'Lead summary', candidates: ['lead_summary'] },
 
-          { label: 'Model', candidates: ['model_preference', 'interested_vehicle_name'] },
+          { label: 'Model', candidates: ['name', 'model_preference', 'interested_vehicle_name'] },
 
           { label: 'Cohort', candidates: ['campaign_objective_name'] },
 
@@ -1109,7 +1109,6 @@
        ═══════════════════════════════════════════════════════════════════════ */
 
     var NVIDIA_DIRECT_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-    var OPENROUTER_DIRECT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
     function getConfigNumber(key, fallback) {
       var cfg = window.JEJO_CONFIG || {};
@@ -1119,11 +1118,11 @@
 
     function getLlmModel() {
       var cfg = window.JEJO_CONFIG || {};
-      return cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+      return cfg.nvidiaModel || 'mistralai/mistral-medium-3.5-128b';
     }
 
     function isProxyEndpoint(endpoint) {
-      return endpoint !== NVIDIA_DIRECT_ENDPOINT && endpoint !== OPENROUTER_DIRECT_ENDPOINT;
+      return endpoint !== NVIDIA_DIRECT_ENDPOINT;
     }
 
     var NVIDIA_MODEL = getLlmModel();
@@ -1163,9 +1162,9 @@
 
       }
 
-      if (window.JEJO_CONFIG && (window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey)) {
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.nvidiaApiKey) {
 
-        var key = String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim();
+        var key = String(window.JEJO_CONFIG.nvidiaApiKey || '').trim();
 
         if (key && key !== 'YOUR_NVIDIA_API_KEY_HERE') return key;
 
@@ -2727,7 +2726,7 @@
 
 
 
-          const model = (row['model_preference'] || row['interested_vehicle_name'] || '').replace(/[\[\]"']/g, '').trim();
+          const model = (row['name'] || row['model_preference'] || row['interested_vehicle_name'] || '').replace(/[\[\]"']/g, '').trim();
 
           const seatingRaw = row['seating_capacity_preference'] || '';
 
@@ -2929,7 +2928,7 @@
 
         var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
 
-        if (hasText && disp) {
+        if (hasText && disp && r.outcome === 'Connected') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
 
@@ -3219,7 +3218,7 @@
 
           if (dec && dec.isCorrect === false && dec.correctedDisposition) {
 
-            correctedResults[candidates[ri].rowIndex] = dec.correctedDisposition;
+            correctedResults[candidates[ri].index] = dec.correctedDisposition;
 
           }
 

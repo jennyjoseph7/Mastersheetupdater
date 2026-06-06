@@ -382,7 +382,7 @@
 
           <span class="control-label" style="font-size:0.72rem;font-weight:700;color:var(--text-dim);">AI Key</span>
 
-          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
+          <input id="nvidiaApiKeyInput" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
 
           <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
 
@@ -3879,7 +3879,6 @@
        ═══════════════════════════════════════════════════════════════════════ */
 
     var NVIDIA_DIRECT_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-    var OPENROUTER_DIRECT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
     function getConfigNumber(key, fallback) {
       var cfg = window.JEJO_CONFIG || {};
@@ -3889,11 +3888,11 @@
 
     function getLlmModel() {
       var cfg = window.JEJO_CONFIG || {};
-      return cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+      return cfg.nvidiaModel || 'mistralai/mistral-medium-3.5-128b';
     }
 
     function isProxyEndpoint(endpoint) {
-      return endpoint !== NVIDIA_DIRECT_ENDPOINT && endpoint !== OPENROUTER_DIRECT_ENDPOINT;
+      return endpoint !== NVIDIA_DIRECT_ENDPOINT;
     }
 
     function sanitizeForPrompt(text) {
@@ -3948,9 +3947,9 @@
 
       }
 
-      if (window.JEJO_CONFIG && (window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey)) {
+      if (window.JEJO_CONFIG && window.JEJO_CONFIG.nvidiaApiKey) {
 
-        var key = String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim();
+        var key = String(window.JEJO_CONFIG.nvidiaApiKey || '').trim();
 
         if (key && key !== 'YOUR_NVIDIA_API_KEY_HERE') return key;
 
@@ -3966,7 +3965,7 @@
 
       var container = document.querySelector('.ai-key-control');
 
-      var input = document.getElementById('openRouterApiKey');
+      var input = document.getElementById('nvidiaApiKeyInput');
 
       var status = document.getElementById('apiKeyStatus');
 
@@ -3983,7 +3982,7 @@
       
 
       var configuredKey = window.JEJO_CONFIG
-        ? String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim()
+        ? String(window.JEJO_CONFIG.nvidiaApiKey || '').trim()
         : '';
 
       var keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
@@ -4064,7 +4063,7 @@
 
     function saveNvidiaApiKey() {
 
-      var input = document.getElementById('openRouterApiKey');
+      var input = document.getElementById('nvidiaApiKeyInput');
 
       var key = input ? input.value.trim() : '';
 

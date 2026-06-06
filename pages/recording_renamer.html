@@ -258,8 +258,10 @@
       if (btn && label) {
         if (proxyUrl) {
           btn.style.display = '';
-          useCorsProxy = false;
-          label.textContent = 'Off';
+          useCorsProxy = true;
+          label.textContent = 'On';
+          btn.style.border = '1px solid var(--success)';
+          btn.style.color = 'var(--success)';
           btn.title = 'CORS proxy: ' + proxyUrl;
         } else {
           btn.style.display = 'none';
