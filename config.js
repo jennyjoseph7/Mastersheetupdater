@@ -42,9 +42,9 @@ window.JEJO_CONFIG = {
   llmThemeBatchSize: 5,
 
   // Disposition validation uses longer transcripts, so keep it smaller.
-  llmDispositionBatchSize: 6,
-  llmDispositionMaxConcurrent: 3,
-  llmDispositionTimeoutMs: 90000,
+  llmDispositionBatchSize: 15,
+  llmDispositionMaxConcurrent: 5,
+  llmDispositionTimeoutMs: 120000,
   llmDispositionPromptCharLimit: 2500,
   llmDispositionMaxOutputTokens: 1800,
 
