@@ -583,6 +583,22 @@
 
         <div class="stat-card">
 
+          <div class="stat-label">AI-Ready</div>
+
+          <div class="stat-val green" id="sAiReady">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">Skipped (no summary)</div>
+
+          <div class="stat-val gray" id="sSkipped">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
           <div class="stat-label">Excluded (Terminal)</div>
 
           <div class="stat-val purple" id="sExcluded">0</div>
@@ -2912,6 +2928,12 @@
 
 
 
+      function hasValidSummary(r) {
+        var summ = (r.session_summary || '').trim();
+        var hist = (r.session_history || '').trim();
+        return (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
+      }
+
       // Filter rows that have a meaningful session_summary OR session_history AND any disposition_detail
 
       const candidates = [];
@@ -2926,9 +2948,7 @@
 
         var disp = (r.disposition_detail || '').trim();
 
-        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
-
-        if (hasText && disp && r.outcome === 'Connected') {
+        if (hasValidSummary(r) && disp && r.outcome === 'Connected') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
 
@@ -3804,13 +3824,25 @@
 
       const withRec = data.filter(r => r.recordings).length;
 
+      const aiReady = data.filter(function(r) {
+        if (r.outcome !== 'Connected') return false;
+        var summ = (r.session_summary || '').trim();
+        var hist = (r.session_history || '').trim();
+        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
+        return hasText && (r.disposition_detail || '').trim();
+      }).length;
 
+      const skipped = connected - aiReady;
 
       document.getElementById('sTotal').textContent = total;
 
       document.getElementById('sConnected').textContent = connected;
 
       document.getElementById('sNotConn').textContent = notConn;
+
+      document.getElementById('sAiReady').textContent = aiReady;
+
+      document.getElementById('sSkipped').textContent = skipped;
 
       document.getElementById('sExcluded').textContent = excluded;
 
