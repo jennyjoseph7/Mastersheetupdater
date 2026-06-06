@@ -1,5 +1,4 @@
-# Config & secrets
-config.js
+# Secrets
 .env
 .env.*
 *.local
