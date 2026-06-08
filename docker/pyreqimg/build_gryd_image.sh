@@ -18,10 +18,15 @@ update_repo() {
 }
 
 generate_dockerfile() {
+    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
+
+    # Remove previously copied requirement files
+    for file in "${files[@]}"; do
+        rm -f "$(basename "$file")"
+    done
+
     cp Dockerfile Dockerfile.tmp
     sed -i "s|__BASEIMAGE_TAG__|$BRANCH|g" Dockerfile.tmp
-
-    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
 
     for file in "${files[@]}"; do
         filename=$(basename "$file")
@@ -36,7 +41,8 @@ generate_dockerfile() {
 build_and_push() {
     docker build \
         -f Dockerfile.tmp \
-        -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} .
+        -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
+        .
 
     docker tag \
         autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
