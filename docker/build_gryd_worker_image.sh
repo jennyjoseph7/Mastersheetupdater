@@ -60,7 +60,7 @@ function print_worker_git_info() {
     printf "%-20s %-10s %-18s %-12s %s\n" "WORKER" "SHA" "AUTHOR" "DATE" "MESSAGE"
     echo "-----------------------------------------------------------------------------------------------"
 
-    grep '"name"' "$WORKER_DIR/$START_WORKER_CONFIG" \
+    grep '"name"' start_worker_config.json \
     | sed 's/.*"\(.*\)".*/\1/' \
     | sort -u \
     | while read -r worker; do
