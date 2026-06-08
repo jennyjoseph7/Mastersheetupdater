@@ -66,6 +66,7 @@ export interface DataSourceFormData {
   audienceSize: number;
   processedCount?: number;
   errorCount?: number;
+  uniqueCount?: number;
 }
 
 const steps = [
@@ -111,6 +112,7 @@ export function AddDataSourceDialog({
     audienceSize: 0,
     processedCount: 0,
     errorCount: 0,
+    uniqueCount: 0,
   });
 
   // Re-sync props if dialog is reused without unmounting
@@ -142,6 +144,8 @@ export function AddDataSourceDialog({
       // Use the prefilled Draft Campaign ID if available, otherwise fallback to Objective ID
       const targetCampaignId = formData.campaignId || formData.campaignObjectiveId;
       
+
+      
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
@@ -160,7 +164,7 @@ export function AddDataSourceDialog({
         task_id: taskId,
         campaign_type: formData.category,
         campaign_objective_id: formData.campaignObjectiveId, 
-        campaign_id: targetCampaignId,
+        campaign_id: formData.campaignId || "",
         campaign_objective_name: "",
         audience_name: formData.audienceName,
         dealership_id: getDealershipId(),
