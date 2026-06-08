@@ -5,20 +5,10 @@ BRANCH=$1
 SERVICE=$2
 
 BASE_DIR="/mnta/autobot_agents/docker/pyreqimg"
-CONF_DIR="$BASE_DIR/Conf"
-CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
+CONFIG_FILE="$BASE_DIR/Conf/${SERVICE}.conf"
 
 cd "$BASE_DIR"
-
-if [ ! -f "$CONFIG_FILE" ]; then
-    exit 1
-fi
-
 source "$CONFIG_FILE"
-
-if [ -z "${REQUIREMENTS_SOURCE:-}" ]; then
-    exit 1
-fi
 
 update_repo() {
     git reset --hard
@@ -27,32 +17,26 @@ update_repo() {
     git pull origin "$BRANCH"
 }
 
-generate_dockerfile_and_context() {
+generate_dockerfile() {
     cp Dockerfile Dockerfile.tmp
-    sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
+    sed -i "s|__BASEIMAGE_TAG__|$BRANCH|g" Dockerfile.tmp
 
-    IFS=',' read -ra items <<< "$REQUIREMENTS_SOURCE"
+    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
 
-    for item in "${items[@]}"; do
-        item=$(echo "$item" | xargs)
+    for file in "${files[@]}"; do
+        filename=$(basename "$file")
 
-        if [ ! -f "$item" ]; then
-            exit 1
-        fi
+        cp "$file" .
 
-        filename=$(basename "$item")
-
-        cp "$item" "$BASE_DIR/$filename"
-
-        echo "RUN /root/pyenv/bin/pip install --upgrade --force-reinstall --no-cache-dir -r $filename" >> Dockerfile.tmp
+        echo "RUN /root/pyenv/bin/pip install --upgrade --force-reinstall --no-cache-dir -r $filename" \
+            >> Dockerfile.tmp
     done
 }
 
-build_image() {
+build_and_push() {
     docker build \
         -f Dockerfile.tmp \
-        -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
-        .
+        -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} .
 
     docker tag \
         autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
@@ -62,5 +46,5 @@ build_image() {
 }
 
 update_repo
-generate_dockerfile_and_context
-build_image
+generate_dockerfile
+build_and_push
