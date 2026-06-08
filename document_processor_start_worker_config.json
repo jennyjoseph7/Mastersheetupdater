@@ -133,6 +133,20 @@
             "gryd_service": "AUTOCRM_VOICE_SERVICE_NAME_5",
             "parallel_threads": 1,
             "shutdown_time": 0
+        },
+        {
+            "name": "brochure_pipeline",
+            "entry_point": "brochure_task.py",
+            "gryd_service": "AUTOCRM_BROCHURE_PIPELINE_SERVICE_NAME",
+            "parallel_threads": 4,
+            "shutdown_time": 0
+        },
+        {
+            "name": "document_processor",
+            "entry_point": "document_tasks.py",
+            "gryd_service": "AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME",
+            "parallel_threads": 1,
+            "shutdown_time": 0
         }
     ]
 }
