@@ -1593,9 +1593,9 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
     #     ORDER BY dict->>'dealership_id'
     # """
     kwargs.update({"dealer_status": "active"})
-    logger.info("Dealership filter: %s", kwargs)
+    mlogger.info("Dealership filter: %s", kwargs)
     result = list(pg.list("dealership", kwargs))
-    logger.info("Got %s dealers matching with filter %s", len(result), kwargs)
+    mlogger.info("Got %s dealers matching with filter %s", len(result), kwargs)
     
     dealerships = []
 
@@ -1614,7 +1614,7 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
             "id": dealership_id,
             "channels": channels
         })
-    logger.info("Got %s dealers matching with channels %s", len(dealerships), channels)
+    mlogger.info("Got %s dealers matching with channels %s", len(dealerships), channels)
     return dealerships
 
 @gryd.is_a_task(function_name="mark_inactive_dealerships")
