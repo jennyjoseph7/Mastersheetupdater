@@ -9,7 +9,6 @@ fi
 
 DOCKER_BASE_IMG_TAG="${1:-latest}"
 
-# 2nd argument (must match WORKER_NAME)
 REPO_NAME="${2:?Repository name is required}"
 
 # =========================
@@ -34,7 +33,6 @@ fi
 
 WORKER_DOCKER_IMAGE_TAG="${WORKER_DOCKER_IMAGE_TAG:-0}"
 WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
-START_WORKER_CONFIG="${START_WORKER_CONFIG:-start_worker_config.json}"
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-0}"
 PUSH_AS_LATEST="${PUSH_AS_LATEST:-0}"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-0}"
@@ -52,11 +50,6 @@ WORKER_DIR="$(realpath ../)"
 
 dir_status=-1
 SHA=0
-
-if [ ! -f "$WORKER_DIR/$START_WORKER_CONFIG" ]; then
-    echo "ERROR: Worker config not found: $WORKER_DIR/$START_WORKER_CONFIG"
-    exit 1
-fi
 
 # =========================
 # FUNCTIONS
@@ -181,13 +174,12 @@ function build_docker_image() {
 
     WORKER_DOCKER_IMAGE_NAME="${WORKER_NAME}:${WORKER_DOCKER_IMAGE_TAG}"
 
-    # copy creds if needed
     if [ "$GCP_CREDS_PATH" != "0" ]; then
         cp -v "$GCP_CREDS_PATH" ./ || true
     fi
 
     # =========================
-    # FIXED PART (IMPORTANT)
+    # FIXED PART
     # =========================
 
     if [ ! -f Dockerfile ]; then
