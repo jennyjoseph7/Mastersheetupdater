@@ -31,7 +31,7 @@ generate_dockerfile_and_context() {
     cp Dockerfile Dockerfile.tmp
     sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
 
-    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
+    IFS=',' read -ra items <<< "$REQUIREMENTS_SOURCE"
 
     for item in "${items[@]}"; do
         item=$(echo "$item" | xargs)
