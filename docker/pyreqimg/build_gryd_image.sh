@@ -18,15 +18,13 @@ update_repo() {
 }
 
 generate_dockerfile() {
-    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
-
-    # Remove previously copied requirement files
-    for file in "${files[@]}"; do
-        rm -f "$(basename "$file")"
-    done
+    # Remove any existing txt files from previous builds
+    rm -f "$BASE_DIR"/*.txt
 
     cp Dockerfile Dockerfile.tmp
     sed -i "s|__BASEIMAGE_TAG__|$BRANCH|g" Dockerfile.tmp
+
+    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
 
     for file in "${files[@]}"; do
         filename=$(basename "$file")
