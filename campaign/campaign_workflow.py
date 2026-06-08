@@ -131,7 +131,7 @@ CAMPAIGN_WORKFLOW = {
     "failed": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 600,
+        "delay": 1200,
         "trigger": "switch_to_next_credential"
     },
     "error": {
@@ -141,16 +141,16 @@ CAMPAIGN_WORKFLOW = {
     "attempted": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 600,
+        "delay": 1200,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
-        "retries": 0,
+        "retries": 2,
         "delay": 1200,
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
-        "retries": 0,
+        "retries": 2,
         "delay": 3600,
         "trigger": "switch_to_next_channel"
     },
