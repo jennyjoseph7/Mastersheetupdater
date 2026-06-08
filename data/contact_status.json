@@ -41,6 +41,7 @@
         {
             "name": "channel",
             "type": "text",
+            "indexed": true,
             "options": [
                 "rcs",
                 "email",
@@ -55,8 +56,7 @@
                 "whatsapp_voice_call",
                 "zoom_bot",
                 "ms_teams"
-            ],
-            "indexed": true
+            ]
         },
         {
             "name": "phone_number",

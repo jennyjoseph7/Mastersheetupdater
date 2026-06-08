@@ -54,4 +54,5 @@ def get_pg_connector(enterprise_id=AUTOCRM_APP_ENTERPRISE_ID, close_on_exit = Tr
     finally:
         if close_on_exit:
             logger.info("Closing connection")
-            conn.close()
+            if conn:
+                conn.close()

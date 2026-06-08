@@ -726,9 +726,7 @@ def trigger_campaign(*args, **kwargs):
     with get_pg_connector() as pg:
         leads = list(pg.list(lead_table, filters))
     lm = AutocrmModel(lead_table)
-
     logger.info(f"Total leads fetched: {len(leads)}")
-
     valid_leads = []
 
     # if the lead_data doesnt have a phone number(pre sales) or persons_involved (post sales), skip it

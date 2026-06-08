@@ -85,7 +85,6 @@ import { Separator } from "@/components/ui/separator";
 
 // --- HELPERS & CONSTANTS ---
 const STELLANTIS_AGENT_MAP: Record<string, string> = {
-  
 
 };
 const getObjectiveIcon = (objectiveId: string, title: string) => {
