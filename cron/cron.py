@@ -188,7 +188,9 @@ def performance_summary(from_time_ms=None):
 
         for campaign_id, campaign_type in campaigns:
             mlogger.info(f"campaign_id: {campaign_id}, campaign_type: {campaign_type}")
-
+            if not campaign_id or not campaign_type:
+                mlogger.error(f"[CRON] Invalid campaign data: campaign_id={campaign_id}, campaign_type={campaign_type}")
+                continue
             lead_model = (
                 "pre_sales_lead" if campaign_type == "pre-sales"
                 else "post_sales_lead"
