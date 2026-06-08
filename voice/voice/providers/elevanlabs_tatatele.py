@@ -889,7 +889,6 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    # msg = await self.external_ws.recv()
                     message = await asyncio.wait_for(self.external_ws.recv(), timeout=timeout)
                     logger.info(f"[{self.call_id}] received: {message}")
                     await self.outbound_media_stream(self.external_ws)

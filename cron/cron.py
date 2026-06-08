@@ -1723,8 +1723,12 @@ def process_lead(pg,lead, channel):
         lead_model="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
         lead_model_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
         lead_id=data.get(lead_model_id)
-        c_i=CHANNEL_IDENTIFIER_MAP.get(channel)
-        channel_identifier=data.get(c_i).replace("+","") if c_i and data.get(c_i) else None or None
+        if data.get("next_channel_identifier"):
+            mlogger.info("Since we have a next channel identifier %s, we are using it.", data.get("next_channel_identifier"))
+            channel_identifier=data.get("next_channel_identifier") 
+        else:
+            c_i=CHANNEL_IDENTIFIER_MAP.get(channel)
+            channel_identifier=data.get(c_i).replace("+","") if c_i and data.get(c_i) else None
         mlogger.info("[PROCESS] Processing lead %s for channel %s", lead_id,channel)
         mlogger.info("[PROCESS] channel identifier %s", channel_identifier)
         # mlogger.info("[PROCESS] lead data %s", json.dumps(data,indent=4))
