@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+  
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev; form-action 'self'; " />
+
+  <script>
+
+    (function() {
+
+      var theme = localStorage.getItem('jejo-theme') || 'dark';
+
+      document.documentElement.setAttribute('data-theme', theme);
+
+    })();
+
+  </script>
+
+      <script src="../assets/js/lib/theme.js"></script>
+
+  
+      <script src="../assets/js/lib/ai-config.js"></script>
+<title>Campaign Dashboard — AutoNage</title>
+
+  <meta name="description"
+
+    content="Call campaign summary dashboard with KPI metrics, charts, and data insights — AutoNage." />
+
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="../assets/css/design-system.css" />
+
+  <script src="../config.js"></script>
+
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
+
+  <script src="../assets/js/lib/llm-batch-runner.js"></script>
+  <script src="../assets/js/lib/ai-validator.js"></script>
+
+  <script src="../assets/js/vendor/html2canvas.min.js"></script>
+
+  <script src="../assets/js/vendor/jspdf.umd.min.js"></script>
+
+  <link rel="stylesheet" href="../assets/css/dashboard.css" />
+
+</head>
+
+<body>
+
+  <!-- Header -->
+
+  <header>
+
+    <div class="header-inner">
+
+      <div class="header-left">
+
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
+
+        <div>
+
+          <h1>Campaign Dashboard</h1>
+
+          <div class="header-sub">Upload Zoho export to generate insights
+        </div>
+
+        </div>
+
+      </div>
+
+      <div class="header-right">
+
+        <div class="header-nav"></div><script>fetch('../nav.html').then(function(r){return r.text();}).then(function(html){var n=document.querySelector('.header-nav');if(n)n.outerHTML=html;}).catch(function(e){console.warn('nav.html failed to load:',e);});</script>
+
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+
+          <svg class="icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+
+          <svg class="icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+  <!-- Main -->
+
+  <main>
+
+    <!-- Upload Section -->
+
+    <div class="upload-section slide-up" id="uploadSection">
+
+      <div class="section-title">Upload Zoho Master Sheet Export</div>
+
+      <div class="upload-controls">
+
+        <span class="mode-label">Dashboard Mode</span>
+
+        <select id="campaignMode" class="mode-select">
+
+          <option value="auto">Auto Detect</option>
+
+          <option value="pre">Pre-Sales</option>
+
+          <option value="post">Post-Sales</option>
+
+        </select>
+
+        <span class="mode-label" style="margin-left:0.75rem;">Date Format</span>
+
+        <select id="dateFormatMode" class="mode-select">
+
+          <option value="auto">Auto Detect</option>
+
+          <option value="DMY">DD/MM/YYYY</option>
+
+          <option value="MDY">MM/DD/YYYY</option>
+
+        </select>
+
+        <div class="ai-key-control" title="When saved, call summaries are sent to NVIDIA API for Mistral classification.">
+
+          <span class="mode-label">AI Key</span>
+
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
+
+          <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
+
+          <button type="button" class="api-key-btn subtle" onclick="clearNvidiaApiKey()">Clear</button>
+
+          <span class="api-key-status" id="apiKeyStatus">Optional</span>
+
+        </div>
+
+      </div>
+
+      <div class="upload-row">
+
+        <div class="drop-zone-dash" id="dzDash" onclick="document.getElementById('fileDash').click()" role="button" tabindex="0">
+
+          <div class="dz-icon">
+
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+
+            </svg>
+
+          </div>
+
+          <div class="dz-text">
+
+            <strong>Zoho Master Sheet (.xlsx / .csv)</strong>
+
+            <small>Drop file here or click to browse — needs columns: PHONE_NUMBER, CALL_DATE, VEHICLE_MODEL, OUTCOME, etc.</small>
+
+          </div>
+
+          <span class="dz-status" id="stDash">No file selected</span>
+
+          <input type="file" id="fileDash" accept=".csv,.xlsx,.xls">
+
+        </div>
+
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn-generate" id="btnGenerate" disabled onclick="generateDashboard()">
+
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+
+          Generate Dashboard
+
+        </button>
+          <button class="btn-generate" id="btnAiSummary" disabled onclick="runAiAnalysis()" style="background:linear-gradient(135deg,var(--purple,#a78bfa),var(--accent2,#5b9cf5));color:#fff;box-shadow:0 4px 16px rgba(167,139,250,0.2);">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          AI Summary
+        </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Campaign Bar (hidden until data loaded) -->
+
+    <div class="campaign-bar slide-up" id="campaignBar" style="display:none;">
+
+      <div class="campaign-info">
+
+        <div class="campaign-name" id="campaignName">Dealership <span>Call Summary</span></div>
+
+        <div class="campaign-subtitle" id="campaignSubtitle">Service Reminder Campaign</div>
+
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.25rem;">
+
+        <div class="date-range-label">DATE RANGE</div>
+
+        <div class="date-range-badge" id="dateRange">—</div>
+
+        <div class="date-parser-note" id="dateParserNote">Source: Call_Date · Parser: —</div>
+
+        <div id="trendIndicator"></div>
+
+      </div>
+
+      <button class="btn-generate" id="btnPrintPDF" style="display:none;padding:0.5rem 1rem;font-size:0.78rem;" onclick="printPDF()">
+
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9V2h12v7M6 18h12v4H6v-4zm0-6h12a2 2 0 012 2v4H4v-4a2 2 0 012-2z"/></svg>
+
+        Print / Save PDF
+
+      </button>
+
+    </div>
+
+    <!-- Dashboard Content (hidden until data loaded) -->
+
+    <div id="dashboardContent" style="display:none;">
+
+      <div class="data-panel metric-audit slide-up" id="metricAudit" style="display:none;">
+
+        <div class="panel-title">Metric Audit</div>
+
+        <div class="metric-audit-strip" id="metricAuditStrip"></div>
+
+        <div class="metric-audit-summary-row">
+
+          <div class="metric-audit-summary" id="metricAuditSummary">Column mapping pending</div>
+
+          <button class="metric-audit-toggle" id="metricAuditToggle" type="button" aria-expanded="false">View full audit</button>
+
+        </div>
+
+        <div class="metric-audit-details" id="metricAuditDetails">
+
+          <div class="metric-audit-grid" id="metricAuditGrid"></div>
+
+        </div>
+
+      </div>
+
+      <!-- Executive Summary Banner -->
+
+      <!-- AI Status Bar -->
+
+      <div id="aiStatus" class="upload-section" style="display:none;padding:0.6rem 1rem;margin-bottom:0.75rem;">
+
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+
+          <div style="flex:1;">
+
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.25rem;">
+
+              <span style="font-size:0.7rem;color:var(--text-muted);" id="aiStatusText">Analyzing with Mistral...</span>
+
+              <span style="display:none;font-size:0.65rem;font-weight:700;padding:0.15rem 0.45rem;border-radius:999px;background:var(--success-soft);border:1px solid rgba(99,214,163,0.25);color:var(--success);font-family:var(--mono);" id="aiStatusCorrected"></span>
+
+              <span style="font-size:0.68rem;color:var(--text-muted);font-family:var(--mono);" id="aiStatusElapsed"></span>
+
+            </div>
+
+            <div style="height:4px;border-radius:4px;background:var(--surface3);overflow:hidden;">
+
+              <div id="aiStatusBar" style="height:100%;width:0%;border-radius:4px;background:var(--accent);transition:width 0.3s;"></div>
+
+            </div>
+
+          </div>
+
+          <button class="ai-status-cancel" id="aiStatusCancel" style="display:none;padding:0.35rem 0.65rem;border-radius:8px;border:1px solid rgba(241,111,111,0.35);background:transparent;color:var(--danger);font-size:0.7rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;" onclick="cancelAiValidationDash()">Cancel</button>
+
+        </div>
+
+      </div>
+
+      <!-- Executive Story Banner -->
+
+      <div class="intel-banner slide-up" id="execSummary" style="display:none;">
+
+        <div class="health-ring-wrap">
+
+          <svg width="80" height="80" viewBox="0 0 56 56" style="position:relative;flex-shrink:0;">
+
+            <circle cx="28" cy="28" r="24" fill="none" stroke="var(--border)" stroke-width="5"/>
+
+            <circle class="health-ring" cx="28" cy="28" r="24" fill="none" stroke="var(--accent)" stroke-width="5" stroke-dasharray="150" stroke-dashoffset="40" stroke-linecap="round" transform="rotate(-90,28,28)"/>
+
+            <text x="28" y="31" text-anchor="middle" font-size="10" font-weight="800" font-family="var(--mono)" fill="var(--text)" id="healthScore">—</text>
+
+          </svg>
+
+          <div class="health-label">HEALTH</div>
+
+        </div>
+
+        <div class="exec-body">
+
+          <div class="exec-headline" id="storyHeadline"></div>
+
+          <div class="exec-detail" id="execNarrative"></div>
+
+          <div class="anomaly-chips" id="insightStrip"></div>
+
+        </div>
+
+        <div class="intel-banner-badge" id="analysisEngineBadge">AI-GENERATED ANALYSIS</div>
+
+      </div>
+
+      <!-- KPI Row 1 -->
+
+      <div class="kpi-grid" id="kpiRow1"></div>
+
+      <!-- KPI Row 2 -->
+
+      <div class="kpi-grid" id="kpiRow2"></div>
+
+      <!-- Daily Calls Breakdown (moved after KPIs) -->
+
+      <div class="data-panel slide-up stagger-5 full-width-chart">
+
+        <div class="panel-title">Daily Calls Breakdown</div>
+
+        <div class="chart-bars" id="dailyChart"></div>
+
+      </div>
+
+      <!-- Vehicle Models -->
+
+      <div class="data-panels two-column" style="display:grid;gap:0.75rem;margin-bottom:0.75rem;">
+
+        <div class="data-panel slide-up stagger-6">
+
+          <div class="panel-title">Vehicle Models</div>
+
+          <div id="vehicleChart"></div>
+
+        </div>
+
+        <div class="data-panel slide-up stagger-7">
+
+          <div class="panel-title">Pending Follow-ups</div>
+
+          <div id="pendingPanel"></div>
+
+        </div>
+
+      </div>
+
+      <!-- What Customers Are Saying -->
+
+      <div class="insight-panel slide-up" id="customerVoicePanel" style="display:none;">
+
+        <div class="insight-section-title">What Customers Are Saying</div>
+
+        <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.75rem;line-height:1.5;">
+
+          These themes are extracted directly from call transcripts. Each card shows how many customers exhibited this behavior, along with actual excerpts from the conversations.
+
+        </p>
+
+        <div id="voiceSummary" class="voice-summary" style="display:none;"></div>
+
+        <div class="voice-grid" id="customerVoiceSection"></div>
+
+      </div>
+
+      <!-- Conversion Funnel -->
+
+      <div class="insight-panel slide-up" id="conversionFunnelPanel" style="display:none;">
+
+        <div class="insight-section-title">The Conversion Story</div>
+
+        <div class="funnel-section" id="funnelSection"></div>
+
+      </div>
+
+      <!-- Conversion Blockers -->
+
+      <div class="insight-panel slide-up" id="blockersPanel" style="display:none;">
+
+        <div class="insight-section-title">Why Connected Leads Didn't Book</div>
+
+        <div id="blockersList"></div>
+
+        <div class="narrative-mini" id="blockersNarrative"></div>
+
+      </div>
+
+      <!-- Agent Performance Table -->
+
+      <div class="insight-panel slide-up" id="agentTablePanel" style="display:none;">
+
+        <div class="insight-section-title">Agent Performance</div>
+
+        <div class="agent-table-wrap">
+
+          <table>
+
+            <thead><tr><th>Rank</th><th>Agent</th><th>Calls</th><th>Connected</th><th>Booked</th></tr></thead>
+
+            <tbody id="agentTableBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <!-- Decision Pipeline -->
+
+      <div class="insight-panel slide-up" id="pipelinePanel" style="display:none;">
+
+        <div class="insight-section-title">Decision Pipeline</div>
+
+        <div class="pipeline-grid" id="pipelineGrid"></div>
+
+        <div class="narrative-mini" id="pipelineNarrative"></div>
+
+      </div>
+
+      <!-- Disposition Intelligence -->
+
+      <div class="insight-panel slide-up" id="dispositionPanel" style="display:none;">
+
+        <div class="insight-section-title">Disposition Intelligence</div>
+
+        <div id="dispositionBars"></div>
+
+        <div class="narrative-mini" id="dispositionNarrative"></div>
+
+      </div>
+
+      <!-- Source Quality -->
+
+      <div class="insight-panel slide-up" id="sourceQualityPanel" style="display:none;">
+
+        <div class="insight-section-title">Source Quality</div>
+
+        <div id="sourceList"></div>
+
+        <div class="narrative-mini" id="sourceNarrative"></div>
+
+      </div>
+
+      <!-- Competitive Intelligence -->
+
+      <div class="insight-panel slide-up" id="competitivePanel" style="display:none;">
+
+        <div class="insight-section-title">Competitive Intelligence</div>
+
+        <div class="comp-list" id="compList"></div>
+
+        <div class="narrative-mini" id="compNarrative"></div>
+
+      </div>
+
+      <!-- Language & Quality -->
+
+      <div class="insight-panel slide-up" id="languagePanel" style="display:none;">
+
+        <div class="insight-section-title">Call Quality & Language</div>
+
+        <div class="lang-grid" id="langGrid"></div>
+
+      </div>
+
+      <!-- Lead Quality Scorecard -->
+
+      <div class="insight-panel slide-up" id="leadQualityPanel" style="display:none;">
+
+        <div class="insight-section-title">Lead Quality</div>
+
+        <div class="lq-grid" id="lqGrid"></div>
+
+      </div>
+
+      <!-- Anomaly Alerts -->
+
+      <div class="insight-panel slide-up" id="anomalySection" style="display:none;">
+
+        <div class="insight-section-title">Anomaly Alerts</div>
+
+        <div id="anomalyList"></div>
+
+      </div>
+
+      <!-- Phase Comparison -->
+
+      <div class="insight-panel slide-up" id="phasePanel" style="display:none;">
+
+        <div class="insight-section-title">Campaign Phase Comparison</div>
+
+        <div id="phaseContent"></div>
+
+        <div class="narrative-mini" id="phaseNarrative"></div>
+
+      </div>
+
+      <!-- Recommended Actions -->
+
+      <div class="insight-panel slide-up" id="recsPanel" style="display:none;">
+
+        <div class="insight-section-title">Recommended Next Steps</div>
+
+        <div id="recsList"></div>
+
+      </div>
+
+      <!-- AI-Powered Recommendations -->
+
+      <div class="insight-panel slide-up" id="llmRecsPanel" style="display:none;">
+
+        <div class="insight-section-title">
+
+          AI-Powered Recommendations <span class="llm-badge">AI</span>
+
+        </div>
+
+        <div id="llmRecsContent"></div>
+
+      </div>
+
+    </div>
+
+    <!-- Empty state (shown initially) -->
+
+    <div class="empty-dashboard" id="emptyState">
+
+      <div class="empty-icon">
+
+        <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+
+        </svg>
+
+      </div>
+
+      <h2>Upload a Zoho Export to See Your Dashboard</h2>
+
+      <p>Drop your Zoho Master Sheet export above. The dashboard will automatically compute KPIs, call breakdowns, vehicle distribution, and pending follow-ups.</p>
+
+    </div>
+
+  </main>
+
+  <footer>AutoNage - Campaign Dashboard - Lead Operations Automation</footer>
+
+  <script src="../assets/js/dashboard.js"></script>
+
+</body>
+
+</html>
+

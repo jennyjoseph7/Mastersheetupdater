@@ -1,0 +1,1 @@
+applyTheme(getStoredTheme());

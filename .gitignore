@@ -10,6 +10,7 @@ set_key_temp.txt
 *.log
 .DS_Store
 Thumbs.db
+nul
 
 # IDE
 .vscode/

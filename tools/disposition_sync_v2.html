@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+  
+
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev http://localhost:3456; form-action 'self' " />
+
+  <script>
+
+    (function () {
+
+      var theme = localStorage.getItem('jejo-theme') || 'dark';
+
+      document.documentElement.setAttribute('data-theme', theme);
+
+    })();
+
+  </script>
+
+      <script src="../assets/js/lib/theme.js"></script>
+
+  
+      
+      <script src="../assets/js/lib/ai-config.js"></script>
+<title>Pre-Sales Sync - AutoNage</title>
+
+  <meta name="description"
+
+    content="Merges AutoEngage Audience & Leads + Sessions exports and produces a Zoho Master Sheet-ready table." />
+
+  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="../assets/css/design-system.css" />
+
+  <script src="../config.js"></script>
+
+  <script src="../assets/js/lib/data-pipeline.js"></script>
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
+
+  <script src="../assets/js/lib/excel-safe.js"></script>
+
+  <script src="../assets/js/lib/history-helpers.js"></script>
+
+  <script src="../assets/js/lib/llm-batch-runner.js"></script>
+  <script src="../assets/js/lib/ai-validator.js"></script>
+
+  <link rel="stylesheet" href="../assets/css/disposition-sync-v2.css" />
+
+</head>
+
+<body>
+
+  <!-- Processing Overlay -->
+
+  <div class="processing-overlay" id="processingOverlay">
+
+    <div class="processing-card">
+
+      <div class="spinner"></div>
+
+      <span id="processingMsg">Processing files…</span>
+
+      <div class="progress-track" id="progressTrack" style="display:none;width:100%;height:6px;background:var(--surface3);border-radius:999px;overflow:hidden;margin-top:0.5rem;">
+
+        <div class="progress-fill" id="progressFill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-dim));border-radius:999px;transition:width 0.4s ease;"></div>
+
+      </div>
+
+      <span id="progressCounter" style="display:none;font-size:0.78rem;color:var(--text-muted);"></span>
+
+    </div>
+
+  </div>
+
+  <!-- Header -->
+
+  <header>
+
+    <div class="header-inner">
+
+      <div class="header-left">
+
+        <a class="brand-mark" href="../index.html" aria-label="Go to home"><img src="../assets/images/AN Dark.png" data-light-logo="../assets/images/AN.png" data-dark-logo="../assets/images/AN Dark.png" alt="AutoNage"></a>
+
+        <div>
+
+          <h1>Pre-Sales Sync</h1>
+
+          <div class="header-sub">AutoEngage → Zoho Master Sheet </div>
+
+        </div>
+
+      </div>
+
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+
+        <div class="header-nav"></div><script>fetch('../nav.html').then(function(r){return r.text();}).then(function(html){var n=document.querySelector('.header-nav');if(n)n.outerHTML=html;}).catch(function(e){console.warn('nav.html failed to load:',e);});</script>
+
+        <button class="guide-btn-header" onclick="startGuide()" aria-label="Show guide" title="How to use this page">
+
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+
+          </svg>
+
+        </button>
+
+        <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+
+          <svg class="icon-moon" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+
+            stroke-width="2">
+
+            <path stroke-linecap="round" stroke-linejoin="round"
+
+              d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+
+          </svg>
+
+          <svg class="icon-sun" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+
+            stroke-width="2">
+
+            <path stroke-linecap="round" stroke-linejoin="round"
+
+              d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+
+          </svg>
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+  <!-- Main Content -->
+
+  <main>
+
+    <section class="workflow-panel">
+
+      <div class="section-head">
+
+        <div>
+
+          <div class="eyebrow">Step 1</div>
+
+          <div class="section-title">Prepare the batch</div>
+
+        </div>
+
+        <div class="section-note">Drop the two exports, choose the run settings, then process. Existing formulas and
+
+          output columns are unchanged.</div>
+
+      </div>
+
+      <!-- Upload Zones -->
+
+      <div class="upload-grid">
+
+        <div class="drop-zone" id="dz1" onclick="document.getElementById('f1').click()" role="button" tabindex="0"
+
+          aria-label="Upload Audience and Leads CSV">
+
+          <div class="dz-icon file1" aria-hidden="true">
+
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+
+              <path stroke-linecap="round" stroke-linejoin="round"
+
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+
+            </svg>
+
+          </div>
+
+          <div class="dz-label">File 1 — Audience & Leads</div>
+
+          <div class="dz-sublabel">AutoEngage → Audience & Leads export</div>
+
+          <div class="dz-cols">person_name · phone_number · city · campaign_id<br>lead_source · disposition · updated ·
+
+            model_preference<br>seating_capacity_preference · disposition_detail</div>
+
+          <div class="dz-status" id="st1">Drag & drop or click to browse</div>
+
+          <input type="file" id="f1" accept=".csv,.xlsx,.xls">
+
+        </div>
+
+        <div class="drop-zone" id="dz2" onclick="document.getElementById('f2').click()" role="button" tabindex="0"
+
+          aria-label="Upload Sessions CSV">
+
+          <div class="dz-icon file2" aria-hidden="true">
+
+            <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+
+              <path stroke-linecap="round" stroke-linejoin="round"
+
+                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+
+            </svg>
+
+          </div>
+
+          <div class="dz-label">File 2 — Sessions</div>
+
+          <div class="dz-sublabel">AutoEngage → Sessions export</div>
+
+          <div class="dz-cols">phone_number · created · start_time<br>summary · history · call_recording · sentiment_score</div>
+
+          <div class="dz-status" id="st2">Drag & drop or click to browse</div>
+
+          <input type="file" id="f2" accept=".csv,.xlsx,.xls">
+
+        </div>
+
+      </div>
+
+      <div class="pill-strip">
+
+        <div class="step-pill" id="pill1"><span class="num">1</span> Leads uploaded</div>
+
+        <div class="step-pill" id="pill2"><span class="num">2</span> Sessions uploaded</div>
+
+        <div class="step-pill" id="pill3"><span class="num">3</span> Ready to process</div>
+
+        <div class="step-pill" id="pill4"><span class="num">4</span> Results ready</div>
+
+      </div>
+
+      <!-- Action Bar -->
+
+      <div class="action-bar">
+
+        <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
+
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+
+          </svg>
+
+          Process Both Files
+
+        </button>
+
+        <div class="control-group">
+
+          <span class="control-label">Dealership</span>
+
+          <div class="lang-select-wrapper">
+
+            <select class="lang-select" id="dealerSelect" onchange="handleDealerChange()">
+
+              <option value="anant_cars">Anant Cars</option>
+
+              <option value="chennai_ev">ChennaiEV</option>
+              <option value="singhal">Singhal</option>
+
+              <option value="fortune_hyryder">Fortune Hyryder</option>
+
+              <option value="fortune_honda">Fortune Honda</option>
+
+              <option value="stellantis_wa">Stellantis WA</option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div class="control-group">
+
+          <span class="control-label">Lead ID</span>
+
+          <input type="number" class="lead-id-input" id="leadIdStart" placeholder="e.g. 8173" min="1">
+
+        </div>
+
+        <div class="control-group">
+
+          <span class="control-label">Language</span>
+
+          <div class="lang-select-wrapper">
+
+            <select class="lang-select" id="langSelect">
+
+              <option value="English">English</option>
+
+              <option value="Hindi">Hindi</option>
+
+              <option value="Tamil">Tamil</option>
+
+              <option value="Malayalam">Malayalam</option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+        <div class="ai-key-control" title="Paste your NVIDIA API key for AI disposition validation.">
+
+          <span class="control-label" style="font-size:0.72rem;font-weight:700;color:var(--text-dim);">AI Key</span>
+
+          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
+
+          <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
+
+          <button type="button" class="api-key-btn subtle" onclick="clearNvidiaApiKey()">Clear</button>
+
+          <span class="api-key-status" id="apiKeyStatus">Required</span>
+
+        </div>
+
+        <button class="btn btn-primary" id="btnCopy" disabled onclick="copyData()" style="display:none">
+
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+
+            <path
+
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+
+          </svg>
+
+          Copy All Data
+
+        </button>
+
+        <button class="btn btn-primary" id="btnExport" disabled onclick="exportToExcel()" style="display:none">
+
+          <svg fill="currentColor" width="14" height="14" viewBox="0 0 24 24">
+
+            <path
+
+              d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 9l-2 3-2-3H6.5l3.25 4.5L6.5 20h2.5l2-3 2 3h2.5l-3.25-4.5L16 11h-3zm4 9H6V4h7v5h5v11z" />
+
+          </svg>
+
+          Export Excel
+
+        </button>
+
+        <button class="btn btn-secondary" id="btnValidateAI" disabled onclick="validateDispositionsWithLLM()" style="display:none">
+
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+
+          </svg>
+
+          Validate with AI
+
+        </button>
+
+        <button class="btn btn-secondary" id="btnReset" onclick="resetAll()" style="display:none">Reset</button>
+
+        <span class="status-msg" id="globalStatus"></span>
+
+      </div>
+
+    </section>
+
+      <!-- AI Validation Status Bar (shown during AI validation) -->
+
+      <div id="aiValidationStatus" class="ai-status-bar" style="display:none;">
+
+        <div class="ai-status-row">
+
+          <div class="ai-status-info">
+
+            <span class="ai-status-msg" id="aiStatusMsg">AI validating dispositions…</span>
+
+            <span class="ai-status-badge" id="aiStatusBatch"></span>
+
+            <span class="ai-status-badge corrected" id="aiStatusCorrected" style="display:none;"></span>
+
+            <span class="ai-status-time" id="aiStatusElapsed"></span>
+
+          </div>
+
+          <div class="ai-status-actions" id="aiStatusActions">
+
+            <button class="ai-status-btn cancel" id="aiStatusCancel" onclick="cancelAiValidation()">Cancel</button>
+
+          </div>
+
+        </div>
+
+        <div class="ai-status-track">
+
+          <div class="ai-status-fill" id="aiStatusFill" style="width:0%;"></div>
+
+        </div>
+
+      </div>
+
+    <section class="results-panel">
+
+      <div class="section-head">
+
+        <div>
+
+          <div class="eyebrow">Step 2</div>
+
+          <div class="section-title">Review and hand off</div>
+
+        </div>
+
+        <div class="section-note">After processing, use the stats and preview tables for spot checks before copying or
+
+          exporting.</div>
+
+      </div>
+
+      <div class="empty-state">
+
+        <div>
+
+          <strong>Waiting for a processed batch</strong>
+
+          <p>Upload both files and run processing. The stats, quality checks, and preview tables will appear here.</p>
+
+        </div>
+
+        <div class="empty-steps" aria-hidden="true">
+
+          <span>Upload</span>
+
+          <span>Process</span>
+
+          <span>Review</span>
+
+          <span>Export</span>
+
+        </div>
+
+      </div>
+
+      <!-- Stats Bar -->
+
+      <div class="stats-bar" id="statsBar">
+
+        <div class="stat-card">
+
+          <div class="stat-label">Total Leads</div>
+
+          <div class="stat-val blue" id="sTotal">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">Connected</div>
+
+          <div class="stat-val green" id="sConnected">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">Not Connected</div>
+
+          <div class="stat-val amber" id="sNotConn">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">AI-Ready</div>
+
+          <div class="stat-val green" id="sAiReady">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">No summary</div>
+
+          <div class="stat-val gray" id="sSkipped">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">Excluded (Terminal)</div>
+
+          <div class="stat-val purple" id="sExcluded">0</div>
+
+        </div>
+
+        <div class="stat-card">
+
+          <div class="stat-label">With Recording</div>
+
+          <div class="stat-val blue" id="sRecording">0</div>
+
+        </div>
+
+      </div>
+
+      <!-- Data Quality / Reconciliation -->
+
+      <div class="quality-card" id="qualityCard" style="display:none">
+
+        <div class="quality-header">
+
+          <div>
+
+            <div class="eyebrow">Data quality</div>
+
+            <div class="quality-title" id="qualityTitle">Batch checks</div>
+
+            <div class="quality-subtitle" id="qualitySubtitle">Validation and reconciliation checks appear after
+
+              processing.</div>
+
+          </div>
+
+          <button class="btn btn-secondary" onclick="copyQualityReport()" id="btnCopyQuality"
+
+            style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Report</button>
+
+        </div>
+
+        <div class="quality-grid" id="qualityMetrics"></div>
+
+        <div class="quality-sections">
+
+          <div class="quality-list">
+
+            <div class="quality-list-title">Warnings</div>
+
+            <div id="qualityWarnings"></div>
+
+          </div>
+
+          <div class="quality-list">
+
+            <div class="quality-list-title">Reconciliation samples</div>
+
+            <div id="qualitySamples"></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Table -->
+
+      <div class="table-wrapper" id="tableWrapper">
+
+        <div class="table-header">
+
+          <div class="table-title">Output Preview</div>
+
+          <div class="table-caption" id="tableCaption">0 rows</div>
+
+        </div>
+
+        <div class="table-scroll">
+
+            <table id="outputTable">
+
+              <thead>
+
+                <tr id="outputHead"></tr>
+
+              </thead>
+
+            <tbody id="outputBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <!-- Converted Preview -->
+
+      <div class="table-wrapper" id="convertedTableWrapper" style="display:none; margin-top: 2rem;">
+
+        <div class="table-header">
+
+          <div class="table-title">Converted Leads Preview</div>
+
+          <button class="btn btn-primary" id="btnCopyConverted" onclick="copyConvertedData()"
+
+            style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Converted</button>
+
+        </div>
+
+        <div class="table-scroll">
+
+           <table id="convertedTable">
+
+              <thead>
+
+                <tr>
+
+                  <th>LEAD_ID</th>
+
+                  <th>PERSON_NAME</th>
+
+                  <th>PHONE_NUMBER</th>
+
+                  <th>VEHICLE_MODEL</th>
+
+                  <th>LANGUAGE</th>
+
+                  <th>DISPOSITION_DETAILS</th>
+
+                  <th>SUMMARY</th>
+
+                  <th>CALL_DATE</th>
+
+                  <th>LOCATION</th>
+
+                </tr>
+
+              </thead>
+
+            <tbody id="convertedBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <!-- Test Drive Completed Preview -->
+
+      <div class="table-wrapper" id="testDriveTableWrapper" style="display:none; margin-top: 2rem;">
+
+        <div class="table-header">
+
+          <div class="table-title">Test Drive Completed Preview</div>
+
+          <button class="btn btn-primary" id="btnCopyTestDrive" onclick="copyTestDriveData()"
+
+            style="padding: 0.25rem 0.6rem; font-size: 0.75rem; height: auto;">Copy Test Drive</button>
+
+        </div>
+
+        <div class="table-scroll">
+
+          <table id="testDriveTable">
+
+            <thead>
+
+              <tr>
+
+                <th>LEAD_ID</th>
+
+                <th>PHONE_NUMBER</th>
+
+                <th>VEHICLE_MODEL</th>
+
+                <th>LANGUAGE</th>
+
+                <th>CALL_DATE</th>
+
+                <th>SUMMARY</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody id="testDriveBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Guide Overlay -->
+
+  <div class="guide-overlay" id="guideOverlay">
+
+    <div class="guide-highlight" id="guideHighlight"></div>
+
+    <svg class="guide-arrow-svg" id="guideArrowSvg"></svg>
+
+    <div class="guide-card" id="guideCard">
+
+      <div class="guide-card-title" id="guideCardTitle"></div>
+
+      <div class="guide-card-desc" id="guideCardDesc"></div>
+
+      <div class="guide-card-actions">
+
+        <div>
+
+          <button class="guide-btn" onclick="prevGuideStep()" id="guidePrevBtn">← Prev</button>
+
+          <button class="guide-btn" onclick="nextGuideStep()" id="guideNextBtn">Next →</button>
+
+        </div>
+
+        <button class="guide-btn primary" onclick="exitGuide()">Exit <span style="font-size:0.65rem;opacity:0.6;">(Esc)</span></button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer>AutoNage - Pre-Sales Sync v2 - AutoEngage to Zoho Master Sheet</footer>
+
+  <script src="../assets/js/disposition_sync_v2.js"></script>
+
+</body>
+
+</html>
+
