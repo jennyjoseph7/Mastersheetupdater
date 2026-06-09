@@ -181,14 +181,14 @@ def terminate_session(call_id: str):
     with session_lock:
         if call_id in call_sessions:
             session = call_sessions[call_id]
-            bridge_loop = getattr(session, "_bridge_loop", None)
-            for socket_name in ["dave_ws", "external_ws"]:
-                logger.info(f"[{call_id}] Checking {socket_name} for termination")
-                socket_obj = getattr(session, socket_name, None)
-                if socket_obj and not getattr(socket_obj, "closed", False):
-                    _schedule_websocket_close(
-                        socket_obj, bridge_loop, call_id, socket_name
-                    )
+            # bridge_loop = getattr(session, "_bridge_loop", None)
+            # for socket_name in ["dave_ws", "external_ws"]:
+            #     logger.info(f"[{call_id}] Checking {socket_name} for termination")
+            #     socket_obj = getattr(session, socket_name, None)
+            #     if socket_obj and not getattr(socket_obj, "closed", False):
+            #         _schedule_websocket_close(
+            #             socket_obj, bridge_loop, call_id, socket_name
+            #         )
             session.stop_event.set()
             del call_sessions[call_id]
             logger.info(f"[{call_id}] Session terminated")
@@ -321,7 +321,7 @@ class CallSession:
             return tt_msg.get("media", {}).get("payload")
         except Exception:
             return None
-
+    
 
     async def outbound_media_stream(self, wb):
         """Main media bridging logic for this call session."""
@@ -720,11 +720,12 @@ class CallSession:
             self.media_buffer.clear()
 
             # Start parallel readers
-            async def tatatele_reader():
+            async def tatatele_reader(timeout = 60):
+                logger.info(f"[{self.call_id}] TataTele reader started")
                 while True:
                     try:
-                        raw = await wb.recv()
-                        tt_msg = _loads(raw)
+                        message = await asyncio.wait_for(wb.recv(), timeout=timeout)
+                        tt_msg = _loads(message)
                         ev = tt_msg.get("event")
 
                         if ev == "media":
@@ -774,29 +775,39 @@ class CallSession:
                             # Marks indicate playback position
                             mark_name = tt_msg.get("mark", {}).get("name")
                             logger.debug(f"[{self.call_id}] Mark: {mark_name}")
-
+                    except (asyncio.TimeoutError, TimeoutError):
+                        logger.error(f"[{self.call_id}] Taatele reader timed out waiting for message")
+                        self.stop_event.set()
+                        break
                     except asyncio.CancelledError:
                         logger.info(f"[{self.call_id}] Tatatele reader cancelled")
                         self.stop_event.set()
-                        raise  # Re-raise to properly exit
+                        break
                     except Exception as e:
-                        logger.error(f"[{self.call_id}] Tatatele reader error: %s", e)
+                        logger.info(f"[{self.call_id}] Tatatele reader error: %s", e)
                         self.stop_event.set()
                         break
 
-            async def dave_reader():
-                try:
-                    async for raw in self.dave_ws:
-                        await handle_dave_message(raw)
-                except websockets.exceptions.ConnectionClosed as e:
-                    logger.error(f"[{self.call_id}] ElevenLabs WS closed: code={e.code}, reason={e.reason}")
-                except Exception as e:
-                    logger.error(f"[{self.call_id}] Dave reader error: %s", e)
-                finally:
-                    # Signal that ElevenLabs connection closed
-                    self.stop_event.set()
-                    logger.info(f"[{self.call_id}] ElevenLabs connection closed, signaling stop")
 
+            async def dave_reader(timeout=60):
+                logger.info(f"[{self.call_id}] ElevenLabs reader started")
+                while True:
+                    try:
+                        message = await asyncio.wait_for(self.dave_ws.recv(), timeout=timeout)
+                        await handle_dave_message(message)
+                    except (asyncio.TimeoutError, TimeoutError):
+                        logger.error(f"[{self.call_id}] Dave reader timed out waiting for message")
+                        self.stop_event.set()
+                        break
+                    except websockets.exceptions.ConnectionClosed as e:
+                        logger.error(f"[{self.call_id}] ElevenLabs WS closed: code={e.code}, reason={e.reason}")
+                        self.stop_event.set()
+                        break
+                    except Exception as e:
+                        logger.error(f"[{self.call_id}] Dave reader error: %s", e)
+                        self.stop_event.set()
+                        break
+                  
             # Run both readers - cancel the other when one exits
             tatatele_task = asyncio.create_task(tatatele_reader())
             dave_task = asyncio.create_task(dave_reader())
@@ -857,7 +868,7 @@ class CallSession:
             # Cleanup session
             terminate_session(self.call_id)
 
-    async def connect_external_websocket(self, url: str):
+    async def connect_external_websocket(self, url: str, timeout = 29):
         """Connect to external websocket for this call session."""
         self._bridge_loop = asyncio.get_running_loop()
         t = time()
@@ -873,15 +884,23 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    msg = await self.external_ws.recv()
-                    logger.info(f"[{self.call_id}] received: {msg}")
+                    # msg = await self.external_ws.recv()
+                    message = await asyncio.wait_for(self.external_ws.recv(), timeout=timeout)
+                    logger.info(f"[{self.call_id}] received: {message}")
                     await self.outbound_media_stream(self.external_ws)
+                except (asyncio.TimeoutError, TimeoutError):
+                    #make it as failed for timeout
+                    logger.info(f"[{self.call_id}] No message received in {timeout} seconds, checking stop_event")
                 except Exception as e:
+                    #set it as busy for recv error.
                     logger.error(f"[{self.call_id}] recv error: %s", e)
+                finally:
+                    self.stop_event.set()
                     break
         except Exception as e:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
         finally:
+            #Socket cleanup - ensure all websockets are closed
             sockets_to_close = []
             if getattr(self, "external_ws", None):
                 sockets_to_close.append(("external_ws", self.external_ws))
