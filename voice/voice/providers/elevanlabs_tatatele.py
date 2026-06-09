@@ -241,7 +241,12 @@ class CallSession:
         hangup_id =  self.call_sid 
         logger.info(f"[{self.call_id}] Attempting to hang up TataTele call with SID: {hangup_id}")
         if not hangup_id:
-            logger.warning(f"[{self.call_id}] No call ID available for TataTele hangup")
+            logger.warning(f"[{self.call_id}] No call ID available for TataTele hangup, trying from session_data")
+        elif self.session_data.get("call_sid"):
+            hangup_id = self.session_data.get("call_sid")
+            logger.info(f"[{self.call_id}] Using call_sid from session_data for hangup: {self.session_data.get('call_sid')}")
+        if not hangup_id:
+            logger.error(f"[{self.call_id}] No call ID available for TataTele hangup, aborting hangup")
             return
         try:
             loop = asyncio.get_event_loop()
@@ -884,7 +889,6 @@ class CallSession:
 
             while not self.stop_event.is_set():
                 try:
-                    # msg = await self.external_ws.recv()
                     message = await asyncio.wait_for(self.external_ws.recv(), timeout=timeout)
                     logger.info(f"[{self.call_id}] received: {message}")
                     await self.outbound_media_stream(self.external_ws)

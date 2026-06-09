@@ -71,7 +71,8 @@ def start_call_from_inbound(*args, **kwargs):
             "tatatele_phone_number_api_key": credentials.get("auth_token")
         }
         session_data["provider"] = provider
-        session_data["agent_number"] = credentials.get("sender") 
+        session_data["agent_number"] = credentials.get("sender")
+        session_data["call_sid"]  = data.get("call_id")
     else:
         logger.warning(f"No credentials found for dealership_id {session_data.get('dealership_id')}, channel voice_phone")  
         return {"status": "error", "message": "No provider credentials found for this dealership and channel."}

@@ -726,8 +726,6 @@ def trigger_campaign(*args, **kwargs):
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
     lead_model = AutocrmModel(lead_table)
-
-
     total_leads = lead_model.count(**filters)
     logger.info(f"Total leads fetched: {total_leads}")
     valid_leads = 0
