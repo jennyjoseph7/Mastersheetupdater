@@ -13,7 +13,7 @@ source "$CONFIG_FILE"
 update_repo() {
     git reset --hard
     git fetch origin "$BRANCH"
-    git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
+    git checkout "$BRANCH" 
     git pull origin "$BRANCH"
 }
 
