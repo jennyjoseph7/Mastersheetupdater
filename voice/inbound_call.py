@@ -19,7 +19,8 @@ from voice.providers.elevanlabs_tatatele import (
     session_lock,
     run_async_in_thread,
     terminate_sessions_for_phone,
-    session_active
+    session_active,
+    tatatele_client
 )
 
 gryd.SERVICE = config.AUTOCRM_VOICE_INBOUND_SERVICE_NAME
@@ -123,8 +124,13 @@ def start_call_from_inbound(*args, **kwargs):
         with gryd_tasks.get_pg_connector() as pg:
             if not session_active(session_data["session_id"]):
                 logger.info(f"Session not found or likely to be terminated already....")
+                try:
+                    tatatele_client.hangup_call(session_data.get("call_sid"))
+                    logger.info(f"Call with SID {session_data.get('call_sid')} has been hung up successfully.")
+                except Exception as e:
+                    logger.error(f"Error hanging up call with Tatatele: {e}")
                 return {"status": "success", "message": f"Inbound call session ended."}
-            
+
             contact_status = hp.make_single(list[Any](pg.list_order_by("contact_status", {"message_id": session_data["session_id"]}, order_by="created", order="DESC")), force = True)
             if (contact_status and contact_status.get("provider_status") in ["contacted"]):
                 logger.info(f"Call ended with status {contact_status.get('provider_status')}, terminating session {session_data['session_id']}")
