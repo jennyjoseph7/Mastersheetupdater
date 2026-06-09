@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
 from config import  AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
 gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
 gryd.set_queue_manager()
+logger = gryd.hp.get_logger(gryd.SERVICE)
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
@@ -22,10 +23,6 @@ pg = AutoCRMPGConnector(enterprise_id="autocrm")
 from agents.data_attributes_retriever_agent import data_attribute_retriever
 
 from pprint import pprint
-
-
-
-
 
 class get_whatsapp_template_agent(BaseAgent):
     def __init__(self, source, *args, **kwargs):
@@ -62,7 +59,7 @@ class get_whatsapp_template_agent(BaseAgent):
         ))
         communication_credential = records[0]
         communication_credentials_id = communication_credential.get("communication_credentials_id")
-        print("communication_credentials_id", communication_credentials_id)
+        logger.info("communication_credentials_id: %s", communication_credentials_id)
         return communication_credentials_id
 
     def slugify_disposition_detail(self,detail: str) -> str:
@@ -75,7 +72,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0],
+                       "campaign_objective_name" : self.campaign_objective[0].lower(),
                         "channel" : "whatsapp_chat",
                         "status" : "approved",
                         "communication_credentials_id" : communication_credentials_id,
@@ -88,7 +85,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0],
+                       "campaign_objective_name" : self.campaign_objective[0].lower(),
                        "channel" : "whatsapp_chat",
                        "status" : "approved",
                        "communication_credentials_id" : communication_credentials_id,
@@ -96,7 +93,7 @@ class get_whatsapp_template_agent(BaseAgent):
                 }
             ))
 
-        print("records",records)
+        logger.info("records: %s", records)
 
         return records or []
     
@@ -105,7 +102,7 @@ class get_whatsapp_template_agent(BaseAgent):
         if isinstance(tpl_vars, list):
             return tpl_vars
         
-        print("tpl_vars",tpl_vars)
+        logger.info("tpl_vars: %s", tpl_vars)
 
         if isinstance(tpl_vars, str):
             # Postgres array "{a,b,c}"
@@ -128,7 +125,7 @@ class get_whatsapp_template_agent(BaseAgent):
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
 
-        print("data_attrs_list", data_attrs_list)
+        logger.info("data_attrs_list: %s", data_attrs_list)
 
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
