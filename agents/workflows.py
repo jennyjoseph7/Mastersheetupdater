@@ -249,6 +249,7 @@ class PresalesWorkflow(BaseWorkflow):
 
     def get_handlers(self) -> Dict[str, Callable]:
         return {
+            'sop_alert': self.wf_sop_alert,
             'test_drive_booking_l': self.wf_test_drive_booking_l,
             'test_drive_feedback': self.wf_test_drive_feedback,
             'test_drive_remainder': self.wf_test_drive_remainder,
@@ -306,6 +307,7 @@ class PostSalesWorkflow(BaseWorkflow):
 
     def get_handlers(self) -> Dict[str, Callable]:
         return {
+            'sop_alert': self.wf_sop_alert,
             'post_sales_feedback_l': self.wf_post_sales_feedback_l,
             'post_service_feedback_l': self.wf_post_service_feedback_l,
             'service_remainder_l': self.wf_service_remainder_l,
