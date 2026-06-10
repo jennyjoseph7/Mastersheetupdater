@@ -1,5205 +1,10410 @@
-/* ═══════════════════════════════════════════════════════════════════════
-   dashboard.js — Application logic for dashboard.html
-   Extracted from inline <script> in the HTML file.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-// Apply stored theme on load
-
-    applyTheme(getStoredTheme());
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       BI ENGINE — SUMMARY PARSER, TAXONOMIES, CLASSIFICATION
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    // ── SUMMARY Parser ─────────────────────────────────────────────────────
-
-    function parseSummary(text) {
-
-      const r = {
-
-        agentName: null, agentNameCorrected: null, customerName: null,
-
-        vehicleModel: null, regNumber: null, lastServiceDate: null, nextDueDate: null,
-
-        bookingDate: null, bookingTime: null, bookingLocation: null,
-
-        languageChosen: null, languageRequested: null, competitorLocation: null,
-
-        callbackTime: null
-
-      };
-
-      if (!text || typeof text !== 'string') return r;
-
-      const t = text.trim();
-
-      if (!t || t === "Summary couldn't be generated for this call.") return r;
-
-      // Agent name
-
-      const agentMatch = t.match(/agent[,\s]+(\w+)(?:\s*\(later\s+(\w+)\))?\s+from/i);
-
-      if (agentMatch) { r.agentName = agentMatch[1]; if (agentMatch[2]) r.agentNameCorrected = agentMatch[2]; }
-
-      const agentNamed = t.match(/agent\s+named\s+(\w+)\s+from/i);
-
-      if (agentNamed && !r.agentName) r.agentName = agentNamed[1];
-
-      // Customer name
-
-      const custMatch = t.match(/(?:contacted|called|to)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)\s+(?:regarding|about|for)/);
-
-      if (custMatch) r.customerName = custMatch[1];
-
-      // Vehicle model + registration
-
-      const vehMatch = t.match(/(?:Yamaha\s+)?([\w\s\-]+?)\s+(?:bike|scooty|vehicle)\s*\(([^)]+)\)/i);
-
-      if (vehMatch) { r.vehicleModel = vehMatch[1].trim(); r.regNumber = vehMatch[2].trim(); }
-
-      // Service dates
-
-      const lastSvc = t.match(/last service was on\s+(\w+\s+\d+,?\s*\d{4})/i);
-
-      if (lastSvc) r.lastServiceDate = lastSvc[1];
-
-      const nextDue1 = t.match(/due by\s+(\w+\s+\d+,?\s*\d{4})/i);
-
-      if (nextDue1) r.nextDueDate = nextDue1[1];
-
-      const nextDue2 = t.match(/due before\s+(\w+\s+\d+,?\s*\d{4})/i);
-
-      if (nextDue2 && !r.nextDueDate) r.nextDueDate = nextDue2[1];
-
-      // Booking details
-
-      const bookedMatch = t.match(/booked for\s+(.+?)(?:[,.]|\s+at)/i);
-
-      if (bookedMatch) r.bookingDate = bookedMatch[1].trim();
-
-      const bookTime = t.match(/at\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
-
-      if (bookTime) r.bookingTime = bookTime[1].trim();
-
-      const locMatch = t.match(/(Lalbagh|Jayanagar)/i);
-
-      if (locMatch) r.bookingLocation = locMatch[1];
-
-      // Language
-
-      const langChosen = t.match(/(?:selected|chose|opted for|preferred)\s+(\w+)/i);
-
-      if (langChosen) r.languageChosen = langChosen[1];
-
-      const langReq = t.match(/requested\s+(Hindi|Tamil|Malayalam|Telugu)/i);
-
-      if (langReq) r.languageRequested = langReq[1];
-
-      // Competitor location (in context of already serviced)
-
-      const compMatch = t.match(/serviced\s+(?:at|in|from)\s+([^,.]+)/i);
-
-      if (compMatch && /\b(already|had|been|completed)\b/i.test(t)) r.competitorLocation = compMatch[1].trim();
-
-      // Callback time
-
-      const cbTime = t.match(/(?:callback|call back)\s+(?:in|after|at|for)\s+(.+?)(?:[.,]|the|$)/i);
-
-      if (cbTime) r.callbackTime = cbTime[1].trim();
-
-      return r;
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       BI ENGINE — ANALYSIS FUNCTIONS (data-driven, no hardcoded keywords)
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function analyzeConversionFunnel(rows, colMap, isPostSales, preConnected, preBooked) {
-
-      const total = rows.length;
-
-      let connectedNotBooked = {};
-
-      rows.forEach(r => {
-
-        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
-
-        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
-
-        const isConnected = status.includes('completed') || status.includes('attempted') || out.includes('connected');
-
-        const isBooked = upd === 'converted' || upd === 'follow up required' || upd === 'follow-up required' || disp === 'converted' || disp === 'follow up required' || disp === 'follow-up required';
-
-        if (isConnected && !isBooked) {
-
-          const reason = upd || disp || 'No reason recorded';
-
-          if (reason && reason !== 'No reason recorded') connectedNotBooked[reason] = (connectedNotBooked[reason] || 0) + 1;
-
-        }
-
-      });
-
-      return { total, connected: preConnected, notConnected: total - preConnected, booked: preBooked, connectedNotBooked };
-
-    }
-
-    function analyzeDispositionPatterns(rows, colMap) {
-
-      const counts = {};
-
-      rows.forEach(r => {
-
-        // Use imported column value as-is, no hardcoded mapping
-
-        const val = String((colMap.updatedDisposition ? r[colMap.updatedDisposition] : '') || (colMap.detail ? r[colMap.detail] : '') || (colMap.outcome ? r[colMap.outcome] : '') || (colMap.status ? r[colMap.status] : '') || 'Unspecified').trim();
-
-        if (val) counts[val] = (counts[val] || 0) + 1;
-
-      });
-
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-      return { counts, top: sorted.slice(0, 12), total: rows.length };
-
-    }
-
-    function analyzeDecisionPipeline(rows, colMap) {
-
-      const buckets = { immediate: 0, thisWeek: 0, nextWeek: 0, twoWeeks: 0, monthPlus: 0, unknown: 0 };
-
-      const bucketLabels = { immediate: 'Booked', thisWeek: '1-3 days', nextWeek: '4-7 days', twoWeeks: '8-14 days', monthPlus: '15+ days', unknown: 'Unknown' };
-
-      rows.forEach(r => {
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
-
-        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
-
-        const combined = disp + ' ' + upd + ' ' + summary;
-
-        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted') || summary.includes('service booked')) {
-
-          buckets.immediate++;
-
-        } else if (summary.includes('today') || summary.includes('tomorrow') || summary.includes('this week')) {
-
-          buckets.thisWeek++;
-
-        } else if (summary.includes('next week') || /\bnext\s+\w+day\b/.test(summary)) {
-
-          buckets.nextWeek++;
-
-        } else if (combined.includes('deferred') || combined.includes('will decide') || combined.includes('callback') || combined.includes('call back')) {
-
-          buckets.unknown++;
-
-        }
-
-      });
-
-      const active = buckets.thisWeek + buckets.nextWeek + buckets.twoWeeks + buckets.monthPlus;
-
-      return { buckets, bucketLabels, active, total: rows.length };
-
-    }
-
-    function analyzeCallbackBehavior(rows, colMap) {
-
-      const callbacks = [];
-
-      rows.forEach((r, i) => {
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
-
-        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
-
-        if (disp.includes('callback') || upd.includes('callback') || summary.includes('callback') || summary.includes('call back')) {
-
-          const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
-
-          callbacks.push({ row: i, time: parsed.callbackTime || 'unspecified', agent: parsed.agentName || 'unknown' });
-
-        }
-
-      });
-
-      return { total: callbacks.length, callbacks };
-
-    }
-
-    function analyzeLanguageBarriers(rows, colMap) {
-
-      let count = 0;
-
-      const languages = {};
-
-      rows.forEach(r => {
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
-
-        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
-
-        if (disp.includes('language') || upd.includes('language') || summary.includes('language') || summary.includes('only hindi')) {
-
-          count++;
-
-          const m = summary.match(/(?:requested|speak|only)\s+(Hindi|Tamil|Malayalam|Telugu|Kannada)/i);
-
-          if (m) languages[m[1]] = (languages[m[1]] || 0) + 1;
-
-        }
-
-      });
-
-      return { total: count, languages };
-
-    }
-
-    function analyzeCompetitiveLosses(rows, colMap) {
-
-      const competitors = {};
-
-      rows.forEach(r => {
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
-
-        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
-
-        const combined = disp + ' ' + upd + ' ' + summary;
-
-        if (combined.includes('already serviced') || combined.includes('serviced elsewhere') || combined.includes('done elsewhere')) {
-
-          const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
-
-          if (parsed.competitorLocation) {
-
-            competitors[parsed.competitorLocation] = (competitors[parsed.competitorLocation] || 0) + 1;
-
-          } else {
-
-            competitors['Unspecified location'] = (competitors['Unspecified location'] || 0) + 1;
-
-          }
-
-        }
-
-      });
-
-      return { total: Object.values(competitors).reduce((s, v) => s + v, 0), competitors: Object.entries(competitors).sort((a, b) => b[1] - a[1]) };
-
-    }
-
-    function analyzeSentimentFromTranscript(rows, colMap) {
-
-      let positive = 0, negative = 0, neutral = 0, complaints = 0;
-
-      rows.forEach(r => {
-
-        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
-
-        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
-
-        if (out.includes('connected') || status.includes('completed') || status.includes('attempted')) positive++;
-
-        else if (disp.includes('complaint') || disp.includes('unhappy') || disp.includes('dissatisfied')) { negative++; complaints++; }
-
-        else if (out || status) neutral++;
-
-      });
-
-      const total = positive + negative + neutral;
-
-      return {
-
-        positive, negative, neutral, complaints, total,
-
-        positivePct: total > 0 ? (positive / total * 100).toFixed(0) : '0',
-
-        negativePct: total > 0 ? (negative / total * 100).toFixed(0) : '0'
-
-      };
-
-    }
-
-    function detectAnomalies(data, dailyCounts) {
-
-      const anomalies = [];
-
-      const values = Object.values(dailyCounts);
-
-      if (values.length > 3) {
-
-        const avg = values.reduce((s, v) => s + v, 0) / values.length;
-
-        const std = Math.sqrt(values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length);
-
-        Object.entries(dailyCounts).forEach(([day, count]) => {
-
-          if (std > 0 && (count - avg) / std > 1.8) {
-
-            anomalies.push({
-
-              severity: (count - avg) / std > 2.5 ? 'high' : 'med',
-
-              text: `${day} had ${count} calls — ${(count / avg).toFixed(1)}x the daily average of ${Math.round(avg)}`,
-
-              action: 'Review spike cause'
-
-            });
-
-          }
-
-        });
-
-      }
-
-      return anomalies;
-
-    }
-
-    function analyzeSourceQuality(rows, colMap) {
-
-      if (!colMap.source) return { sources: [], total: 0 };
-
-      const groups = {};
-
-      rows.forEach(r => {
-
-        const src = String(r[colMap.source] || 'Unknown').trim();
-
-        if (!groups[src]) groups[src] = { total: 0, connected: 0, booked: 0, invalid: 0 };
-
-        groups[src].total++;
-
-        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
-
-        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
-
-        if (status.includes('completed') || status.includes('attempted') || out.includes('connected')) groups[src].connected++;
-
-        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted')) groups[src].booked++;
-
-        if (disp.includes('invalid') || upd.includes('invalid') || out.includes('invalid')) groups[src].invalid++;
-
-      });
-
-      let sources = Object.entries(groups).map(([name, d]) => ({
-
-        name, total: d.total, connected: d.connected, booked: d.booked, invalid: d.invalid,
-
-        connRate: d.total > 0 ? (d.connected / d.total * 100).toFixed(0) : '0',
-
-        bookRate: d.connected > 0 ? (d.booked / d.connected * 100).toFixed(0) : '0',
-
-        invalidRate: d.total > 0 ? (d.invalid / d.total * 100).toFixed(0) : '0'
-
-      })).sort((a, b) => b.total - a.total);
-
-      const best = sources.length > 1 ? sources.reduce((best, s) => parseFloat(s.connRate) > parseFloat(best.connRate) ? s : best) : null;
-
-      const worst = sources.length > 1 ? sources.reduce((worst, s) => parseFloat(s.invalidRate) > parseFloat(worst.invalidRate) ? s : worst) : null;
-
-      return { sources, total: sources.length, best, worst };
-
-    }
-
-    function analyzeTrends(rows, dailyCounts) {
-
-      const dates = Object.keys(dailyCounts).sort();
-
-      if (dates.length < 4) return { hasData: false };
-
-      const mid = Math.floor(dates.length / 2);
-
-      const firstHalf = dates.slice(0, mid);
-
-      const secondHalf = dates.slice(mid);
-
-      const sum = (arr) => arr.reduce((s, d) => s + (dailyCounts[d] || 0), 0);
-
-      const firstTotal = sum(firstHalf);
-
-      const secondTotal = sum(secondHalf);
-
-      const firstAvg = firstHalf.length > 0 ? firstTotal / firstHalf.length : 0;
-
-      const secondAvg = secondHalf.length > 0 ? secondTotal / secondHalf.length : 0;
-
-      const delta = secondAvg - firstAvg;
-
-      const pctChange = firstAvg > 0 ? ((delta / firstAvg) * 100).toFixed(0) : '0';
-
-      const direction = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
-
-      return { hasData: true, firstAvg, secondAvg, delta, pctChange, direction, firstLabel: firstHalf[0] + ' - ' + firstHalf[mid-1], secondLabel: dates[mid] + ' - ' + dates[dates.length-1] };
-
-    }
-
-    function analyzeConversionBlockers(rows, colMap) {
-
-      const blockers = {};
-
-      rows.forEach(r => {
-
-        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
-
-        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
-
-        const isConnected = status.includes('completed') || status.includes('attempted') || out.includes('connected');
-
-        const isBooked = disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted');
-
-        if (isConnected && !isBooked) {
-
-          const reason = upd || disp || 'No reason recorded';
-
-          blockers[reason] = (blockers[reason] || 0) + 1;
-
-        }
-
-      });
-
-      const sorted = Object.entries(blockers).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-      const total = sorted.reduce((s, [,c]) => s + c, 0);
-
-      return { blockers: sorted, total };
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       LLM CONFIG — NVIDIA / Mistral
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    const LLM_BATCH_SIZE = getConfigNumber('llmBatchSize', 12);
-
-    const LLM_MAX_CONCURRENT = getConfigNumber('llmMaxConcurrent', 2);
-
-    const LLM_MAX_RETRIES = getConfigNumber('llmMaxRetries', 3);
-
-    const LLM_REQUEST_TIMEOUT_MS = getConfigNumber('llmRequestTimeoutMs', 70000);
-
-    const LLM_PROMPT_CHAR_LIMIT = getConfigNumber('llmPromptCharLimit', 1200);
-
-    const LLM_THEME_BATCH_SIZE = getConfigNumber('llmThemeBatchSize', LLM_BATCH_SIZE);
-
-    const LLM_MAX_OUTPUT_TOKENS = getConfigNumber('llmMaxOutputTokens', 1600);
-
-    
-    var NVIDIA_MODEL = getLlmModel();
-let aiValidationController = null;
-
-    let _aiStatusStartTime = 0;
-
-    let _aiStatusTimer = null;
-
-    window._inMemoryApiKey = localStorage.getItem(NVIDIA_KEY_STORAGE) || '';function syncApiKeyControl(message, tone) {
-
-      const container = document.querySelector('.ai-key-control');
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const status = document.getElementById('apiKeyStatus');
-
-      const saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
-
-      const clearBtn = container ? container.querySelector('button.subtle') : null;
-
-      const endpoint = getApiEndpoint();
-
-      const isProxy = isProxyEndpoint(endpoint);
-
-      
-
-      const configuredKey = window.JEJO_CONFIG
-        ? String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim()
-        : '';
-
-      const keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
-        ? configuredKey
-        : '';
-
-      
-
-      const isAutoConfigured = isProxy || keyFromConfig;
-
-      if (isAutoConfigured) {
-
-        if (input) input.style.display = 'none';
-
-        if (saveBtn) saveBtn.style.display = 'none';
-
-        if (clearBtn) clearBtn.style.display = 'none';
-
-        
-
-        if (status) {
-
-          if (isProxy) {
-
-            status.textContent = '✓ AI Active (Secure Proxy)';
-
-            status.className = 'api-key-status ok active-proxy';
-
-            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
-
-          } else {
-
-            status.textContent = '✓ AI Active (Configured)';
-
-            status.className = 'api-key-status ok';
-
-          }
-
-        }
-
-      } else {
-
-        if (input) input.style.display = '';
-
-        if (saveBtn) saveBtn.style.display = '';
-
-        if (clearBtn) clearBtn.style.display = '';
-
-        
-
-        const hasSavedKey = !!_inMemoryApiKey;
-
-        if (input) {
-
-          input.value = '';
-
-          input.placeholder = hasSavedKey ? 'NVIDIA key saved' : 'NVIDIA API key';
-
-        }
-
-        if (status) {
-
-          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
-
-          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
-
-          status.style.animation = '';
-
-        }
-
-      }
-
-    }
-
-    function saveNvidiaApiKey() {
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const key = input ? input.value.trim() : '';
-
-      if (!key) {
-
-        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
-
-        return;
-
-      }
-
-      _inMemoryApiKey = key;
-
-      syncApiKeyControl('Saved locally', 'ok');
-
-    }
-
-    function useTypedApiKeyForRun() {
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const key = input ? input.value.trim() : '';
-
-      if (!key) return false;
-
-      _inMemoryApiKey = key;
-
-      syncApiKeyControl('Saved locally', 'ok');
-
-      return true;
-
-    }
-
-    function clearNvidiaApiKey() {
-
-      _inMemoryApiKey = '';
-
-      syncApiKeyControl('Cleared', 'warn');
-
-    }
-
-    function showAiNotice(msg, isError) {
-
-      updateAiStatus(1, 1, msg, !!isError);
-
-      window.setTimeout(function() {
-
-        const txt = document.getElementById('aiStatusText');
-
-        if (txt && txt.textContent === msg) updateAiStatus(0, 0, '');
-
-      }, 3500);
-
-    }
-
-    function cancelAiValidationDash() {
-
-      if (aiValidationController) {
-
-        aiValidationController.abort();
-
-        aiValidationController = null;
-
-      }
-
-    }
-
-    function updateAiStatus(current, total, msg, isError) {
-
-      const bar = document.getElementById('aiStatusBar');
-
-      const txt = document.getElementById('aiStatusText');
-
-      const con = document.getElementById('aiStatus');
-
-      const dot = document.getElementById('aiStatusDot');
-
-      const cancel = document.getElementById('aiStatusCancel');
-
-      const elapsed = document.getElementById('aiStatusElapsed');
-
-      const corrected = document.getElementById('aiStatusCorrected');
-
-      if (!con) return;
-
-      if (total > 0) {
-
-        con.style.display = '';
-
-        if (bar) {
-
-          bar.style.width = (current / total * 100) + '%';
-
-          bar.style.background = isError ? 'var(--danger)' : 'var(--accent)';
-
-        }
-
-        if (txt) txt.textContent = msg || 'Analyzing with Mistral... ' + current + '/' + total;
-
-        if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
-
-        if (cancel) cancel.style.display = '';
-
-        
-
-        // Elapsed time
-
-        if (_aiStatusStartTime > 0 && elapsed) {
-
-          var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
-
-          var min = Math.floor(secs / 60);
-
-          var s = secs % 60;
-
-          elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
-
-        }
-
-        
-
-        // Hide corrected badge in dashboard (no correctedResults tracking here)
-
-      } else {
-
-        con.style.display = 'none';
-
-        if (cancel) cancel.style.display = 'none';
-
-        if (elapsed) elapsed.textContent = '';
-
-      }
-
-    }
-
-    syncApiKeyControl();
-
-    function buildPromptForBatch(summaries, systemPrompt) {
-
-      return summaries.map(s => 'Row ' + s.rowIndex + ': "' + s.text + '"').join('\n');
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       LLM SYSTEM PROMPT — Zoho disposition classification
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function buildLlmSystemPrompt(isPostSales) {
-
-      var disps;
-
-      if (isPostSales) {
-
-        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent. repeated rejection."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Vehicle is commercial or part of a fleet":"The vehicle is a commercial vehicle and not applicable for the campaign purpose."\n"Vehicle is not being run":"Vehicle is unused and not being run."\n"Requires special spare parts":"The vehicle requires special spare parts for repair."\n"Others":"All other disposition details not listed above."\n"Wrong contact number":"Customer tells the agent they have the wrong person or number that was contacted"\n"Has sold/given away the car":"The customer has sold or given away the vehicle."\n"Has moved to another location":"The customer has moved to another location."\n"Cannot make decision on servicing":"The customer the agent has called is not the right person to make the decision."\n"Will call workshop themselves":"The customer will contact the workshop themselves."\n"Requested Callback":"The customer asked the agent to call back at a later date and or time."\n"Looking for a discount":"The customer is looking for a discount on the campaign purpose."\n"Has serviced car in another dealership":"The customer has serviced the vehicle in another dealership."\n"Will decide tomorrow":"The customer said they would decide to service the vehicle tomorrow."\n"Will decide within 1 to 3 days":"The customer said they would decide to service the vehicle within 1 to 3 days."\n"Will decide within 4 to 7 days":"The customer said they would decide to service the vehicle within 4 to 7 days."\n"Will decide within 8 to 14 days":"The customer said they would decide to service the vehicle within 8 to 14 days."\n"Will decide within 15 to 30 days":"The customer said they would decide to service the vehicle within 15 to 30 days."\n"Will decide within 31 to 60 days":"The customer said they would decide to service the vehicle within 31 to 60 days."\n"Will decide within 61 to 90 days":"The customer said they would decide to service the vehicle within 61 to 90 days."\n"Will decide after 90 days":"The customer said they would decide to service the vehicle after 90 days."\n"Unsubscribed":"The customer asked to unsubscribed from the campaign."\n"Call Disconnected":"The call ended abruptly without completing the campaign objective."\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Call Quality Issue":"There was issues with the quality of the call."\n"Connection Issue":"There was issues with the connection between the customer and the agent."\n"Customer Busy":"The customer was busy."\n"No Response":"The customer did not say anything at all."\n"Price Inquiry":"The customer is interested in the price of the service."\n"Lost to Competition":"the customer already did the campaign objective from a competitors workshop"\n"Invalid Lead":"Not a valid lead."\n"Purchase Postponed":"They decided or implied they will postpone the service."\n"Showroom Visit Planned":"Already booked a showroom visit."\n"Existing Dealer Contact":"The customer already did the campaign objective from an existing dealership."\n"Contact Fatigue":"customer implied they were being contacted too many times by the agent."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
-
-      } else {
-
-        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Is not decision maker":"the customer said they are not the right person to speak to about this in their family."\n"Will decide later, will purchase within 15 days":"The customer said they would decide to buy the vehicle within 15 days."\n"Will decide later, will purchase within 1 to 3 months":"The customer said they would decide to buy the vehicle within 1 to 3 months."\n"Will decide later, exploring options":"The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now."\n"No buying intent":"the customer Do not want to purchase a car. Neither are the interested in the car."\n"Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy."\n"Will call showroom themselves":"the customer will contact the dealership or showroom themselves."\n"Requested Callback":"the customer Asked to call back at a later date and or time."\n"Purchased elsewhere":"the customer Already purchased a vehicle elsewhere."\n"Enquired for Pricing":"the customer by themselves asked for the price of the vehicle."\n"Enquired for Specifications":"the customer by themselves asked for the specifications of the vehicle."\n"Enquired for Test Drive":"the customer by themselves asked for a test drive of the vehicle."\n"Enquired for Showroom Visit":"the customer by themselves asked for a showroom visit of the vehicle."\n"Enquired for Brochure":"the customer by themselves asked for a brochure of the vehicle."\n"Enquired for Dealership Details":"the customer by themselves asked for dealership details."\n"Enquired for Others":"the customer by themselves asked for other details not listed above."\n"Comparing with another brand":"The customer by themselves is comparing the vehicle with another brand."\n"Call Disconnected":"The customer by themselves has disconnected the call."\n"Others":"All other disposition details not listed above."\n"General Inquiry":"the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle."\n"Not Interested":"the customer Specifically said they are not interested in the vehicle."\n"Follow Up Required":"the customer Needs a follow up to convince them to complete the campaign objective."\n"No Response":"the customer did not say anything at all."\n"Lost to Competition":"the customer Bought a competitor brands vehicle."\n"Test Drive Completed":"the customer Already completed a test drive."\n"Invalid Lead":"the customer Not a valid lead."\n"Purchase Postponed":"the customer indicates that the Purchase has been postponed"\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Showroom Visit Planned":"the customer Already booked a showroom visit."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
-
-      }
-
-      var modeLabel = isPostSales ? 'post-sales' : 'pre-sales';
-
-      return 'You classify ' + modeLabel + ' vehicle campaign call summaries into Zoho dispositions.\n\nRules:\n- Use only the supplied summary text. Do not infer from row order or campaign context.\n- Return exactly one JSON item for every input row, preserving the original rowIndex.\n- Use only exact disposition names from the list below.\n- Choose the best disposition. Use up to 2 dispositions only when both are clearly present.\n- If the evidence is weak, generic, or no listed disposition fits, return an empty dispositions array.\n- Do not explain your reasoning.\n\nRespond ONLY with a valid JSON array. No markdown, no comments, no wrapper object.\n\nDISPOSITIONS:\n' + disps + '\n\nADDITIONAL:\n"Talk to Human"\n"Interested in another car same dealership"\n\nReturn format: [{"rowIndex":0,"dispositions":["Disposition Name"]},{"rowIndex":1,"dispositions":[]}]';
-
-    }var DISPO_TO_THEME = {
-
-      'voicemail': 'voicemail',
-
-      'rejected': 'not_interested',
-
-      'language barrier': 'language_barrier',
-
-      'is not decision maker': 'wrong_person',
-
-      'will decide later, will purchase within 15 days': 'deferred',
-
-      'will decide later, will purchase within 1 to 3 months': 'deferred',
-
-      'will decide later, exploring options': 'deferred',
-
-      'no buying intent': 'not_interested',
-
-      'just exploring': 'not_interested',
-
-      'will call showroom themselves': 'not_interested',
-
-      'requested callback': 'callback_requested',
-
-      'purchased elsewhere': 'already_serviced',
-
-      'call disconnected': 'customer_busy',
-
-      'not interested': 'not_interested',
-
-      'follow up required': 'service_booked',
-
-      'no response': 'customer_busy',
-
-      'lost to competition': 'already_serviced',
-
-      'test drive completed': 'service_booked',
-
-      'invalid lead': 'not_interested',
-
-      'purchase postponed': 'deferred',
-
-      'audio issue': 'audio_issue',
-
-      'showroom visit planned': 'service_booked',
-
-      'converted': 'service_booked',
-
-      'vehicle is commercial or part of a fleet': 'not_interested',
-
-      'vehicle is not being run': 'sold_vehicle',
-
-      'requires special spare parts': 'not_interested',
-
-      'wrong contact number': 'wrong_person',
-
-      'has sold/given away the car': 'sold_vehicle',
-
-      'has moved to another location': 'wrong_person',
-
-      'cannot make decision on servicing': 'wrong_person',
-
-      'will call workshop themselves': 'not_interested',
-
-      'looking for a discount': 'not_interested',
-
-      'has serviced car in another dealership': 'already_serviced',
-
-      'will decide tomorrow': 'deferred',
-
-      'will decide within 1 to 3 days': 'deferred',
-
-      'will decide within 4 to 7 days': 'deferred',
-
-      'will decide within 8 to 14 days': 'deferred',
-
-      'will decide within 15 to 30 days': 'deferred',
-
-      'will decide within 31 to 60 days': 'deferred',
-
-      'will decide within 61 to 90 days': 'deferred',
-
-      'will decide after 90 days': 'deferred',
-
-      'unsubscribed': 'not_interested',
-
-      'call quality issue': 'audio_issue',
-
-      'connection issue': 'audio_issue',
-
-      'customer busy': 'customer_busy',
-
-      'price inquiry': 'service_booked',
-
-      'service postponed': 'deferred',
-
-      'existing dealer contact': 'already_serviced',
-
-      'contact fatigue': 'not_interested',
-
-      'talk to human': 'service_booked',
-
-      'interested in another car same dealership': 'service_booked',
-
-      'dissatisfied': 'dissatisfied',
-
-      'complaint': 'dissatisfied'
-
-    };
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       AI BATCH CLASSIFICATION
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function normalizeLlmResults(parsed, summaries) {
-
-      var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.results) ? parsed.results : null);
-
-      if (!arr) throw new Error('LLM JSON was not an array');
-
-      var allowedRows = {};
-
-      var byRow = {};
-
-      summaries.forEach(function(s) {
-
-        allowedRows[String(s.rowIndex)] = true;
-
-        byRow[String(s.rowIndex)] = { rowIndex: s.rowIndex, dispositions: [] };
-
-      });
-
-      arr.forEach(function(item) {
-
-        if (!item || item.rowIndex === undefined || item.rowIndex === null) return;
-
-        var idxText = String(item.rowIndex);
-
-        var cleanedIdx = idxText.replace(/[^\d-]/g, '');
-
-        if (!cleanedIdx) return;
-
-        var idx = Number(cleanedIdx);
-
-        if (!Number.isFinite(idx) || !allowedRows[String(idx)]) return;
-
-        var rawDisps = [];
-
-        if (Array.isArray(item.dispositions)) rawDisps = item.dispositions;
-
-        else if (typeof item.dispositions === 'string') rawDisps = [item.dispositions];
-
-        else if (typeof item.disposition === 'string') rawDisps = [item.disposition];
-
-        var target = byRow[String(idx)].dispositions;
-
-        rawDisps.forEach(function(d) {
-
-          var val = String(d || '').trim();
-
-          if (val && target.indexOf(val) === -1) target.push(val);
-
-        });
-
-      });
-
-      return summaries.map(function(s) {
-
-        return byRow[String(s.rowIndex)];
-
-      });
-
-    }
-
-    function parseLlmJsonResults(text, summaries) {
-
-      var cleaned = String(text || '')
-
-        .replace(/```(?:json)?\s*/gi, '')
-
-        .replace(/\s*```/g, '')
-
-        .replace(/"rowIndex":\s*#/g, '"rowIndex":')
-
-        .trim();
-
-      try {
-
-        return normalizeLlmResults(JSON.parse(cleaned), summaries);
-
-      } catch (firstErr) {
-
-        var start = cleaned.indexOf('[');
-
-        var end = cleaned.lastIndexOf(']');
-
-        if (start === -1 || end === -1 || end <= start) throw firstErr;
-
-        return normalizeLlmResults(JSON.parse(cleaned.slice(start, end + 1)), summaries);
-
-      }
-
-    }
-
-    async function classifyWithLlm(allSummaries, isPostSales, apiKey) {
-
-      var systemPrompt = buildLlmSystemPrompt(isPostSales);
-
-      var batches = [];
-
-      for (var i = 0; i < allSummaries.length; i += LLM_BATCH_SIZE) {
-
-        batches.push(allSummaries.slice(i, i + LLM_BATCH_SIZE));
-
-      }
-
-      // Fallback: keyword-classify a single summary
-
-      function keywordFallback(summary) {
-
-        var lc = summary.text.toLowerCase();
-
-        var disp = [];
-
-        if (lc.includes('already serviced') || lc.includes('already done') || lc.includes('already completed') || lc.includes('serviced elsewhere') || lc.includes('bike was recently serviced') || lc.includes('bike had already been serviced') || lc.includes('service had already been')) disp.push('Has serviced car in another dealership');
-
-        else if (lc.includes('do not speak english') || lc.includes('only hindi') || lc.includes('requested hindi') || lc.includes('language barrier') || lc.includes('speak in a different language')) disp.push('Language barrier');
-
-        else if (lc.includes('voicemail') || lc.includes('at the tone') || lc.includes('record your message') || lc.includes('automated voicemail')) disp.push('Voicemail');
-
-        else if (lc.includes('requested a callback') || lc.includes('call back later') || lc.includes('will call back') || lc.includes('asked to call back') || lc.includes('callback requested')) disp.push('Requested Callback');
-
-        else if (lc.includes('deferred') || lc.includes('will decide') || lc.includes('out of station') || lc.includes('out of town') || lc.includes('not ready')) disp.push('Will decide later, exploring options');
-
-        else if (lc.includes('declined') || lc.includes('not interested') || lc.includes('not required') || lc.includes('refused') || lc.includes('repeatedly declined')) disp.push('Not Interested');
-
-        else if (lc.includes('driving') || lc.includes('in a meeting') || lc.includes('was busy') || lc.includes('unavailable to speak') || lc.includes('not a good time')) disp.push('Customer Busy');
-
-        else if (lc.includes('not the right person') || lc.includes('not the decision maker') || lc.includes('not the owner') || lc.includes('not the correct person')) disp.push('Is not decision maker');
-
-        else if (lc.includes('audio issue') || lc.includes('unclear audio') || lc.includes('could not hear') || lc.includes('difficulty hearing') || lc.includes('poor voice')) disp.push('Audio Issue');
-
-        else if (lc.includes('sold the bike') || lc.includes('no longer own') || lc.includes('given away') || lc.includes('sold it') || lc.includes('no longer have')) disp.push('Has sold/given away the car');
-
-        else if (lc.includes('appointment was successfully booked') || lc.includes('service confirmed') || lc.includes('booking confirmed') || lc.includes('successfully confirmed')) disp.push('Converted');
-
-        else if (lc.includes('dissatisfied') || lc.includes('complaint') || lc.includes('unhappy') || lc.includes('negative feedback') || lc.includes('poor service') || lc.includes('bad experience')) disp.push('Complaint');
-
-        return { rowIndex: summary.rowIndex, dispositions: disp };
-
-      }
-
-      var llmResults = null;
-
-      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length }));
-
-      // Check cache first — return immediately if this exact set was processed before
-      var cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          var parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length === allSummaries.length) {
-            return parsed;
-          }
-        } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
-
-      _aiStatusStartTime = Date.now();
-
-      updateAiStatus(0, batches.length, 'Starting NVIDIA classification...');
-
-      
-
-      // Create abort controller for this run
-
-      aiValidationController = new AbortController();
-
-      var batchSize = LLM_BATCH_SIZE;
-
-      var runnerResult = await runLlmBatches({
-
-        items: allSummaries,
-
-        batchSize: batchSize,
-
-        maxConcurrent: LLM_MAX_CONCURRENT,
-
-        minGapMs: 300,
-
-        maxRetries: LLM_MAX_RETRIES,
-
-        requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
-
-        cachedData: null,
-        signal: aiValidationController.signal,
-
-        buildPrompt: function(batch, batchIndex) {
-
-          var rowsPrompt = batch.map(function(s) {
-
-            return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text, LLM_PROMPT_CHAR_LIMIT) + '"';
-
-          }).join('\n');
-
-          return {
-
-            system: systemPrompt,
-
-            user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
-
-            temperature: 0.1,
-
-            maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS
-
-          };
-
-        },
-
-        parseResponse: function(text, batch, batchIndex) {
-
-          return parseLlmJsonResults(text, batch);
-
-        },
-
-        buildHeaders: function() {
-          var h = AiValidator.buildHeaders();
-          h['X-Title'] = 'AutoNage Dashboard';
-          var origin = (window.location && window.location.origin) ? window.location.origin : '';
-          if (/^https?:\/\//i.test(origin)) h['HTTP-Referer'] = origin;
-          return h;
-        },
-
-        onProgress: function(done, total, message, pct) {
-
-          updateAiStatus(done, total, message);
-
-        }
-
-      });
-
-      // ── Pass 2: Retry any failed batches using keyword fallback ──
-
-      if (runnerResult.failedBatches.length > 0) {
-
-        var failedCompleted = 0;
-
-        updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Retrying ' + runnerResult.failedBatches.length + ' failed batch(es) with keywords...', true);
-
-        for (var r = 0; r < runnerResult.failedBatches.length; r++) {
-
-          var idx = runnerResult.failedBatches[r];
-
-          var batchStart2 = idx * batchSize;
-
-          var fallbackResults = batches[idx].map(keywordFallback);
-
-          for (var fi = 0; fi < fallbackResults.length; fi++) {
-
-            runnerResult.results.set(batchStart2 + fi, fallbackResults[fi]);
-
-          }
-
-          failedCompleted++;
-
-          updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Fallback: ' + failedCompleted + '/' + runnerResult.failedBatches.length + ' batches');
-
-        }
-
-      }
-
-      // Check if aborted
-
-      if (runnerResult.aborted) {
-
-        updateAiStatus(0, 0, '');
-
-        aiValidationController = null;
-
-        return [];
-
-      }
-
-      aiValidationController = null;
-
-      // Flatten: combine results for same row if multiple batches returned dups
-
-      var results = [];
-
-      for (var j = 0; j < allSummaries.length; j++) {
-
-        var part = runnerResult.results.get(j);
-
-        if (part) results.push(part);
-
-      }
-
-      // Flatten: combine results for same row if multiple batches returned dups
-
-      // Combine results for same row if multiple batches returned dups
-      try {
-        var flat = {};
-        for (var k = 0; k < results.length; k++) {
-          var item = results[k];
-          if (!flat[item.rowIndex]) flat[item.rowIndex] = [];
-          (item.dispositions || []).forEach(function(d) {
-            if (flat[item.rowIndex].indexOf(d) === -1) flat[item.rowIndex].push(d);
-          });
-        }
-        llmResults = Object.keys(flat).map(function(idx) {
-          return { rowIndex: +idx, dispositions: flat[idx] };
-        });
-        try { localStorage.setItem(cacheKey, JSON.stringify(llmResults)); } catch(cacheErr) {}
-      } catch(e) {
-        console.warn('LLM failed, falling back to keywords:', e);
-        showAiNotice('AI classification failed. Using local keyword analysis.', true);
-        llmResults = null;
-      }
-      return llmResults;
-    }    async function generateVoiceInsights(themes) {
-
-      const apiKey = getApiKey();
-
-      if (!apiKey || themes.themes.length === 0) return null;
-
-      const themeLines = themes.themes.slice(0, 8).map(t =>
-
-        `- "${t.label}": ${t.count} customers (${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%). ${t.explanation} Interpretation: ${t.interpretation}`
-
-      ).join('\n');
-
-      const prompt = `Analyze these customer themes from a service campaign and return:\n1. "summary": 2-3 sentence synthesis — what is the #1 pattern, any surprising contradiction, and where to focus.\n2. "actions": an object where each key is a theme label (exact match) and value is a one-line recommended action (what to do, not generic).\n\nThemes:\n${themeLines}\n\nRespond ONLY valid JSON: {"summary":"...","actions":{"Theme Label":"action text",...}}`;
-
-      const cacheKey = 'voice-insights-' + hashStr(prompt);
-
-      const cached = localStorage.getItem(cacheKey);
-
-      if (cached) {
-
-        try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
-
-      // Show AI status for voice insights
-      updateAiStatus(0, 0, 'Generating voice insights...');
-
-      try {
-
-        var controller = new AbortController();
-        var timeout = setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS);
-        var headers = AiValidator.buildHeaders();
-        headers['X-Title'] = 'AutoNage Dashboard';
-        var origin = (window.location && window.location.origin) ? window.location.origin : '';
-        if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
-        const response = await fetch(getApiEndpoint(), {
-            method: 'POST',
-            headers: headers,
-            signal: controller.signal,
-            body: JSON.stringify({
-            model: NVIDIA_MODEL,
-            messages: [
-              { role: 'system', content: 'You are a campaign analyst. Analyze customer themes and return a concise summary and per-theme recommended actions. Output ONLY valid JSON.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.3,
-            max_tokens: Math.min(1000, LLM_MAX_OUTPUT_TOKENS)
-          })
-        });
-        clearTimeout(timeout);
-
-        if (!response.ok) return null;
-
-        const data = await response.json();
-
-        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
-
-          console.warn('Invalid API response shape');
-
-          return null;
-
-        }
-
-        const text = data.choices[0].message.content;
-
-        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-
-        const match = cleaned.match(/\{[\s\S]*\}/);
-
-        if (!match) return null;
-
-        const result = JSON.parse(match[0]);
-
-        localStorage.setItem(cacheKey, JSON.stringify(result));
-
-        // Hide AI status
-        updateAiStatus(0, 0, '');
-
-        return result;
-
-      } catch(e) {
-
-        console.warn('Voice insights failed:', e);
-
-        // Hide AI status
-        updateAiStatus(0, 0, '');
-
-        return null;
-
-      }
-
-    }
-
-    function generateStoryHeadline(themes, funnel, healthScore) {
-
-      if (funnel.total === 0) return 'Upload a file to see campaign insights';
-
-      const t = themes;
-
-      if (t.topTheme && t.topTheme.count > funnel.total * 0.2) return `${t.topTheme.count} ${t.topTheme.label.toLowerCase()} — ${t.topTheme.id === 'already_serviced' ? 'the biggest conversion blocker' : t.topTheme.id === 'voicemail' ? 'calls not reaching customers' : t.topTheme.id === 'deferred' ? 'customers in decision pipeline' : 'a key pattern affecting outcomes'}`;
-
-      if (funnel.connected > 0 && funnel.booked / funnel.connected < 0.15) return `${(funnel.booked / funnel.connected * 100).toFixed(0)}% conversion rate — ${funnel.connected - funnel.booked} connected leads did not book`;
-
-      if (funnel.connected / funnel.total > 0.6 && funnel.booked > 5) return `Strong campaign: ${(funnel.connected / funnel.total * 100).toFixed(0)}% connected, ${funnel.booked} service bookings`;
-
-      if (funnel.connected / funnel.total < 0.3) return `Only ${(funnel.connected / funnel.total * 100).toFixed(0)}% of ${funnel.total} leads connected — re-examine dialing strategy`;
-
-      return `${funnel.total} leads processed, ${funnel.connected} connected, ${funnel.booked} booked`;
-
-    }
-
-    function generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents) {
-
-      const parts = [];
-
-      const connPct = funnel.total > 0 ? (funnel.connected / funnel.total * 100).toFixed(0) : '0';
-
-      const mode = document.getElementById('campaignMode');
-
-      const modeLabel = (mode && mode.value === 'post') ? 'post-sales' : 'pre-sales';
-
-      // Opening: campaign overview with business context
-
-      parts.push(`This ${modeLabel} campaign engaged <strong>${funnel.total}</strong> customers. Of these, <strong>${funnel.connected}</strong> were reached (${connPct}% connect rate), and <strong>${funnel.booked}</strong> converted to a service booking — a ${funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0}% conversion rate from connected calls.`);
-
-      // Major customer signals from themes
-
-      const topThemes = themes.themes.slice(0, 3);
-
-      if (topThemes.length > 0) {
-
-        const themeDesc = topThemes.map(t => `<strong>${t.count}</strong> ${esc(t.label.toLowerCase())}`).join(', ');
-
-        if (topThemes[0].explanation && topThemes[0].interpretation) { parts.push(`The dominant customer signals are: ${themeDesc}. ${esc(topThemes[0].explanation)}. This affects conversion because ${esc(topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1))}`); } else { parts.push(`The dominant customer signals are: ${themeDesc}.`); }
-
-      }
-
-      // Competitive insight
-
-      if (competitors.total > 0) {
-
-        const topComp = competitors.competitors[0];
-
-        parts.push(`Competitive loss is a material issue — <strong>${competitors.total}</strong> customers were already serviced elsewhere${topComp ? ', led by ' + esc(topComp[0]) + ' (' + topComp[1] + ')' : ''}. This is the single largest source of lost conversion.`);
-
-      }
-
-      // Deferred pipeline
-
-      const deferredTheme = themes.themes.find(t => t.id === 'deferred');
-
-      if (deferredTheme && deferredTheme.count > 0) {
-
-        const times = deferredTheme.timeframes.slice(0, 3).map(esc).join(', ');
-
-        parts.push(`A further <strong>${deferredTheme.count}</strong> customers deferred their decision${times ? ', with timeframes including ' + times : ''}. These represent active pipeline that requires structured re-engagement.`);
-
-      }
-
-      // Language barriers
-
-      const langTheme = themes.themes.find(t => t.id === 'language_barrier');
-
-      if (langTheme && langTheme.count > 0) parts.push(`Language barriers affected <strong>${langTheme.count}</strong> calls — customers requested Hindi but only Kannada & English are supported.`);
-
-      // Trend
-
-      if (trends.hasData) {
-
-        const dir = trends.direction === 'up' ? 'increased' : (trends.direction === 'down' ? 'decreased' : 'remained steady');
-
-        parts.push(`Call volume has ${dir} by <strong>${Math.abs(trends.pctChange)}%</strong> in the second half of the campaign.`);
-
-      }
-
-      return parts.join(' ');
-
-    }
-
-    function generateRecommendations(themes, funnel, competitors, callbacks, trends) {
-
-      const recs = [];
-
-      // Deferred follow-up
-
-      const deferredTheme = themes.themes.find(t => t.id === 'deferred');
-
-      if (deferredTheme && deferredTheme.count >= 3) {
-
-        const times = deferredTheme.timeframes.slice(0, 2).join(', ');
-
-        recs.push({
-
-          action: `Re-engage ${deferredTheme.count} customers who deferred`,
-
-          reason: `${deferredTheme.count} customers said they would decide later${times ? ' (timing: ' + times + ')' : ''}. These are active opportunities that need follow-up.`,
-
-          impact: `Potential: ${Math.ceil(deferredTheme.count * 0.3)}-${Math.ceil(deferredTheme.count * 0.5)} additional bookings`,
-
-          priority: 'high'
-
-        });
-
-      }
-
-      // Competitive loss
-
-      if (competitors.total >= 3) {
-
-        const names = competitors.competitors.slice(0, 3).map(([n]) => n).join(', ');
-
-        recs.push({
-
-          action: 'Investigate competitive losses',
-
-          reason: `${competitors.total} customers serviced elsewhere${names ? ' at ' + names : ''}. Mystery shop competitor experience and pricing.`,
-
-          impact: `Potential: recover ${Math.ceil(competitors.total * 0.15)}-${Math.ceil(competitors.total * 0.3)} customers`,
-
-          priority: 'high'
-
-        });
-
-      }
-
-      // Language support
-
-      const langTheme = themes.themes.find(t => t.id === 'language_barrier');
-
-      if (langTheme && langTheme.count >= 3) {
-
-        recs.push({
-
-          action: 'Add Hindi language support',
-
-          reason: `${langTheme.count} callers specifically requested Hindi. Offering Hindi could improve connect rate and booking conversion for this segment.`,
-
-          impact: `Potential: ${Math.ceil(langTheme.count * 0.4)}-${Math.ceil(langTheme.count * 0.6)} additional connections`,
-
-          priority: 'medium'
-
-        });
-
-      }
-
-      // Callback follow-up
-
-      if (callbacks.total >= 3) {
-
-        recs.push({
-
-          action: `Follow up on ${callbacks.total} outstanding callback requests`,
-
-          reason: `${callbacks.total} customers explicitly asked to be called back. Timely callback follow-through is critical.`,
-
-          impact: `Potential: ${Math.ceil(callbacks.total * 0.2)}-${Math.ceil(callbacks.total * 0.4)} additional bookings`,
-
-          priority: 'high'
-
-        });
-
-      }
-
-      // Trend reversal
-
-      if (trends.hasData && trends.direction === 'down') {
-
-        recs.push({
-
-          action: 'Investigate declining call volume',
-
-          reason: `Call volume dropped ${Math.abs(trends.pctChange)}% in the second half of the campaign. Review dialing schedule and lead inventory.`,
-
-          impact: 'Stabilize daily output',
-
-          priority: 'medium'
-
-        });
-
-      }
-
-      // Not interested — re-evaluate offer
-
-      const notIntTheme = themes.themes.find(t => t.id === 'not_interested');
-
-      if (notIntTheme && notIntTheme.count >= 5) {
-
-        recs.push({
-
-          action: `Review offer for ${notIntTheme.count} uninterested customers`,
-
-          reason: `${notIntTheme.count} customers declined. Analyze common patterns in their objections to refine the offer or messaging.`,
-
-          impact: `Potential: reduce decline rate by 20-30%`,
-
-          priority: 'low'
-
-        });
-
-      }
-
-      return recs;
-
-    }
-
-    function analyzeAgentPerformance(rows, colMap) {
-
-      const agents = {};
-
-      rows.forEach(r => {
-
-        const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
-
-        const name = parsed.agentNameCorrected || parsed.agentName;
-
-        if (!name || name === 'an' || name.toLowerCase() === 'the') return;
-
-        if (!agents[name]) agents[name] = { calls: 0, connected: 0, booked: 0 };
-
-        agents[name].calls++;
-
-        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
-
-        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
-
-        if (out.includes('connected') || status.includes('completed') || status.includes('attempted')) agents[name].connected++;
-
-        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
-
-        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
-
-        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted')) agents[name].booked++;
-
-      });
-
-      const list = Object.entries(agents).map(([name, a]) => ({
-
-        name, calls: a.calls, connected: a.connected, booked: a.booked,
-
-        connectedRate: a.calls > 0 ? (a.connected / a.calls * 100).toFixed(1) : '0.0',
-
-        bookingRate: a.calls > 0 ? (a.booked / a.calls * 100).toFixed(1) : '0.0'
-
-      })).sort((a, b) => parseFloat(b.bookingRate) - parseFloat(a.bookingRate));
-
-      const topPerformer = list.length > 0 ? list[0] : null;
-
-      return { agents: list, topPerformer, totalAgents: list.length };
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       BI ENGINE — RENDER FUNCTIONS
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function renderExecutiveSummary(summary, healthScore, healthClass) {
-
-      const el = document.getElementById('execSummary');
-
-      if (!el) return;
-
-      el.style.display = 'block';
-
-      el.className = 'exec-summary slide-up ' + healthClass;
-
-      document.getElementById('healthScore').textContent = healthScore + '/100';
-
-      document.getElementById('healthScore').className = 'health-score ' + healthClass;
-
-      document.getElementById('execNarrative').innerHTML = summary;
-
-    }
-
-    function renderInsightStrip(insights) {
-
-      const el = document.getElementById('insightStrip');
-
-      if (!el) return;
-
-      el.innerHTML = '';
-
-      insights.forEach(ins => {
-
-        const chip = document.createElement('span');
-
-        chip.className = 'insight-chip ' + (ins.tone || 'info');
-
-        chip.innerHTML = '<span class="chip-dot"></span> ' + ins.label + ': <strong>' + ins.value + '</strong>';
-
-        el.appendChild(chip);
-
-      });
-
-      el.style.display = insights.length ? 'flex' : 'none';
-
-    }
-
-    function renderConversionFunnel(funnel) {
-
-      const el = document.getElementById('funnelSection');
-
-      const panel = document.getElementById('conversionFunnelPanel');
-
-      if (!el || !panel) return;
-
-      if (funnel.total === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const stages = [
-
-        { label: 'Total Leads', count: funnel.total, pct: 100, barClass: 'leads', width: 100 },
-
-        { label: 'Connected', count: funnel.connected, pct: funnel.total > 0 ? (funnel.connected / funnel.total * 100).toFixed(0) : 0, barClass: 'connected', width: funnel.total > 0 ? Math.max(30, funnel.connected / funnel.total * 100) : 0 },
-
-        { label: 'Booked', count: funnel.booked, pct: funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0, barClass: 'booked', width: funnel.connected > 0 ? Math.max(15, funnel.booked / funnel.connected * 80) : 0 },
-
-      ];
-
-      el.innerHTML = stages.map(s => `
-
-        <div class="funnel-stage">
-
-          <span class="funnel-bar-label">${s.label}</span>
-
-          <div class="funnel-bar ${s.barClass}" style="width:${s.width}%">
-
-            ${s.count} <span class="funnel-bar-pct">${s.pct}%</span>
-
-          </div>
-
-        </div>
-
-      `).join('');
-
-      // Drop-off reasons
-
-      const dropoffEntries = Object.entries(funnel.connectedNotBooked).sort((a, b) => b[1] - a[1]).slice(0, 8);
-
-      if (dropoffEntries.length > 0) {
-
-        el.innerHTML += `
-
-          <div class="funnel-dropoff">
-
-            <div class="funnel-dropoff-title">Why connected leads didn't book (${funnel.connected - funnel.booked} rows)</div>
-
-            <div class="funnel-dropoff-grid">
-
-              ${dropoffEntries.map(([cat, count]) => `<div class="funnel-dropoff-item"><strong>${cat}</strong> (${count})</div>`).join('')}
-
-            </div>
-
-          </div>
-
-        `;
-
-      }
-
-    }
-
-    function renderDispositionIntelligence(patterns) {
-
-      const barsEl = document.getElementById('dispositionBars');
-
-      const narrativeEl = document.getElementById('dispositionNarrative');
-
-      const panel = document.getElementById('dispositionPanel');
-
-      if (!barsEl || !narrativeEl || !panel) return;
-
-      if (patterns.top.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const maxVal = patterns.top.length > 0 ? patterns.top[0][1] : 1;
-
-      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
-
-      barsEl.innerHTML = patterns.top.map(([cat, count], i) => {
-
-        const width = (count / maxVal * 100).toFixed(0);
-
-        const pct = patterns.total > 0 ? (count / patterns.total * 100).toFixed(1) : '0.0';
-
-        const colorClass = colors[i % colors.length];
-
-        return `
-
-          <div class="disp-row">
-
-            <span class="disp-label" title="${cat}">${cat}</span>
-
-            <div class="disp-track"><div class="disp-fill ${colorClass}" style="width:${width}%"></div></div>
-
-            <span class="disp-count">${count} <span style="font-size:0.6rem;color:var(--text-muted);font-weight:500;">${pct}%</span></span>
-
-          </div>
-
-        `;
-
-      }).join('');
-
-      const topCat = patterns.top[0];
-
-      narrativeEl.textContent = `"${topCat[0]}" (${topCat[1]}) is the most common value at ${(topCat[1]/patterns.total*100).toFixed(0)}% of rows.`;
-
-    }
-
-    function renderDecisionPipeline(pipeline) {
-
-      const grid = document.getElementById('pipelineGrid');
-
-      const narrative = document.getElementById('pipelineNarrative');
-
-      const panel = document.getElementById('pipelinePanel');
-
-      if (!grid || !narrative || !panel) return;
-
-      if (pipeline.active === 0 && pipeline.buckets.immediate === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const order = ['immediate', 'thisWeek', 'nextWeek', 'twoWeeks', 'monthPlus', 'unknown'];
-
-      const colors = ['hot', 'hot', 'warm', 'warm', 'cool', 'cold'];
-
-      grid.innerHTML = order.map((key, i) => {
-
-        const count = pipeline.buckets[key];
-
-        if (count === 0 && key !== 'unknown') return '';
-
-        return `
-
-          <div class="pipeline-bucket ${colors[i]}">
-
-            <div class="pipeline-count">${count}</div>
-
-            <div class="pipeline-label">${pipeline.bucketLabels[key]}</div>
-
-          </div>
-
-        `;
-
-      }).filter(Boolean).join('');
-
-      narrative.textContent = pipeline.active > 0
-
-        ? `${pipeline.active} active opportunities in pipeline. ${pipeline.buckets.thisWeek} need contact this week.`
-
-        : 'No pending opportunities in pipeline.';
-
-    }
-
-    function renderLeadQualityScorecard(lq) {
-
-      const grid = document.getElementById('lqGrid');
-
-      const panel = document.getElementById('leadQualityPanel');
-
-      if (!grid || !panel) return;
-
-      if (lq.total === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      grid.innerHTML = `
-
-        <div class="lq-card ${lq.wrongNumber > 0 ? 'critical' : ''}">
-
-          <div class="lq-count">${lq.wrongNumber}</div>
-
-          <div class="lq-label">Unreachable</div>
-
-          <div class="lq-detail">${lq.wrongNumber > 0 ? 'Wrong numbers, voicemail, no answer' : 'None'}</div>
-
-        </div>
-
-        <div class="lq-card ${lq.duplicates > 0 ? 'warning' : ''}">
-
-          <div class="lq-count">${lq.duplicates}</div>
-
-          <div class="lq-label">Duplicates</div>
-
-          <div class="lq-detail">${lq.duplicates > 0 ? 'Repeated phone entries' : 'None'}</div>
-
-        </div>
-
-        <div class="lq-card ${lq.wrongPerson + lq.sold > 0 ? 'warning' : ''}">
-
-          <div class="lq-count">${lq.wrongPerson + lq.sold}</div>
-
-          <div class="lq-label">Invalid Contacts</div>
-
-          <div class="lq-detail">${lq.wrongPerson} wrong person, ${lq.sold} vehicle sold</div>
-
-        </div>
-
-      `;
-
-    }
-
-    function renderAnomalySection(anomalies) {
-
-      const list = document.getElementById('anomalyList');
-
-      const panel = document.getElementById('anomalySection');
-
-      if (!list || !panel) return;
-
-      if (anomalies.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      list.innerHTML = anomalies.map(a => `
-
-        <div class="anomaly-card">
-
-          <div class="anomaly-severity ${a.severity}">${a.severity === 'high' ? '!' : 'i'}</div>
-
-          <div class="anomaly-text">${a.text}</div>
-
-          <span class="anomaly-action">${a.action}</span>
-
-        </div>
-
-      `).join('');
-
-    }
-
-    function renderCompetitiveIntel(compData) {
-
-      const list = document.getElementById('compList');
-
-      const narrative = document.getElementById('compNarrative');
-
-      const panel = document.getElementById('competitivePanel');
-
-      if (!list || !narrative || !panel) return;
-
-      if (compData.total === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const maxCount = compData.competitors.length > 0 ? compData.competitors[0][1] : 1;
-
-      list.innerHTML = compData.competitors.map(([name, count]) => `
-
-        <div class="comp-row">
-
-          <span class="comp-name">${name}</span>
-
-          <div class="comp-bar"><div class="comp-bar-fill" style="width:${(count / maxCount * 100).toFixed(0)}%"></div></div>
-
-          <span class="comp-count">${count}</span>
-
-        </div>
-
-      `).join('');
-
-      narrative.textContent = `${compData.total} customers serviced elsewhere. Top competitor: "${compData.competitors[0] ? compData.competitors[0][0] : 'N/A'}" (${compData.competitors[0] ? compData.competitors[0][1] : 0} leads).`;
-
-    }
-
-    function renderLanguageQuality(langData) {
-
-      const grid = document.getElementById('langGrid');
-
-      const panel = document.getElementById('languagePanel');
-
-      if (!grid || !panel) return;
-
-      if (langData.total === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      grid.innerHTML = Object.entries(langData.languages).map(([lang, count]) => `
-
-        <div class="lang-stat">
-
-          <div class="stat-val">${count}</div>
-
-          <div class="stat-label">Requested ${lang}</div>
-
-        </div>
-
-      `).join('');
-
-      // Add overall stats
-
-      grid.innerHTML += `
-
-        <div class="lang-stat">
-
-          <div class="stat-val">${langData.total}</div>
-
-          <div class="stat-label">Language Barriers</div>
-
-        </div>
-
-      `;
-
-    }
-
-    function renderSourceQuality(srcData) {
-
-      const panel = document.getElementById('sourceQualityPanel');
-
-      const list = document.getElementById('sourceList');
-
-      const narrative = document.getElementById('sourceNarrative');
-
-      if (!panel || !list || !narrative) return;
-
-      if (srcData.total < 1 || !srcData.best) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const maxConn = srcData.sources.length > 0 ? Math.max(...srcData.sources.map(s => parseFloat(s.connRate))) : 1;
-
-      list.innerHTML = srcData.sources.map(s => {
-
-        const w = maxConn > 0 ? (parseFloat(s.connRate) / maxConn * 100).toFixed(0) : '0';
-
-        const tone = parseFloat(s.connRate) > 50 ? 'good' : (parseFloat(s.connRate) > 30 ? 'warn' : 'crit');
-
-        return `
-
-          <div class="src-row">
-
-            <span class="src-name" title="${s.name}">${s.name}</span>
-
-            <div class="src-bar"><span class="src-bar-fill ${tone}" style="width:${w}%"></span></div>
-
-            <span class="src-metric">${s.connRate}% conn</span>
-
-            <span class="src-metric">${s.bookRate}% book</span>
-
-            <span class="src-metric ${parseFloat(s.invalidRate) > 10 ? 'crit' : ''}">${s.invalidRate}% inv</span>
-
-          </div>
-
-        `;
-
-      }).join('');
-
-      narrative.innerHTML = srcData.best
-
-        ? `<strong>${srcData.best.name}</strong> leads with ${srcData.best.connRate}% connected rate (${srcData.best.connected}/${srcData.best.total}). ${srcData.worst ? srcData.worst.name + ' has ' + srcData.worst.invalidRate + '% invalid rate.' : ''}`
-
-        : '';
-
-    }
-
-    function renderTrendIndicators(trends) {
-
-      const el = document.getElementById('trendIndicator');
-
-      if (!el) return;
-
-      if (!trends.hasData) { el.style.display = 'none'; return; }
-
-      el.style.display = 'inline-flex';
-
-      const arrow = trends.direction === 'up' ? '&#9650;' : (trends.direction === 'down' ? '&#9660;' : '&#9654;');
-
-      const cls = trends.direction === 'up' ? 'good' : (trends.direction === 'down' ? 'crit' : '');
-
-      const label = trends.direction === 'up' ? 'Volume up' : (trends.direction === 'down' ? 'Volume down' : 'Stable');
-
-      el.innerHTML = `<span class="trend-badge ${cls}">${arrow} ${Math.abs(trends.pctChange)}% ${label}</span>`;
-
-    }
-
-    function renderConversionBlockers(blockerData) {
-
-      const panel = document.getElementById('blockersPanel');
-
-      const list = document.getElementById('blockersList');
-
-      const narrative = document.getElementById('blockersNarrative');
-
-      if (!panel || !list || !narrative) return;
-
-      if (blockerData.blockers.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const maxVal = blockerData.blockers[0][1];
-
-      list.innerHTML = blockerData.blockers.map(([reason, count]) => {
-
-        const w = (count / maxVal * 100).toFixed(0);
-
-        return `
-
-          <div class="blk-row">
-
-            <span class="blk-reason" title="${reason}">${reason}</span>
-
-            <div class="blk-track"><span class="blk-fill" style="width:${w}%"></span></div>
-
-            <span class="blk-count">${count}</span>
-
-          </div>
-
-        `;
-
-      }).join('');
-
-      const topBlocker = blockerData.blockers[0];
-
-      narrative.textContent = `"${topBlocker[0]}" blocks ${topBlocker[1]} connected leads from converting — ${blockerData.total > 0 ? (topBlocker[1]/blockerData.total*100).toFixed(0) : 0}% of all conversion blockers.`;
-
-    }
-
-    /* ── STORYTELLING RENDER FUNCTIONS ───────────────────────────────────── */
-
-    function renderCustomerVoice(themes, voiceAI) {
-
-      const container = document.getElementById('customerVoiceSection');
-
-      const panel = document.getElementById('customerVoicePanel');
-
-      if (!container || !panel) return;
-
-      if (themes.themes.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      // Voice summary banner
-
-      const summaryEl = document.getElementById('voiceSummary');
-
-      if (summaryEl && voiceAI && voiceAI.summary) {
-
-        summaryEl.style.display = 'block';
-
-        summaryEl.textContent = voiceAI.summary;
-
-      } else if (summaryEl) {
-
-        summaryEl.style.display = 'none';
-
-      }
-
-      const sentimentColors = { positive: 'good', negative: 'crit', neutral: 'warn' };
-
-      container.innerHTML = themes.themes.slice(0, 8).map(t => {
-
-        const cls = sentimentColors[t.sentiment] || 'warn';
-
-        const excerpts = t.excerpts.slice(0, 1).map(e => `<div class="voice-excerpt">"${esc(e)}"</div>`).join('');
-
-        const extras = [];
-
-        if (t.competitorNames && t.competitorNames.length) extras.push(`<div class="voice-extras">Competitors identified: ${t.competitorNames.map(esc).join(', ')}</div>`);
-
-        if (t.callbackTimes && t.callbackTimes.length) extras.push(`<div class="voice-extras">Callback timing preferences: ${t.callbackTimes.map(esc).join(', ')}</div>`);
-
-        if (t.timeframes && t.timeframes.length) extras.push(`<div class="voice-extras">Decision timeframes: ${t.timeframes.map(esc).join(', ')}</div>`);
-
-        // Per-theme LLM action
-
-        const action = voiceAI && voiceAI.actions && voiceAI.actions[t.label] ? esc(voiceAI.actions[t.label]) : null;
-
-        const actionHtml = action ? `<div class="voice-action">${action}</div>` : '';
-
-        return `
-
-          <div class="voice-card ${cls}">
-
-            <div class="voice-header">
-
-              <span class="voice-count">${t.count}</span>
-
-              <span class="voice-pct">${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%</span>
-
-              <span class="voice-label">${t.label}</span>
-
-            </div>
-
-            <div class="voice-signal">${t.explanation}</div>
-
-            ${excerpts}
-
-            <div class="voice-interp">${t.interpretation}</div>
-
-            ${extras.join('')}
-
-            ${actionHtml}
-
-          </div>
-
-        `;
-
-      }).join('');
-
-    }
-
-    function renderRecommendations(recs) {
-
-      const container = document.getElementById('recsList');
-
-      const panel = document.getElementById('recsPanel');
-
-      if (!container || !panel) return;
-
-      if (recs.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const priorityColors = { high: 'red', medium: 'amber', low: 'blue' };
-
-      container.innerHTML = recs.map(r => `
-
-        <div class="rec-card ${priorityColors[r.priority] || 'blue'}">
-
-          <div class="rec-top">
-
-            <span class="rec-priority ${r.priority}">${r.priority.toUpperCase()}</span>
-
-            <span class="rec-action">${esc(r.action)}</span>
-
-          </div>
-
-          <div class="rec-reason">${esc(r.reason)}</div>
-
-          <div class="rec-impact"><strong>Expected impact:</strong> ${esc(r.impact)}</div>
-
-        </div>
-
-      `).join('');
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       LLM-POWERED RECOMMENDATIONS
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    async function generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap) {
-
-      const apiKey = getApiKey();
-
-      if (!apiKey) return null;
-
-      const topThemes = themes.themes.slice(0, 5).map(t => `${esc(t.label)}: ${t.count}`).join(', ');
-
-      const mode = document.getElementById('campaignMode');
-
-      const campaignMode = (mode && mode.value === 'post') ? 'Post-Sales' : 'Pre-Sales';
-
-      const connPct = funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(1) : '0';
-
-      const summary = `Campaign: ${campaignMode}. Total leads: ${funnel.total}, Connected: ${funnel.connected}, Booked: ${funnel.booked} (${connPct}% conversion). Top themes: ${topThemes}. Competitors mentioned: ${competitors.total}. Callbacks pending: ${callbacks.total}.`;
-
-      const prompt = `As a senior campaign analyst, generate 3-5 specific, actionable recommendations based on this data. For each: specify what to do, why (with data support), and estimated impact. Be specific — mention customer segments, vehicle models, locations, or timeframes if applicable.\n\n${summary}\n\nRespond ONLY with a valid JSON array: [{"action":"...","reason":"...","impact":"..."}]`;
-
-      const cacheKey = 'llm-recs-' + hashStr(prompt);
-
-      const cached = localStorage.getItem(cacheKey);
-
-      if (cached) {
-
-        try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
-
-      // Show AI status for LLM recommendations
-      updateAiStatus(0, 0, 'Generating AI recommendations...');
-
-      try {
-
-        var controller = new AbortController();
-        var timeout = setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS);
-        var headers = AiValidator.buildHeaders();
-        headers['X-Title'] = 'AutoNage Dashboard';
-        var origin = (window.location && window.location.origin) ? window.location.origin : '';
-        if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
-        const response = await fetch(getApiEndpoint(), {
-            method: 'POST',
-            headers: headers,
-            signal: controller.signal,
-            body: JSON.stringify({
-            model: NVIDIA_MODEL,
-            messages: [
-              { role: 'system', content: 'You are a campaign analyst. Generate 3-5 specific, actionable recommendations. Each must include: action (what to do), reason (why, data-backed), and impact (estimated improvement). Be specific — mention locations, vehicle models, customer segments, or timeframes. Output ONLY valid JSON array.' },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.3,
-            max_tokens: Math.min(1200, LLM_MAX_OUTPUT_TOKENS)
-          })
-        });
-        clearTimeout(timeout);
-
-        if (!response.ok) return null;
-
-        const data = await response.json();
-
-        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
-
-          console.warn('Invalid API response shape');
-
-          updateAiStatus(0, 0, '');
-
-          return null;
-
-        }
-
-        const text = data.choices[0].message.content;
-
-        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
-
-        const match = cleaned.match(/\[[\s\S]*\]/);
-
-        if (!match) {
-
-          updateAiStatus(0, 0, '');
-
-          return null;
-
-        }
-
-        const result = JSON.parse(match[0]);
-
-        localStorage.setItem(cacheKey, JSON.stringify(result));
-
-        // Hide AI status
-
-        updateAiStatus(0, 0, '');
-
-        return result;
-
-      } catch(e) {
-
-        console.warn('LLM recommendations failed:', e);
-
-        // Hide AI status
-
-        updateAiStatus(0, 0, '');
-
-        return null;
-
-      }
-
-    }
-
-    function renderLlmRecommendations(recs) {
-
-      const panel = document.getElementById('llmRecsPanel');
-
-      const content = document.getElementById('llmRecsContent');
-
-      if (!panel || !content) return;
-
-      if (!recs || recs.length === 0) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      content.innerHTML = recs.map(r => `
-
-        <div class="rec-card">
-
-          <div class="rec-action">${esc(r.action)}</div>
-
-          <div class="rec-reason">${esc(r.reason)}</div>
-
-          <div class="rec-impact">${esc(r.impact)}</div>
-
-        </div>
-
-      `).join('');
-
-    }
-
-    function renderAgentTable(agents) {
-
-      const container = document.getElementById('agentTableBody');
-
-      const panel = document.getElementById('agentTablePanel');
-
-      if (!container || !panel) return;
-
-      if (agents.agents.length < 2) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const rankIcons = ['gold', 'silver', 'bronze'];
-
-      container.innerHTML = agents.agents.map((a, i) => {
-
-        const rank = i < 3 ? rankIcons[i] : 'rest';
-
-        const connBar = parseFloat(a.connectedRate) > 50 ? 'green' : (parseFloat(a.connectedRate) > 30 ? 'amber' : 'red');
-
-        const bookBar = parseFloat(a.bookingRate) > 15 ? 'green' : (parseFloat(a.bookingRate) > 5 ? 'amber' : 'red');
-
-        return `
-
-          <tr>
-
-            <td><span class="agent-rank-badge ${rank}">${i + 1}</span></td>
-
-            <td class="agent-name">${esc(a.name)}</td>
-
-            <td class="num">${a.calls}</td>
-
-            <td class="num">${a.connectedRate}% <div class="perf-bar-wrap"><div class="perf-bar-track"><div class="perf-bar-fill ${connBar}" style="width:${a.connectedRate}%"></div></div></div></td>
-
-            <td class="num">${a.bookingRate}% <div class="perf-bar-wrap"><div class="perf-bar-track"><div class="perf-bar-fill ${bookBar}" style="width:${Math.min(100, parseFloat(a.bookingRate) * 3)}%"></div></div></div></td>
-
-          </tr>
-
-        `;
-
-      }).join('');
-
-    }
-
-    function renderPhaseComparison(trends) {
-
-      const panel = document.getElementById('phasePanel');
-
-      const content = document.getElementById('phaseContent');
-
-      const narrative = document.getElementById('phaseNarrative');
-
-      if (!panel || !content || !narrative) return;
-
-      if (!trends.hasData) { panel.style.display = 'none'; return; }
-
-      panel.style.display = 'block';
-
-      const dirSymbol = trends.direction === 'up' ? '&#9650;' : (trends.direction === 'down' ? '&#9660;' : '&#9654;');
-
-      const dirClass = trends.direction === 'up' ? 'good' : (trends.direction === 'down' ? 'crit' : '');
-
-      const dirLabel = trends.direction === 'up' ? 'Increased' : (trends.direction === 'down' ? 'Decreased' : 'Stable');
-
-      content.innerHTML = `
-
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-
-          <div class="phase-card"><div class="phase-label">Early Phase</div><div class="phase-value">${trends.firstLabel}</div><div class="phase-stat">Avg ${trends.firstAvg.toFixed(0)} calls/day</div></div>
-
-          <div class="phase-card ${dirClass}"><div class="phase-label">Late Phase</div><div class="phase-value">${trends.secondLabel}</div><div class="phase-stat">Avg ${trends.secondAvg.toFixed(0)} calls/day</div></div>
-
-          <div class="phase-card ${dirClass}"><div class="phase-label">Change</div><div class="phase-value" style="font-size:1.3rem;">${dirSymbol} ${Math.abs(trends.pctChange)}%</div><div class="phase-stat">${dirLabel}</div></div>
-
-        </div>
-
-      `;
-
-      narrative.textContent = `Call volume ${trends.direction === 'up' ? 'increased' : trends.direction === 'down' ? 'decreased' : 'remained unchanged'} by ${Math.abs(trends.pctChange)}% between the early and late campaign phases (${trends.firstAvg.toFixed(0)} to ${trends.secondAvg.toFixed(0)} calls/day on average).`;
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       FILE UPLOAD
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    let dashData = null;
-
-    let uploadedFileExt = '';
-
-    let resolvedCampaignType = 'pre';
-
-    const dzDash = document.getElementById('dzDash');
-
-    const fileDash = document.getElementById('fileDash');
-
-    const stDash = document.getElementById('stDash');
-
-    const btnGenerate = document.getElementById('btnGenerate');
-
-    const campaignMode = document.getElementById('campaignMode');
-
-    function clearDashboardOutput() {
-
-      document.getElementById('campaignBar').style.display = 'none';
-
-      document.getElementById('dashboardContent').style.display = 'none';
-
-      document.getElementById('metricAudit').style.display = 'none';
-
-      document.getElementById('btnPrintPDF').style.display = 'none';
-
-      document.getElementById('emptyState').style.display = '';
-
-      const details = document.getElementById('metricAuditDetails');
-
-      const toggle = document.getElementById('metricAuditToggle');
-
-      const summary = document.getElementById('metricAuditSummary');
-
-      const strip = document.getElementById('metricAuditStrip');
-
-      const grid = document.getElementById('metricAuditGrid');
-
-      if (details) details.classList.remove('show');
-
-      if (toggle) {
-
-        toggle.textContent = 'View full audit';
-
-        toggle.setAttribute('aria-expanded', 'false');
-
-      }
-
-      if (summary) summary.textContent = 'Column mapping pending';
-
-      if (strip) strip.innerHTML = '';
-
-      if (grid) grid.innerHTML = '';
-
-      // Clear AI status & BI sections
-
-      updateAiStatus(0, 0, '');
-
-      ['execSummary','conversionFunnelPanel','dispositionPanel','pipelinePanel',
-
-       'leadQualityPanel','anomalySection','competitivePanel','languagePanel','sourceQualityPanel','blockersPanel',
-
-       'customerVoicePanel','agentTablePanel','recsPanel','llmRecsPanel','phasePanel']
-
-        .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-
-      const insightStrip = document.getElementById('insightStrip');
-
-      if (insightStrip) { insightStrip.innerHTML = ''; insightStrip.style.display = 'none'; }
-
-      const analysisBadge = document.getElementById('analysisEngineBadge');
-
-      if (analysisBadge) analysisBadge.textContent = 'AI-GENERATED ANALYSIS';
-
-      const trendEl = document.getElementById('trendIndicator');
-
-      if (trendEl) { trendEl.innerHTML = ''; trendEl.style.display = 'none'; }
-
-    }
-
-    // Keyboard activation (Enter / Space) for drop zone
-
-    dzDash.addEventListener('keydown', e => {
-
-      if (e.key === 'Enter' || e.key === ' ') {
-
-        e.preventDefault();
-
-        document.getElementById('fileDash').click();
-
-      }
-
-    });
-
-    // Drag & drop
-
-    dzDash.addEventListener('dragover', e => { e.preventDefault(); dzDash.classList.add('drag-over'); });
-
-    dzDash.addEventListener('dragleave', () => dzDash.classList.remove('drag-over'));
-
-    dzDash.addEventListener('drop', e => {
-
-      e.preventDefault();
-
-      dzDash.classList.remove('drag-over');
-
-      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
-
-    });
-
-    fileDash.addEventListener('change', () => {
-
-      if (fileDash.files.length) handleFile(fileDash.files[0]);
-
-    });
-
-    const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB limit
-
-    const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
-
-    function handleFile(file) {
-
-      clearDashboardOutput();
-
-      // Validate file extension
-
-      const fileName = file.name || '';
-
-      const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
-
-      uploadedFileExt = ext;
-
-      if (!ALLOWED_EXTENSIONS.includes(ext)) {
-
-        stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
-
-        stDash.className = 'dz-status err';
-
-        dzDash.classList.remove('has-file');
-
-        dashData = null;
-
-        btnGenerate.disabled = true;
-
-        return;
-
-      }
-
-      // Validate file size
-
-      if (file.size > MAX_UPLOAD_BYTES) {
-
-        stDash.textContent = '✗ File too large (max 50 MB)';
-
-        stDash.className = 'dz-status err';
-
-        dzDash.classList.remove('has-file');
-
-        dashData = null;
-
-        btnGenerate.disabled = true;
-
-        return;
-
-      }
-
-      const reader = new FileReader();
-
-      reader.onload = e => {
-
-        try {
-
-          // Keep original cell values (especially dates) without locale-based auto conversion.
-
-          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: true });
-
-          const ws = wb.Sheets[wb.SheetNames[0]];
-
-          dashData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
-
-          stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
-
-          stDash.className = 'dz-status ok';
-
-          dzDash.classList.add('has-file');
-
-          btnGenerate.disabled = false;
-
-        } catch (err) {
-
-          stDash.textContent = '✗ Error reading file';
-
-          stDash.className = 'dz-status err';
-
-          dashData = null;
-
-          btnGenerate.disabled = true;
-
-        }
-
-      };
-
-      reader.readAsArrayBuffer(file);
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       DASHBOARD GENERATION
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    
-    async function mineCustomerThemes(rows, colMap, isPostSales, llmLookup) {
-
-      if (!rows || !rows.length || !colMap) {
-
-        return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-
-      }
-
-      try {
-
-        // Only process connected calls - non-connected calls have no meaningful summary
-        var connectedRows = [];
-        var connectedRowIndices = [];
-        rows.forEach(function(r, origIdx) {
-          var st = String(colMap.status ? r[colMap.status] : '').toLowerCase();
-          var ot = String(colMap.outcome ? r[colMap.outcome] : '').toLowerCase();
-          // Exclude explicitly "not connected" before checking positive signals
-          if (st.indexOf('not connected') >= 0 || st.indexOf('notconnected') >= 0 || st.indexOf('not_connected') >= 0 || ot.indexOf('not connected') >= 0 || ot.indexOf('notconnected') >= 0 || ot.indexOf('not_connected') >= 0) return;
-          if (st.indexOf('completed') >= 0 || st.indexOf('attempted') >= 0 || st.indexOf('connected') >= 0 || ot.indexOf('connected') >= 0) {
-            connectedRows.push(r);
-            connectedRowIndices.push(origIdx);
-          }
-        });
-
-        if (connectedRows.length === 0) {
-          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-        }
-
-        var summaries = connectedRows.map(function(r, i) {
-          var vals = Object.keys(colMap).map(function(k) { return r[colMap[k]] || ''; });
-          return { rowIndex: i, text: vals.join(' ').trim(), originalRowIndex: connectedRowIndices[i] };
-        }).filter(function(s) { return s.text && s.text.length > 10; });
-
-        if (summaries.length === 0) {
-
-          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
-
-        }
-
-        var apiKey = getApiKey();
-
-        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-        var systemPrompt = buildLlmSystemPrompt(isPostSales);
-
-        var promptBatches = [];
-
-        var batchSize = LLM_THEME_BATCH_SIZE;
-
-        for (var bi = 0; bi < summaries.length; bi += batchSize) {
-
-          promptBatches.push(summaries.slice(bi, bi + batchSize));
-
-        }
-
-        // Cache key for theme mining results
-        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length }));
-        var cached = localStorage.getItem(cacheKey);
-        if (cached) {
-          try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
-
-        // If llmLookup was pre-computed from classifyWithLlm, skip the duplicate API call
-        if (Object.keys(llmLookup || {}).length > 0) {
-          // Build runnerResult using summaries' originalRowIndex to correctly map into llmLookup
-          var llmResults = [];
-          for (var si = 0; si < summaries.length; si++) {
-            var s = summaries[si];
-            var dispo = (llmLookup || {})[s.originalRowIndex] || [];
-            if (dispo.length > 0) {
-              llmResults.push({ rowIndex: s.rowIndex, dispositions: dispo });
-            }
-          }
-          var runnerResult = {
-            results: new Map(llmResults.map(function(r) { return [r.rowIndex, r]; })),
-            aborted: false,
-            failedBatches: []
-          };
-        } else {
-        // Show AI status for theme mining
-        // Create abort controller for this run
-        aiValidationController = new AbortController();
-
-        updateAiStatus(0, 0, 'Preparing themes...');
-
-        var runnerResult = await runLlmBatches({
-
-          items: summaries,
-
-          batchSize: batchSize,
-
-          maxConcurrent: LLM_MAX_CONCURRENT,
-
-          minGapMs: 300,
-
-          maxRetries: LLM_MAX_RETRIES,
-
-          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
-        signal: aiValidationController.signal,
-
-          buildPrompt: function(batch, batchIndex) {
-
-            var rowsPrompt = batch.map(function(s) {
-
-              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text, LLM_PROMPT_CHAR_LIMIT) + '"';
-
-            }).join('\n');
-
-            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS };
-
-          },
-
-          parseResponse: function(text, batch, batchIndex) {
-
-            try {
-
-              return parseLlmJsonResults(text, batch);
-
-            } catch(e) {
-
-              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
-
-            }
-
-          },
-
-          onProgress: function(done, total, message) {
-            // Show theme mining progress to user
-            updateAiStatus(done, total, message || 'Mining themes... ' + done + '/' + total + ' batches');
-          }
-
-        });
-
-        if (!runnerResult || !runnerResult.results) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-        var llmResults = [];
-
-        for (var ri = 0; ri < summaries.length; ri++) {
-
-          var part = runnerResult.results.get(ri);
-
-          if (part) llmResults.push(part);
-
-        }
-
-        if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
-        // Build llmLookup from LLM results for the aggregation loop below
-        if (!llmLookup) llmLookup = {};
-        for (var lri = 0; lri < llmResults.length; lri++) {
-          var lr = llmResults[lri];
-          if (lr && lr.rowIndex !== undefined && lr.dispositions) {
-            llmLookup[lr.rowIndex] = lr.dispositions;
-          }
-        }
-
-        // Clean up abort controller
-        aiValidationController = null;
-
-        for (var mi = 0; mi < summaries.length; mi++) {
-
-          var s = summaries[mi];
-
-          var dispo = (llmLookup || {})[s.originalRowIndex] || [];
-
-          if (dispo.length === 0) continue;
-
-          var text = s.text;
-
-          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
-
-          var parsed = parseSummary(text);
-
-          var seenThemes = {};
-
-          for (var di = 0; di < dispo.length; di++) {
-
-            var key = dispo[di].toLowerCase().trim();
-
-            var themeId = DISPO_TO_THEME[key] || null;
-
-            if (themeId && themes[themeId] && !seenThemes[themeId]) {
-
-              seenThemes[themeId] = true;
-
-              themes[themeId].count++;
-
-              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
-
-              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
-
-                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
-
-              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
-
-                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
-
-              if (themeId === 'deferred') {
-
-                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
-
-                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
-
-              }
-
-            }
-
-          }
-
-        }
-
-        var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
-
-        var total = themeList.reduce(function(a, t) { return a + t.count; }, 0);
-
-        var topTheme = themeList.length > 0 ? themeList[0].label : 'General';
-
-        // Hide AI status on success
-        updateAiStatus(0, 0, '');
-        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
-        }
-       } catch(e) {
-
-        console.warn('mineCustomerThemes failed:', e);
-
-        // Hide AI status
-        updateAiStatus(0, 0, '');
-
-        return { themes: [], total: 0, topTheme: "General", engine: "local" };
-
-      }
-
-    }
-
-async function generateDashboard() {
-
-      if (!dashData || dashData.length === 0) return;
-
-      // ── Find column names (case-insensitive, exact-first then substring) ──
-
-      const cols = Object.keys(dashData[0]);
-
-      const find = (keywords) => {
-
-        const kw = keywords.map(k => k.toLowerCase().replace(/[_\s-]/g, ''));
-
-        // 1. Prefer exact match (after normalizing)
-
-        const exact = cols.find(c => {
-
-          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
-
-          return kw.some(k => cl === k);
-
-        });
-
-        if (exact) return exact;
-
-        // 2. Fall back to substring/includes match
-
-        return cols.find(c => {
-
-          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
-
-          return kw.some(k => cl.includes(k));
-
-        }) || null;
-
-      };
-
-      const COL_PHONE = find(['phone_number', 'phonenumber', 'phone', 'mobile']);
-
-      const COL_OUTCOME = find(['outcome', 'disposition', 'call_outcome', 'calloutcome']);
-
-      const COL_STATUS = find(['status', 'call_status', 'session_status']);
-
-      const COL_DATE = find(['call_date', 'calldate']);
-
-      const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
-
-      const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
-
-      const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
-
-      const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
-
-      const COL_UPDATED_DISPOSITION = find(['updated_disposition', 'updated disposition', 'updated_disposition_details', 'updated disposition details']);
-
-      const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
-
-      const COL_NEXT_SERVICE = find(['next_service_due', 'next_service_date']);
-
-      const COL_LAST_SERVICE = find(['last_service_date']);
-
-      const COL_SERVICE_TYPE = find(['service_type', 'next_service_type']);
-
-      const COL_SOURCE = find(['campaign_id', 'campaign', 'workshop_code', 'dealer_code', 'showroom_code', 'source', 'campaignid']);
-
-      if (!COL_DATE) {
-
-        stDash.textContent = 'Required column missing: Call_Date.';
-
-        stDash.className = 'dz-status err';
-
-        return;
-
-      }
-
-      const rows = dashData;
-
-      const totalLeads = rows.length;
-
-      const requestedMode = campaignMode ? campaignMode.value : 'auto';
-
-      const detectedType = detectCampaignType(rows, {
-
-        summaryCol: COL_SUMMARY,
-
-        detailCol: COL_DETAIL,
-
-        outcomeCol: COL_OUTCOME,
-
-        statusCol: COL_STATUS,
-
-        nextServiceCol: COL_NEXT_SERVICE,
-
-        lastServiceCol: COL_LAST_SERVICE,
-
-        serviceTypeCol: COL_SERVICE_TYPE,
-
-      });
-
-      const isPostSales = requestedMode === 'post' || (requestedMode === 'auto' && detectedType === 'post');
-
-      resolvedCampaignType = isPostSales ? 'post' : 'pre';
-
-      const primaryOutcomeCol = COL_OUTCOME || COL_STATUS;
-
-      // ── Count outcomes ──
-
-      const norm = (v) => String(v || '').trim().toLowerCase();
-
-      let connected = 0, notConnectedStrict = 0, voicemail = 0;
-
-      let bookings = 0, callsTriggered = 0, invalidLead = 0;
-
-      let incompleteCall = 0, callbackRequestedFromSummary = 0;
-
-      let serviceCompletedPostSales = 0, invalidLeadPostSales = 0, notInterestedPost = 0;
-
-      rows.forEach(r => {
-
-        const out = norm(r[primaryOutcomeCol]);
-
-        const statusVal = norm(COL_STATUS ? r[COL_STATUS] : '');
-
-        const det = norm(r[COL_DETAIL] || '');
-
-        const sum = norm(r[COL_SUMMARY] || '');
-
-        const updatedSum = norm(COL_UPDATED_SUMMARY ? r[COL_UPDATED_SUMMARY] : '');
-
-        const updatedDisposition = norm(COL_UPDATED_DISPOSITION ? r[COL_UPDATED_DISPOSITION] : '');
-
-        const rawUpdatedDisposition = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
-
-        callsTriggered++;
-
-        if (isPostSales) {
-
-          if (statusVal.includes('attempted') || statusVal.includes('completed')) {
-
-            connected++;
-
-          } else if (statusVal.includes('busy')) {
-
-            notConnectedStrict++;
-
-          }
-
-        } else {
-
-          if (out === 'connected') {
-
-            connected++;
-
-          } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
-
-            notConnectedStrict++;
-
-          }
-
-        }
-
-        // Voicemail KPI: Updated Disposition first; if blank, DISPOSITION_DETAILS
-
-        const rawUpdatedDispForVm = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
-
-        if (rawUpdatedDispForVm && hasVoicemailNorm(norm(rawUpdatedDispForVm))) {
-
-          voicemail++;
-
-        } else if (!rawUpdatedDispForVm && hasVoicemailNorm(det)) {
-
-          voicemail++;
-
-        }
-
-        if (sum === 'requested callback' || sum === 'received call at wrong time' || sum.includes('callback requested') || sum.includes('call back')) {
-
-          callbackRequestedFromSummary++;
-
-        }
-
-        if (!isPostSales) {
-
-          // Pre-sales conversions.
-
-          const qualifiedFollowUp = (sum === 'follow up required' || sum === 'follow-up required') &&
-
-            (updatedSum === 'interested' || updatedSum === 'converted');
-
-          if (sum === 'converted' || sum === 'interested' || sum === 'test drive booked' || qualifiedFollowUp) {
-
-            bookings++;
-
-          }
-
-        } else {
-
-          // Post-sales outcomes.
-
-          let serviceBooked = false;
-
-          if (updatedDisposition) {
-
-            serviceBooked = updatedDisposition === 'converted' ||
-
-              updatedDisposition === 'follow up required' ||
-
-              updatedDisposition === 'follow-up required';
-
-          } else {
-
-            serviceBooked = det === 'converted' ||
-
-              det === 'follow up required' ||
-
-              det === 'follow-up required';
-
-          }
-
-          if (serviceBooked) {
-
-            bookings++;
-
-          }
-
-          if (rawUpdatedDisposition) {
-
-            if (hasServiceCompletedDispositionNorm(norm(rawUpdatedDisposition))) {
-
-              serviceCompletedPostSales++;
-
-            }
-
-          } else if (hasServiceCompletedDispositionNorm(det)) {
-
-            serviceCompletedPostSales++;
-
-          }
-
-          if (rawUpdatedDisposition) {
-
-            if (hasInvalidLeadDispositionNorm(norm(rawUpdatedDisposition))) {
-
-              invalidLeadPostSales++;
-
-            }
-
-          } else if (hasInvalidLeadDispositionNorm(det)) {
-
-            invalidLeadPostSales++;
-
-          }
-
-          if (hasAny(sum + ' ' + det, ['not interested', 'refused service', 'service not required', 'already serviced'])) {
-
-            notInterestedPost++;
-
-          }
-
-        }
-
-        if (!isPostSales && (sum === 'not interested' || hasAny(sum + ' ' + det, ['wrong number', 'invalid number', 'dnd', 'do not disturb']))) {
-
-          invalidLead++;
-
-        }
-
-        if (det.includes('incomplete') || out.includes('incomplete')) {
-
-          incompleteCall++;
-
-        }
-
-      });
-
-      const pendingFollowup = incompleteCall + callbackRequestedFromSummary + notConnectedStrict;
-
-      // ── Unique phones for dedup & attempts ──
-
-      const phoneSet = new Set();
-
-      const dupes = [];
-
-      let uniqueCallsByAttempt = 0;
-
-      rows.forEach(r => {
-
-        if (COL_PHONE) {
-
-          const p = String(r[COL_PHONE] || '').replace(/\D/g, '');
-
-          if (p) {
-
-            if (phoneSet.has(p)) dupes.push(p);
-
-            else phoneSet.add(p);
-
-          }
-
-        }
-
-        if (COL_ATTEMPT) {
-
-          const att = String(r[COL_ATTEMPT] || '').trim();
-
-          if (att === '1' || att === '1.0' || att.toLowerCase() === 'one') {
-
-            uniqueCallsByAttempt++;
-
-          }
-
-        }
-
-      });
-
-      
-
-      if (!COL_ATTEMPT) {
-
-        uniqueCallsByAttempt = phoneSet.size;
-
-      }
-
-      // ── Date range ──
-
-      const dateFormatMode = document.getElementById('dateFormatMode');
-
-      const forcedDateOrder = dateFormatMode && dateFormatMode.value !== 'auto' ? dateFormatMode.value : null;
-
-      const dateParserInfo = buildDateParser(rows, COL_DATE, forcedDateOrder);
-
-      const dateParser = dateParserInfo.parse;
-
-      let validDateCount = 0;
-
-      let rejectedDateCount = 0;
-
-      let dates = [];
-
-      rows.forEach(r => {
-
-        const dateText = extractCallDateText(r[COL_DATE]);
-
-        if (!dateText) {
-
-          rejectedDateCount++;
-
-          return;
-
-        }
-
-        const d = dateParser(dateText);
-
-        if (d) {
-
-          validDateCount++;
-
-          dates.push(d);
-
-        } else {
-
-          rejectedDateCount++;
-
-        }
-
-      });
-
-      dates.sort((a, b) => a - b);
-
-      const minDate = dates[0];
-
-      const maxDate = dates[dates.length - 1];
-
-      // ── Daily breakdown ──
-
-      const dailyCounts = {};
-
-      rows.forEach(r => {
-
-        const dateText = extractCallDateText(r[COL_DATE]);
-
-        if (!dateText) return;
-
-        const d = dateParser(dateText);
-
-        if (d) {
-
-          const key = formatDateKey(d);
-
-          dailyCounts[key] = (dailyCounts[key] || 0) + 1;
-
-        }
-
-      });
-
-      // ── Vehicle model breakdown ──
-
-      const modelCounts = {};
-
-      if (COL_MODEL) {
-
-        rows.forEach(r => {
-
-          const m = String(r[COL_MODEL] || '').trim();
-
-          if (m && m.toLowerCase() !== 'na' && m.toLowerCase() !== 'n/a' && m !== '') {
-
-            modelCounts[m] = (modelCounts[m] || 0) + 1;
-
-          }
-
-        });
-
-      }
-
-      // ── Render ──
-
-      document.getElementById('emptyState').style.display = 'none';
-
-      document.getElementById('campaignBar').style.display = 'flex';
-
-      document.getElementById('dashboardContent').style.display = 'block';
-
-      document.getElementById('btnPrintPDF').style.display = 'inline-flex';
-
-      document.getElementById('campaignSubtitle').textContent = isPostSales
-
-        ? 'Post-Sales Service & Feedback Campaign'
-
-        : 'Pre-Sales Lead Nurturing Campaign';
-
-      // Date range
-
-      if (minDate && maxDate) {
-
-        document.getElementById('dateRange').textContent =
-
-          formatDateFull(minDate) + ' – ' + formatDateFull(maxDate);
-
-      } else {
-
-        document.getElementById('dateRange').textContent = 'All records';
-
-      }
-
-      const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
-
-      const parserMode = dateParserInfo.forced ? 'Manual' : 'Auto';
-
-      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Format: ${parserLabel} (${parserMode}) · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
-
-      renderMetricAudit({
-
-        columns: {
-
-          Phone: COL_PHONE,
-
-          Outcome: primaryOutcomeCol,
-
-          Status: COL_STATUS,
-
-          Date: COL_DATE,
-
-          Model: COL_MODEL,
-
-          Detail: COL_DETAIL,
-
-          Summary: COL_SUMMARY,
-
-          'Updated Summary': COL_UPDATED_SUMMARY,
-
-          'Updated Disposition': COL_UPDATED_DISPOSITION,
-
-          Attempts: COL_ATTEMPT,
-
-        },
-
-        parserLabel,
-
-        totalRows: rows.length,
-
-        validDateCount,
-
-        rejectedDateCount,
-
-        duplicatePhones: dupes.length,
-
-        uniquePhones: phoneSet.size,
-
-      });
-
-      // ── Dynamic KPI insights ──
-
-      var kpConnPct = totalLeads > 0 ? ((connected / totalLeads) * 100).toFixed(0) : '0';
-
-      var kpNcPct = totalLeads > 0 ? ((notConnectedStrict / totalLeads) * 100).toFixed(0) : '0';
-
-      var kpVmPct = totalLeads > 0 ? ((voicemail / totalLeads) * 100).toFixed(0) : '0';
-
-      var kpVmOfConn = (connected + voicemail) > 0 ? ((voicemail / (connected + voicemail)) * 100).toFixed(0) : '0';
-
-      var kpBkPct = connected > 0 ? ((bookings / connected) * 100).toFixed(0) : '0';
-
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-      const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-
-      Object.keys(dailyCounts).forEach(function(key) {
-
-        var parts = key.split('-');
-
-        var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-
-        if (!isNaN(d.getTime())) dayCounts[d.getDay()] += dailyCounts[key];
-
-      });
-
-      var maxDayIdx = 0;
-
-      for (var di = 1; di < 7; di++) { if (dayCounts[di] > dayCounts[maxDayIdx]) maxDayIdx = di; }
-
-      const peakDay = dayNames[maxDayIdx];
-
-      var peakPct = totalLeads > 0 ? ((dayCounts[maxDayIdx] / totalLeads) * 100).toFixed(0) : '0';
-
-      var ctPctWhole = totalLeads > 0 ? ((callsTriggered / totalLeads) * 100).toFixed(0) : '0';
-
-      // ── Build data-responsive sub/insight per KPI ──
-
-      var kpi1sub = {};
-
-      kpi1sub.ct = callsTriggered + ' total';
-
-      kpi1sub.cn = connected + ' reached';
-
-      kpi1sub.nc = notConnectedStrict + ' missed';
-
-      kpi1sub.vm = voicemail + ' voicemails';
-
-      var kpi1ins = {};
-
-      kpi1ins.ct = kpConnPct > 60 ? kpConnPct + '% connect rate' : kpConnPct > 40 ? kpConnPct + '% connect — room to grow' : kpConnPct + '% connect — review targeting';
-
-      kpi1ins.ct += ' · peak ' + peakDay;
-
-      kpi1ins.cn = kpConnPct > 50 ? 'Most calls connect on ' + peakDay + 's' : 'Best reach on ' + peakDay + 's';
-
-      kpi1ins.nc = kpNcPct > 40 ? kpNcPct + '% not reached — high miss rate' : kpNcPct + '% not reached';
-
-      kpi1ins.vm = kpVmOfConn > 40 ? kpVmOfConn + '% leave VM — heavy voicemail traffic' : kpVmOfConn > 20 ? kpVmOfConn + '% leave VM' : kpVmOfConn + '% leave VM — most pick up';
-
-      // KPI Row 1
-
-      const kpiRow1 = document.getElementById('kpiRow1');
-
-      kpiRow1.innerHTML = '';
-
-      
-
-      const kpis1 = [
-
-        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: kpi1sub.ct, color: 'purple', delay: 1, insight: kpi1ins.ct },
-
-        { label: 'CONNECTED', value: connected, sub: kpi1sub.cn, color: 'blue', delay: 2, insight: kpi1ins.cn },
-
-        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: kpi1sub.nc, color: 'red', delay: 3, insight: kpi1ins.nc },
-
-        { label: 'VOICEMAIL', value: voicemail, sub: kpi1sub.vm, color: 'amber', delay: 4, insight: kpi1ins.vm },
-
-      ];
-
-      kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
-
-      // KPI Row 2
-
-      var kpR2subs = {};
-
-      kpR2subs.uniq = uniqueCallsByAttempt + ' unique callers';
-
-      kpR2subs.bk = bookings + ' booked';
-
-      kpR2subs.postDone = serviceCompletedPostSales + ' completed';
-
-      kpR2subs.inv = isPostSales ? invalidLeadPostSales + ' invalid entries' : invalidLead + ' flagged invalid';
-
-      kpR2subs.cb = callbackRequestedFromSummary + ' requested';
-
-      var kpR2ins = {};
-
-      kpR2ins.bk = kpBkPct > 40 ? kpBkPct + '% of connected booked — strong' : kpBkPct > 20 ? kpBkPct + '% of connected booked' : kpBkPct + '% booking rate — review process';
-
-      kpR2ins.inv = isPostSales ? (invalidLeadPostSales > 20 ? invalidLeadPostSales + ' flagged — check data quality' : invalidLeadPostSales + ' flagged as invalid') : (invalidLead > 20 ? invalidLead + ' flagged — check data quality' : invalidLead + ' flagged as invalid');
-
-      kpR2ins.cb = callbackRequestedFromSummary > 10 ? callbackRequestedFromSummary + ' callbacks pending — follow up' : callbackRequestedFromSummary + ' callbacks pending';
-
-      const kpiRow2 = document.getElementById('kpiRow2');
-
-      kpiRow2.innerHTML = '';
-
-      const kpis2 = isPostSales
-
-        ? [
-
-            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
-
-            { label: 'SERVICE BOOKED', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
-
-            { label: 'SERVICE COMPLETED', value: serviceCompletedPostSales, sub: kpR2subs.postDone, color: 'pink', delay: 7 },
-
-            { label: 'INVALID LEAD', value: invalidLeadPostSales, sub: kpR2subs.inv, color: 'orange', delay: 8, insight: kpR2ins.inv },
-
-          ]
-
-        : [
-
-            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
-
-            { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
-
-            { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: kpR2subs.cb, color: 'pink', delay: 7, insight: kpR2ins.cb },
-
-            { label: 'INVALID LEAD', value: invalidLead, sub: kpR2subs.inv, color: 'orange', delay: 8, insight: kpR2ins.inv },
-
-          ];
-
-      kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
-
-      // Daily chart
-
-      renderDailyChart(dailyCounts);
-
-      // Vehicle chart
-
-      renderVehicleChart(modelCounts);
-
-      // Pending panel
-
-      renderPendingPanel({
-
-        isPostSales,
-
-        incompleteCall,
-
-        callbackRequested: callbackRequestedFromSummary,
-
-        notConnected: notConnectedStrict,
-
-        pendingFollowup,
-
-        totalLeads,
-
-        dupeCount: dupes.length,
-
-        uniquePhones: phoneSet.size,
-
-        notInterestedPost,
-
-      });
-
-      // ═══════════════════════════════════════════════════════════════════
-
-      // BI ENGINE — Classify rows, analyze, render insights
-
-      // ═══════════════════════════════════════════════════════════════════
-
-      const colMap = {
-
-        phone: COL_PHONE, outcome: COL_OUTCOME, status: COL_STATUS,
-
-        date: COL_DATE, model: COL_MODEL, detail: COL_DETAIL,
-
-        summary: COL_SUMMARY, updatedSummary: COL_UPDATED_SUMMARY,
-
-        updatedDisposition: COL_UPDATED_DISPOSITION, attempt: COL_ATTEMPT,
-
-        source: COL_SOURCE
-
-      };
-
-      // Run analysis (all data-driven, no hardcoded classification)
-
-      const funnel = analyzeConversionFunnel(rows, colMap, isPostSales, connected, bookings);
-
-      const dispositions = analyzeDispositionPatterns(rows, colMap);
-
-      const lq = { wrongNumber: invalidLeadPostSales || invalidLead, sold: 0, wrongPerson: 0, duplicates: dupes.length, total: (invalidLeadPostSales || invalidLead) + dupes.length };
-
-      const pipeline = analyzeDecisionPipeline(rows, colMap);
-
-      const callbacks = { total: callbackRequestedFromSummary, callbacks: [] };
-
-      const langBarriers = analyzeLanguageBarriers(rows, colMap);
-
-      const competitors = analyzeCompetitiveLosses(rows, colMap);
-
-      const sentiment = analyzeSentimentFromTranscript(rows, colMap);
-
-      const anomalies = detectAnomalies(rows, dailyCounts);
-
-      const sourceQuality = analyzeSourceQuality(rows, colMap);
-
-      const trends = analyzeTrends(rows, dailyCounts);
-
-      const blockers = analyzeConversionBlockers(rows, colMap);
-
-      // Build executive summary (compute healthScore first)
-
-      const healthConnectedPct = rows.length > 0 ? (funnel.connected / rows.length * 100) : 0;
-
-      const healthBookedPct = funnel.connected > 0 ? (funnel.booked / funnel.connected * 100) : 0;
-
-      const healthInvalidPct = rows.length > 0 ? (lq.total / rows.length * 100) : 0;
-
-      let healthScore = Math.round(
-
-        Math.min(30, healthConnectedPct * 0.3) +
-
-        Math.min(30, healthBookedPct * 0.6) +
-
-        Math.max(0, 15 - healthInvalidPct * 1.5) +
-
-        (pipeline.active > 0 ? Math.min(10, pipeline.active) : 0) +
-
-        (callbacks.total === 0 ? 5 : Math.max(0, 5 - callbacks.total))
-
-      );
-
-      healthScore = Math.max(0, Math.min(100, healthScore));
-
-      const healthClass = healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'warning' : 'critical';
-
-      
-
-      const agents = analyzeAgentPerformance(rows, colMap);
-
-      const connPct = rows.length > 0 ? (funnel.connected / rows.length * 100).toFixed(0) : '0';
-
-      // ── Render Storytelling Sections ───────────────────────────────────────
-
-      // Executive Story Banner
-
-      const execEl = document.getElementById('execSummary');
-
-      if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
-
-      
-
-      const hsEl = document.getElementById('healthScore');
-
-      if (hsEl) { hsEl.textContent = healthScore + '/100'; hsEl.setAttribute('fill', healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'); }
-
-      const healthRing = document.querySelector('.health-ring');
-
-      if (healthRing) {
-
-        const circumference = 150;
-
-        const offset = circumference - (healthScore / 100) * circumference;
-
-        healthRing.style.strokeDashoffset = offset;
-
-        healthRing.style.stroke = healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)';
-
-      }
-
-      // Insight chips (inside the banner)
-
-      const chips = [
-
-        { label: 'Connected', value: `${connPct}% (${funnel.connected})`, tone: funnel.connected > rows.length * 0.5 ? 'ok' : (funnel.connected > rows.length * 0.3 ? 'warn' : 'danger') },
-
-        { label: 'Booked', value: `${funnel.booked} (${funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0}%)`, tone: funnel.booked > 5 ? 'ok' : (funnel.booked > 0 ? 'warn' : 'danger') },
-
-      ];
-
-      if (pipeline.active > 0) chips.push({ label: 'Pipeline', value: `${pipeline.active} active`, tone: 'info' });
-
-      if (lq.total > 0) chips.push({ label: 'Invalid', value: `${lq.total} (${healthInvalidPct.toFixed(0)}%)`, tone: lq.total > 5 ? 'danger' : 'warn' });
-
-      if (competitors.total > 0) chips.push({ label: 'Competitive Loss', value: `${competitors.total}`, tone: competitors.total > 5 ? 'danger' : 'warn' });
-
-      if (callbacks.total > 0) chips.push({ label: 'Callbacks', value: `${callbacks.total} pending`, tone: callbacks.total > 3 ? 'warn' : 'info' });
-
-      if (langBarriers.total > 0) chips.push({ label: 'Language', value: `${langBarriers.total} barriers`, tone: 'warn' });
-
-      const chipEl = document.getElementById('insightStrip');
-
-      if (chipEl) {
-
-        chipEl.innerHTML = chips.map(c => `<span class="anomaly-chip ${c.tone}">${c.label}: <strong>${c.value}</strong></span>`).join('');
-
-        chipEl.style.display = chips.length ? 'flex' : 'none';
-
-      }
-
-      // Customer Voice
-
-      
-
-      // Conversion Funnel
-
-      renderConversionFunnel(funnel);
-
-      // Conversion Blockers
-
-      renderConversionBlockers(blockers);
-
-      // Agent Performance Table
-
-      renderAgentTable(agents);
-
-      // Decision Pipeline
-
-      renderDecisionPipeline(pipeline);
-
-      // Disposition
-
-      renderDispositionIntelligence(dispositions);
-
-      // Source Quality
-
-      renderSourceQuality(sourceQuality);
-
-      // Competitive Intel
-
-      renderCompetitiveIntel(competitors);
-
-      // Language & Quality
-
-      renderLanguageQuality(langBarriers);
-
-      // Lead Quality
-
-      renderLeadQualityScorecard(lq);
-
-      // Anomalies
-
-      renderAnomalySection(anomalies);
-
-      // Phase Comparison
-
-      renderPhaseComparison(trends);
-
-      // Recommended Actions
-
-      // AI-Powered Recommendations
-
-      // Trend indicator
-
-      renderTrendIndicators(trends);
-
-      // Daily & Vehicle Charts
-      renderDailyChart(dailyCounts);
-      renderVehicleChart(modelCounts);
-
-      if (campaignMode && campaignMode.value === 'auto') {
-
-        campaignMode.value = resolvedCampaignType === 'post' ? 'post' : 'pre';
-
-      }
-
-    
-        // Store data for AI Summary
-        window._dashRows = rows;
-        window._dashColMap = colMap;
-        window._dashIsPostSales = isPostSales;
-        window._dashFunnel = funnel;
-        window._dashCompetitors = competitors;
-        window._dashCallbacks = callbacks;
-        window._dashTrends = trends;
-        window._dashHealthScore = healthScore;
-        window._dashHealthClass = healthClass;
-      window._dashAgents = agents;
-        document.getElementById('btnAiSummary').disabled = false;
-    }
-
-    /* ── KPI Card Builder (editable counts; controls hidden in print / PDF) ── */
-
-    function parseKpiInput(str) {
-
-      const n = parseInt(String(str || '').replace(/[^\d]/g, ''), 10);
-
-      return Number.isNaN(n) ? 0 : Math.max(0, n);
-
-    }
-
-    function finishKpiEdit(card, save) {
-
-      const input = card.querySelector('.kpi-value-input');
-
-      const valueEl = card.querySelector('.kpi-value-display');
-
-      const panel = card.querySelector('.kpi-value-edit-panel');
-
-      const badge = card.querySelector('.kpi-adjusted-badge');
-
-      if (!valueEl || !panel) return;
-
-      if (save && input) {
-
-        const n = parseKpiInput(input.value);
-
-        card.dataset.kpiNumeric = String(n);
-
-        valueEl.textContent = numberWithCommas(n);
-
-        if (badge) {
-
-          const orig = parseInt(card.dataset.kpiOriginal, 10) || 0;
-
-          badge.hidden = (n === orig);
-
-        }
-
-      }
-
-      card.classList.remove('kpi-is-editing');
-
-      panel.hidden = true;
-
-      valueEl.style.display = '';
-
-      if (input) input.value = '';
-
-    }
-
-    function startKpiEdit(card) {
-
-      const input = card.querySelector('.kpi-value-input');
-
-      const valueEl = card.querySelector('.kpi-value-display');
-
-      const panel = card.querySelector('.kpi-value-edit-panel');
-
-      if (!input || !valueEl || !panel) return;
-
-      input.value = card.dataset.kpiNumeric || '0';
-
-      card.classList.add('kpi-is-editing');
-
-      panel.hidden = false;
-
-      valueEl.style.display = 'none';
-
-      input.focus();
-
-      input.select();
-
-    }
-
-    function flushOpenKpiEdits(commit) {
-
-      document.querySelectorAll('.kpi-card.kpi-is-editing').forEach(function(card) {
-
-        finishKpiEdit(card, commit !== false);
-
-      });
-
-    }
-
-    function makeKPI({ label, value, sub, color, delay }) {
-
-      let num = Number(value);
-
-      if (!Number.isFinite(num)) num = 0;
-
-      const n = Math.max(0, Math.floor(num));
-
-      const card = document.createElement('div');
-
-      card.className = `kpi-card ${color} slide-up stagger-${delay}`;
-
-      card.dataset.kpiOriginal = String(n);
-
-      card.dataset.kpiNumeric = String(n);
-
-      const top = document.createElement('div');
-
-      top.className = 'kpi-card-top';
-
-      const dotWrap = document.createElement('div');
-
-      const dot = document.createElement('span');
-
-      dot.className = 'kpi-dot';
-
-      dotWrap.appendChild(dot);
-
-      const controls = document.createElement('div');
-
-      controls.className = 'kpi-edit-controls';
-
-      const btnEdit = document.createElement('button');
-
-      btnEdit.type = 'button';
-
-      btnEdit.className = 'kpi-edit-btn';
-
-      btnEdit.title = 'Adjust KPI value';
-
-      btnEdit.setAttribute('aria-label', 'Adjust KPI value');
-
-      btnEdit.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
-
-      const badge = document.createElement('span');
-
-      badge.className = 'kpi-adjusted-badge';
-
-      badge.textContent = 'Adjusted';
-
-      badge.hidden = true;
-
-      controls.appendChild(btnEdit);
-
-      controls.appendChild(badge);
-
-      top.appendChild(dotWrap);
-
-      top.appendChild(controls);
-
-      const valueEl = document.createElement('div');
-
-      valueEl.className = 'kpi-value kpi-value-display';
-
-      valueEl.textContent = numberWithCommas(n);
-
-      const panel = document.createElement('div');
-
-      panel.className = 'kpi-value-edit-panel';
-
-      panel.hidden = true;
-
-      const input = document.createElement('input');
-
-      input.type = 'text';
-
-      input.className = 'kpi-value-input';
-
-      input.setAttribute('inputmode', 'numeric');
-
-      input.setAttribute('autocomplete', 'off');
-
-      input.setAttribute('aria-label', 'KPI value');
-
-      const actions = document.createElement('div');
-
-      actions.className = 'kpi-edit-actions';
-
-      const btnApply = document.createElement('button');
-
-      btnApply.type = 'button';
-
-      btnApply.className = 'kpi-mini-btn kpi-apply';
-
-      btnApply.textContent = 'Apply';
-
-      const btnCancel = document.createElement('button');
-
-      btnCancel.type = 'button';
-
-      btnCancel.className = 'kpi-mini-btn';
-
-      btnCancel.textContent = 'Cancel';
-
-      actions.appendChild(btnApply);
-
-      actions.appendChild(btnCancel);
-
-      panel.appendChild(input);
-
-      panel.appendChild(actions);
-
-      const labelEl = document.createElement('div');
-
-      labelEl.className = 'kpi-label';
-
-      labelEl.textContent = label;
-
-      const subEl = document.createElement('div');
-
-      subEl.className = 'kpi-sub';
-
-      subEl.textContent = sub;
-
-      if (arguments[0].pct !== undefined) {
-
-        const trendBadge = document.createElement('span');
-
-        const pv = arguments[0].pct;
-
-        const cls = pv >= 50 ? 'pct-ok' : pv >= 20 ? 'pct-warn' : pv < 5 ? 'pct-blue' : 'pct-danger';
-
-        trendBadge.className = 'kpi-trend-badge ' + cls;
-
-        trendBadge.textContent = pv + '% of total';
-
-        subEl.after(trendBadge);
-
-      }
-
-      if (arguments[0].insight) {
-
-        const insightEl = document.createElement('div');
-
-        insightEl.className = 'kpi-insight';
-
-        insightEl.textContent = arguments[0].insight;
-
-        card.appendChild(insightEl);
-
-      }
-
-      btnEdit.addEventListener('click', function(e) {
-
-        e.preventDefault();
-
-        if (card.classList.contains('kpi-is-editing')) return;
-
-        startKpiEdit(card);
-
-      });
-
-      btnApply.addEventListener('click', function(e) {
-
-        e.preventDefault();
-
-        finishKpiEdit(card, true);
-
-      });
-
-      btnCancel.addEventListener('click', function(e) {
-
-        e.preventDefault();
-
-        finishKpiEdit(card, false);
-
-      });
-
-      input.addEventListener('keydown', function(e) {
-
-        if (e.key === 'Enter') {
-
-          e.preventDefault();
-
-          finishKpiEdit(card, true);
-
-        } else if (e.key === 'Escape') {
-
-          e.preventDefault();
-
-          finishKpiEdit(card, false);
-
-        }
-
-      });
-
-      card.appendChild(top);
-
-      card.appendChild(valueEl);
-
-      card.appendChild(panel);
-
-      card.appendChild(labelEl);
-
-      card.appendChild(subEl);
-
-      return card;
-
-    }
-
-    /* ── Daily Bar Chart ──────────────────────────────────────────────── */
-
-    function renderDailyChart(dailyCounts) {
-
-      const container = document.getElementById('dailyChart');
-
-      container.innerHTML = '';
-
-      const entries = Object.entries(dailyCounts).sort((a, b) => a[0].localeCompare(b[0]));
-
-      if (entries.length === 0) {
-
-        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;width:100%;padding:3rem 0;">No date data available</div>';
-
-        return;
-
-      }
-
-      const maxVal = Math.max(...entries.map(e => e[1]));
-
-      entries.forEach(([dateKey, count]) => {
-
-        const displayDate = formatDateLabelFromKey(dateKey);
-
-        const col = document.createElement('div');
-
-        col.className = 'chart-bar-col';
-
-        const heightPct = maxVal > 0 ? (count / maxVal * 100) : 0;
-
-        col.innerHTML = `
-
-          <span class="chart-bar-val">${count}</span>
-
-          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${displayDate}: ${count} calls"></div>
-
-          <span class="chart-bar-label">${displayDate}</span>
-
-        `;
-
-        container.appendChild(col);
-
-      });
-
-    }
-
-    /* ── Vehicle Horizontal Bar Chart ─────────────────────────────────── */
-
-    function renderVehicleChart(modelCounts) {
-
-      const container = document.getElementById('vehicleChart');
-
-      if (!container) return;
-
-      container.innerHTML = '';
-
-      const panel = container.closest('.data-panel');
-
-      if (panel) {
-
-        const existingActions = panel.querySelector('.hbar-actions');
-
-        if (existingActions) existingActions.remove();
-
-      }
-
-      const entries = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
-
-      if (entries.length === 0) {
-
-        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:2rem 0;">No vehicle model data</div>';
-
-        return;
-
-      }
-
-      const maxVal = entries[0][1];
-
-      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
-
-      const totalModelTaggedCalls = entries.reduce((acc, [, count]) => acc + count, 0);
-
-      const TOP_MODELS_LIMIT = 12;
-
-      const shouldCollapse = entries.length > TOP_MODELS_LIMIT;
-
-      const titleEl = panel.querySelector('.panel-title');
-
-      titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
-
-      // Re-add the dot
-
-      const dot = document.createElement('span');
-
-      titleEl.prepend(dot);
-
-      const collapsedEntries = shouldCollapse
-
-        ? [
-
-            ...entries.slice(0, TOP_MODELS_LIMIT),
-
-            ['Others', entries.slice(TOP_MODELS_LIMIT).reduce((sum, [, c]) => sum + c, 0)],
-
-          ]
-
-        : entries;
-
-      const renderRows = (rowsToRender) => {
-
-        container.innerHTML = '';
-
-        rowsToRender.forEach(([model, count], i) => {
-
-          const row = document.createElement('div');
-
-          row.className = 'hbar-row';
-
-          const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
-
-          const colorClass = colors[i % colors.length];
-
-          const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
-
-          const label = document.createElement('span');
-
-          label.className = 'hbar-label';
-
-          label.title = model;
-
-          label.textContent = model;
-
-          const track = document.createElement('div');
-
-          track.className = 'hbar-track';
-
-          const fill = document.createElement('div');
-
-          fill.className = 'hbar-fill ' + colorClass;
-
-          fill.style.width = widthPct + '%';
-
-          track.appendChild(fill);
-
-          const value = document.createElement('span');
-
-          value.className = 'hbar-value';
-
-          value.textContent = numberWithCommas(count);
-
-          const pctSpan = document.createElement('span');
-
-          pctSpan.className = 'hbar-pct';
-
-          pctSpan.textContent = percentage + '%';
-
-          value.appendChild(pctSpan);
-
-          row.appendChild(label);
-
-          row.appendChild(track);
-
-          row.appendChild(value);
-
-          container.appendChild(row);
-
-        });
-
-      };
-
-      renderRows(collapsedEntries);
-
-      if (!shouldCollapse) return;
-
-      let expanded = false;
-
-      const actionRow = document.createElement('div');
-
-      actionRow.className = 'hbar-actions';
-
-      const toggleBtn = document.createElement('button');
-
-      toggleBtn.type = 'button';
-
-      toggleBtn.className = 'hbar-toggle-btn';
-
-      toggleBtn.textContent = `Show all ${entries.length} models`;
-
-      toggleBtn.onclick = () => {
-
-        expanded = !expanded;
-
-        renderRows(expanded ? entries : collapsedEntries);
-
-        actionRow.appendChild(toggleBtn);
-
-        toggleBtn.textContent = expanded ? 'Show top models only' : `Show all ${entries.length} models`;
-
-      };
-
-      actionRow.appendChild(toggleBtn);
-
-      panel.appendChild(actionRow);
-
-    }
-
-    /* ── Pending & Processed Panel ────────────────────────────────────── */
-
-    function renderPendingPanel(data) {
-
-      const container = document.getElementById('pendingPanel');
-
-      if (!container) return;
-
-      container.innerHTML = `
-
-        <div class="pdata-list">
-
-          <div class="pdata-item">
-
-            <span class="pdata-label">Incomplete Call</span>
-
-            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.incompleteCall)}</span>
-
-          </div>
-
-          <div class="pdata-item">
-
-            <span class="pdata-label">${data.isPostSales ? 'Callback / Call Later' : 'Callback Requested'}</span>
-
-            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.callbackRequested)}</span>
-
-          </div>
-
-          <div class="pdata-item">
-
-            <span class="pdata-label">Not Connected (Outcome)</span>
-
-            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notConnected)}</span>
-
-          </div>
-
-          ${data.isPostSales ? `
-
-          <div class="pdata-item">
-
-            <span class="pdata-label">Not Interested / Already Serviced</span>
-
-            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notInterestedPost || 0)}</span>
-
-          </div>
-
-          ` : ''}
-
-        </div>
-
-        <div class="pdata-highlight amber" style="margin-top:0.75rem;">
-
-          <span class="pdata-label">PENDING FOLLOW-UP</span>
-
-          <span class="pdata-value">${numberWithCommas(data.pendingFollowup)}</span>
-
-        </div>
-
-        <div class="alert-block red" style="margin-top:0.75rem;">
-
-          <div class="alert-title">Not Connected Definition (${numberWithCommas(data.notConnected)})</div>
-
-          <div class="alert-item">Counted only when Outcome = Not Connected</div>
-
-          <div class="alert-item">Does not include voicemail or other non-connected outcomes</div>
-
-        </div>
-
-        ${data.dupeCount > 0 ? `
-
-        <div class="alert-block green" style="margin-top:0.5rem;">
-
-          <div class="alert-title">Retriggered Leads (${data.dupeCount})</div>
-
-          <div class="alert-item">${numberWithCommas(data.uniquePhones + data.dupeCount)} (Total) → ${data.dupeCount} (Retriggered) = ${numberWithCommas(data.uniquePhones)} (Unique)</div>
-
-        </div>
-
-        ` : ''}
-
-      `;
-
-    }
-
-    function renderMetricAudit(audit) {
-
-      const panel = document.getElementById('metricAudit');
-
-      const strip = document.getElementById('metricAuditStrip');
-
-      const summary = document.getElementById('metricAuditSummary');
-
-      const details = document.getElementById('metricAuditDetails');
-
-      const toggle = document.getElementById('metricAuditToggle');
-
-      const grid = document.getElementById('metricAuditGrid');
-
-      if (!panel || !strip || !summary || !details || !toggle || !grid) return;
-
-      const items = Object.entries(audit.columns).map(([label, value]) => ({
-
-        label,
-
-        value: value || 'Missing',
-
-        tone: value ? '' : 'warn',
-
-      }));
-
-      items.push(
-
-        { label: 'Date Parser', value: audit.parserLabel, tone: '' },
-
-        { label: 'Valid Dates', value: `${audit.validDateCount}/${audit.totalRows}`, tone: audit.validDateCount ? '' : 'err' },
-
-        { label: 'Rejected Dates', value: String(audit.rejectedDateCount), tone: audit.rejectedDateCount ? 'warn' : '' },
-
-        { label: 'Unique Phones', value: String(audit.uniquePhones || 0), tone: audit.uniquePhones ? '' : 'warn' },
-
-        { label: 'Duplicate Rows', value: String(audit.duplicatePhones || 0), tone: audit.duplicatePhones ? 'warn' : '' }
-
-      );
-
-      const mappedColumns = Object.values(audit.columns).filter(Boolean).length;
-
-      const totalColumns = Object.keys(audit.columns).length;
-
-      const stripItems = [
-
-        {
-
-          label: 'Columns Mapped',
-
-          value: `${mappedColumns}/${totalColumns}`,
-
-          tone: mappedColumns === totalColumns ? '' : 'warn',
-
-        },
-
-        {
-
-          label: 'Valid Dates',
-
-          value: `${audit.validDateCount}/${audit.totalRows}`,
-
-          tone: audit.validDateCount ? '' : 'err',
-
-        },
-
-        {
-
-          label: 'Rejected Dates',
-
-          value: String(audit.rejectedDateCount),
-
-          tone: audit.rejectedDateCount ? 'warn' : '',
-
-        },
-
-        {
-
-          label: 'Duplicate Rows',
-
-          value: String(audit.duplicatePhones || 0),
-
-          tone: audit.duplicatePhones ? 'warn' : '',
-
-        }
-
-      ];
-
-      strip.innerHTML = '';
-
-      for (const item of stripItems) {
-
-        const card = document.createElement('div');
-
-        card.className = 'metric-health-chip' + (item.tone ? ' ' + item.tone : '');
-
-        const label = document.createElement('div');
-
-        label.className = 'metric-health-label';
-
-        label.textContent = item.label;
-
-        const value = document.createElement('div');
-
-        value.className = 'metric-health-value';
-
-        value.title = item.value;
-
-        value.textContent = item.value;
-
-        card.appendChild(label);
-
-        card.appendChild(value);
-
-        strip.appendChild(card);
-
-      }
-
-      summary.textContent = `${mappedColumns}/${totalColumns} columns mapped · Parser ${audit.parserLabel} · Unique phones ${audit.uniquePhones || 0}`;
-
-      grid.innerHTML = '';
-
-      for (const item of items) {
-
-        const card = document.createElement('div');
-
-        card.className = 'metric-audit-item' + (item.tone ? ' ' + item.tone : '');
-
-        const label = document.createElement('div');
-
-        label.className = 'metric-audit-label';
-
-        label.textContent = item.label;
-
-        const value = document.createElement('div');
-
-        value.className = 'metric-audit-value';
-
-        value.title = item.value;
-
-        value.textContent = item.value;
-
-        card.appendChild(label);
-
-        card.appendChild(value);
-
-        grid.appendChild(card);
-
-      }
-
-      details.classList.remove('show');
-
-      toggle.textContent = 'View full audit';
-
-      toggle.setAttribute('aria-expanded', 'false');
-
-      toggle.onclick = () => {
-
-        const expanded = details.classList.toggle('show');
-
-        toggle.textContent = expanded ? 'Hide full audit' : 'View full audit';
-
-        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-
-      };
-
-      panel.style.display = 'block';
-
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-
-       HELPERS
-
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    function esc(v) {
-
-      return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-    }
-
-    function numberWithCommas(n) {
-
-      return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-    }
-
-    function pct(part, whole) {
-
-      if (!whole) return '0%';
-
-      return (part / whole * 100).toFixed(1) + '%';
-
-    }
-
-    function hasAny(text, terms) {
-
-      return terms.some(term => text.includes(term));
-
-    }
-
-    function hasVoicemailNorm(n) {
-
-      if (!n) return false;
-
-      return n.includes('voicemail') || n.includes('voice mail');
-
-    }
-
-    function hasInvalidLeadDispositionNorm(n) {
-
-      if (!n) return false;
-
-      return n.includes('not interested') || n.includes('invalid lead');
-
-    }
-
-    function hasServiceCompletedDispositionNorm(n) {
-
-      if (!n) return false;
-
-      return n.includes('service done') || n.includes('service completed');
-
-    }
-
-    function detectCampaignType(rows, cols) {
-
-      if (cols.nextServiceCol || cols.lastServiceCol || cols.serviceTypeCol) return 'post';
-
-      const sample = rows.slice(0, 300);
-
-      let postScore = 0;
-
-      let preScore = 0;
-
-      sample.forEach((row) => {
-
-        const text = (String(row[cols.summaryCol] || '') + ' ' +
-
-          String(row[cols.detailCol] || '') + ' ' +
-
-          String(row[cols.outcomeCol] || '') + ' ' +
-
-          String(row[cols.statusCol] || '')).toLowerCase();
-
-        if (hasAny(text, ['service booked', 'service appointment', 'feedback', 'serviced', 'escalation', 'complaint'])) postScore++;
-
-        if (hasAny(text, ['test drive', 'converted', 'interested', 'vehicle inquiry', 'brochure'])) preScore++;
-
-      });
-
-      return postScore > preScore ? 'post' : 'pre';
-
-    }
-
-    function buildDateParser(rows, columnName, forceOrder) {
-
-      // If user has manually selected a format, skip auto-detection entirely
-
-      if (forceOrder === 'DMY' || forceOrder === 'MDY') {
-
-        return {
-
-          order: forceOrder,
-
-          parse: (val) => parseDateStrictText(val, forceOrder),
-
-          forced: true,
-
-        };
-
-      }
-
-      // Auto-detect by scanning up to 250 rows for an unambiguous date
-
-      let inferredOrder = null;
-
-      const sampleLimit = Math.min(rows.length, 250);
-
-      for (let i = 0; i < sampleLimit; i++) {
-
-        const raw = rows[i] ? rows[i][columnName] : null;
-
-        const s = extractCallDateText(raw);
-
-        if (!s) continue;
-
-        const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-
-        if (!m) continue;
-
-        const a = Number(m[1]);
-
-        const b = Number(m[2]);
-
-        if (a > 12 && b <= 12) { inferredOrder = 'DMY'; break; }
-
-        if (b > 12 && a <= 12) { inferredOrder = 'MDY'; break; }
-
-      }
-
-      if (!inferredOrder) inferredOrder = 'DMY'; // default to DD/MM/YYYY
-
-      return {
-
-        order: inferredOrder,
-
-        parse: (val) => parseDateStrictText(val, inferredOrder),
-
-        forced: false,
-
-      };
-
-    }
-
-    function extractCallDateText(val) {
-
-      if (val === null || val === undefined) return '';
-
-      // JS Date object (cellDates:true mode — unlikely but handle it)
-
-      if (val instanceof Date) {
-
-        if (isNaN(val.getTime())) return '';
-
-        return String(val.getDate()).padStart(2, '0') + '/' +
-
-               String(val.getMonth() + 1).padStart(2, '0') + '/' +
-
-               val.getFullYear();
-
-      }
-
-      // Excel serial number (raw:true mode — dates come in as numbers like 45789)
-
-      // Valid Excel serials roughly cover 1-Jan-1900 (1) to 31-Dec-9999 (2958465)
-
-      if (typeof val === 'number') {
-
-        if (val > 1 && val < 2958466) {
-
-          // Convert Excel serial → UTC date
-
-          const d = new Date(Math.round((val - 25569) * 86400000));
-
-          if (!isNaN(d.getTime())) {
-
-            return String(d.getUTCDate()).padStart(2, '0') + '/' +
-
-                   String(d.getUTCMonth() + 1).padStart(2, '0') + '/' +
-
-                   d.getUTCFullYear();
-
-          }
-
-        }
-
-        return '';
-
-      }
-
-      return String(val).trim();
-
-    }
-
-    function parseDateStrictText(val, order) {
-
-      const s = extractCallDateText(val);
-
-      if (!s) return null;
-
-      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-
-        const d = new Date(s);
-
-        return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-      }
-
-      const dateToken = s.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/);
-
-      const slashSource = dateToken ? dateToken[1] : s;
-
-      const slashDate = slashSource.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-
-      if (slashDate) {
-
-        const a = Number(slashDate[1]);
-
-        const b = Number(slashDate[2]);
-
-        const year = Number(slashDate[3]);
-
-        const day = order === 'MDY' ? b : a;
-
-        const month = order === 'MDY' ? a : b;
-
-        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-
-          return new Date(year, month - 1, day);
-
-        }
-
-      }
-
-      const namedMonth = s.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i) ||
-
-                         s.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{1,2}),?\s+(\d{4})/i);
-
-      if (namedMonth) {
-
-        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-
-        if (namedMonth[2] && months[namedMonth[2].toLowerCase().slice(0,3)] !== undefined) {
-
-          return new Date(+namedMonth[3], months[namedMonth[2].toLowerCase().slice(0,3)], +namedMonth[1]);
-
-        }
-
-        if (namedMonth[1] && months[namedMonth[1].toLowerCase().slice(0,3)] !== undefined) {
-
-          return new Date(+namedMonth[3], months[namedMonth[1].toLowerCase().slice(0,3)], +namedMonth[2]);
-
-        }
-
-      }
-
-      return null;
-
-    }
-
-    function formatDateKey(d) {
-
-      const year = d.getFullYear();
-
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-
-      const day = String(d.getDate()).padStart(2, '0');
-
-      return `${year}-${month}-${day}`;
-
-    }
-
-    function formatDateLabelFromKey(key) {
-
-      const parts = key.split('-').map(Number);
-
-      if (parts.length !== 3) return key;
-
-      return formatDateShort(new Date(parts[0], parts[1] - 1, parts[2]));
-
-    }
-
-    function formatDateShort(d) {
-
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
-
-    }
-
-    function formatDateFull(d) {
-
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-      return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-
-    }
-
-    function getPrintablePageHeightPx() {
-
-      // A4 landscape height is 210mm, minus top/bottom margins (10mm each).
-
-      const printableMm = 210 - 20;
-
-      const pxPerMm = 96 / 25.4;
-
-      return printableMm * pxPerMm;
-
-    }
-
-    function computePrintScale() {
-
-      const main = document.querySelector('main');
-
-      const campaignBar = document.getElementById('campaignBar');
-
-      const dashboardContent = document.getElementById('dashboardContent');
-
-      if (!main || !campaignBar || !dashboardContent) return 0.64;
-
-      const contentHeight = main.scrollHeight;
-
-      const availableHeight = getPrintablePageHeightPx();
-
-      if (!contentHeight || !availableHeight) return 0.64;
-
-      // Leave small safety buffer to prevent edge spill into a second page.
-
-      const safeRatio = (availableHeight / contentHeight) * 0.92;
-
-      return Math.max(0.38, Math.min(0.68, safeRatio));
-
-    }
-
-    function setDynamicPrintScale() {
-
-      const scale = computePrintScale();
-
-      document.documentElement.style.setProperty('--print-scale', scale.toFixed(3));
-
-    }
-
-    function clearDynamicPrintScale() {
-
-      document.documentElement.style.removeProperty('--print-scale');
-
-    }
-
-    async function printPDF() {
-
-      const mainEl = document.querySelector('main');
-
-      const campaignBar = document.getElementById('campaignBar');
-
-      const dashboardContent = document.getElementById('dashboardContent');
-
-      const btn = document.getElementById('btnPrintPDF');
-
-      const uploadSection = document.getElementById('uploadSection');
-
-      if (!mainEl || !campaignBar || !dashboardContent || dashboardContent.style.display === 'none') return;
-
-      const { jsPDF } = window.jspdf || {};
-
-      if (!jsPDF || !window.html2canvas) {
-
-        alert('PDF export library failed to load. Please check internet connection and refresh the page.');
-
-        return;
-
-      }
-
-      let prevWidth = '', prevMaxWidth = '', prevMargin = '';
-
-      let metricAuditOrigDisplay = undefined;
-
-      let metricAudit, captureWidth;
-
-      try {
-
-        flushOpenKpiEdits(true);
-
-        if (btn) btn.disabled = true;
-
-        if (btn) btn.style.visibility = 'hidden';
-
-        if (uploadSection) uploadSection.style.display = 'none';
-
-        metricAudit = document.getElementById('metricAudit');
-
-        metricAuditOrigDisplay = metricAudit ? metricAudit.style.display : null;
-
-        if (metricAudit) metricAudit.style.display = 'none';
-
-        mainEl.classList.add('pdf-export-mode');
-
-        // Force desktop layout for capture so responsive breakpoints don't stack cards.
-
-        captureWidth = 1440;
-
-        prevWidth = mainEl.style.width;
-
-        prevMaxWidth = mainEl.style.maxWidth;
-
-        prevMargin = mainEl.style.margin;
-
-        mainEl.style.width = captureWidth + 'px';
-
-        mainEl.style.maxWidth = captureWidth + 'px';
-
-        mainEl.style.margin = '0 auto';
-
-        // Ensure animation-driven elements are fully visible in exported canvas.
-
-        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
-
-        const animationState = [];
-
-        animatedElements.forEach((el) => {
-
-          animationState.push({
-
-            el,
-
-            opacity: el.style.opacity,
-
-            transform: el.style.transform,
-
-            animation: el.style.animation,
-
-            transition: el.style.transition,
-
-          });
-
-          el.style.opacity = '1';
-
-          el.style.transform = 'none';
-
-          el.style.animation = 'none';
-
-          el.style.transition = 'none';
-
-        });
-
-                // ── PDF export: Widen vehicle chart bars for screenshot ──
-        var pdfVState = { rows: [], fills: [], labels: [] };
-        (function() {
-          var chart = document.getElementById('vehicleChart');
-          if (chart) {
-            var vrows = chart.querySelectorAll('.hbar-row');
-            vrows.forEach(function(row) {
-              var orig = row.style.gridTemplateColumns || '';
-              pdfVState.rows.push({ el: row, orig: orig, origGap: row.style.gap || '' });
-              row.style.gridTemplateColumns = '140px 1fr 60px';
-              row.style.gap = '0.35rem';
-            });
-            var labels = chart.querySelectorAll('.hbar-label');
-            labels.forEach(function(label) {
-              pdfVState.labels.push({
-                el: label,
-                ws: label.style.whiteSpace || '',
-                ov: label.style.overflow || '',
-                wb: label.style.wordBreak || '',
-                lh: label.style.lineHeight || '',
-                
-              });
-              label.style.whiteSpace = 'normal';
-              label.style.overflow = 'visible';
-              label.style.wordBreak = 'break-word';
-              label.style.lineHeight = '1.3';
-              
-            });
-          }
-          // Set solid background colors on disp-fill bars (html2canvas doesn't capture gradients well)
-          var fills = document.querySelectorAll('.disp-fill');
-          fills.forEach(function(fill) {
-            var cls = fill.className;
-            var color = '';
-            if (cls.indexOf('blue') !== -1) color = '#5b9cf5';
-            else if (cls.indexOf('purple') !== -1) color = '#eab308';
-            else if (cls.indexOf('green') !== -1) color = '#63d6a3';
-            else if (cls.indexOf('amber') !== -1) color = '#e6a456';
-            else if (cls.indexOf('red') !== -1) color = '#f16f6f';
-            else if (cls.indexOf('teal') !== -1) color = '#5eead4';
-            else if (cls.indexOf('positive') !== -1) color = '#63d6a3';
-            else if (cls.indexOf('neutral') !== -1) color = '#e6a456';
-            else if (cls.indexOf('negative') !== -1) color = '#f16f6f';
-            if (color) {
-              pdfVState.fills.push({ el: fill, orig: fill.style.background || '', origImg: fill.style.backgroundImage || '' });
-              fill.style.background = color;
-              fill.style.backgroundImage = 'none';
-            }
-          });
-        })();
-
-// Capture live dashboard area only (header/footer are outside <main>).
-
-        let canvas = null;
-
-        let lastCaptureError = null;
-
-        const captureScales = [1.35, 1.1, 0.9];
-
-        for (const scale of captureScales) {
-
-          try {
-
-            canvas = await html2canvas(mainEl, {
-
-              backgroundColor: '#ffffff',
-
-              scale,
-
-              useCORS: false,
-
-              allowTaint: true,
-
-              logging: false,
-
-              removeContainer: true,
-
-              imageTimeout: 0,
-
-              windowWidth: captureWidth,
-
-              windowHeight: Math.max(document.documentElement.clientHeight, mainEl.scrollHeight),
-
-            });
-
-            if (canvas && canvas.width > 0 && canvas.height > 0) break;
-
-          } catch (e) {
-
-            lastCaptureError = e;
-
-          }
-
-        }
-
-        if (!canvas || canvas.width === 0 || canvas.height === 0) {
-
-          throw lastCaptureError || new Error('Canvas capture failed');
-
-        }
-
-        // Guard against oversized canvases that can fail on toDataURL.
-
-        const maxPixels = 12000000; // 12MP safety cap
-
-        let exportCanvas = canvas;
-
-        const currentPixels = canvas.width * canvas.height;
-
-        if (currentPixels > maxPixels) {
-
-          const ratio = Math.sqrt(maxPixels / currentPixels);
-
-          const w = Math.max(1, Math.floor(canvas.width * ratio));
-
-          const h = Math.max(1, Math.floor(canvas.height * ratio));
-
-          const resized = document.createElement('canvas');
-
-          resized.width = w;
-
-          resized.height = h;
-
-          const ctx = resized.getContext('2d');
-
-          if (!ctx) throw new Error('Canvas context unavailable');
-
-          ctx.fillStyle = '#ffffff';
-
-          ctx.fillRect(0, 0, w, h);
-
-          ctx.drawImage(canvas, 0, 0, w, h);
-
-          exportCanvas = resized;
-
-        }
-
-        const imgData = exportCanvas.toDataURL('image/jpeg', 0.92);
-
-        const pdf = new jsPDF({
-
-          orientation: 'landscape',
-
-          unit: 'mm',
-
-          format: 'a4',
-
-          compress: true,
-
-        });
-
-        const pageWidth = pdf.internal.pageSize.getWidth();
-
-        const pageHeight = pdf.internal.pageSize.getHeight();
-
-        const margin = 5;
-
-        const maxW = pageWidth - margin * 2;
-
-        const maxH = pageHeight - margin * 2;
-
-        const ratio = Math.min(maxW / exportCanvas.width, maxH / exportCanvas.height);
-
-        const renderW = exportCanvas.width * ratio;
-
-        const renderH = exportCanvas.height * ratio;
-
-        const x = (pageWidth - renderW) / 2;
-
-        const y = (pageHeight - renderH) / 2;
-
-        pdf.addImage(imgData, 'JPEG', x, y, renderW, renderH, undefined, 'FAST');
-
-        pdf.save('campaign-dashboard.pdf');
-
-      } catch (err) {
-
-        console.error('[Dashboard] PDF export failed:', err);
-
-        const msg = err && err.message ? err.message : String(err);
-
-        alert('Could not generate PDF: ' + msg);
-
-      } finally {
-
-        // Restore vehicle chart bars (widened for PDF capture)
-        if (typeof pdfVState !== 'undefined') {
-          pdfVState.rows.forEach(function(item) {
-            item.el.style.gridTemplateColumns = item.orig;
-            item.el.style.gap = item.origGap;
-          });
-          pdfVState.labels.forEach(function(item) {
-            item.el.style.whiteSpace = item.ws;
-            item.el.style.overflow = item.ov;
-            item.el.style.wordBreak = item.wb;
-            item.el.style.lineHeight = item.lh;
-            
-          });
-          pdfVState.fills.forEach(function(item) {
-            item.el.style.background = item.orig;
-            item.el.style.backgroundImage = item.origImg;
-          });
-        }
-
-        // Restore animated styles.
-
-        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
-
-        animatedElements.forEach((el) => {
-
-          el.style.opacity = '';
-
-          el.style.transform = '';
-
-          el.style.animation = '';
-
-          el.style.transition = '';
-
-        });
-
-        if (mainEl) {
-
-          mainEl.style.width = prevWidth;
-
-          mainEl.style.maxWidth = prevMaxWidth;
-
-          mainEl.style.margin = prevMargin;
-
-          mainEl.classList.remove('pdf-export-mode');
-
-        }
-
-        if (metricAudit && metricAuditOrigDisplay !== undefined) metricAudit.style.display = metricAuditOrigDisplay;
-
-        if (uploadSection) uploadSection.style.display = '';
-
-        if (btn) btn.style.visibility = '';
-
-        if (btn) btn.disabled = false;
-
-      }
-
-    }
-
-    window.addEventListener('afterprint', clearDynamicPrintScale);
-
-    window.addEventListener('beforeprint', function() {
-
-      flushOpenKpiEdits(true);
-
-    });
-    async function runAiAnalysis() {
-      var rows = window._dashRows;
-      var colMap = window._dashColMap;
-      var isPostSales = window._dashIsPostSales;
-      
-      if (!rows || !colMap) {
-        showAiNotice('No dashboard data. Click Generate Dashboard first.', true);
-        return;
-      }
-      document.getElementById('btnAiSummary').disabled = true;
-      try {
-        // Build summaries and classify with LLM, then pass llmLookup to mineCustomerThemes
-        var apiKey = getApiKey();
-        var summaries = [];
-        for (var ri = 0; ri < rows.length; ri++) {
-          var rowText = String(colMap.summary ? rows[ri][colMap.summary] : rows[ri][colMap.detail] || rows[ri][colMap.outcome] || '').trim();
-          if (rowText) summaries.push({ rowIndex: ri, text: rowText });
-        }
-        var llmResults = apiKey && summaries.length > 0 ? await classifyWithLlm(summaries, isPostSales, apiKey) : null;
-        var llmLookup = {};
-        if (llmResults && Array.isArray(llmResults)) {
-          for (var ri2 = 0; ri2 < llmResults.length; ri2++) {
-            var item = llmResults[ri2];
-            if (item && item.rowIndex !== undefined && item.dispositions) {
-              llmLookup[item.rowIndex] = item.dispositions;
-            }
-          }
-        }
-        var themes = await mineCustomerThemes(rows, colMap, isPostSales, llmLookup);
-        var funnel = window._dashFunnel;
-        var healthScore = window._dashHealthScore;
-        var healthClass = window._dashHealthClass;
-        var competitors = window._dashCompetitors;
-        var callbacks = window._dashCallbacks;
-        var trends = window._dashTrends;
-        var agents = window._dashAgents;
-        var headline = generateStoryHeadline(themes, funnel, healthScore);
-        var execNarrative = generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents);
-        var execEl = document.getElementById('execSummary');
-        if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
-        var badge = document.getElementById('analysisEngineBadge');
-        if (badge) { badge.textContent = themes.engine === 'nvidia' ? 'AI ANALYSIS' : themes.engine === 'cache' ? 'CACHED AI ANALYSIS' : 'LOCAL KEYWORD ANALYSIS'; }
-        document.getElementById('storyHeadline').textContent = headline;
-        document.getElementById('execNarrative').innerHTML = execNarrative;
-        var hsEl = document.getElementById('healthScore');
-        if (hsEl) { hsEl.textContent = healthScore + '/100'; hsEl.setAttribute('fill', healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'); }
-        var ring = document.querySelector('.health-ring');
-        if (ring) { var c = 150; ring.style.strokeDashoffset = c - (healthScore / 100) * c; ring.style.stroke = healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'; }
-        var voiceAI = await generateVoiceInsights(themes);
-        renderCustomerVoice(themes, voiceAI);
-        var recs = generateRecommendations(themes, funnel, competitors, callbacks, trends);
-        renderRecommendations(recs);
-        var llmRecs = await generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap);
-        renderLlmRecommendations(llmRecs);
-      } catch(e) {
-        console.error('AI analysis failed:', e);
-        showAiNotice('AI analysis failed: ' + e.message, true);
-      } finally {
-        document.getElementById('btnAiSummary').disabled = false;
-      }
-    }
+/* ═══════════════════════════════════════════════════════════════════════
+
+   dashboard.js — Application logic for dashboard.html
+
+   Extracted from inline <script> in the HTML file.
+
+   ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+// Apply stored theme on load
+
+
+
+    applyTheme(getStoredTheme());
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       BI ENGINE — SUMMARY PARSER, TAXONOMIES, CLASSIFICATION
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    // ── SUMMARY Parser ─────────────────────────────────────────────────────
+
+
+
+    function parseSummary(text) {
+
+
+
+      const r = {
+
+
+
+        agentName: null, agentNameCorrected: null, customerName: null,
+
+
+
+        vehicleModel: null, regNumber: null, lastServiceDate: null, nextDueDate: null,
+
+
+
+        bookingDate: null, bookingTime: null, bookingLocation: null,
+
+
+
+        languageChosen: null, languageRequested: null, competitorLocation: null,
+
+
+
+        callbackTime: null
+
+
+
+      };
+
+
+
+      if (!text || typeof text !== 'string') return r;
+
+
+
+      const t = text.trim();
+
+
+
+      if (!t || t === "Summary couldn't be generated for this call.") return r;
+
+
+
+      // Agent name
+
+
+
+      const agentMatch = t.match(/agent[,\s]+(\w+)(?:\s*\(later\s+(\w+)\))?\s+from/i);
+
+
+
+      if (agentMatch) { r.agentName = agentMatch[1]; if (agentMatch[2]) r.agentNameCorrected = agentMatch[2]; }
+
+
+
+      const agentNamed = t.match(/agent\s+named\s+(\w+)\s+from/i);
+
+
+
+      if (agentNamed && !r.agentName) r.agentName = agentNamed[1];
+
+
+
+      // Customer name
+
+
+
+      const custMatch = t.match(/(?:contacted|called|to)\s+([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)\s+(?:regarding|about|for)/);
+
+
+
+      if (custMatch) r.customerName = custMatch[1];
+
+
+
+      // Vehicle model + registration
+
+
+
+      const vehMatch = t.match(/(?:Yamaha\s+)?([\w\s\-]+?)\s+(?:bike|scooty|vehicle)\s*\(([^)]+)\)/i);
+
+
+
+      if (vehMatch) { r.vehicleModel = vehMatch[1].trim(); r.regNumber = vehMatch[2].trim(); }
+
+
+
+      // Service dates
+
+
+
+      const lastSvc = t.match(/last service was on\s+(\w+\s+\d+,?\s*\d{4})/i);
+
+
+
+      if (lastSvc) r.lastServiceDate = lastSvc[1];
+
+
+
+      const nextDue1 = t.match(/due by\s+(\w+\s+\d+,?\s*\d{4})/i);
+
+
+
+      if (nextDue1) r.nextDueDate = nextDue1[1];
+
+
+
+      const nextDue2 = t.match(/due before\s+(\w+\s+\d+,?\s*\d{4})/i);
+
+
+
+      if (nextDue2 && !r.nextDueDate) r.nextDueDate = nextDue2[1];
+
+
+
+      // Booking details
+
+
+
+      const bookedMatch = t.match(/booked for\s+(.+?)(?:[,.]|\s+at)/i);
+
+
+
+      if (bookedMatch) r.bookingDate = bookedMatch[1].trim();
+
+
+
+      const bookTime = t.match(/at\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+
+
+
+      if (bookTime) r.bookingTime = bookTime[1].trim();
+
+
+
+      const locMatch = t.match(/(Lalbagh|Jayanagar)/i);
+
+
+
+      if (locMatch) r.bookingLocation = locMatch[1];
+
+
+
+      // Language
+
+
+
+      const langChosen = t.match(/(?:selected|chose|opted for|preferred)\s+(\w+)/i);
+
+
+
+      if (langChosen) r.languageChosen = langChosen[1];
+
+
+
+      const langReq = t.match(/requested\s+(Hindi|Tamil|Malayalam|Telugu)/i);
+
+
+
+      if (langReq) r.languageRequested = langReq[1];
+
+
+
+      // Competitor location (in context of already serviced)
+
+
+
+      const compMatch = t.match(/serviced\s+(?:at|in|from)\s+([^,.]+)/i);
+
+
+
+      if (compMatch && /\b(already|had|been|completed)\b/i.test(t)) r.competitorLocation = compMatch[1].trim();
+
+
+
+      // Callback time
+
+
+
+      const cbTime = t.match(/(?:callback|call back)\s+(?:in|after|at|for)\s+(.+?)(?:[.,]|the|$)/i);
+
+
+
+      if (cbTime) r.callbackTime = cbTime[1].trim();
+
+
+
+      return r;
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       BI ENGINE — ANALYSIS FUNCTIONS (data-driven, no hardcoded keywords)
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    function analyzeConversionFunnel(rows, colMap, isPostSales, preConnected, preBooked) {
+
+
+
+      const total = rows.length;
+
+
+
+      let connectedNotBooked = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
+
+
+
+        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
+
+
+
+        const isConnected = status.includes('completed') || status.includes('attempted') || out.includes('connected');
+
+
+
+        const isBooked = upd === 'converted' || upd === 'follow up required' || upd === 'follow-up required' || disp === 'converted' || disp === 'follow up required' || disp === 'follow-up required';
+
+
+
+        if (isConnected && !isBooked) {
+
+
+
+          const reason = upd || disp || 'No reason recorded';
+
+
+
+          if (reason && reason !== 'No reason recorded') connectedNotBooked[reason] = (connectedNotBooked[reason] || 0) + 1;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      return { total, connected: preConnected, notConnected: total - preConnected, booked: preBooked, connectedNotBooked };
+
+
+
+    }
+
+
+
+    function analyzeDispositionPatterns(rows, colMap) {
+
+
+
+      const counts = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        // Use imported column value as-is, no hardcoded mapping
+
+
+
+        const val = String((colMap.updatedDisposition ? r[colMap.updatedDisposition] : '') || (colMap.detail ? r[colMap.detail] : '') || (colMap.outcome ? r[colMap.outcome] : '') || (colMap.status ? r[colMap.status] : '') || 'Unspecified').trim();
+
+
+
+        if (val) counts[val] = (counts[val] || 0) + 1;
+
+
+
+      });
+
+
+
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+
+
+      return { counts, top: sorted.slice(0, 12), total: rows.length };
+
+
+
+    }
+
+
+
+    function analyzeDecisionPipeline(rows, colMap) {
+
+
+
+      const buckets = { immediate: 0, thisWeek: 0, nextWeek: 0, twoWeeks: 0, monthPlus: 0, unknown: 0 };
+
+
+
+      const bucketLabels = { immediate: 'Booked', thisWeek: '1-3 days', nextWeek: '4-7 days', twoWeeks: '8-14 days', monthPlus: '15+ days', unknown: 'Unknown' };
+
+
+
+      rows.forEach(r => {
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
+
+
+
+        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
+
+
+
+        const combined = disp + ' ' + upd + ' ' + summary;
+
+
+
+        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted') || summary.includes('service booked')) {
+
+
+
+          buckets.immediate++;
+
+
+
+        } else if (summary.includes('today') || summary.includes('tomorrow') || summary.includes('this week')) {
+
+
+
+          buckets.thisWeek++;
+
+
+
+        } else if (summary.includes('next week') || /\bnext\s+\w+day\b/.test(summary)) {
+
+
+
+          buckets.nextWeek++;
+
+
+
+        } else if (combined.includes('deferred') || combined.includes('will decide') || combined.includes('callback') || combined.includes('call back')) {
+
+
+
+          buckets.unknown++;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      const active = buckets.thisWeek + buckets.nextWeek + buckets.twoWeeks + buckets.monthPlus;
+
+
+
+      return { buckets, bucketLabels, active, total: rows.length };
+
+
+
+    }
+
+
+
+    function analyzeCallbackBehavior(rows, colMap) {
+
+
+
+      const callbacks = [];
+
+
+
+      rows.forEach((r, i) => {
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
+
+
+
+        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
+
+
+
+        if (disp.includes('callback') || upd.includes('callback') || summary.includes('callback') || summary.includes('call back')) {
+
+
+
+          const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
+
+
+
+          callbacks.push({ row: i, time: parsed.callbackTime || 'unspecified', agent: parsed.agentName || 'unknown' });
+
+
+
+        }
+
+
+
+      });
+
+
+
+      return { total: callbacks.length, callbacks };
+
+
+
+    }
+
+
+
+    function analyzeLanguageBarriers(rows, colMap) {
+
+
+
+      let count = 0;
+
+
+
+      const languages = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
+
+
+
+        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
+
+
+
+        if (disp.includes('language') || upd.includes('language') || summary.includes('language') || summary.includes('only hindi')) {
+
+
+
+          count++;
+
+
+
+          const m = summary.match(/(?:requested|speak|only)\s+(Hindi|Tamil|Malayalam|Telugu|Kannada)/i);
+
+
+
+          if (m) languages[m[1]] = (languages[m[1]] || 0) + 1;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      return { total: count, languages };
+
+
+
+    }
+
+
+
+    function analyzeCompetitiveLosses(rows, colMap) {
+
+
+
+      const competitors = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').toLowerCase();
+
+
+
+        const summary = String(colMap.summary ? r[colMap.summary] : '').toLowerCase();
+
+
+
+        const combined = disp + ' ' + upd + ' ' + summary;
+
+
+
+        if (combined.includes('already serviced') || combined.includes('serviced elsewhere') || combined.includes('done elsewhere')) {
+
+
+
+          const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
+
+
+
+          if (parsed.competitorLocation) {
+
+
+
+            competitors[parsed.competitorLocation] = (competitors[parsed.competitorLocation] || 0) + 1;
+
+
+
+          } else {
+
+
+
+            competitors['Unspecified location'] = (competitors['Unspecified location'] || 0) + 1;
+
+
+
+          }
+
+
+
+        }
+
+
+
+      });
+
+
+
+      return { total: Object.values(competitors).reduce((s, v) => s + v, 0), competitors: Object.entries(competitors).sort((a, b) => b[1] - a[1]) };
+
+
+
+    }
+
+
+
+    function analyzeSentimentFromTranscript(rows, colMap) {
+
+
+
+      let positive = 0, negative = 0, neutral = 0, complaints = 0;
+
+
+
+      rows.forEach(r => {
+
+
+
+        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
+
+
+
+        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').toLowerCase();
+
+
+
+        if (out.includes('connected') || status.includes('completed') || status.includes('attempted')) positive++;
+
+
+
+        else if (disp.includes('complaint') || disp.includes('unhappy') || disp.includes('dissatisfied')) { negative++; complaints++; }
+
+
+
+        else if (out || status) neutral++;
+
+
+
+      });
+
+
+
+      const total = positive + negative + neutral;
+
+
+
+      return {
+
+
+
+        positive, negative, neutral, complaints, total,
+
+
+
+        positivePct: total > 0 ? (positive / total * 100).toFixed(0) : '0',
+
+
+
+        negativePct: total > 0 ? (negative / total * 100).toFixed(0) : '0'
+
+
+
+      };
+
+
+
+    }
+
+
+
+    function detectAnomalies(data, dailyCounts) {
+
+
+
+      const anomalies = [];
+
+
+
+      const values = Object.values(dailyCounts);
+
+
+
+      if (values.length > 3) {
+
+
+
+        const avg = values.reduce((s, v) => s + v, 0) / values.length;
+
+
+
+        const std = Math.sqrt(values.reduce((s, v) => s + (v - avg) ** 2, 0) / values.length);
+
+
+
+        Object.entries(dailyCounts).forEach(([day, count]) => {
+
+
+
+          if (std > 0 && (count - avg) / std > 1.8) {
+
+
+
+            anomalies.push({
+
+
+
+              severity: (count - avg) / std > 2.5 ? 'high' : 'med',
+
+
+
+              text: `${day} had ${count} calls — ${(count / avg).toFixed(1)}x the daily average of ${Math.round(avg)}`,
+
+
+
+              action: 'Review spike cause'
+
+
+
+            });
+
+
+
+          }
+
+
+
+        });
+
+
+
+      }
+
+
+
+      return anomalies;
+
+
+
+    }
+
+
+
+    function analyzeSourceQuality(rows, colMap) {
+
+
+
+      if (!colMap.source) return { sources: [], total: 0 };
+
+
+
+      const groups = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const src = String(r[colMap.source] || 'Unknown').trim();
+
+
+
+        if (!groups[src]) groups[src] = { total: 0, connected: 0, booked: 0, invalid: 0 };
+
+
+
+        groups[src].total++;
+
+
+
+        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
+
+
+
+        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
+
+
+
+        if (status.includes('completed') || status.includes('attempted') || out.includes('connected')) groups[src].connected++;
+
+
+
+        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted')) groups[src].booked++;
+
+
+
+        if (disp.includes('invalid') || upd.includes('invalid') || out.includes('invalid')) groups[src].invalid++;
+
+
+
+      });
+
+
+
+      let sources = Object.entries(groups).map(([name, d]) => ({
+
+
+
+        name, total: d.total, connected: d.connected, booked: d.booked, invalid: d.invalid,
+
+
+
+        connRate: d.total > 0 ? (d.connected / d.total * 100).toFixed(0) : '0',
+
+
+
+        bookRate: d.connected > 0 ? (d.booked / d.connected * 100).toFixed(0) : '0',
+
+
+
+        invalidRate: d.total > 0 ? (d.invalid / d.total * 100).toFixed(0) : '0'
+
+
+
+      })).sort((a, b) => b.total - a.total);
+
+
+
+      const best = sources.length > 1 ? sources.reduce((best, s) => parseFloat(s.connRate) > parseFloat(best.connRate) ? s : best) : null;
+
+
+
+      const worst = sources.length > 1 ? sources.reduce((worst, s) => parseFloat(s.invalidRate) > parseFloat(worst.invalidRate) ? s : worst) : null;
+
+
+
+      return { sources, total: sources.length, best, worst };
+
+
+
+    }
+
+
+
+    function analyzeTrends(rows, dailyCounts) {
+
+
+
+      const dates = Object.keys(dailyCounts).sort();
+
+
+
+      if (dates.length < 4) return { hasData: false };
+
+
+
+      const mid = Math.floor(dates.length / 2);
+
+
+
+      const firstHalf = dates.slice(0, mid);
+
+
+
+      const secondHalf = dates.slice(mid);
+
+
+
+      const sum = (arr) => arr.reduce((s, d) => s + (dailyCounts[d] || 0), 0);
+
+
+
+      const firstTotal = sum(firstHalf);
+
+
+
+      const secondTotal = sum(secondHalf);
+
+
+
+      const firstAvg = firstHalf.length > 0 ? firstTotal / firstHalf.length : 0;
+
+
+
+      const secondAvg = secondHalf.length > 0 ? secondTotal / secondHalf.length : 0;
+
+
+
+      const delta = secondAvg - firstAvg;
+
+
+
+      const pctChange = firstAvg > 0 ? ((delta / firstAvg) * 100).toFixed(0) : '0';
+
+
+
+      const direction = delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
+
+
+
+      return { hasData: true, firstAvg, secondAvg, delta, pctChange, direction, firstLabel: firstHalf[0] + ' - ' + firstHalf[mid-1], secondLabel: dates[mid] + ' - ' + dates[dates.length-1] };
+
+
+
+    }
+
+
+
+    function analyzeConversionBlockers(rows, colMap) {
+
+
+
+      const blockers = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
+
+
+
+        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
+
+
+
+        const isConnected = status.includes('completed') || status.includes('attempted') || out.includes('connected');
+
+
+
+        const isBooked = disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted');
+
+
+
+        if (isConnected && !isBooked) {
+
+
+
+          const reason = upd || disp || 'No reason recorded';
+
+
+
+          blockers[reason] = (blockers[reason] || 0) + 1;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      const sorted = Object.entries(blockers).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+
+
+      const total = sorted.reduce((s, [,c]) => s + c, 0);
+
+
+
+      return { blockers: sorted, total };
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       LLM CONFIG — NVIDIA / Mistral
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    const LLM_BATCH_SIZE = getConfigNumber('llmBatchSize', 12);
+
+
+
+    const LLM_MAX_CONCURRENT = getConfigNumber('llmMaxConcurrent', 2);
+
+
+
+    const LLM_MAX_RETRIES = getConfigNumber('llmMaxRetries', 3);
+
+
+
+    const LLM_REQUEST_TIMEOUT_MS = getConfigNumber('llmRequestTimeoutMs', 70000);
+
+
+
+    const LLM_PROMPT_CHAR_LIMIT = getConfigNumber('llmPromptCharLimit', 1200);
+
+
+
+    const LLM_THEME_BATCH_SIZE = getConfigNumber('llmThemeBatchSize', LLM_BATCH_SIZE);
+
+
+
+    const LLM_MAX_OUTPUT_TOKENS = getConfigNumber('llmMaxOutputTokens', 1600);
+
+
+
+    
+
+    var NVIDIA_MODEL = getLlmModel();
+
+let aiValidationController = null;
+
+
+
+    let _aiStatusStartTime = 0;
+
+
+
+    let _aiStatusTimer = null;
+
+
+
+    window._inMemoryApiKey = localStorage.getItem(NVIDIA_KEY_STORAGE) || '';function syncApiKeyControl(message, tone) {
+
+
+
+      const container = document.querySelector('.ai-key-control');
+
+
+
+      const input = document.getElementById('openRouterApiKey');
+
+
+
+      const status = document.getElementById('apiKeyStatus');
+
+
+
+      const saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
+
+
+
+      const clearBtn = container ? container.querySelector('button.subtle') : null;
+
+
+
+      const endpoint = getApiEndpoint();
+
+
+
+      const isProxy = isProxyEndpoint(endpoint);
+
+
+
+      
+
+
+
+      const configuredKey = window.JEJO_CONFIG
+
+        ? String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim()
+
+        : '';
+
+
+
+      const keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
+
+        ? configuredKey
+
+        : '';
+
+
+
+      
+
+
+
+      const isAutoConfigured = isProxy || keyFromConfig;
+
+
+
+      if (isAutoConfigured) {
+
+
+
+        if (input) input.style.display = 'none';
+
+
+
+        if (saveBtn) saveBtn.style.display = 'none';
+
+
+
+        if (clearBtn) clearBtn.style.display = 'none';
+
+
+
+        
+
+
+
+        if (status) {
+
+
+
+          if (isProxy) {
+
+
+
+            status.textContent = '✓ AI Active (Secure Proxy)';
+
+
+
+            status.className = 'api-key-status ok active-proxy';
+
+
+
+            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
+
+
+
+          } else {
+
+
+
+            status.textContent = '✓ AI Active (Configured)';
+
+
+
+            status.className = 'api-key-status ok';
+
+
+
+          }
+
+
+
+        }
+
+
+
+      } else {
+
+
+
+        if (input) input.style.display = '';
+
+
+
+        if (saveBtn) saveBtn.style.display = '';
+
+
+
+        if (clearBtn) clearBtn.style.display = '';
+
+
+
+        
+
+
+
+        const hasSavedKey = !!_inMemoryApiKey;
+
+
+
+        if (input) {
+
+
+
+          input.value = '';
+
+
+
+          input.placeholder = hasSavedKey ? 'NVIDIA key saved' : 'NVIDIA API key';
+
+
+
+        }
+
+
+
+        if (status) {
+
+
+
+          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
+
+
+
+          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
+
+
+
+          status.style.animation = '';
+
+
+
+        }
+
+
+
+      }
+
+
+
+    }
+
+
+
+    function saveNvidiaApiKey() {
+
+
+
+      const input = document.getElementById('openRouterApiKey');
+
+
+
+      const key = input ? input.value.trim() : '';
+
+
+
+      if (!key) {
+
+
+
+        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      _inMemoryApiKey = key;
+
+
+
+      syncApiKeyControl('Saved locally', 'ok');
+
+
+
+    }
+
+
+
+    function useTypedApiKeyForRun() {
+
+
+
+      const input = document.getElementById('openRouterApiKey');
+
+
+
+      const key = input ? input.value.trim() : '';
+
+
+
+      if (!key) return false;
+
+
+
+      _inMemoryApiKey = key;
+
+
+
+      syncApiKeyControl('Saved locally', 'ok');
+
+
+
+      return true;
+
+
+
+    }
+
+
+
+    function clearNvidiaApiKey() {
+
+
+
+      _inMemoryApiKey = '';
+
+
+
+      syncApiKeyControl('Cleared', 'warn');
+
+
+
+    }
+
+
+
+    function showAiNotice(msg, isError) {
+
+
+
+      updateAiStatus(1, 1, msg, !!isError);
+
+
+
+      window.setTimeout(function() {
+
+
+
+        const txt = document.getElementById('aiStatusText');
+
+
+
+        if (txt && txt.textContent === msg) updateAiStatus(0, 0, '');
+
+
+
+      }, 3500);
+
+
+
+    }
+
+
+
+    function cancelAiValidationDash() {
+
+
+
+      if (aiValidationController) {
+
+
+
+        aiValidationController.abort();
+
+
+
+        aiValidationController = null;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    function updateAiStatus(current, total, msg, isError) {
+
+
+
+      const bar = document.getElementById('aiStatusBar');
+
+
+
+      const txt = document.getElementById('aiStatusText');
+
+
+
+      const con = document.getElementById('aiStatus');
+
+
+
+      const dot = document.getElementById('aiStatusDot');
+
+
+
+      const cancel = document.getElementById('aiStatusCancel');
+
+
+
+      const elapsed = document.getElementById('aiStatusElapsed');
+
+
+
+      const corrected = document.getElementById('aiStatusCorrected');
+
+
+
+      if (!con) return;
+
+
+
+      if (total > 0) {
+
+
+
+        con.style.display = '';
+
+
+
+        if (bar) {
+
+
+
+          bar.style.width = (current / total * 100) + '%';
+
+
+
+          bar.style.background = isError ? 'var(--danger)' : 'var(--accent)';
+
+
+
+        }
+
+
+
+        if (txt) txt.textContent = msg || 'Analyzing with Mistral... ' + current + '/' + total;
+
+
+
+        if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
+
+
+
+        if (cancel) cancel.style.display = '';
+
+
+
+        
+
+
+
+        // Elapsed time
+
+
+
+        if (_aiStatusStartTime > 0 && elapsed) {
+
+
+
+          var secs = Math.floor((Date.now() - _aiStatusStartTime) / 1000);
+
+
+
+          var min = Math.floor(secs / 60);
+
+
+
+          var s = secs % 60;
+
+
+
+          elapsed.textContent = (min > 0 ? min + 'm ' : '') + s + 's';
+
+
+
+        }
+
+
+
+        
+
+
+
+        // Hide corrected badge in dashboard (no correctedResults tracking here)
+
+
+
+      } else {
+
+
+
+        con.style.display = 'none';
+
+
+
+        if (cancel) cancel.style.display = 'none';
+
+
+
+        if (elapsed) elapsed.textContent = '';
+
+
+
+      }
+
+
+
+    }
+
+
+
+    syncApiKeyControl();
+
+
+
+    function buildPromptForBatch(summaries, systemPrompt) {
+
+
+
+      return summaries.map(s => 'Row ' + s.rowIndex + ': "' + s.text + '"').join('\n');
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       LLM SYSTEM PROMPT — Zoho disposition classification
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    function buildLlmSystemPrompt(isPostSales) {
+
+
+
+      var disps;
+
+
+
+      if (isPostSales) {
+
+
+
+        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent. repeated rejection."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Vehicle is commercial or part of a fleet":"The vehicle is a commercial vehicle and not applicable for the campaign purpose."\n"Vehicle is not being run":"Vehicle is unused and not being run."\n"Requires special spare parts":"The vehicle requires special spare parts for repair."\n"Others":"All other disposition details not listed above."\n"Wrong contact number":"Customer tells the agent they have the wrong person or number that was contacted"\n"Has sold/given away the car":"The customer has sold or given away the vehicle."\n"Has moved to another location":"The customer has moved to another location."\n"Cannot make decision on servicing":"The customer the agent has called is not the right person to make the decision."\n"Will call workshop themselves":"The customer will contact the workshop themselves."\n"Requested Callback":"The customer asked the agent to call back at a later date and or time."\n"Looking for a discount":"The customer is looking for a discount on the campaign purpose."\n"Has serviced car in another dealership":"The customer has serviced the vehicle in another dealership."\n"Will decide tomorrow":"The customer said they would decide to service the vehicle tomorrow."\n"Will decide within 1 to 3 days":"The customer said they would decide to service the vehicle within 1 to 3 days."\n"Will decide within 4 to 7 days":"The customer said they would decide to service the vehicle within 4 to 7 days."\n"Will decide within 8 to 14 days":"The customer said they would decide to service the vehicle within 8 to 14 days."\n"Will decide within 15 to 30 days":"The customer said they would decide to service the vehicle within 15 to 30 days."\n"Will decide within 31 to 60 days":"The customer said they would decide to service the vehicle within 31 to 60 days."\n"Will decide within 61 to 90 days":"The customer said they would decide to service the vehicle within 61 to 90 days."\n"Will decide after 90 days":"The customer said they would decide to service the vehicle after 90 days."\n"Unsubscribed":"The customer asked to unsubscribed from the campaign."\n"Call Disconnected":"The call ended abruptly without completing the campaign objective."\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Call Quality Issue":"There was issues with the quality of the call."\n"Connection Issue":"There was issues with the connection between the customer and the agent."\n"Customer Busy":"The customer was busy."\n"No Response":"The customer did not say anything at all."\n"Price Inquiry":"The customer is interested in the price of the service."\n"Lost to Competition":"the customer already did the campaign objective from a competitors workshop"\n"Invalid Lead":"Not a valid lead."\n"Purchase Postponed":"They decided or implied they will postpone the service."\n"Showroom Visit Planned":"Already booked a showroom visit."\n"Existing Dealer Contact":"The customer already did the campaign objective from an existing dealership."\n"Contact Fatigue":"customer implied they were being contacted too many times by the agent."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
+
+
+
+      } else {
+
+
+
+        disps = '"Voicemail":"If the customer has asked to leave a message or voicemail."\n"Rejected":"If the customer has rejected the offer or to even speak with the agent."\n"Language barrier":"If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign."\n"Is not decision maker":"the customer said they are not the right person to speak to about this in their family."\n"Will decide later, will purchase within 15 days":"The customer said they would decide to buy the vehicle within 15 days."\n"Will decide later, will purchase within 1 to 3 months":"The customer said they would decide to buy the vehicle within 1 to 3 months."\n"Will decide later, exploring options":"The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now."\n"No buying intent":"the customer Do not want to purchase a car. Neither are the interested in the car."\n"Just Exploring":"the customer Only want to know about the vehicle but do not show intent to buy."\n"Will call showroom themselves":"the customer will contact the dealership or showroom themselves."\n"Requested Callback":"the customer Asked to call back at a later date and or time."\n"Purchased elsewhere":"the customer Already purchased a vehicle elsewhere."\n"Enquired for Pricing":"the customer by themselves asked for the price of the vehicle."\n"Enquired for Specifications":"the customer by themselves asked for the specifications of the vehicle."\n"Enquired for Test Drive":"the customer by themselves asked for a test drive of the vehicle."\n"Enquired for Showroom Visit":"the customer by themselves asked for a showroom visit of the vehicle."\n"Enquired for Brochure":"the customer by themselves asked for a brochure of the vehicle."\n"Enquired for Dealership Details":"the customer by themselves asked for dealership details."\n"Enquired for Others":"the customer by themselves asked for other details not listed above."\n"Comparing with another brand":"The customer by themselves is comparing the vehicle with another brand."\n"Call Disconnected":"The customer by themselves has disconnected the call."\n"Others":"All other disposition details not listed above."\n"General Inquiry":"the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle."\n"Not Interested":"the customer Specifically said they are not interested in the vehicle."\n"Follow Up Required":"the customer Needs a follow up to convince them to complete the campaign objective."\n"No Response":"the customer did not say anything at all."\n"Lost to Competition":"the customer Bought a competitor brands vehicle."\n"Test Drive Completed":"the customer Already completed a test drive."\n"Invalid Lead":"the customer Not a valid lead."\n"Purchase Postponed":"the customer indicates that the Purchase has been postponed"\n"Audio Issue":"There was issues with hearing the customer or the agent for either party."\n"Showroom Visit Planned":"the customer Already booked a showroom visit."\n"Converted":"The customer completes the purpose of the campaign and provides the necessary information."';
+
+
+
+      }
+
+
+
+      var modeLabel = isPostSales ? 'post-sales' : 'pre-sales';
+
+
+
+      return 'You classify ' + modeLabel + ' vehicle campaign call summaries into Zoho dispositions.\n\nRules:\n- Use only the supplied summary text. Do not infer from row order or campaign context.\n- Return exactly one JSON item for every input row, preserving the original rowIndex.\n- Use only exact disposition names from the list below.\n- Choose the best disposition. Use up to 2 dispositions only when both are clearly present.\n- If the evidence is weak, generic, or no listed disposition fits, return an empty dispositions array.\n- Do not explain your reasoning.\n\nRespond ONLY with a valid JSON array. No markdown, no comments, no wrapper object.\n\nDISPOSITIONS:\n' + disps + '\n\nADDITIONAL:\n"Talk to Human"\n"Interested in another car same dealership"\n\nReturn format: [{"rowIndex":0,"dispositions":["Disposition Name"]},{"rowIndex":1,"dispositions":[]}]';
+
+
+
+    }var DISPO_TO_THEME = {
+
+
+
+      'voicemail': 'voicemail',
+
+
+
+      'rejected': 'not_interested',
+
+
+
+      'language barrier': 'language_barrier',
+
+
+
+      'is not decision maker': 'wrong_person',
+
+
+
+      'will decide later, will purchase within 15 days': 'deferred',
+
+
+
+      'will decide later, will purchase within 1 to 3 months': 'deferred',
+
+
+
+      'will decide later, exploring options': 'deferred',
+
+
+
+      'no buying intent': 'not_interested',
+
+
+
+      'just exploring': 'not_interested',
+
+
+
+      'will call showroom themselves': 'not_interested',
+
+
+
+      'requested callback': 'callback_requested',
+
+
+
+      'purchased elsewhere': 'already_serviced',
+
+
+
+      'call disconnected': 'customer_busy',
+
+
+
+      'not interested': 'not_interested',
+
+
+
+      'follow up required': 'service_booked',
+
+
+
+      'no response': 'customer_busy',
+
+
+
+      'lost to competition': 'already_serviced',
+
+
+
+      'test drive completed': 'service_booked',
+
+
+
+      'invalid lead': 'not_interested',
+
+
+
+      'purchase postponed': 'deferred',
+
+
+
+      'audio issue': 'audio_issue',
+
+
+
+      'showroom visit planned': 'service_booked',
+
+
+
+      'converted': 'service_booked',
+
+
+
+      'vehicle is commercial or part of a fleet': 'not_interested',
+
+
+
+      'vehicle is not being run': 'sold_vehicle',
+
+
+
+      'requires special spare parts': 'not_interested',
+
+
+
+      'wrong contact number': 'wrong_person',
+
+
+
+      'has sold/given away the car': 'sold_vehicle',
+
+
+
+      'has moved to another location': 'wrong_person',
+
+
+
+      'cannot make decision on servicing': 'wrong_person',
+
+
+
+      'will call workshop themselves': 'not_interested',
+
+
+
+      'looking for a discount': 'not_interested',
+
+
+
+      'has serviced car in another dealership': 'already_serviced',
+
+
+
+      'will decide tomorrow': 'deferred',
+
+
+
+      'will decide within 1 to 3 days': 'deferred',
+
+
+
+      'will decide within 4 to 7 days': 'deferred',
+
+
+
+      'will decide within 8 to 14 days': 'deferred',
+
+
+
+      'will decide within 15 to 30 days': 'deferred',
+
+
+
+      'will decide within 31 to 60 days': 'deferred',
+
+
+
+      'will decide within 61 to 90 days': 'deferred',
+
+
+
+      'will decide after 90 days': 'deferred',
+
+
+
+      'unsubscribed': 'not_interested',
+
+
+
+      'call quality issue': 'audio_issue',
+
+
+
+      'connection issue': 'audio_issue',
+
+
+
+      'customer busy': 'customer_busy',
+
+
+
+      'price inquiry': 'service_booked',
+
+
+
+      'service postponed': 'deferred',
+
+
+
+      'existing dealer contact': 'already_serviced',
+
+
+
+      'contact fatigue': 'not_interested',
+
+
+
+      'talk to human': 'service_booked',
+
+
+
+      'interested in another car same dealership': 'service_booked',
+
+
+
+      'dissatisfied': 'dissatisfied',
+
+
+
+      'complaint': 'dissatisfied'
+
+
+
+    };
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       AI BATCH CLASSIFICATION
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    function normalizeLlmResults(parsed, summaries) {
+
+
+
+      var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.results) ? parsed.results : null);
+
+
+
+      if (!arr) throw new Error('LLM JSON was not an array');
+
+
+
+      var allowedRows = {};
+
+
+
+      var byRow = {};
+
+
+
+      summaries.forEach(function(s) {
+
+
+
+        allowedRows[String(s.rowIndex)] = true;
+
+
+
+        byRow[String(s.rowIndex)] = { rowIndex: s.rowIndex, dispositions: [] };
+
+
+
+      });
+
+
+
+      arr.forEach(function(item) {
+
+
+
+        if (!item || item.rowIndex === undefined || item.rowIndex === null) return;
+
+
+
+        var idxText = String(item.rowIndex);
+
+
+
+        var cleanedIdx = idxText.replace(/[^\d-]/g, '');
+
+
+
+        if (!cleanedIdx) return;
+
+
+
+        var idx = Number(cleanedIdx);
+
+
+
+        if (!Number.isFinite(idx) || !allowedRows[String(idx)]) return;
+
+
+
+        var rawDisps = [];
+
+
+
+        if (Array.isArray(item.dispositions)) rawDisps = item.dispositions;
+
+
+
+        else if (typeof item.dispositions === 'string') rawDisps = [item.dispositions];
+
+
+
+        else if (typeof item.disposition === 'string') rawDisps = [item.disposition];
+
+
+
+        var target = byRow[String(idx)].dispositions;
+
+
+
+        rawDisps.forEach(function(d) {
+
+
+
+          var val = String(d || '').trim();
+
+
+
+          if (val && target.indexOf(val) === -1) target.push(val);
+
+
+
+        });
+
+
+
+      });
+
+
+
+      return summaries.map(function(s) {
+
+
+
+        return byRow[String(s.rowIndex)];
+
+
+
+      });
+
+
+
+    }
+
+
+
+    function parseLlmJsonResults(text, summaries) {
+
+
+
+      var cleaned = String(text || '')
+
+
+
+        .replace(/```(?:json)?\s*/gi, '')
+
+
+
+        .replace(/\s*```/g, '')
+
+
+
+        .replace(/"rowIndex":\s*#/g, '"rowIndex":')
+
+
+
+        .trim();
+
+
+
+      try {
+
+
+
+        return normalizeLlmResults(JSON.parse(cleaned), summaries);
+
+
+
+      } catch (firstErr) {
+
+
+
+        var start = cleaned.indexOf('[');
+
+
+
+        var end = cleaned.lastIndexOf(']');
+
+
+
+        if (start === -1 || end === -1 || end <= start) throw firstErr;
+
+
+
+        return normalizeLlmResults(JSON.parse(cleaned.slice(start, end + 1)), summaries);
+
+
+
+      }
+
+
+
+    }
+
+
+
+    async function classifyWithLlm(allSummaries, isPostSales, apiKey) {
+
+
+
+      var systemPrompt = buildLlmSystemPrompt(isPostSales);
+
+
+
+      var batches = [];
+
+
+
+      for (var i = 0; i < allSummaries.length; i += LLM_BATCH_SIZE) {
+
+
+
+        batches.push(allSummaries.slice(i, i + LLM_BATCH_SIZE));
+
+
+
+      }
+
+
+
+      // Fallback: keyword-classify a single summary
+
+
+
+      function keywordFallback(summary) {
+
+
+
+        var lc = summary.text.toLowerCase();
+
+
+
+        var disp = [];
+
+
+
+        if (lc.includes('already serviced') || lc.includes('already done') || lc.includes('already completed') || lc.includes('serviced elsewhere') || lc.includes('bike was recently serviced') || lc.includes('bike had already been serviced') || lc.includes('service had already been')) disp.push('Has serviced car in another dealership');
+
+
+
+        else if (lc.includes('do not speak english') || lc.includes('only hindi') || lc.includes('requested hindi') || lc.includes('language barrier') || lc.includes('speak in a different language')) disp.push('Language barrier');
+
+
+
+        else if (lc.includes('voicemail') || lc.includes('at the tone') || lc.includes('record your message') || lc.includes('automated voicemail')) disp.push('Voicemail');
+
+
+
+        else if (lc.includes('requested a callback') || lc.includes('call back later') || lc.includes('will call back') || lc.includes('asked to call back') || lc.includes('callback requested')) disp.push('Requested Callback');
+
+
+
+        else if (lc.includes('deferred') || lc.includes('will decide') || lc.includes('out of station') || lc.includes('out of town') || lc.includes('not ready')) disp.push('Will decide later, exploring options');
+
+
+
+        else if (lc.includes('declined') || lc.includes('not interested') || lc.includes('not required') || lc.includes('refused') || lc.includes('repeatedly declined')) disp.push('Not Interested');
+
+
+
+        else if (lc.includes('driving') || lc.includes('in a meeting') || lc.includes('was busy') || lc.includes('unavailable to speak') || lc.includes('not a good time')) disp.push('Customer Busy');
+
+
+
+        else if (lc.includes('not the right person') || lc.includes('not the decision maker') || lc.includes('not the owner') || lc.includes('not the correct person')) disp.push('Is not decision maker');
+
+
+
+        else if (lc.includes('audio issue') || lc.includes('unclear audio') || lc.includes('could not hear') || lc.includes('difficulty hearing') || lc.includes('poor voice')) disp.push('Audio Issue');
+
+
+
+        else if (lc.includes('sold the bike') || lc.includes('no longer own') || lc.includes('given away') || lc.includes('sold it') || lc.includes('no longer have')) disp.push('Has sold/given away the car');
+
+
+
+        else if (lc.includes('appointment was successfully booked') || lc.includes('service confirmed') || lc.includes('booking confirmed') || lc.includes('successfully confirmed')) disp.push('Converted');
+
+
+
+        else if (lc.includes('dissatisfied') || lc.includes('complaint') || lc.includes('unhappy') || lc.includes('negative feedback') || lc.includes('poor service') || lc.includes('bad experience')) disp.push('Complaint');
+
+
+
+        return { rowIndex: summary.rowIndex, dispositions: disp };
+
+
+
+      }
+
+
+
+      var llmResults = null;
+
+
+
+      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length }));
+
+
+
+      // Check cache first — return immediately if this exact set was processed before
+
+      var cached = localStorage.getItem(cacheKey);
+
+      if (cached) {
+
+        try {
+
+          var parsed = JSON.parse(cached);
+
+          if (Array.isArray(parsed) && parsed.length === allSummaries.length) {
+
+            return parsed;
+
+          }
+
+        } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
+
+
+
+      _aiStatusStartTime = Date.now();
+
+
+
+      updateAiStatus(0, batches.length, 'Starting NVIDIA classification...');
+
+
+
+      
+
+
+
+      // Create abort controller for this run
+
+
+
+      aiValidationController = new AbortController();
+
+
+
+      var batchSize = LLM_BATCH_SIZE;
+
+
+
+      var runnerResult = await runLlmBatches({
+
+
+
+        items: allSummaries,
+
+
+
+        batchSize: batchSize,
+
+
+
+        maxConcurrent: LLM_MAX_CONCURRENT,
+
+
+
+        minGapMs: 300,
+
+
+
+        maxRetries: LLM_MAX_RETRIES,
+
+
+
+        requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+
+
+
+        cachedData: null,
+
+        signal: aiValidationController.signal,
+
+
+
+        buildPrompt: function(batch, batchIndex) {
+
+
+
+          var rowsPrompt = batch.map(function(s) {
+
+
+
+            return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text, LLM_PROMPT_CHAR_LIMIT) + '"';
+
+
+
+          }).join('\n');
+
+
+
+          return {
+
+
+
+            system: systemPrompt,
+
+
+
+            user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
+
+
+
+            temperature: 0.1,
+
+
+
+            maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS
+
+
+
+          };
+
+
+
+        },
+
+
+
+        parseResponse: function(text, batch, batchIndex) {
+
+
+
+          return parseLlmJsonResults(text, batch);
+
+
+
+        },
+
+
+
+        buildHeaders: function() {
+
+          var h = AiValidator.buildHeaders();
+
+          h['X-Title'] = 'AutoNage Dashboard';
+
+          var origin = (window.location && window.location.origin) ? window.location.origin : '';
+
+          if (/^https?:\/\//i.test(origin)) h['HTTP-Referer'] = origin;
+
+          return h;
+
+        },
+
+
+
+        onProgress: function(done, total, message, pct) {
+
+
+
+          updateAiStatus(done, total, message);
+
+
+
+        }
+
+
+
+      });
+
+
+
+      // ── Pass 2: Retry any failed batches using keyword fallback ──
+
+
+
+      if (runnerResult.failedBatches.length > 0) {
+
+
+
+        var failedCompleted = 0;
+
+
+
+        updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Retrying ' + runnerResult.failedBatches.length + ' failed batch(es) with keywords...', true);
+
+
+
+        for (var r = 0; r < runnerResult.failedBatches.length; r++) {
+
+
+
+          var idx = runnerResult.failedBatches[r];
+
+
+
+          var batchStart2 = idx * batchSize;
+
+
+
+          var fallbackResults = batches[idx].map(keywordFallback);
+
+
+
+          for (var fi = 0; fi < fallbackResults.length; fi++) {
+
+
+
+            runnerResult.results.set(batchStart2 + fi, fallbackResults[fi]);
+
+
+
+          }
+
+
+
+          failedCompleted++;
+
+
+
+          updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Fallback: ' + failedCompleted + '/' + runnerResult.failedBatches.length + ' batches');
+
+
+
+        }
+
+
+
+      }
+
+
+
+      // Check if aborted
+
+
+
+      if (runnerResult.aborted) {
+
+
+
+        updateAiStatus(0, 0, '');
+
+
+
+        aiValidationController = null;
+
+
+
+        return [];
+
+
+
+      }
+
+
+
+      aiValidationController = null;
+
+
+
+      // Flatten: combine results for same row if multiple batches returned dups
+
+
+
+      var results = [];
+
+
+
+      for (var j = 0; j < allSummaries.length; j++) {
+
+
+
+        var part = runnerResult.results.get(j);
+
+
+
+        if (part) results.push(part);
+
+
+
+      }
+
+
+
+      // Flatten: combine results for same row if multiple batches returned dups
+
+
+
+      // Combine results for same row if multiple batches returned dups
+
+      try {
+
+        var flat = {};
+
+        for (var k = 0; k < results.length; k++) {
+
+          var item = results[k];
+
+          if (!flat[item.rowIndex]) flat[item.rowIndex] = [];
+
+          (item.dispositions || []).forEach(function(d) {
+
+            if (flat[item.rowIndex].indexOf(d) === -1) flat[item.rowIndex].push(d);
+
+          });
+
+        }
+
+        llmResults = Object.keys(flat).map(function(idx) {
+
+          return { rowIndex: +idx, dispositions: flat[idx] };
+
+        });
+
+        try { localStorage.setItem(cacheKey, JSON.stringify(llmResults)); } catch(cacheErr) {}
+
+      } catch(e) {
+
+        console.warn('LLM failed, falling back to keywords:', e);
+
+        showAiNotice('AI classification failed. Using local keyword analysis.', true);
+
+        llmResults = null;
+
+      }
+
+      return llmResults;
+
+    }    async function generateVoiceInsights(themes) {
+
+
+
+      const apiKey = getApiKey();
+
+
+
+      if (!apiKey || themes.themes.length === 0) return null;
+
+
+
+      const themeLines = themes.themes.slice(0, 8).map(t =>
+
+
+
+        `- "${t.label}": ${t.count} customers (${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%). ${t.explanation} Interpretation: ${t.interpretation}`
+
+
+
+      ).join('\n');
+
+
+
+      const prompt = `Analyze these customer themes from a service campaign and return:\n1. "summary": 2-3 sentence synthesis — what is the #1 pattern, any surprising contradiction, and where to focus.\n2. "actions": an object where each key is a theme label (exact match) and value is a one-line recommended action (what to do, not generic).\n\nThemes:\n${themeLines}\n\nRespond ONLY valid JSON: {"summary":"...","actions":{"Theme Label":"action text",...}}`;
+
+
+
+      const cacheKey = 'voice-insights-' + hashStr(prompt);
+
+
+
+      const cached = localStorage.getItem(cacheKey);
+
+
+
+      if (cached) {
+
+
+
+        try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
+
+
+
+      // Show AI status for voice insights
+
+      updateAiStatus(0, 0, 'Generating voice insights...');
+
+
+
+      try {
+
+
+
+        var controller = new AbortController();
+
+        var timeout = setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS);
+
+        var headers = AiValidator.buildHeaders();
+
+        headers['X-Title'] = 'AutoNage Dashboard';
+
+        var origin = (window.location && window.location.origin) ? window.location.origin : '';
+
+        if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
+
+        const response = await fetch(getApiEndpoint(), {
+
+            method: 'POST',
+
+            headers: headers,
+
+            signal: controller.signal,
+
+            body: JSON.stringify({
+
+            model: NVIDIA_MODEL,
+
+            messages: [
+
+              { role: 'system', content: 'You are a campaign analyst. Analyze customer themes and return a concise summary and per-theme recommended actions. Output ONLY valid JSON.' },
+
+              { role: 'user', content: prompt }
+
+            ],
+
+            temperature: 0.3,
+
+            max_tokens: Math.min(1000, LLM_MAX_OUTPUT_TOKENS)
+
+          })
+
+        });
+
+        clearTimeout(timeout);
+
+
+
+        if (!response.ok) return null;
+
+
+
+        const data = await response.json();
+
+
+
+        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
+
+
+
+          console.warn('Invalid API response shape');
+
+
+
+          return null;
+
+
+
+        }
+
+
+
+        const text = data.choices[0].message.content;
+
+
+
+        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+
+
+
+        const match = cleaned.match(/\{[\s\S]*\}/);
+
+
+
+        if (!match) return null;
+
+
+
+        const result = JSON.parse(match[0]);
+
+
+
+        localStorage.setItem(cacheKey, JSON.stringify(result));
+
+
+
+        // Hide AI status
+
+        updateAiStatus(0, 0, '');
+
+
+
+        return result;
+
+
+
+      } catch(e) {
+
+
+
+        console.warn('Voice insights failed:', e);
+
+
+
+        // Hide AI status
+
+        updateAiStatus(0, 0, '');
+
+
+
+        return null;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    function generateStoryHeadline(themes, funnel, healthScore) {
+
+
+
+      if (funnel.total === 0) return 'Upload a file to see campaign insights';
+
+
+
+      const t = themes;
+
+
+
+      if (t.topTheme && t.topTheme.count > funnel.total * 0.2) return `${t.topTheme.count} ${t.topTheme.label.toLowerCase()} — ${t.topTheme.id === 'already_serviced' ? 'the biggest conversion blocker' : t.topTheme.id === 'voicemail' ? 'calls not reaching customers' : t.topTheme.id === 'deferred' ? 'customers in decision pipeline' : 'a key pattern affecting outcomes'}`;
+
+
+
+      if (funnel.connected > 0 && funnel.booked / funnel.connected < 0.15) return `${(funnel.booked / funnel.connected * 100).toFixed(0)}% conversion rate — ${funnel.connected - funnel.booked} connected leads did not book`;
+
+
+
+      if (funnel.connected / funnel.total > 0.6 && funnel.booked > 5) return `Strong campaign: ${(funnel.connected / funnel.total * 100).toFixed(0)}% connected, ${funnel.booked} service bookings`;
+
+
+
+      if (funnel.connected / funnel.total < 0.3) return `Only ${(funnel.connected / funnel.total * 100).toFixed(0)}% of ${funnel.total} leads connected — re-examine dialing strategy`;
+
+
+
+      return `${funnel.total} leads processed, ${funnel.connected} connected, ${funnel.booked} booked`;
+
+
+
+    }
+
+
+
+    function generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents) {
+
+
+
+      const parts = [];
+
+
+
+      const connPct = funnel.total > 0 ? (funnel.connected / funnel.total * 100).toFixed(0) : '0';
+
+
+
+      const mode = document.getElementById('campaignMode');
+
+
+
+      const modeLabel = (mode && mode.value === 'post') ? 'post-sales' : 'pre-sales';
+
+
+
+      // Opening: campaign overview with business context
+
+
+
+      parts.push(`This ${modeLabel} campaign engaged <strong>${funnel.total}</strong> customers. Of these, <strong>${funnel.connected}</strong> were reached (${connPct}% connect rate), and <strong>${funnel.booked}</strong> converted to a service booking — a ${funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0}% conversion rate from connected calls.`);
+
+
+
+      // Major customer signals from themes
+
+
+
+      const topThemes = themes.themes.slice(0, 3);
+
+
+
+      if (topThemes.length > 0) {
+
+
+
+        const themeDesc = topThemes.map(t => `<strong>${t.count}</strong> ${esc(t.label.toLowerCase())}`).join(', ');
+
+
+
+        if (topThemes[0].explanation && topThemes[0].interpretation) { parts.push(`The dominant customer signals are: ${themeDesc}. ${esc(topThemes[0].explanation)}. This affects conversion because ${esc(topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1))}`); } else { parts.push(`The dominant customer signals are: ${themeDesc}.`); }
+
+
+
+      }
+
+
+
+      // Competitive insight
+
+
+
+      if (competitors.total > 0) {
+
+
+
+        const topComp = competitors.competitors[0];
+
+
+
+        parts.push(`Competitive loss is a material issue — <strong>${competitors.total}</strong> customers were already serviced elsewhere${topComp ? ', led by ' + esc(topComp[0]) + ' (' + topComp[1] + ')' : ''}. This is the single largest source of lost conversion.`);
+
+
+
+      }
+
+
+
+      // Deferred pipeline
+
+
+
+      const deferredTheme = themes.themes.find(t => t.id === 'deferred');
+
+
+
+      if (deferredTheme && deferredTheme.count > 0) {
+
+
+
+        const times = deferredTheme.timeframes.slice(0, 3).map(esc).join(', ');
+
+
+
+        parts.push(`A further <strong>${deferredTheme.count}</strong> customers deferred their decision${times ? ', with timeframes including ' + times : ''}. These represent active pipeline that requires structured re-engagement.`);
+
+
+
+      }
+
+
+
+      // Language barriers
+
+
+
+      const langTheme = themes.themes.find(t => t.id === 'language_barrier');
+
+
+
+      if (langTheme && langTheme.count > 0) parts.push(`Language barriers affected <strong>${langTheme.count}</strong> calls — customers requested Hindi but only Kannada & English are supported.`);
+
+
+
+      // Trend
+
+
+
+      if (trends.hasData) {
+
+
+
+        const dir = trends.direction === 'up' ? 'increased' : (trends.direction === 'down' ? 'decreased' : 'remained steady');
+
+
+
+        parts.push(`Call volume has ${dir} by <strong>${Math.abs(trends.pctChange)}%</strong> in the second half of the campaign.`);
+
+
+
+      }
+
+
+
+      return parts.join(' ');
+
+
+
+    }
+
+
+
+    function generateRecommendations(themes, funnel, competitors, callbacks, trends) {
+
+
+
+      const recs = [];
+
+
+
+      // Deferred follow-up
+
+
+
+      const deferredTheme = themes.themes.find(t => t.id === 'deferred');
+
+
+
+      if (deferredTheme && deferredTheme.count >= 3) {
+
+
+
+        const times = deferredTheme.timeframes.slice(0, 2).join(', ');
+
+
+
+        recs.push({
+
+
+
+          action: `Re-engage ${deferredTheme.count} customers who deferred`,
+
+
+
+          reason: `${deferredTheme.count} customers said they would decide later${times ? ' (timing: ' + times + ')' : ''}. These are active opportunities that need follow-up.`,
+
+
+
+          impact: `Potential: ${Math.ceil(deferredTheme.count * 0.3)}-${Math.ceil(deferredTheme.count * 0.5)} additional bookings`,
+
+
+
+          priority: 'high'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // Competitive loss
+
+
+
+      if (competitors.total >= 3) {
+
+
+
+        const names = competitors.competitors.slice(0, 3).map(([n]) => n).join(', ');
+
+
+
+        recs.push({
+
+
+
+          action: 'Investigate competitive losses',
+
+
+
+          reason: `${competitors.total} customers serviced elsewhere${names ? ' at ' + names : ''}. Mystery shop competitor experience and pricing.`,
+
+
+
+          impact: `Potential: recover ${Math.ceil(competitors.total * 0.15)}-${Math.ceil(competitors.total * 0.3)} customers`,
+
+
+
+          priority: 'high'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // Language support
+
+
+
+      const langTheme = themes.themes.find(t => t.id === 'language_barrier');
+
+
+
+      if (langTheme && langTheme.count >= 3) {
+
+
+
+        recs.push({
+
+
+
+          action: 'Add Hindi language support',
+
+
+
+          reason: `${langTheme.count} callers specifically requested Hindi. Offering Hindi could improve connect rate and booking conversion for this segment.`,
+
+
+
+          impact: `Potential: ${Math.ceil(langTheme.count * 0.4)}-${Math.ceil(langTheme.count * 0.6)} additional connections`,
+
+
+
+          priority: 'medium'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // Callback follow-up
+
+
+
+      if (callbacks.total >= 3) {
+
+
+
+        recs.push({
+
+
+
+          action: `Follow up on ${callbacks.total} outstanding callback requests`,
+
+
+
+          reason: `${callbacks.total} customers explicitly asked to be called back. Timely callback follow-through is critical.`,
+
+
+
+          impact: `Potential: ${Math.ceil(callbacks.total * 0.2)}-${Math.ceil(callbacks.total * 0.4)} additional bookings`,
+
+
+
+          priority: 'high'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // Trend reversal
+
+
+
+      if (trends.hasData && trends.direction === 'down') {
+
+
+
+        recs.push({
+
+
+
+          action: 'Investigate declining call volume',
+
+
+
+          reason: `Call volume dropped ${Math.abs(trends.pctChange)}% in the second half of the campaign. Review dialing schedule and lead inventory.`,
+
+
+
+          impact: 'Stabilize daily output',
+
+
+
+          priority: 'medium'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // Not interested — re-evaluate offer
+
+
+
+      const notIntTheme = themes.themes.find(t => t.id === 'not_interested');
+
+
+
+      if (notIntTheme && notIntTheme.count >= 5) {
+
+
+
+        recs.push({
+
+
+
+          action: `Review offer for ${notIntTheme.count} uninterested customers`,
+
+
+
+          reason: `${notIntTheme.count} customers declined. Analyze common patterns in their objections to refine the offer or messaging.`,
+
+
+
+          impact: `Potential: reduce decline rate by 20-30%`,
+
+
+
+          priority: 'low'
+
+
+
+        });
+
+
+
+      }
+
+
+
+      return recs;
+
+
+
+    }
+
+
+
+    function analyzeAgentPerformance(rows, colMap) {
+
+
+
+      const agents = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const parsed = colMap.summary ? parseSummary(String(r[colMap.summary] || '')) : {};
+
+
+
+        const name = parsed.agentNameCorrected || parsed.agentName;
+
+
+
+        if (!name || name === 'an' || name.toLowerCase() === 'the') return;
+
+
+
+        if (!agents[name]) agents[name] = { calls: 0, connected: 0, booked: 0 };
+
+
+
+        agents[name].calls++;
+
+
+
+        const out = String(colMap.outcome ? r[colMap.outcome] : '').trim().toLowerCase();
+
+
+
+        const status = String(colMap.status ? r[colMap.status] : '').trim().toLowerCase();
+
+
+
+        if (out.includes('connected') || status.includes('completed') || status.includes('attempted')) agents[name].connected++;
+
+
+
+        const disp = String(colMap.detail ? r[colMap.detail] : '').trim().toLowerCase();
+
+
+
+        const upd = String(colMap.updatedDisposition ? r[colMap.updatedDisposition] : '').trim().toLowerCase();
+
+
+
+        if (disp.includes('booked') || upd.includes('booked') || disp.includes('converted') || upd.includes('converted')) agents[name].booked++;
+
+
+
+      });
+
+
+
+      const list = Object.entries(agents).map(([name, a]) => ({
+
+
+
+        name, calls: a.calls, connected: a.connected, booked: a.booked,
+
+
+
+        connectedRate: a.calls > 0 ? (a.connected / a.calls * 100).toFixed(1) : '0.0',
+
+
+
+        bookingRate: a.calls > 0 ? (a.booked / a.calls * 100).toFixed(1) : '0.0'
+
+
+
+      })).sort((a, b) => parseFloat(b.bookingRate) - parseFloat(a.bookingRate));
+
+
+
+      const topPerformer = list.length > 0 ? list[0] : null;
+
+
+
+      return { agents: list, topPerformer, totalAgents: list.length };
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       BI ENGINE — RENDER FUNCTIONS
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    function renderExecutiveSummary(summary, healthScore, healthClass) {
+
+
+
+      const el = document.getElementById('execSummary');
+
+
+
+      if (!el) return;
+
+
+
+      el.style.display = 'block';
+
+
+
+      el.className = 'exec-summary slide-up ' + healthClass;
+
+
+
+      document.getElementById('healthScore').textContent = healthScore + '/100';
+
+
+
+      document.getElementById('healthScore').className = 'health-score ' + healthClass;
+
+
+
+      document.getElementById('execNarrative').innerHTML = summary;
+
+
+
+    }
+
+
+
+    function renderInsightStrip(insights) {
+
+
+
+      const el = document.getElementById('insightStrip');
+
+
+
+      if (!el) return;
+
+
+
+      el.innerHTML = '';
+
+
+
+      insights.forEach(ins => {
+
+
+
+        const chip = document.createElement('span');
+
+
+
+        chip.className = 'insight-chip ' + (ins.tone || 'info');
+
+
+
+        chip.innerHTML = '<span class="chip-dot"></span> ' + ins.label + ': <strong>' + ins.value + '</strong>';
+
+
+
+        el.appendChild(chip);
+
+
+
+      });
+
+
+
+      el.style.display = insights.length ? 'flex' : 'none';
+
+
+
+    }
+
+
+
+    function renderConversionFunnel(funnel) {
+
+
+
+      const el = document.getElementById('funnelSection');
+
+
+
+      const panel = document.getElementById('conversionFunnelPanel');
+
+
+
+      if (!el || !panel) return;
+
+
+
+      if (funnel.total === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const stages = [
+
+
+
+        { label: 'Total Leads', count: funnel.total, pct: 100, barClass: 'leads', width: 100 },
+
+
+
+        { label: 'Connected', count: funnel.connected, pct: funnel.total > 0 ? (funnel.connected / funnel.total * 100).toFixed(0) : 0, barClass: 'connected', width: funnel.total > 0 ? Math.max(30, funnel.connected / funnel.total * 100) : 0 },
+
+
+
+        { label: 'Booked', count: funnel.booked, pct: funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0, barClass: 'booked', width: funnel.connected > 0 ? Math.max(15, funnel.booked / funnel.connected * 80) : 0 },
+
+
+
+      ];
+
+
+
+      el.innerHTML = stages.map(s => `
+
+
+
+        <div class="funnel-stage">
+
+
+
+          <span class="funnel-bar-label">${s.label}</span>
+
+
+
+          <div class="funnel-bar ${s.barClass}" style="width:${s.width}%">
+
+
+
+            ${s.count} <span class="funnel-bar-pct">${s.pct}%</span>
+
+
+
+          </div>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+      // Drop-off reasons
+
+
+
+      const dropoffEntries = Object.entries(funnel.connectedNotBooked).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+
+
+      if (dropoffEntries.length > 0) {
+
+
+
+        el.innerHTML += `
+
+
+
+          <div class="funnel-dropoff">
+
+
+
+            <div class="funnel-dropoff-title">Why connected leads didn't book (${funnel.connected - funnel.booked} rows)</div>
+
+
+
+            <div class="funnel-dropoff-grid">
+
+
+
+              ${dropoffEntries.map(([cat, count]) => `<div class="funnel-dropoff-item"><strong>${cat}</strong> (${count})</div>`).join('')}
+
+
+
+            </div>
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    function renderDispositionIntelligence(patterns) {
+
+
+
+      const barsEl = document.getElementById('dispositionBars');
+
+
+
+      const narrativeEl = document.getElementById('dispositionNarrative');
+
+
+
+      const panel = document.getElementById('dispositionPanel');
+
+
+
+      if (!barsEl || !narrativeEl || !panel) return;
+
+
+
+      if (patterns.top.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const maxVal = patterns.top.length > 0 ? patterns.top[0][1] : 1;
+
+
+
+      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
+
+
+
+      barsEl.innerHTML = patterns.top.map(([cat, count], i) => {
+
+
+
+        const width = (count / maxVal * 100).toFixed(0);
+
+
+
+        const pct = patterns.total > 0 ? (count / patterns.total * 100).toFixed(1) : '0.0';
+
+
+
+        const colorClass = colors[i % colors.length];
+
+
+
+        return `
+
+
+
+          <div class="disp-row">
+
+
+
+            <span class="disp-label" title="${cat}">${cat}</span>
+
+
+
+            <div class="disp-track"><div class="disp-fill ${colorClass}" style="width:${width}%"></div></div>
+
+
+
+            <span class="disp-count">${count} <span style="font-size:0.6rem;color:var(--text-muted);font-weight:500;">${pct}%</span></span>
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }).join('');
+
+
+
+      const topCat = patterns.top[0];
+
+
+
+      narrativeEl.textContent = `"${topCat[0]}" (${topCat[1]}) is the most common value at ${(topCat[1]/patterns.total*100).toFixed(0)}% of rows.`;
+
+
+
+    }
+
+
+
+    function renderDecisionPipeline(pipeline) {
+
+
+
+      const grid = document.getElementById('pipelineGrid');
+
+
+
+      const narrative = document.getElementById('pipelineNarrative');
+
+
+
+      const panel = document.getElementById('pipelinePanel');
+
+
+
+      if (!grid || !narrative || !panel) return;
+
+
+
+      if (pipeline.active === 0 && pipeline.buckets.immediate === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const order = ['immediate', 'thisWeek', 'nextWeek', 'twoWeeks', 'monthPlus', 'unknown'];
+
+
+
+      const colors = ['hot', 'hot', 'warm', 'warm', 'cool', 'cold'];
+
+
+
+      grid.innerHTML = order.map((key, i) => {
+
+
+
+        const count = pipeline.buckets[key];
+
+
+
+        if (count === 0 && key !== 'unknown') return '';
+
+
+
+        return `
+
+
+
+          <div class="pipeline-bucket ${colors[i]}">
+
+
+
+            <div class="pipeline-count">${count}</div>
+
+
+
+            <div class="pipeline-label">${pipeline.bucketLabels[key]}</div>
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }).filter(Boolean).join('');
+
+
+
+      narrative.textContent = pipeline.active > 0
+
+
+
+        ? `${pipeline.active} active opportunities in pipeline. ${pipeline.buckets.thisWeek} need contact this week.`
+
+
+
+        : 'No pending opportunities in pipeline.';
+
+
+
+    }
+
+
+
+    function renderLeadQualityScorecard(lq) {
+
+
+
+      const grid = document.getElementById('lqGrid');
+
+
+
+      const panel = document.getElementById('leadQualityPanel');
+
+
+
+      if (!grid || !panel) return;
+
+
+
+      if (lq.total === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      grid.innerHTML = `
+
+
+
+        <div class="lq-card ${lq.wrongNumber > 0 ? 'critical' : ''}">
+
+
+
+          <div class="lq-count">${lq.wrongNumber}</div>
+
+
+
+          <div class="lq-label">Unreachable</div>
+
+
+
+          <div class="lq-detail">${lq.wrongNumber > 0 ? 'Wrong numbers, voicemail, no answer' : 'None'}</div>
+
+
+
+        </div>
+
+
+
+        <div class="lq-card ${lq.duplicates > 0 ? 'warning' : ''}">
+
+
+
+          <div class="lq-count">${lq.duplicates}</div>
+
+
+
+          <div class="lq-label">Duplicates</div>
+
+
+
+          <div class="lq-detail">${lq.duplicates > 0 ? 'Repeated phone entries' : 'None'}</div>
+
+
+
+        </div>
+
+
+
+        <div class="lq-card ${lq.wrongPerson + lq.sold > 0 ? 'warning' : ''}">
+
+
+
+          <div class="lq-count">${lq.wrongPerson + lq.sold}</div>
+
+
+
+          <div class="lq-label">Invalid Contacts</div>
+
+
+
+          <div class="lq-detail">${lq.wrongPerson} wrong person, ${lq.sold} vehicle sold</div>
+
+
+
+        </div>
+
+
+
+      `;
+
+
+
+    }
+
+
+
+    function renderAnomalySection(anomalies) {
+
+
+
+      const list = document.getElementById('anomalyList');
+
+
+
+      const panel = document.getElementById('anomalySection');
+
+
+
+      if (!list || !panel) return;
+
+
+
+      if (anomalies.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      list.innerHTML = anomalies.map(a => `
+
+
+
+        <div class="anomaly-card">
+
+
+
+          <div class="anomaly-severity ${a.severity}">${a.severity === 'high' ? '!' : 'i'}</div>
+
+
+
+          <div class="anomaly-text">${a.text}</div>
+
+
+
+          <span class="anomaly-action">${a.action}</span>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+    }
+
+
+
+    function renderCompetitiveIntel(compData) {
+
+
+
+      const list = document.getElementById('compList');
+
+
+
+      const narrative = document.getElementById('compNarrative');
+
+
+
+      const panel = document.getElementById('competitivePanel');
+
+
+
+      if (!list || !narrative || !panel) return;
+
+
+
+      if (compData.total === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const maxCount = compData.competitors.length > 0 ? compData.competitors[0][1] : 1;
+
+
+
+      list.innerHTML = compData.competitors.map(([name, count]) => `
+
+
+
+        <div class="comp-row">
+
+
+
+          <span class="comp-name">${name}</span>
+
+
+
+          <div class="comp-bar"><div class="comp-bar-fill" style="width:${(count / maxCount * 100).toFixed(0)}%"></div></div>
+
+
+
+          <span class="comp-count">${count}</span>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+      narrative.textContent = `${compData.total} customers serviced elsewhere. Top competitor: "${compData.competitors[0] ? compData.competitors[0][0] : 'N/A'}" (${compData.competitors[0] ? compData.competitors[0][1] : 0} leads).`;
+
+
+
+    }
+
+
+
+    function renderLanguageQuality(langData) {
+
+
+
+      const grid = document.getElementById('langGrid');
+
+
+
+      const panel = document.getElementById('languagePanel');
+
+
+
+      if (!grid || !panel) return;
+
+
+
+      if (langData.total === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      grid.innerHTML = Object.entries(langData.languages).map(([lang, count]) => `
+
+
+
+        <div class="lang-stat">
+
+
+
+          <div class="stat-val">${count}</div>
+
+
+
+          <div class="stat-label">Requested ${lang}</div>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+      // Add overall stats
+
+
+
+      grid.innerHTML += `
+
+
+
+        <div class="lang-stat">
+
+
+
+          <div class="stat-val">${langData.total}</div>
+
+
+
+          <div class="stat-label">Language Barriers</div>
+
+
+
+        </div>
+
+
+
+      `;
+
+
+
+    }
+
+
+
+    function renderSourceQuality(srcData) {
+
+
+
+      const panel = document.getElementById('sourceQualityPanel');
+
+
+
+      const list = document.getElementById('sourceList');
+
+
+
+      const narrative = document.getElementById('sourceNarrative');
+
+
+
+      if (!panel || !list || !narrative) return;
+
+
+
+      if (srcData.total < 1 || !srcData.best) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const maxConn = srcData.sources.length > 0 ? Math.max(...srcData.sources.map(s => parseFloat(s.connRate))) : 1;
+
+
+
+      list.innerHTML = srcData.sources.map(s => {
+
+
+
+        const w = maxConn > 0 ? (parseFloat(s.connRate) / maxConn * 100).toFixed(0) : '0';
+
+
+
+        const tone = parseFloat(s.connRate) > 50 ? 'good' : (parseFloat(s.connRate) > 30 ? 'warn' : 'crit');
+
+
+
+        return `
+
+
+
+          <div class="src-row">
+
+
+
+            <span class="src-name" title="${s.name}">${s.name}</span>
+
+
+
+            <div class="src-bar"><span class="src-bar-fill ${tone}" style="width:${w}%"></span></div>
+
+
+
+            <span class="src-metric">${s.connRate}% conn</span>
+
+
+
+            <span class="src-metric">${s.bookRate}% book</span>
+
+
+
+            <span class="src-metric ${parseFloat(s.invalidRate) > 10 ? 'crit' : ''}">${s.invalidRate}% inv</span>
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }).join('');
+
+
+
+      narrative.innerHTML = srcData.best
+
+
+
+        ? `<strong>${srcData.best.name}</strong> leads with ${srcData.best.connRate}% connected rate (${srcData.best.connected}/${srcData.best.total}). ${srcData.worst ? srcData.worst.name + ' has ' + srcData.worst.invalidRate + '% invalid rate.' : ''}`
+
+
+
+        : '';
+
+
+
+    }
+
+
+
+    function renderTrendIndicators(trends) {
+
+
+
+      const el = document.getElementById('trendIndicator');
+
+
+
+      if (!el) return;
+
+
+
+      if (!trends.hasData) { el.style.display = 'none'; return; }
+
+
+
+      el.style.display = 'inline-flex';
+
+
+
+      const arrow = trends.direction === 'up' ? '&#9650;' : (trends.direction === 'down' ? '&#9660;' : '&#9654;');
+
+
+
+      const cls = trends.direction === 'up' ? 'good' : (trends.direction === 'down' ? 'crit' : '');
+
+
+
+      const label = trends.direction === 'up' ? 'Volume up' : (trends.direction === 'down' ? 'Volume down' : 'Stable');
+
+
+
+      el.innerHTML = `<span class="trend-badge ${cls}">${arrow} ${Math.abs(trends.pctChange)}% ${label}</span>`;
+
+
+
+    }
+
+
+
+    function renderConversionBlockers(blockerData) {
+
+
+
+      const panel = document.getElementById('blockersPanel');
+
+
+
+      const list = document.getElementById('blockersList');
+
+
+
+      const narrative = document.getElementById('blockersNarrative');
+
+
+
+      if (!panel || !list || !narrative) return;
+
+
+
+      if (blockerData.blockers.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const maxVal = blockerData.blockers[0][1];
+
+
+
+      list.innerHTML = blockerData.blockers.map(([reason, count]) => {
+
+
+
+        const w = (count / maxVal * 100).toFixed(0);
+
+
+
+        return `
+
+
+
+          <div class="blk-row">
+
+
+
+            <span class="blk-reason" title="${reason}">${reason}</span>
+
+
+
+            <div class="blk-track"><span class="blk-fill" style="width:${w}%"></span></div>
+
+
+
+            <span class="blk-count">${count}</span>
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }).join('');
+
+
+
+      const topBlocker = blockerData.blockers[0];
+
+
+
+      narrative.textContent = `"${topBlocker[0]}" blocks ${topBlocker[1]} connected leads from converting — ${blockerData.total > 0 ? (topBlocker[1]/blockerData.total*100).toFixed(0) : 0}% of all conversion blockers.`;
+
+
+
+    }
+
+
+
+    /* ── STORYTELLING RENDER FUNCTIONS ───────────────────────────────────── */
+
+
+
+    function renderCustomerVoice(themes, voiceAI) {
+
+
+
+      const container = document.getElementById('customerVoiceSection');
+
+
+
+      const panel = document.getElementById('customerVoicePanel');
+
+
+
+      if (!container || !panel) return;
+
+
+
+      if (themes.themes.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      // Voice summary banner
+
+
+
+      const summaryEl = document.getElementById('voiceSummary');
+
+
+
+      if (summaryEl && voiceAI && voiceAI.summary) {
+
+
+
+        summaryEl.style.display = 'block';
+
+
+
+        summaryEl.textContent = voiceAI.summary;
+
+
+
+      } else if (summaryEl) {
+
+
+
+        summaryEl.style.display = 'none';
+
+
+
+      }
+
+
+
+      const sentimentColors = { positive: 'good', negative: 'crit', neutral: 'warn' };
+
+
+
+      container.innerHTML = themes.themes.slice(0, 8).map(t => {
+
+
+
+        const cls = sentimentColors[t.sentiment] || 'warn';
+
+
+
+        const excerpts = t.excerpts.slice(0, 1).map(e => `<div class="voice-excerpt">"${esc(e)}"</div>`).join('');
+
+
+
+        const extras = [];
+
+
+
+        if (t.competitorNames && t.competitorNames.length) extras.push(`<div class="voice-extras">Competitors identified: ${t.competitorNames.map(esc).join(', ')}</div>`);
+
+
+
+        if (t.callbackTimes && t.callbackTimes.length) extras.push(`<div class="voice-extras">Callback timing preferences: ${t.callbackTimes.map(esc).join(', ')}</div>`);
+
+
+
+        if (t.timeframes && t.timeframes.length) extras.push(`<div class="voice-extras">Decision timeframes: ${t.timeframes.map(esc).join(', ')}</div>`);
+
+
+
+        // Per-theme LLM action
+
+
+
+        const action = voiceAI && voiceAI.actions && voiceAI.actions[t.label] ? esc(voiceAI.actions[t.label]) : null;
+
+
+
+        const actionHtml = action ? `<div class="voice-action">${action}</div>` : '';
+
+
+
+        return `
+
+
+
+          <div class="voice-card ${cls}">
+
+
+
+            <div class="voice-header">
+
+
+
+              <span class="voice-count">${t.count}</span>
+
+
+
+              <span class="voice-pct">${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%</span>
+
+
+
+              <span class="voice-label">${t.label}</span>
+
+
+
+            </div>
+
+
+
+            <div class="voice-signal">${t.explanation}</div>
+
+
+
+            ${excerpts}
+
+
+
+            <div class="voice-interp">${t.interpretation}</div>
+
+
+
+            ${extras.join('')}
+
+
+
+            ${actionHtml}
+
+
+
+          </div>
+
+
+
+        `;
+
+
+
+      }).join('');
+
+
+
+    }
+
+
+
+    function renderRecommendations(recs) {
+
+
+
+      const container = document.getElementById('recsList');
+
+
+
+      const panel = document.getElementById('recsPanel');
+
+
+
+      if (!container || !panel) return;
+
+
+
+      if (recs.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const priorityColors = { high: 'red', medium: 'amber', low: 'blue' };
+
+
+
+      container.innerHTML = recs.map(r => `
+
+
+
+        <div class="rec-card ${priorityColors[r.priority] || 'blue'}">
+
+
+
+          <div class="rec-top">
+
+
+
+            <span class="rec-priority ${r.priority}">${r.priority.toUpperCase()}</span>
+
+
+
+            <span class="rec-action">${esc(r.action)}</span>
+
+
+
+          </div>
+
+
+
+          <div class="rec-reason">${esc(r.reason)}</div>
+
+
+
+          <div class="rec-impact"><strong>Expected impact:</strong> ${esc(r.impact)}</div>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       LLM-POWERED RECOMMENDATIONS
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    async function generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap) {
+
+
+
+      const apiKey = getApiKey();
+
+
+
+      if (!apiKey) return null;
+
+
+
+      const topThemes = themes.themes.slice(0, 5).map(t => `${esc(t.label)}: ${t.count}`).join(', ');
+
+
+
+      const mode = document.getElementById('campaignMode');
+
+
+
+      const campaignMode = (mode && mode.value === 'post') ? 'Post-Sales' : 'Pre-Sales';
+
+
+
+      const connPct = funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(1) : '0';
+
+
+
+      const summary = `Campaign: ${campaignMode}. Total leads: ${funnel.total}, Connected: ${funnel.connected}, Booked: ${funnel.booked} (${connPct}% conversion). Top themes: ${topThemes}. Competitors mentioned: ${competitors.total}. Callbacks pending: ${callbacks.total}.`;
+
+
+
+      const prompt = `As a senior campaign analyst, generate 3-5 specific, actionable recommendations based on this data. For each: specify what to do, why (with data support), and estimated impact. Be specific — mention customer segments, vehicle models, locations, or timeframes if applicable.\n\n${summary}\n\nRespond ONLY with a valid JSON array: [{"action":"...","reason":"...","impact":"..."}]`;
+
+
+
+      const cacheKey = 'llm-recs-' + hashStr(prompt);
+
+
+
+      const cached = localStorage.getItem(cacheKey);
+
+
+
+      if (cached) {
+
+
+
+        try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
+
+
+
+      // Show AI status for LLM recommendations
+
+      updateAiStatus(0, 0, 'Generating AI recommendations...');
+
+
+
+      try {
+
+
+
+        var controller = new AbortController();
+
+        var timeout = setTimeout(function() { controller.abort(); }, LLM_REQUEST_TIMEOUT_MS);
+
+        var headers = AiValidator.buildHeaders();
+
+        headers['X-Title'] = 'AutoNage Dashboard';
+
+        var origin = (window.location && window.location.origin) ? window.location.origin : '';
+
+        if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
+
+        const response = await fetch(getApiEndpoint(), {
+
+            method: 'POST',
+
+            headers: headers,
+
+            signal: controller.signal,
+
+            body: JSON.stringify({
+
+            model: NVIDIA_MODEL,
+
+            messages: [
+
+              { role: 'system', content: 'You are a campaign analyst. Generate 3-5 specific, actionable recommendations. Each must include: action (what to do), reason (why, data-backed), and impact (estimated improvement). Be specific — mention locations, vehicle models, customer segments, or timeframes. Output ONLY valid JSON array.' },
+
+              { role: 'user', content: prompt }
+
+            ],
+
+            temperature: 0.3,
+
+            max_tokens: Math.min(1200, LLM_MAX_OUTPUT_TOKENS)
+
+          })
+
+        });
+
+        clearTimeout(timeout);
+
+
+
+        if (!response.ok) return null;
+
+
+
+        const data = await response.json();
+
+
+
+        if (!data || !Array.isArray(data.choices) || !data.choices[0]?.message?.content) {
+
+
+
+          console.warn('Invalid API response shape');
+
+
+
+          updateAiStatus(0, 0, '');
+
+
+
+          return null;
+
+
+
+        }
+
+
+
+        const text = data.choices[0].message.content;
+
+
+
+        const cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+
+
+
+        const match = cleaned.match(/\[[\s\S]*\]/);
+
+
+
+        if (!match) {
+
+
+
+          updateAiStatus(0, 0, '');
+
+
+
+          return null;
+
+
+
+        }
+
+
+
+        const result = JSON.parse(match[0]);
+
+
+
+        localStorage.setItem(cacheKey, JSON.stringify(result));
+
+
+
+        // Hide AI status
+
+
+
+        updateAiStatus(0, 0, '');
+
+
+
+        return result;
+
+
+
+      } catch(e) {
+
+
+
+        console.warn('LLM recommendations failed:', e);
+
+
+
+        // Hide AI status
+
+
+
+        updateAiStatus(0, 0, '');
+
+
+
+        return null;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    function renderLlmRecommendations(recs) {
+
+
+
+      const panel = document.getElementById('llmRecsPanel');
+
+
+
+      const content = document.getElementById('llmRecsContent');
+
+
+
+      if (!panel || !content) return;
+
+
+
+      if (!recs || recs.length === 0) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      content.innerHTML = recs.map(r => `
+
+
+
+        <div class="rec-card">
+
+
+
+          <div class="rec-action">${esc(r.action)}</div>
+
+
+
+          <div class="rec-reason">${esc(r.reason)}</div>
+
+
+
+          <div class="rec-impact">${esc(r.impact)}</div>
+
+
+
+        </div>
+
+
+
+      `).join('');
+
+
+
+    }
+
+
+
+    function renderAgentTable(agents) {
+
+
+
+      const container = document.getElementById('agentTableBody');
+
+
+
+      const panel = document.getElementById('agentTablePanel');
+
+
+
+      if (!container || !panel) return;
+
+
+
+      if (agents.agents.length < 2) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const rankIcons = ['gold', 'silver', 'bronze'];
+
+
+
+      container.innerHTML = agents.agents.map((a, i) => {
+
+
+
+        const rank = i < 3 ? rankIcons[i] : 'rest';
+
+
+
+        const connBar = parseFloat(a.connectedRate) > 50 ? 'green' : (parseFloat(a.connectedRate) > 30 ? 'amber' : 'red');
+
+
+
+        const bookBar = parseFloat(a.bookingRate) > 15 ? 'green' : (parseFloat(a.bookingRate) > 5 ? 'amber' : 'red');
+
+
+
+        return `
+
+
+
+          <tr>
+
+
+
+            <td><span class="agent-rank-badge ${rank}">${i + 1}</span></td>
+
+
+
+            <td class="agent-name">${esc(a.name)}</td>
+
+
+
+            <td class="num">${a.calls}</td>
+
+
+
+            <td class="num">${a.connectedRate}% <div class="perf-bar-wrap"><div class="perf-bar-track"><div class="perf-bar-fill ${connBar}" style="width:${a.connectedRate}%"></div></div></div></td>
+
+
+
+            <td class="num">${a.bookingRate}% <div class="perf-bar-wrap"><div class="perf-bar-track"><div class="perf-bar-fill ${bookBar}" style="width:${Math.min(100, parseFloat(a.bookingRate) * 3)}%"></div></div></div></td>
+
+
+
+          </tr>
+
+
+
+        `;
+
+
+
+      }).join('');
+
+
+
+    }
+
+
+
+    function renderPhaseComparison(trends) {
+
+
+
+      const panel = document.getElementById('phasePanel');
+
+
+
+      const content = document.getElementById('phaseContent');
+
+
+
+      const narrative = document.getElementById('phaseNarrative');
+
+
+
+      if (!panel || !content || !narrative) return;
+
+
+
+      if (!trends.hasData) { panel.style.display = 'none'; return; }
+
+
+
+      panel.style.display = 'block';
+
+
+
+      const dirSymbol = trends.direction === 'up' ? '&#9650;' : (trends.direction === 'down' ? '&#9660;' : '&#9654;');
+
+
+
+      const dirClass = trends.direction === 'up' ? 'good' : (trends.direction === 'down' ? 'crit' : '');
+
+
+
+      const dirLabel = trends.direction === 'up' ? 'Increased' : (trends.direction === 'down' ? 'Decreased' : 'Stable');
+
+
+
+      content.innerHTML = `
+
+
+
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+
+
+
+          <div class="phase-card"><div class="phase-label">Early Phase</div><div class="phase-value">${trends.firstLabel}</div><div class="phase-stat">Avg ${trends.firstAvg.toFixed(0)} calls/day</div></div>
+
+
+
+          <div class="phase-card ${dirClass}"><div class="phase-label">Late Phase</div><div class="phase-value">${trends.secondLabel}</div><div class="phase-stat">Avg ${trends.secondAvg.toFixed(0)} calls/day</div></div>
+
+
+
+          <div class="phase-card ${dirClass}"><div class="phase-label">Change</div><div class="phase-value" style="font-size:1.3rem;">${dirSymbol} ${Math.abs(trends.pctChange)}%</div><div class="phase-stat">${dirLabel}</div></div>
+
+
+
+        </div>
+
+
+
+      `;
+
+
+
+      narrative.textContent = `Call volume ${trends.direction === 'up' ? 'increased' : trends.direction === 'down' ? 'decreased' : 'remained unchanged'} by ${Math.abs(trends.pctChange)}% between the early and late campaign phases (${trends.firstAvg.toFixed(0)} to ${trends.secondAvg.toFixed(0)} calls/day on average).`;
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       FILE UPLOAD
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    let dashData = null;
+
+
+
+    let uploadedFileExt = '';
+
+
+
+    let resolvedCampaignType = 'pre';
+
+
+
+    const dzDash = document.getElementById('dzDash');
+
+
+
+    const fileDash = document.getElementById('fileDash');
+
+
+
+    const stDash = document.getElementById('stDash');
+
+
+
+    const btnGenerate = document.getElementById('btnGenerate');
+
+
+
+    const campaignMode = document.getElementById('campaignMode');
+
+
+
+    function clearDashboardOutput() {
+
+
+
+      document.getElementById('campaignBar').style.display = 'none';
+
+
+
+      document.getElementById('dashboardContent').style.display = 'none';
+
+
+
+      document.getElementById('metricAudit').style.display = 'none';
+
+
+
+      document.getElementById('btnPrintPDF').style.display = 'none';
+
+
+
+      document.getElementById('emptyState').style.display = '';
+
+
+
+      const details = document.getElementById('metricAuditDetails');
+
+
+
+      const toggle = document.getElementById('metricAuditToggle');
+
+
+
+      const summary = document.getElementById('metricAuditSummary');
+
+
+
+      const strip = document.getElementById('metricAuditStrip');
+
+
+
+      const grid = document.getElementById('metricAuditGrid');
+
+
+
+      if (details) details.classList.remove('show');
+
+
+
+      if (toggle) {
+
+
+
+        toggle.textContent = 'View full audit';
+
+
+
+        toggle.setAttribute('aria-expanded', 'false');
+
+
+
+      }
+
+
+
+      if (summary) summary.textContent = 'Column mapping pending';
+
+
+
+      if (strip) strip.innerHTML = '';
+
+
+
+      if (grid) grid.innerHTML = '';
+
+
+
+      // Clear AI status & BI sections
+
+
+
+      updateAiStatus(0, 0, '');
+
+
+
+      ['execSummary','conversionFunnelPanel','dispositionPanel','pipelinePanel',
+
+
+
+       'leadQualityPanel','anomalySection','competitivePanel','languagePanel','sourceQualityPanel','blockersPanel',
+
+
+
+       'customerVoicePanel','agentTablePanel','recsPanel','llmRecsPanel','phasePanel']
+
+
+
+        .forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+
+
+
+      const insightStrip = document.getElementById('insightStrip');
+
+
+
+      if (insightStrip) { insightStrip.innerHTML = ''; insightStrip.style.display = 'none'; }
+
+
+
+      const analysisBadge = document.getElementById('analysisEngineBadge');
+
+
+
+      if (analysisBadge) analysisBadge.textContent = 'AI-GENERATED ANALYSIS';
+
+
+
+      const trendEl = document.getElementById('trendIndicator');
+
+
+
+      if (trendEl) { trendEl.innerHTML = ''; trendEl.style.display = 'none'; }
+
+
+
+    }
+
+
+
+    // Keyboard activation (Enter / Space) for drop zone
+
+
+
+    dzDash.addEventListener('keydown', e => {
+
+
+
+      if (e.key === 'Enter' || e.key === ' ') {
+
+
+
+        e.preventDefault();
+
+
+
+        document.getElementById('fileDash').click();
+
+
+
+      }
+
+
+
+    });
+
+
+
+    // Drag & drop
+
+
+
+    dzDash.addEventListener('dragover', e => { e.preventDefault(); dzDash.classList.add('drag-over'); });
+
+
+
+    dzDash.addEventListener('dragleave', () => dzDash.classList.remove('drag-over'));
+
+
+
+    dzDash.addEventListener('drop', e => {
+
+
+
+      e.preventDefault();
+
+
+
+      dzDash.classList.remove('drag-over');
+
+
+
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+
+
+
+    });
+
+
+
+    fileDash.addEventListener('change', () => {
+
+
+
+      if (fileDash.files.length) handleFile(fileDash.files[0]);
+
+
+
+    });
+
+
+
+    const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB limit
+
+
+
+    const ALLOWED_EXTENSIONS = ['.csv', '.xlsx', '.xls'];
+
+
+
+    function handleFile(file) {
+
+
+
+      clearDashboardOutput();
+
+
+
+      // Validate file extension
+
+
+
+      const fileName = file.name || '';
+
+
+
+      const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+
+
+
+      uploadedFileExt = ext;
+
+
+
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+
+
+
+        stDash.textContent = '✗ Invalid file type. Allowed: .csv, .xlsx, .xls';
+
+
+
+        stDash.className = 'dz-status err';
+
+
+
+        dzDash.classList.remove('has-file');
+
+
+
+        dashData = null;
+
+
+
+        btnGenerate.disabled = true;
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      // Validate file size
+
+
+
+      if (file.size > MAX_UPLOAD_BYTES) {
+
+
+
+        stDash.textContent = '✗ File too large (max 50 MB)';
+
+
+
+        stDash.className = 'dz-status err';
+
+
+
+        dzDash.classList.remove('has-file');
+
+
+
+        dashData = null;
+
+
+
+        btnGenerate.disabled = true;
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      const reader = new FileReader();
+
+
+
+      reader.onload = e => {
+
+
+
+        try {
+
+
+
+          // Keep original cell values (especially dates) without locale-based auto conversion.
+
+
+
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: true });
+
+
+
+          const ws = wb.Sheets[wb.SheetNames[0]];
+
+
+
+          dashData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+
+
+
+          stDash.textContent = `✓ ${file.name} (${dashData.length} rows)`;
+
+
+
+          stDash.className = 'dz-status ok';
+
+
+
+          dzDash.classList.add('has-file');
+
+
+
+          btnGenerate.disabled = false;
+
+
+
+        } catch (err) {
+
+
+
+          stDash.textContent = '✗ Error reading file';
+
+
+
+          stDash.className = 'dz-status err';
+
+
+
+          dashData = null;
+
+
+
+          btnGenerate.disabled = true;
+
+
+
+        }
+
+
+
+      };
+
+
+
+      reader.readAsArrayBuffer(file);
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       DASHBOARD GENERATION
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    
+
+    async function mineCustomerThemes(rows, colMap, isPostSales, llmLookup) {
+
+
+
+      if (!rows || !rows.length || !colMap) {
+
+
+
+        return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+
+
+
+      }
+
+
+
+      try {
+
+
+
+        // Only process connected calls - non-connected calls have no meaningful summary
+
+        var connectedRows = [];
+
+        var connectedRowIndices = [];
+
+        rows.forEach(function(r, origIdx) {
+
+          var st = String(colMap.status ? r[colMap.status] : '').toLowerCase();
+
+          var ot = String(colMap.outcome ? r[colMap.outcome] : '').toLowerCase();
+
+          // Exclude explicitly "not connected" before checking positive signals
+
+          if (st.indexOf('not connected') >= 0 || st.indexOf('notconnected') >= 0 || st.indexOf('not_connected') >= 0 || ot.indexOf('not connected') >= 0 || ot.indexOf('notconnected') >= 0 || ot.indexOf('not_connected') >= 0) return;
+
+          if (st.indexOf('completed') >= 0 || st.indexOf('attempted') >= 0 || st.indexOf('connected') >= 0 || ot.indexOf('connected') >= 0) {
+
+            connectedRows.push(r);
+
+            connectedRowIndices.push(origIdx);
+
+          }
+
+        });
+
+
+
+        if (connectedRows.length === 0) {
+
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+
+        }
+
+
+
+        var summaries = connectedRows.map(function(r, i) {
+
+          var vals = Object.keys(colMap).map(function(k) { return r[colMap[k]] || ''; });
+
+          return { rowIndex: i, text: vals.join(' ').trim(), originalRowIndex: connectedRowIndices[i] };
+
+        }).filter(function(s) { return s.text && s.text.length > 10; });
+
+
+
+        if (summaries.length === 0) {
+
+
+
+          return { themes: [], total: 0, topTheme: 'General', engine: 'none' };
+
+
+
+        }
+
+
+
+        var apiKey = getApiKey();
+
+
+
+        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+
+
+        var systemPrompt = buildLlmSystemPrompt(isPostSales);
+
+
+
+        var promptBatches = [];
+
+
+
+        var batchSize = LLM_THEME_BATCH_SIZE;
+
+
+
+        for (var bi = 0; bi < summaries.length; bi += batchSize) {
+
+
+
+          promptBatches.push(summaries.slice(bi, bi + batchSize));
+
+
+
+        }
+
+
+
+        // Cache key for theme mining results
+
+        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length }));
+
+        var cached = localStorage.getItem(cacheKey);
+
+        if (cached) {
+
+          try { return JSON.parse(cached); } catch(e) { console.warn("localStorage write failed (private mode?):", e); }}
+
+
+
+        // If llmLookup was pre-computed from classifyWithLlm, skip the duplicate API call
+
+        if (Object.keys(llmLookup || {}).length > 0) {
+
+          // Build runnerResult using summaries' originalRowIndex to correctly map into llmLookup
+
+          var llmResults = [];
+
+          for (var si = 0; si < summaries.length; si++) {
+
+            var s = summaries[si];
+
+            var dispo = (llmLookup || {})[s.originalRowIndex] || [];
+
+            if (dispo.length > 0) {
+
+              llmResults.push({ rowIndex: s.rowIndex, dispositions: dispo });
+
+            }
+
+          }
+
+          var runnerResult = {
+
+            results: new Map(llmResults.map(function(r) { return [r.rowIndex, r]; })),
+
+            aborted: false,
+
+            failedBatches: []
+
+          };
+
+        } else {
+
+        // Show AI status for theme mining
+
+        // Create abort controller for this run
+
+        aiValidationController = new AbortController();
+
+
+
+        updateAiStatus(0, 0, 'Preparing themes...');
+
+
+
+        var runnerResult = await runLlmBatches({
+
+
+
+          items: summaries,
+
+
+
+          batchSize: batchSize,
+
+
+
+          maxConcurrent: LLM_MAX_CONCURRENT,
+
+
+
+          minGapMs: 300,
+
+
+
+          maxRetries: LLM_MAX_RETRIES,
+
+
+
+          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+
+        signal: aiValidationController.signal,
+
+
+
+          buildPrompt: function(batch, batchIndex) {
+
+
+
+            var rowsPrompt = batch.map(function(s) {
+
+
+
+              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text, LLM_PROMPT_CHAR_LIMIT) + '"';
+
+
+
+            }).join('\n');
+
+
+
+            return { system: systemPrompt, user: 'Classifying themes for ' + batch.length + ' summaries:\n\n' + rowsPrompt, temperature: 0.1, maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS };
+
+
+
+          },
+
+
+
+          parseResponse: function(text, batch, batchIndex) {
+
+
+
+            try {
+
+
+
+              return parseLlmJsonResults(text, batch);
+
+
+
+            } catch(e) {
+
+
+
+              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
+
+
+
+            }
+
+
+
+          },
+
+
+
+          onProgress: function(done, total, message) {
+
+            // Show theme mining progress to user
+
+            updateAiStatus(done, total, message || 'Mining themes... ' + done + '/' + total + ' batches');
+
+          }
+
+
+
+        });
+
+
+
+        if (!runnerResult || !runnerResult.results) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+
+
+        var llmResults = [];
+
+
+
+        for (var ri = 0; ri < summaries.length; ri++) {
+
+
+
+          var part = runnerResult.results.get(ri);
+
+
+
+          if (part) llmResults.push(part);
+
+
+
+        }
+
+
+
+        if (llmResults.length === 0) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+
+
+
+        // Build llmLookup from LLM results for the aggregation loop below
+
+        if (!llmLookup) llmLookup = {};
+
+        for (var lri = 0; lri < llmResults.length; lri++) {
+
+          var lr = llmResults[lri];
+
+          if (lr && lr.rowIndex !== undefined && lr.dispositions) {
+
+            llmLookup[lr.rowIndex] = lr.dispositions;
+
+          }
+
+        }
+
+
+
+        // Clean up abort controller
+
+        aiValidationController = null;
+
+
+
+        for (var mi = 0; mi < summaries.length; mi++) {
+
+
+
+          var s = summaries[mi];
+
+
+
+          var dispo = (llmLookup || {})[s.originalRowIndex] || [];
+
+
+
+          if (dispo.length === 0) continue;
+
+
+
+          var text = s.text;
+
+
+
+          var excerpt = text.length > 150 ? text.slice(0, 147) + '...' : text;
+
+
+
+          var parsed = parseSummary(text);
+
+
+
+          var seenThemes = {};
+
+
+
+          for (var di = 0; di < dispo.length; di++) {
+
+
+
+            var key = dispo[di].toLowerCase().trim();
+
+
+
+            var themeId = DISPO_TO_THEME[key] || null;
+
+
+
+            if (themeId && themes[themeId] && !seenThemes[themeId]) {
+
+
+
+              seenThemes[themeId] = true;
+
+
+
+              themes[themeId].count++;
+
+
+
+              if (themes[themeId].excerpts.length < 5) themes[themeId].excerpts.push(excerpt);
+
+
+
+              if (themeId === 'already_serviced' && parsed.competitorLocation && themes.already_serviced.competitorNames.indexOf(parsed.competitorLocation) === -1)
+
+
+
+                themes.already_serviced.competitorNames.push(parsed.competitorLocation);
+
+
+
+              if (themeId === 'callback_requested' && parsed.callbackTime && themes.callback_requested.callbackTimes.indexOf(parsed.callbackTime) === -1)
+
+
+
+                themes.callback_requested.callbackTimes.push(parsed.callbackTime);
+
+
+
+              if (themeId === 'deferred') {
+
+
+
+                var tm = (text.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+
+
+
+                if (tm && themes.deferred.timeframes.indexOf(tm.toLowerCase()) === -1) themes.deferred.timeframes.push(tm.toLowerCase());
+
+
+
+              }
+
+
+
+            }
+
+
+
+          }
+
+
+
+        }
+
+
+
+        var themeList = Object.values(themes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+
+
+
+        var total = themeList.reduce(function(a, t) { return a + t.count; }, 0);
+
+
+
+        var topTheme = themeList.length > 0 ? themeList[0].label : 'General';
+
+
+
+        // Hide AI status on success
+
+        updateAiStatus(0, 0, '');
+
+        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
+
+        }
+
+       } catch(e) {
+
+
+
+        console.warn('mineCustomerThemes failed:', e);
+
+
+
+        // Hide AI status
+
+        updateAiStatus(0, 0, '');
+
+
+
+        return { themes: [], total: 0, topTheme: "General", engine: "local" };
+
+
+
+      }
+
+
+
+    }
+
+
+
+async function generateDashboard() {
+
+
+
+      if (!dashData || dashData.length === 0) return;
+
+
+
+      // ── Find column names (case-insensitive, exact-first then substring) ──
+
+
+
+      const cols = Object.keys(dashData[0]);
+
+
+
+      const find = (keywords) => {
+
+
+
+        const kw = keywords.map(k => k.toLowerCase().replace(/[_\s-]/g, ''));
+
+
+
+        // 1. Prefer exact match (after normalizing)
+
+
+
+        const exact = cols.find(c => {
+
+
+
+          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
+
+
+
+          return kw.some(k => cl === k);
+
+
+
+        });
+
+
+
+        if (exact) return exact;
+
+
+
+        // 2. Fall back to substring/includes match
+
+
+
+        return cols.find(c => {
+
+
+
+          const cl = c.toLowerCase().replace(/[_\s-]/g, '');
+
+
+
+          return kw.some(k => cl.includes(k));
+
+
+
+        }) || null;
+
+
+
+      };
+
+
+
+      const COL_PHONE = find(['phone_number', 'phonenumber', 'phone', 'mobile']);
+
+
+
+      const COL_OUTCOME = find(['outcome', 'disposition', 'call_outcome', 'calloutcome']);
+
+
+
+      const COL_STATUS = find(['status', 'call_status', 'session_status']);
+
+
+
+      const COL_DATE = find(['call_date', 'calldate']);
+
+
+
+      const COL_MODEL = find(['vehicle_model', 'vehiclemodel', 'model', 'model_preference', 'car_model']);
+
+
+
+      const COL_DETAIL = find(['disposition_detail', 'dispositiondetail', 'detail', 'disposition_details']);
+
+
+
+      const COL_SUMMARY = find(['summary', 'call_summary', 'callsummary']);
+
+
+
+      const COL_UPDATED_SUMMARY = find(['updated_summary', 'updatedsummary', 'updated summary']);
+
+
+
+      const COL_UPDATED_DISPOSITION = find(['updated_disposition', 'updated disposition', 'updated_disposition_details', 'updated disposition details']);
+
+
+
+      const COL_ATTEMPT = find(['attempt', 'number_of_attempts', 'attempts', 'call_attempt']);
+
+
+
+      const COL_NEXT_SERVICE = find(['next_service_due', 'next_service_date']);
+
+
+
+      const COL_LAST_SERVICE = find(['last_service_date']);
+
+
+
+      const COL_SERVICE_TYPE = find(['service_type', 'next_service_type']);
+
+
+
+      const COL_SOURCE = find(['campaign_id', 'campaign', 'workshop_code', 'dealer_code', 'showroom_code', 'source', 'campaignid']);
+
+
+
+      if (!COL_DATE) {
+
+
+
+        stDash.textContent = 'Required column missing: Call_Date.';
+
+
+
+        stDash.className = 'dz-status err';
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      const rows = dashData;
+
+
+
+      const totalLeads = rows.length;
+
+
+
+      const requestedMode = campaignMode ? campaignMode.value : 'auto';
+
+
+
+      const detectedType = detectCampaignType(rows, {
+
+
+
+        summaryCol: COL_SUMMARY,
+
+
+
+        detailCol: COL_DETAIL,
+
+
+
+        outcomeCol: COL_OUTCOME,
+
+
+
+        statusCol: COL_STATUS,
+
+
+
+        nextServiceCol: COL_NEXT_SERVICE,
+
+
+
+        lastServiceCol: COL_LAST_SERVICE,
+
+
+
+        serviceTypeCol: COL_SERVICE_TYPE,
+
+
+
+      });
+
+
+
+      const isPostSales = requestedMode === 'post' || (requestedMode === 'auto' && detectedType === 'post');
+
+
+
+      resolvedCampaignType = isPostSales ? 'post' : 'pre';
+
+
+
+      const primaryOutcomeCol = COL_OUTCOME || COL_STATUS;
+
+
+
+      // ── Count outcomes ──
+
+
+
+      const norm = (v) => String(v || '').trim().toLowerCase();
+
+
+
+      let connected = 0, notConnectedStrict = 0, voicemail = 0;
+
+
+
+      let bookings = 0, callsTriggered = 0, invalidLead = 0;
+
+
+
+      let incompleteCall = 0, callbackRequestedFromSummary = 0;
+
+
+
+      let serviceCompletedPostSales = 0, invalidLeadPostSales = 0, notInterestedPost = 0;
+
+
+
+      rows.forEach(r => {
+
+
+
+        const out = norm(r[primaryOutcomeCol]);
+
+
+
+        const statusVal = norm(COL_STATUS ? r[COL_STATUS] : '');
+
+
+
+        const det = norm(r[COL_DETAIL] || '');
+
+
+
+        const sum = norm(r[COL_SUMMARY] || '');
+
+
+
+        const updatedSum = norm(COL_UPDATED_SUMMARY ? r[COL_UPDATED_SUMMARY] : '');
+
+
+
+        const updatedDisposition = norm(COL_UPDATED_DISPOSITION ? r[COL_UPDATED_DISPOSITION] : '');
+
+
+
+        const rawUpdatedDisposition = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
+
+
+
+        callsTriggered++;
+
+
+
+        if (isPostSales) {
+
+
+
+          if (statusVal.includes('attempted') || statusVal.includes('completed')) {
+
+
+
+            connected++;
+
+
+
+          } else if (statusVal.includes('busy')) {
+
+
+
+            notConnectedStrict++;
+
+
+
+          }
+
+
+
+        } else {
+
+
+
+          if (out === 'connected') {
+
+
+
+            connected++;
+
+
+
+          } else if (out.includes('not connected') || out.includes('notconnected') || out.includes('not_connected')) {
+
+
+
+            notConnectedStrict++;
+
+
+
+          }
+
+
+
+        }
+
+
+
+        // Voicemail KPI: Updated Disposition first; if blank, DISPOSITION_DETAILS
+
+
+
+        const rawUpdatedDispForVm = COL_UPDATED_DISPOSITION ? String(r[COL_UPDATED_DISPOSITION] ?? '').trim() : '';
+
+
+
+        if (rawUpdatedDispForVm && hasVoicemailNorm(norm(rawUpdatedDispForVm))) {
+
+
+
+          voicemail++;
+
+
+
+        } else if (!rawUpdatedDispForVm && hasVoicemailNorm(det)) {
+
+
+
+          voicemail++;
+
+
+
+        }
+
+
+
+        if (sum === 'requested callback' || sum === 'received call at wrong time' || sum.includes('callback requested') || sum.includes('call back')) {
+
+
+
+          callbackRequestedFromSummary++;
+
+
+
+        }
+
+
+
+        if (!isPostSales) {
+
+
+
+          // Pre-sales conversions.
+
+
+
+          const qualifiedFollowUp = (sum === 'follow up required' || sum === 'follow-up required') &&
+
+
+
+            (updatedSum === 'interested' || updatedSum === 'converted');
+
+
+
+          if (sum === 'converted' || sum === 'interested' || sum === 'test drive booked' || qualifiedFollowUp) {
+
+
+
+            bookings++;
+
+
+
+          }
+
+
+
+        } else {
+
+
+
+          // Post-sales outcomes.
+
+
+
+          let serviceBooked = false;
+
+
+
+          if (updatedDisposition) {
+
+
+
+            serviceBooked = updatedDisposition === 'converted' ||
+
+
+
+              updatedDisposition === 'follow up required' ||
+
+
+
+              updatedDisposition === 'follow-up required';
+
+
+
+          } else {
+
+
+
+            serviceBooked = det === 'converted' ||
+
+
+
+              det === 'follow up required' ||
+
+
+
+              det === 'follow-up required';
+
+
+
+          }
+
+
+
+          if (serviceBooked) {
+
+
+
+            bookings++;
+
+
+
+          }
+
+
+
+          if (rawUpdatedDisposition) {
+
+
+
+            if (hasServiceCompletedDispositionNorm(norm(rawUpdatedDisposition))) {
+
+
+
+              serviceCompletedPostSales++;
+
+
+
+            }
+
+
+
+          } else if (hasServiceCompletedDispositionNorm(det)) {
+
+
+
+            serviceCompletedPostSales++;
+
+
+
+          }
+
+
+
+          if (rawUpdatedDisposition) {
+
+
+
+            if (hasInvalidLeadDispositionNorm(norm(rawUpdatedDisposition))) {
+
+
+
+              invalidLeadPostSales++;
+
+
+
+            }
+
+
+
+          } else if (hasInvalidLeadDispositionNorm(det)) {
+
+
+
+            invalidLeadPostSales++;
+
+
+
+          }
+
+
+
+          if (hasAny(sum + ' ' + det, ['not interested', 'refused service', 'service not required', 'already serviced'])) {
+
+
+
+            notInterestedPost++;
+
+
+
+          }
+
+
+
+        }
+
+
+
+        if (!isPostSales && (sum === 'not interested' || hasAny(sum + ' ' + det, ['wrong number', 'invalid number', 'dnd', 'do not disturb']))) {
+
+
+
+          invalidLead++;
+
+
+
+        }
+
+
+
+        if (det.includes('incomplete') || out.includes('incomplete')) {
+
+
+
+          incompleteCall++;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      const pendingFollowup = incompleteCall + callbackRequestedFromSummary + notConnectedStrict;
+
+
+
+      // ── Unique phones for dedup & attempts ──
+
+
+
+      const phoneSet = new Set();
+
+
+
+      const dupes = [];
+
+
+
+      let uniqueCallsByAttempt = 0;
+
+
+
+      rows.forEach(r => {
+
+
+
+        if (COL_PHONE) {
+
+
+
+          const p = String(r[COL_PHONE] || '').replace(/\D/g, '');
+
+
+
+          if (p) {
+
+
+
+            if (phoneSet.has(p)) dupes.push(p);
+
+
+
+            else phoneSet.add(p);
+
+
+
+          }
+
+
+
+        }
+
+
+
+        if (COL_ATTEMPT) {
+
+
+
+          const att = String(r[COL_ATTEMPT] || '').trim();
+
+
+
+          if (att === '1' || att === '1.0' || att.toLowerCase() === 'one') {
+
+
+
+            uniqueCallsByAttempt++;
+
+
+
+          }
+
+
+
+        }
+
+
+
+      });
+
+
+
+      
+
+
+
+      if (!COL_ATTEMPT) {
+
+
+
+        uniqueCallsByAttempt = phoneSet.size;
+
+
+
+      }
+
+
+
+      // ── Date range ──
+
+
+
+      const dateFormatMode = document.getElementById('dateFormatMode');
+
+
+
+      const forcedDateOrder = dateFormatMode && dateFormatMode.value !== 'auto' ? dateFormatMode.value : null;
+
+
+
+      const dateParserInfo = buildDateParser(rows, COL_DATE, forcedDateOrder);
+
+
+
+      const dateParser = dateParserInfo.parse;
+
+
+
+      let validDateCount = 0;
+
+
+
+      let rejectedDateCount = 0;
+
+
+
+      let dates = [];
+
+
+
+      rows.forEach(r => {
+
+
+
+        const dateText = extractCallDateText(r[COL_DATE]);
+
+
+
+        if (!dateText) {
+
+
+
+          rejectedDateCount++;
+
+
+
+          return;
+
+
+
+        }
+
+
+
+        const d = dateParser(dateText);
+
+
+
+        if (d) {
+
+
+
+          validDateCount++;
+
+
+
+          dates.push(d);
+
+
+
+        } else {
+
+
+
+          rejectedDateCount++;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      dates.sort((a, b) => a - b);
+
+
+
+      const minDate = dates[0];
+
+
+
+      const maxDate = dates[dates.length - 1];
+
+
+
+      // ── Daily breakdown ──
+
+
+
+      const dailyCounts = {};
+
+
+
+      rows.forEach(r => {
+
+
+
+        const dateText = extractCallDateText(r[COL_DATE]);
+
+
+
+        if (!dateText) return;
+
+
+
+        const d = dateParser(dateText);
+
+
+
+        if (d) {
+
+
+
+          const key = formatDateKey(d);
+
+
+
+          dailyCounts[key] = (dailyCounts[key] || 0) + 1;
+
+
+
+        }
+
+
+
+      });
+
+
+
+      // ── Vehicle model breakdown ──
+
+
+
+      const modelCounts = {};
+
+
+
+      if (COL_MODEL) {
+
+
+
+        rows.forEach(r => {
+
+
+
+          const m = String(r[COL_MODEL] || '').trim();
+
+
+
+          if (m && m.toLowerCase() !== 'na' && m.toLowerCase() !== 'n/a' && m !== '') {
+
+
+
+            modelCounts[m] = (modelCounts[m] || 0) + 1;
+
+
+
+          }
+
+
+
+        });
+
+
+
+      }
+
+
+
+      // ── Render ──
+
+
+
+      document.getElementById('emptyState').style.display = 'none';
+
+
+
+      document.getElementById('campaignBar').style.display = 'flex';
+
+
+
+      document.getElementById('dashboardContent').style.display = 'block';
+
+
+
+      document.getElementById('btnPrintPDF').style.display = 'inline-flex';
+
+
+
+      document.getElementById('campaignSubtitle').textContent = isPostSales
+
+
+
+        ? 'Post-Sales Service & Feedback Campaign'
+
+
+
+        : 'Pre-Sales Lead Nurturing Campaign';
+
+
+
+      // Date range
+
+
+
+      if (minDate && maxDate) {
+
+
+
+        document.getElementById('dateRange').textContent =
+
+
+
+          formatDateFull(minDate) + ' – ' + formatDateFull(maxDate);
+
+
+
+      } else {
+
+
+
+        document.getElementById('dateRange').textContent = 'All records';
+
+
+
+      }
+
+
+
+      const parserLabel = dateParserInfo.order === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY';
+
+
+
+      const parserMode = dateParserInfo.forced ? 'Manual' : 'Auto';
+
+
+
+      document.getElementById('dateParserNote').textContent = `Source: ${COL_DATE} · Format: ${parserLabel} (${parserMode}) · Valid: ${validDateCount}/${rows.length} · Rejected: ${rejectedDateCount}`;
+
+
+
+      renderMetricAudit({
+
+
+
+        columns: {
+
+
+
+          Phone: COL_PHONE,
+
+
+
+          Outcome: primaryOutcomeCol,
+
+
+
+          Status: COL_STATUS,
+
+
+
+          Date: COL_DATE,
+
+
+
+          Model: COL_MODEL,
+
+
+
+          Detail: COL_DETAIL,
+
+
+
+          Summary: COL_SUMMARY,
+
+
+
+          'Updated Summary': COL_UPDATED_SUMMARY,
+
+
+
+          'Updated Disposition': COL_UPDATED_DISPOSITION,
+
+
+
+          Attempts: COL_ATTEMPT,
+
+
+
+        },
+
+
+
+        parserLabel,
+
+
+
+        totalRows: rows.length,
+
+
+
+        validDateCount,
+
+
+
+        rejectedDateCount,
+
+
+
+        duplicatePhones: dupes.length,
+
+
+
+        uniquePhones: phoneSet.size,
+
+
+
+      });
+
+
+
+      // ── Dynamic KPI insights ──
+
+
+
+      var kpConnPct = totalLeads > 0 ? ((connected / totalLeads) * 100).toFixed(0) : '0';
+
+
+
+      var kpNcPct = totalLeads > 0 ? ((notConnectedStrict / totalLeads) * 100).toFixed(0) : '0';
+
+
+
+      var kpVmPct = totalLeads > 0 ? ((voicemail / totalLeads) * 100).toFixed(0) : '0';
+
+
+
+      var kpVmOfConn = (connected + voicemail) > 0 ? ((voicemail / (connected + voicemail)) * 100).toFixed(0) : '0';
+
+
+
+      var kpBkPct = connected > 0 ? ((bookings / connected) * 100).toFixed(0) : '0';
+
+
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+
+
+      const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+
+
+
+      Object.keys(dailyCounts).forEach(function(key) {
+
+
+
+        var parts = key.split('-');
+
+
+
+        var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+
+
+
+        if (!isNaN(d.getTime())) dayCounts[d.getDay()] += dailyCounts[key];
+
+
+
+      });
+
+
+
+      var maxDayIdx = 0;
+
+
+
+      for (var di = 1; di < 7; di++) { if (dayCounts[di] > dayCounts[maxDayIdx]) maxDayIdx = di; }
+
+
+
+      const peakDay = dayNames[maxDayIdx];
+
+
+
+      var peakPct = totalLeads > 0 ? ((dayCounts[maxDayIdx] / totalLeads) * 100).toFixed(0) : '0';
+
+
+
+      var ctPctWhole = totalLeads > 0 ? ((callsTriggered / totalLeads) * 100).toFixed(0) : '0';
+
+
+
+      // ── Build data-responsive sub/insight per KPI ──
+
+
+
+      var kpi1sub = {};
+
+
+
+      kpi1sub.ct = callsTriggered + ' total';
+
+
+
+      kpi1sub.cn = connected + ' reached';
+
+
+
+      kpi1sub.nc = notConnectedStrict + ' missed';
+
+
+
+      kpi1sub.vm = voicemail + ' voicemails';
+
+
+
+      var kpi1ins = {};
+
+
+
+      kpi1ins.ct = kpConnPct > 60 ? kpConnPct + '% connect rate' : kpConnPct > 40 ? kpConnPct + '% connect — room to grow' : kpConnPct + '% connect — review targeting';
+
+
+
+      kpi1ins.ct += ' · peak ' + peakDay;
+
+
+
+      kpi1ins.cn = kpConnPct > 50 ? 'Most calls connect on ' + peakDay + 's' : 'Best reach on ' + peakDay + 's';
+
+
+
+      kpi1ins.nc = kpNcPct > 40 ? kpNcPct + '% not reached — high miss rate' : kpNcPct + '% not reached';
+
+
+
+      kpi1ins.vm = kpVmOfConn > 40 ? kpVmOfConn + '% leave VM — heavy voicemail traffic' : kpVmOfConn > 20 ? kpVmOfConn + '% leave VM' : kpVmOfConn + '% leave VM — most pick up';
+
+
+
+      // KPI Row 1
+
+
+
+      const kpiRow1 = document.getElementById('kpiRow1');
+
+
+
+      kpiRow1.innerHTML = '';
+
+
+
+      
+
+
+
+      const kpis1 = [
+
+
+
+        { label: 'CALLS TRIGGERED', value: callsTriggered, sub: kpi1sub.ct, color: 'purple', delay: 1, insight: kpi1ins.ct },
+
+
+
+        { label: 'CONNECTED', value: connected, sub: kpi1sub.cn, color: 'blue', delay: 2, insight: kpi1ins.cn },
+
+
+
+        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: kpi1sub.nc, color: 'red', delay: 3, insight: kpi1ins.nc },
+
+
+
+        { label: 'VOICEMAIL', value: voicemail, sub: kpi1sub.vm, color: 'amber', delay: 4, insight: kpi1ins.vm },
+
+
+
+      ];
+
+
+
+      kpis1.forEach(k => kpiRow1.appendChild(makeKPI(k)));
+
+
+
+      // KPI Row 2
+
+
+
+      var kpR2subs = {};
+
+
+
+      kpR2subs.uniq = uniqueCallsByAttempt + ' unique callers';
+
+
+
+      kpR2subs.bk = bookings + ' booked';
+
+
+
+      kpR2subs.postDone = serviceCompletedPostSales + ' completed';
+
+
+
+      kpR2subs.inv = isPostSales ? invalidLeadPostSales + ' invalid entries' : invalidLead + ' flagged invalid';
+
+
+
+      kpR2subs.cb = callbackRequestedFromSummary + ' requested';
+
+
+
+      var kpR2ins = {};
+
+
+
+      kpR2ins.bk = kpBkPct > 40 ? kpBkPct + '% of connected booked — strong' : kpBkPct > 20 ? kpBkPct + '% of connected booked' : kpBkPct + '% booking rate — review process';
+
+
+
+      kpR2ins.inv = isPostSales ? (invalidLeadPostSales > 20 ? invalidLeadPostSales + ' flagged — check data quality' : invalidLeadPostSales + ' flagged as invalid') : (invalidLead > 20 ? invalidLead + ' flagged — check data quality' : invalidLead + ' flagged as invalid');
+
+
+
+      kpR2ins.cb = callbackRequestedFromSummary > 10 ? callbackRequestedFromSummary + ' callbacks pending — follow up' : callbackRequestedFromSummary + ' callbacks pending';
+
+
+
+      const kpiRow2 = document.getElementById('kpiRow2');
+
+
+
+      kpiRow2.innerHTML = '';
+
+
+
+      const kpis2 = isPostSales
+
+
+
+        ? [
+
+
+
+            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
+
+
+
+            { label: 'SERVICE BOOKED', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
+
+
+
+            { label: 'SERVICE COMPLETED', value: serviceCompletedPostSales, sub: kpR2subs.postDone, color: 'pink', delay: 7 },
+
+
+
+            { label: 'INVALID LEAD', value: invalidLeadPostSales, sub: kpR2subs.inv, color: 'orange', delay: 8, insight: kpR2ins.inv },
+
+
+
+          ]
+
+
+
+        : [
+
+
+
+            { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
+
+
+
+            { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
+
+
+
+            { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: kpR2subs.cb, color: 'pink', delay: 7, insight: kpR2ins.cb },
+
+
+
+            { label: 'INVALID LEAD', value: invalidLead, sub: kpR2subs.inv, color: 'orange', delay: 8, insight: kpR2ins.inv },
+
+
+
+          ];
+
+
+
+      kpis2.forEach(k => kpiRow2.appendChild(makeKPI(k)));
+
+
+
+      // Daily chart
+
+
+
+      renderDailyChart(dailyCounts);
+
+
+
+      // Vehicle chart
+
+
+
+      renderVehicleChart(modelCounts);
+
+
+
+      // Pending panel
+
+
+
+      renderPendingPanel({
+
+
+
+        isPostSales,
+
+
+
+        incompleteCall,
+
+
+
+        callbackRequested: callbackRequestedFromSummary,
+
+
+
+        notConnected: notConnectedStrict,
+
+
+
+        pendingFollowup,
+
+
+
+        totalLeads,
+
+
+
+        dupeCount: dupes.length,
+
+
+
+        uniquePhones: phoneSet.size,
+
+
+
+        notInterestedPost,
+
+
+
+      });
+
+
+
+      // ═══════════════════════════════════════════════════════════════════
+
+
+
+      // BI ENGINE — Classify rows, analyze, render insights
+
+
+
+      // ═══════════════════════════════════════════════════════════════════
+
+
+
+      const colMap = {
+
+
+
+        phone: COL_PHONE, outcome: COL_OUTCOME, status: COL_STATUS,
+
+
+
+        date: COL_DATE, model: COL_MODEL, detail: COL_DETAIL,
+
+
+
+        summary: COL_SUMMARY, updatedSummary: COL_UPDATED_SUMMARY,
+
+
+
+        updatedDisposition: COL_UPDATED_DISPOSITION, attempt: COL_ATTEMPT,
+
+
+
+        source: COL_SOURCE
+
+
+
+      };
+
+
+
+      // Run analysis (all data-driven, no hardcoded classification)
+
+
+
+      const funnel = analyzeConversionFunnel(rows, colMap, isPostSales, connected, bookings);
+
+
+
+      const dispositions = analyzeDispositionPatterns(rows, colMap);
+
+
+
+      const lq = { wrongNumber: invalidLeadPostSales || invalidLead, sold: 0, wrongPerson: 0, duplicates: dupes.length, total: (invalidLeadPostSales || invalidLead) + dupes.length };
+
+
+
+      const pipeline = analyzeDecisionPipeline(rows, colMap);
+
+
+
+      const callbacks = { total: callbackRequestedFromSummary, callbacks: [] };
+
+
+
+      const langBarriers = analyzeLanguageBarriers(rows, colMap);
+
+
+
+      const competitors = analyzeCompetitiveLosses(rows, colMap);
+
+
+
+      const sentiment = analyzeSentimentFromTranscript(rows, colMap);
+
+
+
+      const anomalies = detectAnomalies(rows, dailyCounts);
+
+
+
+      const sourceQuality = analyzeSourceQuality(rows, colMap);
+
+
+
+      const trends = analyzeTrends(rows, dailyCounts);
+
+
+
+      const blockers = analyzeConversionBlockers(rows, colMap);
+
+
+
+      // Build executive summary (compute healthScore first)
+
+
+
+      const healthConnectedPct = rows.length > 0 ? (funnel.connected / rows.length * 100) : 0;
+
+
+
+      const healthBookedPct = funnel.connected > 0 ? (funnel.booked / funnel.connected * 100) : 0;
+
+
+
+      const healthInvalidPct = rows.length > 0 ? (lq.total / rows.length * 100) : 0;
+
+
+
+      let healthScore = Math.round(
+
+
+
+        Math.min(30, healthConnectedPct * 0.3) +
+
+
+
+        Math.min(30, healthBookedPct * 0.6) +
+
+
+
+        Math.max(0, 15 - healthInvalidPct * 1.5) +
+
+
+
+        (pipeline.active > 0 ? Math.min(10, pipeline.active) : 0) +
+
+
+
+        (callbacks.total === 0 ? 5 : Math.max(0, 5 - callbacks.total))
+
+
+
+      );
+
+
+
+      healthScore = Math.max(0, Math.min(100, healthScore));
+
+
+
+      const healthClass = healthScore >= 75 ? 'healthy' : healthScore >= 50 ? 'warning' : 'critical';
+
+
+
+      
+
+
+
+      const agents = analyzeAgentPerformance(rows, colMap);
+
+
+
+      const connPct = rows.length > 0 ? (funnel.connected / rows.length * 100).toFixed(0) : '0';
+
+
+
+      // ── Render Storytelling Sections ───────────────────────────────────────
+
+
+
+      // Executive Story Banner
+
+
+
+      const execEl = document.getElementById('execSummary');
+
+
+
+      if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
+
+
+
+      
+
+
+
+      const hsEl = document.getElementById('healthScore');
+
+
+
+      if (hsEl) { hsEl.textContent = healthScore + '/100'; hsEl.setAttribute('fill', healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'); }
+
+
+
+      const healthRing = document.querySelector('.health-ring');
+
+
+
+      if (healthRing) {
+
+
+
+        const circumference = 150;
+
+
+
+        const offset = circumference - (healthScore / 100) * circumference;
+
+
+
+        healthRing.style.strokeDashoffset = offset;
+
+
+
+        healthRing.style.stroke = healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)';
+
+
+
+      }
+
+
+
+      // Insight chips (inside the banner)
+
+
+
+      const chips = [
+
+
+
+        { label: 'Connected', value: `${connPct}% (${funnel.connected})`, tone: funnel.connected > rows.length * 0.5 ? 'ok' : (funnel.connected > rows.length * 0.3 ? 'warn' : 'danger') },
+
+
+
+        { label: 'Booked', value: `${funnel.booked} (${funnel.connected > 0 ? (funnel.booked / funnel.connected * 100).toFixed(0) : 0}%)`, tone: funnel.booked > 5 ? 'ok' : (funnel.booked > 0 ? 'warn' : 'danger') },
+
+
+
+      ];
+
+
+
+      if (pipeline.active > 0) chips.push({ label: 'Pipeline', value: `${pipeline.active} active`, tone: 'info' });
+
+
+
+      if (lq.total > 0) chips.push({ label: 'Invalid', value: `${lq.total} (${healthInvalidPct.toFixed(0)}%)`, tone: lq.total > 5 ? 'danger' : 'warn' });
+
+
+
+      if (competitors.total > 0) chips.push({ label: 'Competitive Loss', value: `${competitors.total}`, tone: competitors.total > 5 ? 'danger' : 'warn' });
+
+
+
+      if (callbacks.total > 0) chips.push({ label: 'Callbacks', value: `${callbacks.total} pending`, tone: callbacks.total > 3 ? 'warn' : 'info' });
+
+
+
+      if (langBarriers.total > 0) chips.push({ label: 'Language', value: `${langBarriers.total} barriers`, tone: 'warn' });
+
+
+
+      const chipEl = document.getElementById('insightStrip');
+
+
+
+      if (chipEl) {
+
+
+
+        chipEl.innerHTML = chips.map(c => `<span class="anomaly-chip ${c.tone}">${c.label}: <strong>${c.value}</strong></span>`).join('');
+
+
+
+        chipEl.style.display = chips.length ? 'flex' : 'none';
+
+
+
+      }
+
+
+
+      // Customer Voice
+
+
+
+      
+
+
+
+      // Conversion Funnel
+
+
+
+      renderConversionFunnel(funnel);
+
+
+
+      // Conversion Blockers
+
+
+
+      renderConversionBlockers(blockers);
+
+
+
+      // Agent Performance Table
+
+
+
+      renderAgentTable(agents);
+
+
+
+      // Decision Pipeline
+
+
+
+      renderDecisionPipeline(pipeline);
+
+
+
+      // Disposition
+
+
+
+      renderDispositionIntelligence(dispositions);
+
+
+
+      // Source Quality
+
+
+
+      renderSourceQuality(sourceQuality);
+
+
+
+      // Competitive Intel
+
+
+
+      renderCompetitiveIntel(competitors);
+
+
+
+      // Language & Quality
+
+
+
+      renderLanguageQuality(langBarriers);
+
+
+
+      // Lead Quality
+
+
+
+      renderLeadQualityScorecard(lq);
+
+
+
+      // Anomalies
+
+
+
+      renderAnomalySection(anomalies);
+
+
+
+      // Phase Comparison
+
+
+
+      renderPhaseComparison(trends);
+
+
+
+      // Recommended Actions
+
+
+
+      // AI-Powered Recommendations
+
+
+
+      // Trend indicator
+
+
+
+      renderTrendIndicators(trends);
+
+
+
+      // Daily & Vehicle Charts
+
+      renderDailyChart(dailyCounts);
+
+      renderVehicleChart(modelCounts);
+
+
+
+      if (campaignMode && campaignMode.value === 'auto') {
+
+
+
+        campaignMode.value = resolvedCampaignType === 'post' ? 'post' : 'pre';
+
+
+
+      }
+
+
+
+    
+
+        // Store data for AI Summary
+
+        window._dashRows = rows;
+
+        window._dashColMap = colMap;
+
+        window._dashIsPostSales = isPostSales;
+
+        window._dashFunnel = funnel;
+
+        window._dashCompetitors = competitors;
+
+        window._dashCallbacks = callbacks;
+
+        window._dashTrends = trends;
+
+        window._dashHealthScore = healthScore;
+
+        window._dashHealthClass = healthClass;
+
+      window._dashAgents = agents;
+
+        document.getElementById('btnAiSummary').disabled = false;
+
+    }
+
+
+
+    /* ── KPI Card Builder (editable counts; controls hidden in print / PDF) ── */
+
+
+
+    function parseKpiInput(str) {
+
+
+
+      const n = parseInt(String(str || '').replace(/[^\d]/g, ''), 10);
+
+
+
+      return Number.isNaN(n) ? 0 : Math.max(0, n);
+
+
+
+    }
+
+
+
+    function finishKpiEdit(card, save) {
+
+
+
+      const input = card.querySelector('.kpi-value-input');
+
+
+
+      const valueEl = card.querySelector('.kpi-value-display');
+
+
+
+      const panel = card.querySelector('.kpi-value-edit-panel');
+
+
+
+      const badge = card.querySelector('.kpi-adjusted-badge');
+
+
+
+      if (!valueEl || !panel) return;
+
+
+
+      if (save && input) {
+
+
+
+        const n = parseKpiInput(input.value);
+
+
+
+        card.dataset.kpiNumeric = String(n);
+
+
+
+        valueEl.textContent = numberWithCommas(n);
+
+
+
+        if (badge) {
+
+
+
+          const orig = parseInt(card.dataset.kpiOriginal, 10) || 0;
+
+
+
+          badge.hidden = (n === orig);
+
+
+
+        }
+
+
+
+      }
+
+
+
+      card.classList.remove('kpi-is-editing');
+
+
+
+      panel.hidden = true;
+
+
+
+      valueEl.style.display = '';
+
+
+
+      if (input) input.value = '';
+
+
+
+    }
+
+
+
+    function startKpiEdit(card) {
+
+
+
+      const input = card.querySelector('.kpi-value-input');
+
+
+
+      const valueEl = card.querySelector('.kpi-value-display');
+
+
+
+      const panel = card.querySelector('.kpi-value-edit-panel');
+
+
+
+      if (!input || !valueEl || !panel) return;
+
+
+
+      input.value = card.dataset.kpiNumeric || '0';
+
+
+
+      card.classList.add('kpi-is-editing');
+
+
+
+      panel.hidden = false;
+
+
+
+      valueEl.style.display = 'none';
+
+
+
+      input.focus();
+
+
+
+      input.select();
+
+
+
+    }
+
+
+
+    function flushOpenKpiEdits(commit) {
+
+
+
+      document.querySelectorAll('.kpi-card.kpi-is-editing').forEach(function(card) {
+
+
+
+        finishKpiEdit(card, commit !== false);
+
+
+
+      });
+
+
+
+    }
+
+
+
+    function makeKPI({ label, value, sub, color, delay }) {
+
+
+
+      let num = Number(value);
+
+
+
+      if (!Number.isFinite(num)) num = 0;
+
+
+
+      const n = Math.max(0, Math.floor(num));
+
+
+
+      const card = document.createElement('div');
+
+
+
+      card.className = `kpi-card ${color} slide-up stagger-${delay}`;
+
+
+
+      card.dataset.kpiOriginal = String(n);
+
+
+
+      card.dataset.kpiNumeric = String(n);
+
+
+
+      const top = document.createElement('div');
+
+
+
+      top.className = 'kpi-card-top';
+
+
+
+      const dotWrap = document.createElement('div');
+
+
+
+      const dot = document.createElement('span');
+
+
+
+      dot.className = 'kpi-dot';
+
+
+
+      dotWrap.appendChild(dot);
+
+
+
+      const controls = document.createElement('div');
+
+
+
+      controls.className = 'kpi-edit-controls';
+
+
+
+      const btnEdit = document.createElement('button');
+
+
+
+      btnEdit.type = 'button';
+
+
+
+      btnEdit.className = 'kpi-edit-btn';
+
+
+
+      btnEdit.title = 'Adjust KPI value';
+
+
+
+      btnEdit.setAttribute('aria-label', 'Adjust KPI value');
+
+
+
+      btnEdit.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
+
+
+
+      const badge = document.createElement('span');
+
+
+
+      badge.className = 'kpi-adjusted-badge';
+
+
+
+      badge.textContent = 'Adjusted';
+
+
+
+      badge.hidden = true;
+
+
+
+      controls.appendChild(btnEdit);
+
+
+
+      controls.appendChild(badge);
+
+
+
+      top.appendChild(dotWrap);
+
+
+
+      top.appendChild(controls);
+
+
+
+      const valueEl = document.createElement('div');
+
+
+
+      valueEl.className = 'kpi-value kpi-value-display';
+
+
+
+      valueEl.textContent = numberWithCommas(n);
+
+
+
+      const panel = document.createElement('div');
+
+
+
+      panel.className = 'kpi-value-edit-panel';
+
+
+
+      panel.hidden = true;
+
+
+
+      const input = document.createElement('input');
+
+
+
+      input.type = 'text';
+
+
+
+      input.className = 'kpi-value-input';
+
+
+
+      input.setAttribute('inputmode', 'numeric');
+
+
+
+      input.setAttribute('autocomplete', 'off');
+
+
+
+      input.setAttribute('aria-label', 'KPI value');
+
+
+
+      const actions = document.createElement('div');
+
+
+
+      actions.className = 'kpi-edit-actions';
+
+
+
+      const btnApply = document.createElement('button');
+
+
+
+      btnApply.type = 'button';
+
+
+
+      btnApply.className = 'kpi-mini-btn kpi-apply';
+
+
+
+      btnApply.textContent = 'Apply';
+
+
+
+      const btnCancel = document.createElement('button');
+
+
+
+      btnCancel.type = 'button';
+
+
+
+      btnCancel.className = 'kpi-mini-btn';
+
+
+
+      btnCancel.textContent = 'Cancel';
+
+
+
+      actions.appendChild(btnApply);
+
+
+
+      actions.appendChild(btnCancel);
+
+
+
+      panel.appendChild(input);
+
+
+
+      panel.appendChild(actions);
+
+
+
+      const labelEl = document.createElement('div');
+
+
+
+      labelEl.className = 'kpi-label';
+
+
+
+      labelEl.textContent = label;
+
+
+
+      const subEl = document.createElement('div');
+
+
+
+      subEl.className = 'kpi-sub';
+
+
+
+      subEl.textContent = sub;
+
+
+
+      if (arguments[0].pct !== undefined) {
+
+
+
+        const trendBadge = document.createElement('span');
+
+
+
+        const pv = arguments[0].pct;
+
+
+
+        const cls = pv >= 50 ? 'pct-ok' : pv >= 20 ? 'pct-warn' : pv < 5 ? 'pct-blue' : 'pct-danger';
+
+
+
+        trendBadge.className = 'kpi-trend-badge ' + cls;
+
+
+
+        trendBadge.textContent = pv + '% of total';
+
+
+
+        subEl.after(trendBadge);
+
+
+
+      }
+
+
+
+      if (arguments[0].insight) {
+
+
+
+        const insightEl = document.createElement('div');
+
+
+
+        insightEl.className = 'kpi-insight';
+
+
+
+        insightEl.textContent = arguments[0].insight;
+
+
+
+        card.appendChild(insightEl);
+
+
+
+      }
+
+
+
+      btnEdit.addEventListener('click', function(e) {
+
+
+
+        e.preventDefault();
+
+
+
+        if (card.classList.contains('kpi-is-editing')) return;
+
+
+
+        startKpiEdit(card);
+
+
+
+      });
+
+
+
+      btnApply.addEventListener('click', function(e) {
+
+
+
+        e.preventDefault();
+
+
+
+        finishKpiEdit(card, true);
+
+
+
+      });
+
+
+
+      btnCancel.addEventListener('click', function(e) {
+
+
+
+        e.preventDefault();
+
+
+
+        finishKpiEdit(card, false);
+
+
+
+      });
+
+
+
+      input.addEventListener('keydown', function(e) {
+
+
+
+        if (e.key === 'Enter') {
+
+
+
+          e.preventDefault();
+
+
+
+          finishKpiEdit(card, true);
+
+
+
+        } else if (e.key === 'Escape') {
+
+
+
+          e.preventDefault();
+
+
+
+          finishKpiEdit(card, false);
+
+
+
+        }
+
+
+
+      });
+
+
+
+      card.appendChild(top);
+
+
+
+      card.appendChild(valueEl);
+
+
+
+      card.appendChild(panel);
+
+
+
+      card.appendChild(labelEl);
+
+
+
+      card.appendChild(subEl);
+
+
+
+      return card;
+
+
+
+    }
+
+
+
+    /* ── Daily Bar Chart ──────────────────────────────────────────────── */
+
+
+
+    function renderDailyChart(dailyCounts) {
+
+
+
+      const container = document.getElementById('dailyChart');
+
+
+
+      container.innerHTML = '';
+
+
+
+      const entries = Object.entries(dailyCounts).sort((a, b) => a[0].localeCompare(b[0]));
+
+
+
+      if (entries.length === 0) {
+
+
+
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;width:100%;padding:3rem 0;">No date data available</div>';
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      const maxVal = Math.max(...entries.map(e => e[1]));
+
+
+
+      entries.forEach(([dateKey, count]) => {
+
+
+
+        const displayDate = formatDateLabelFromKey(dateKey);
+
+
+
+        const col = document.createElement('div');
+
+
+
+        col.className = 'chart-bar-col';
+
+
+
+        const heightPct = maxVal > 0 ? (count / maxVal * 100) : 0;
+
+
+
+        col.innerHTML = `
+
+
+
+          <span class="chart-bar-val">${count}</span>
+
+
+
+          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${displayDate}: ${count} calls"></div>
+
+
+
+          <span class="chart-bar-label">${displayDate}</span>
+
+
+
+        `;
+
+
+
+        container.appendChild(col);
+
+
+
+      });
+
+
+
+    }
+
+
+
+    /* ── Vehicle Horizontal Bar Chart ─────────────────────────────────── */
+
+
+
+    function renderVehicleChart(modelCounts) {
+
+
+
+      const container = document.getElementById('vehicleChart');
+
+
+
+      if (!container) return;
+
+
+
+      container.innerHTML = '';
+
+
+
+      const panel = container.closest('.data-panel');
+
+
+
+      if (panel) {
+
+
+
+        const existingActions = panel.querySelector('.hbar-actions');
+
+
+
+        if (existingActions) existingActions.remove();
+
+
+
+      }
+
+
+
+      const entries = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
+
+
+
+      if (entries.length === 0) {
+
+
+
+        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:2rem 0;">No vehicle model data</div>';
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      const maxVal = entries[0][1];
+
+
+
+      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
+
+
+
+      const totalModelTaggedCalls = entries.reduce((acc, [, count]) => acc + count, 0);
+
+
+
+      const TOP_MODELS_LIMIT = 12;
+
+
+
+      const shouldCollapse = entries.length > TOP_MODELS_LIMIT;
+
+
+
+      const titleEl = panel.querySelector('.panel-title');
+
+
+
+      titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
+
+
+
+      // Re-add the dot
+
+
+
+      const dot = document.createElement('span');
+
+
+
+      titleEl.prepend(dot);
+
+
+
+      const collapsedEntries = shouldCollapse
+
+
+
+        ? [
+
+
+
+            ...entries.slice(0, TOP_MODELS_LIMIT),
+
+
+
+            ['Others', entries.slice(TOP_MODELS_LIMIT).reduce((sum, [, c]) => sum + c, 0)],
+
+
+
+          ]
+
+
+
+        : entries;
+
+
+
+      const renderRows = (rowsToRender) => {
+
+
+
+        container.innerHTML = '';
+
+
+
+        rowsToRender.forEach(([model, count], i) => {
+
+
+
+          const row = document.createElement('div');
+
+
+
+          row.className = 'hbar-row';
+
+
+
+          const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
+
+
+
+          const colorClass = colors[i % colors.length];
+
+
+
+          const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
+
+
+
+          const label = document.createElement('span');
+
+
+
+          label.className = 'hbar-label';
+
+
+
+          label.title = model;
+
+
+
+          label.textContent = model;
+
+
+
+          const track = document.createElement('div');
+
+
+
+          track.className = 'hbar-track';
+
+
+
+          const fill = document.createElement('div');
+
+
+
+          fill.className = 'hbar-fill ' + colorClass;
+
+
+
+          fill.style.width = widthPct + '%';
+
+
+
+          track.appendChild(fill);
+
+
+
+          const value = document.createElement('span');
+
+
+
+          value.className = 'hbar-value';
+
+
+
+          value.textContent = numberWithCommas(count);
+
+
+
+          const pctSpan = document.createElement('span');
+
+
+
+          pctSpan.className = 'hbar-pct';
+
+
+
+          pctSpan.textContent = percentage + '%';
+
+
+
+          value.appendChild(pctSpan);
+
+
+
+          row.appendChild(label);
+
+
+
+          row.appendChild(track);
+
+
+
+          row.appendChild(value);
+
+
+
+          container.appendChild(row);
+
+
+
+        });
+
+
+
+      };
+
+
+
+      renderRows(collapsedEntries);
+
+
+
+      if (!shouldCollapse) return;
+
+
+
+      let expanded = false;
+
+
+
+      const actionRow = document.createElement('div');
+
+
+
+      actionRow.className = 'hbar-actions';
+
+
+
+      const toggleBtn = document.createElement('button');
+
+
+
+      toggleBtn.type = 'button';
+
+
+
+      toggleBtn.className = 'hbar-toggle-btn';
+
+
+
+      toggleBtn.textContent = `Show all ${entries.length} models`;
+
+
+
+      toggleBtn.onclick = () => {
+
+
+
+        expanded = !expanded;
+
+
+
+        renderRows(expanded ? entries : collapsedEntries);
+
+
+
+        actionRow.appendChild(toggleBtn);
+
+
+
+        toggleBtn.textContent = expanded ? 'Show top models only' : `Show all ${entries.length} models`;
+
+
+
+      };
+
+
+
+      actionRow.appendChild(toggleBtn);
+
+
+
+      panel.appendChild(actionRow);
+
+
+
+    }
+
+
+
+    /* ── Pending & Processed Panel ────────────────────────────────────── */
+
+
+
+    function renderPendingPanel(data) {
+
+
+
+      const container = document.getElementById('pendingPanel');
+
+
+
+      if (!container) return;
+
+
+
+      container.innerHTML = `
+
+
+
+        <div class="pdata-list">
+
+
+
+          <div class="pdata-item">
+
+
+
+            <span class="pdata-label">Incomplete Call</span>
+
+
+
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.incompleteCall)}</span>
+
+
+
+          </div>
+
+
+
+          <div class="pdata-item">
+
+
+
+            <span class="pdata-label">${data.isPostSales ? 'Callback / Call Later' : 'Callback Requested'}</span>
+
+
+
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.callbackRequested)}</span>
+
+
+
+          </div>
+
+
+
+          <div class="pdata-item">
+
+
+
+            <span class="pdata-label">Not Connected (Outcome)</span>
+
+
+
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notConnected)}</span>
+
+
+
+          </div>
+
+
+
+          ${data.isPostSales ? `
+
+
+
+          <div class="pdata-item">
+
+
+
+            <span class="pdata-label">Not Interested / Already Serviced</span>
+
+
+
+            <span class="pdata-value" style="color:var(--text)">${numberWithCommas(data.notInterestedPost || 0)}</span>
+
+
+
+          </div>
+
+
+
+          ` : ''}
+
+
+
+        </div>
+
+
+
+        <div class="pdata-highlight amber" style="margin-top:0.75rem;">
+
+
+
+          <span class="pdata-label">PENDING FOLLOW-UP</span>
+
+
+
+          <span class="pdata-value">${numberWithCommas(data.pendingFollowup)}</span>
+
+
+
+        </div>
+
+
+
+        <div class="alert-block red" style="margin-top:0.75rem;">
+
+
+
+          <div class="alert-title">Not Connected Definition (${numberWithCommas(data.notConnected)})</div>
+
+
+
+          <div class="alert-item">Counted only when Outcome = Not Connected</div>
+
+
+
+          <div class="alert-item">Does not include voicemail or other non-connected outcomes</div>
+
+
+
+        </div>
+
+
+
+        ${data.dupeCount > 0 ? `
+
+
+
+        <div class="alert-block green" style="margin-top:0.5rem;">
+
+
+
+          <div class="alert-title">Retriggered Leads (${data.dupeCount})</div>
+
+
+
+          <div class="alert-item">${numberWithCommas(data.uniquePhones + data.dupeCount)} (Total) → ${data.dupeCount} (Retriggered) = ${numberWithCommas(data.uniquePhones)} (Unique)</div>
+
+
+
+        </div>
+
+
+
+        ` : ''}
+
+
+
+      `;
+
+
+
+    }
+
+
+
+    function renderMetricAudit(audit) {
+
+
+
+      const panel = document.getElementById('metricAudit');
+
+
+
+      const strip = document.getElementById('metricAuditStrip');
+
+
+
+      const summary = document.getElementById('metricAuditSummary');
+
+
+
+      const details = document.getElementById('metricAuditDetails');
+
+
+
+      const toggle = document.getElementById('metricAuditToggle');
+
+
+
+      const grid = document.getElementById('metricAuditGrid');
+
+
+
+      if (!panel || !strip || !summary || !details || !toggle || !grid) return;
+
+
+
+      const items = Object.entries(audit.columns).map(([label, value]) => ({
+
+
+
+        label,
+
+
+
+        value: value || 'Missing',
+
+
+
+        tone: value ? '' : 'warn',
+
+
+
+      }));
+
+
+
+      items.push(
+
+
+
+        { label: 'Date Parser', value: audit.parserLabel, tone: '' },
+
+
+
+        { label: 'Valid Dates', value: `${audit.validDateCount}/${audit.totalRows}`, tone: audit.validDateCount ? '' : 'err' },
+
+
+
+        { label: 'Rejected Dates', value: String(audit.rejectedDateCount), tone: audit.rejectedDateCount ? 'warn' : '' },
+
+
+
+        { label: 'Unique Phones', value: String(audit.uniquePhones || 0), tone: audit.uniquePhones ? '' : 'warn' },
+
+
+
+        { label: 'Duplicate Rows', value: String(audit.duplicatePhones || 0), tone: audit.duplicatePhones ? 'warn' : '' }
+
+
+
+      );
+
+
+
+      const mappedColumns = Object.values(audit.columns).filter(Boolean).length;
+
+
+
+      const totalColumns = Object.keys(audit.columns).length;
+
+
+
+      const stripItems = [
+
+
+
+        {
+
+
+
+          label: 'Columns Mapped',
+
+
+
+          value: `${mappedColumns}/${totalColumns}`,
+
+
+
+          tone: mappedColumns === totalColumns ? '' : 'warn',
+
+
+
+        },
+
+
+
+        {
+
+
+
+          label: 'Valid Dates',
+
+
+
+          value: `${audit.validDateCount}/${audit.totalRows}`,
+
+
+
+          tone: audit.validDateCount ? '' : 'err',
+
+
+
+        },
+
+
+
+        {
+
+
+
+          label: 'Rejected Dates',
+
+
+
+          value: String(audit.rejectedDateCount),
+
+
+
+          tone: audit.rejectedDateCount ? 'warn' : '',
+
+
+
+        },
+
+
+
+        {
+
+
+
+          label: 'Duplicate Rows',
+
+
+
+          value: String(audit.duplicatePhones || 0),
+
+
+
+          tone: audit.duplicatePhones ? 'warn' : '',
+
+
+
+        }
+
+
+
+      ];
+
+
+
+      strip.innerHTML = '';
+
+
+
+      for (const item of stripItems) {
+
+
+
+        const card = document.createElement('div');
+
+
+
+        card.className = 'metric-health-chip' + (item.tone ? ' ' + item.tone : '');
+
+
+
+        const label = document.createElement('div');
+
+
+
+        label.className = 'metric-health-label';
+
+
+
+        label.textContent = item.label;
+
+
+
+        const value = document.createElement('div');
+
+
+
+        value.className = 'metric-health-value';
+
+
+
+        value.title = item.value;
+
+
+
+        value.textContent = item.value;
+
+
+
+        card.appendChild(label);
+
+
+
+        card.appendChild(value);
+
+
+
+        strip.appendChild(card);
+
+
+
+      }
+
+
+
+      summary.textContent = `${mappedColumns}/${totalColumns} columns mapped · Parser ${audit.parserLabel} · Unique phones ${audit.uniquePhones || 0}`;
+
+
+
+      grid.innerHTML = '';
+
+
+
+      for (const item of items) {
+
+
+
+        const card = document.createElement('div');
+
+
+
+        card.className = 'metric-audit-item' + (item.tone ? ' ' + item.tone : '');
+
+
+
+        const label = document.createElement('div');
+
+
+
+        label.className = 'metric-audit-label';
+
+
+
+        label.textContent = item.label;
+
+
+
+        const value = document.createElement('div');
+
+
+
+        value.className = 'metric-audit-value';
+
+
+
+        value.title = item.value;
+
+
+
+        value.textContent = item.value;
+
+
+
+        card.appendChild(label);
+
+
+
+        card.appendChild(value);
+
+
+
+        grid.appendChild(card);
+
+
+
+      }
+
+
+
+      details.classList.remove('show');
+
+
+
+      toggle.textContent = 'View full audit';
+
+
+
+      toggle.setAttribute('aria-expanded', 'false');
+
+
+
+      toggle.onclick = () => {
+
+
+
+        const expanded = details.classList.toggle('show');
+
+
+
+        toggle.textContent = expanded ? 'Hide full audit' : 'View full audit';
+
+
+
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+
+
+      };
+
+
+
+      panel.style.display = 'block';
+
+
+
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════════════════
+
+
+
+       HELPERS
+
+
+
+       ═══════════════════════════════════════════════════════════════════════ */
+
+
+
+    function esc(v) {
+
+
+
+      return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+
+
+    }
+
+
+
+    function numberWithCommas(n) {
+
+
+
+      return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+
+
+    }
+
+
+
+    function pct(part, whole) {
+
+
+
+      if (!whole) return '0%';
+
+
+
+      return (part / whole * 100).toFixed(1) + '%';
+
+
+
+    }
+
+
+
+    function hasAny(text, terms) {
+
+
+
+      return terms.some(term => text.includes(term));
+
+
+
+    }
+
+
+
+    function hasVoicemailNorm(n) {
+
+
+
+      if (!n) return false;
+
+
+
+      return n.includes('voicemail') || n.includes('voice mail');
+
+
+
+    }
+
+
+
+    function hasInvalidLeadDispositionNorm(n) {
+
+
+
+      if (!n) return false;
+
+
+
+      return n.includes('not interested') || n.includes('invalid lead');
+
+
+
+    }
+
+
+
+    function hasServiceCompletedDispositionNorm(n) {
+
+
+
+      if (!n) return false;
+
+
+
+      return n.includes('service done') || n.includes('service completed');
+
+
+
+    }
+
+
+
+    function detectCampaignType(rows, cols) {
+
+
+
+      if (cols.nextServiceCol || cols.lastServiceCol || cols.serviceTypeCol) return 'post';
+
+
+
+      const sample = rows.slice(0, 300);
+
+
+
+      let postScore = 0;
+
+
+
+      let preScore = 0;
+
+
+
+      sample.forEach((row) => {
+
+
+
+        const text = (String(row[cols.summaryCol] || '') + ' ' +
+
+
+
+          String(row[cols.detailCol] || '') + ' ' +
+
+
+
+          String(row[cols.outcomeCol] || '') + ' ' +
+
+
+
+          String(row[cols.statusCol] || '')).toLowerCase();
+
+
+
+        if (hasAny(text, ['service booked', 'service appointment', 'feedback', 'serviced', 'escalation', 'complaint'])) postScore++;
+
+
+
+        if (hasAny(text, ['test drive', 'converted', 'interested', 'vehicle inquiry', 'brochure'])) preScore++;
+
+
+
+      });
+
+
+
+      return postScore > preScore ? 'post' : 'pre';
+
+
+
+    }
+
+
+
+    function buildDateParser(rows, columnName, forceOrder) {
+
+
+
+      // If user has manually selected a format, skip auto-detection entirely
+
+
+
+      if (forceOrder === 'DMY' || forceOrder === 'MDY') {
+
+
+
+        return {
+
+
+
+          order: forceOrder,
+
+
+
+          parse: (val) => parseDateStrictText(val, forceOrder),
+
+
+
+          forced: true,
+
+
+
+        };
+
+
+
+      }
+
+
+
+      // Auto-detect by scanning up to 250 rows for an unambiguous date
+
+
+
+      let inferredOrder = null;
+
+
+
+      const sampleLimit = Math.min(rows.length, 250);
+
+
+
+      for (let i = 0; i < sampleLimit; i++) {
+
+
+
+        const raw = rows[i] ? rows[i][columnName] : null;
+
+
+
+        const s = extractCallDateText(raw);
+
+
+
+        if (!s) continue;
+
+
+
+        const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+
+
+
+        if (!m) continue;
+
+
+
+        const a = Number(m[1]);
+
+
+
+        const b = Number(m[2]);
+
+
+
+        if (a > 12 && b <= 12) { inferredOrder = 'DMY'; break; }
+
+
+
+        if (b > 12 && a <= 12) { inferredOrder = 'MDY'; break; }
+
+
+
+      }
+
+
+
+      if (!inferredOrder) inferredOrder = 'DMY'; // default to DD/MM/YYYY
+
+
+
+      return {
+
+
+
+        order: inferredOrder,
+
+
+
+        parse: (val) => parseDateStrictText(val, inferredOrder),
+
+
+
+        forced: false,
+
+
+
+      };
+
+
+
+    }
+
+
+
+    function extractCallDateText(val) {
+
+
+
+      if (val === null || val === undefined) return '';
+
+
+
+      // JS Date object (cellDates:true mode — unlikely but handle it)
+
+
+
+      if (val instanceof Date) {
+
+
+
+        if (isNaN(val.getTime())) return '';
+
+
+
+        return String(val.getDate()).padStart(2, '0') + '/' +
+
+
+
+               String(val.getMonth() + 1).padStart(2, '0') + '/' +
+
+
+
+               val.getFullYear();
+
+
+
+      }
+
+
+
+      // Excel serial number (raw:true mode — dates come in as numbers like 45789)
+
+
+
+      // Valid Excel serials roughly cover 1-Jan-1900 (1) to 31-Dec-9999 (2958465)
+
+
+
+      if (typeof val === 'number') {
+
+
+
+        if (val > 1 && val < 2958466) {
+
+
+
+          // Convert Excel serial → UTC date
+
+
+
+          const d = new Date(Math.round((val - 25569) * 86400000));
+
+
+
+          if (!isNaN(d.getTime())) {
+
+
+
+            return String(d.getUTCDate()).padStart(2, '0') + '/' +
+
+
+
+                   String(d.getUTCMonth() + 1).padStart(2, '0') + '/' +
+
+
+
+                   d.getUTCFullYear();
+
+
+
+          }
+
+
+
+        }
+
+
+
+        return '';
+
+
+
+      }
+
+
+
+      return String(val).trim();
+
+
+
+    }
+
+
+
+    function parseDateStrictText(val, order) {
+
+
+
+      const s = extractCallDateText(val);
+
+
+
+      if (!s) return null;
+
+
+
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+
+
+
+        const d = new Date(s);
+
+
+
+        return isNaN(d.getTime()) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+
+
+      }
+
+
+
+      const dateToken = s.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4})/);
+
+
+
+      const slashSource = dateToken ? dateToken[1] : s;
+
+
+
+      const slashDate = slashSource.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+
+
+
+      if (slashDate) {
+
+
+
+        const a = Number(slashDate[1]);
+
+
+
+        const b = Number(slashDate[2]);
+
+
+
+        const year = Number(slashDate[3]);
+
+
+
+        const day = order === 'MDY' ? b : a;
+
+
+
+        const month = order === 'MDY' ? a : b;
+
+
+
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+
+
+
+          return new Date(year, month - 1, day);
+
+
+
+        }
+
+
+
+      }
+
+
+
+      const namedMonth = s.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i) ||
+
+
+
+                         s.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{1,2}),?\s+(\d{4})/i);
+
+
+
+      if (namedMonth) {
+
+
+
+        const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+
+
+
+        if (namedMonth[2] && months[namedMonth[2].toLowerCase().slice(0,3)] !== undefined) {
+
+
+
+          return new Date(+namedMonth[3], months[namedMonth[2].toLowerCase().slice(0,3)], +namedMonth[1]);
+
+
+
+        }
+
+
+
+        if (namedMonth[1] && months[namedMonth[1].toLowerCase().slice(0,3)] !== undefined) {
+
+
+
+          return new Date(+namedMonth[3], months[namedMonth[1].toLowerCase().slice(0,3)], +namedMonth[2]);
+
+
+
+        }
+
+
+
+      }
+
+
+
+      return null;
+
+
+
+    }
+
+
+
+    function formatDateKey(d) {
+
+
+
+      const year = d.getFullYear();
+
+
+
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+
+
+
+      const day = String(d.getDate()).padStart(2, '0');
+
+
+
+      return `${year}-${month}-${day}`;
+
+
+
+    }
+
+
+
+    function formatDateLabelFromKey(key) {
+
+
+
+      const parts = key.split('-').map(Number);
+
+
+
+      if (parts.length !== 3) return key;
+
+
+
+      return formatDateShort(new Date(parts[0], parts[1] - 1, parts[2]));
+
+
+
+    }
+
+
+
+    function formatDateShort(d) {
+
+
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+
+
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+
+
+
+    }
+
+
+
+    function formatDateFull(d) {
+
+
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+
+
+      return months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+
+
+
+    }
+
+
+
+    function getPrintablePageHeightPx() {
+
+
+
+      // A4 landscape height is 210mm, minus top/bottom margins (10mm each).
+
+
+
+      const printableMm = 210 - 20;
+
+
+
+      const pxPerMm = 96 / 25.4;
+
+
+
+      return printableMm * pxPerMm;
+
+
+
+    }
+
+
+
+    function computePrintScale() {
+
+
+
+      const main = document.querySelector('main');
+
+
+
+      const campaignBar = document.getElementById('campaignBar');
+
+
+
+      const dashboardContent = document.getElementById('dashboardContent');
+
+
+
+      if (!main || !campaignBar || !dashboardContent) return 0.64;
+
+
+
+      const contentHeight = main.scrollHeight;
+
+
+
+      const availableHeight = getPrintablePageHeightPx();
+
+
+
+      if (!contentHeight || !availableHeight) return 0.64;
+
+
+
+      // Leave small safety buffer to prevent edge spill into a second page.
+
+
+
+      const safeRatio = (availableHeight / contentHeight) * 0.92;
+
+
+
+      return Math.max(0.38, Math.min(0.68, safeRatio));
+
+
+
+    }
+
+
+
+    function setDynamicPrintScale() {
+
+
+
+      const scale = computePrintScale();
+
+
+
+      document.documentElement.style.setProperty('--print-scale', scale.toFixed(3));
+
+
+
+    }
+
+
+
+    function clearDynamicPrintScale() {
+
+
+
+      document.documentElement.style.removeProperty('--print-scale');
+
+
+
+    }
+
+
+
+    async function printPDF() {
+
+
+
+      const mainEl = document.querySelector('main');
+
+
+
+      const campaignBar = document.getElementById('campaignBar');
+
+
+
+      const dashboardContent = document.getElementById('dashboardContent');
+
+
+
+      const btn = document.getElementById('btnPrintPDF');
+
+
+
+      const uploadSection = document.getElementById('uploadSection');
+
+
+
+      if (!mainEl || !campaignBar || !dashboardContent || dashboardContent.style.display === 'none') return;
+
+
+
+      const { jsPDF } = window.jspdf || {};
+
+
+
+      if (!jsPDF || !window.html2canvas) {
+
+
+
+        alert('PDF export library failed to load. Please check internet connection and refresh the page.');
+
+
+
+        return;
+
+
+
+      }
+
+
+
+      let prevWidth = '', prevMaxWidth = '', prevMargin = '';
+
+
+
+      let metricAuditOrigDisplay = undefined;
+
+
+
+      let metricAudit, captureWidth;
+
+
+
+      try {
+
+
+
+        flushOpenKpiEdits(true);
+
+
+
+        if (btn) btn.disabled = true;
+
+
+
+        if (btn) btn.style.visibility = 'hidden';
+
+
+
+        if (uploadSection) uploadSection.style.display = 'none';
+
+
+
+        metricAudit = document.getElementById('metricAudit');
+
+
+
+        metricAuditOrigDisplay = metricAudit ? metricAudit.style.display : null;
+
+
+
+        if (metricAudit) metricAudit.style.display = 'none';
+
+
+
+        mainEl.classList.add('pdf-export-mode');
+
+
+
+        // Force desktop layout for capture so responsive breakpoints don't stack cards.
+
+
+
+        captureWidth = 1440;
+
+
+
+        prevWidth = mainEl.style.width;
+
+
+
+        prevMaxWidth = mainEl.style.maxWidth;
+
+
+
+        prevMargin = mainEl.style.margin;
+
+
+
+        mainEl.style.width = captureWidth + 'px';
+
+
+
+        mainEl.style.maxWidth = captureWidth + 'px';
+
+
+
+        mainEl.style.margin = '0 auto';
+
+
+
+        // Ensure animation-driven elements are fully visible in exported canvas.
+
+
+
+        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
+
+
+
+        const animationState = [];
+
+
+
+        animatedElements.forEach((el) => {
+
+
+
+          animationState.push({
+
+
+
+            el,
+
+
+
+            opacity: el.style.opacity,
+
+
+
+            transform: el.style.transform,
+
+
+
+            animation: el.style.animation,
+
+
+
+            transition: el.style.transition,
+
+
+
+          });
+
+
+
+          el.style.opacity = '1';
+
+
+
+          el.style.transform = 'none';
+
+
+
+          el.style.animation = 'none';
+
+
+
+          el.style.transition = 'none';
+
+
+
+        });
+
+
+
+                // ── PDF export: Widen vehicle chart bars for screenshot ──
+
+        var pdfVState = { rows: [], fills: [], labels: [] };
+
+        (function() {
+
+          var chart = document.getElementById('vehicleChart');
+
+          if (chart) {
+
+            var vrows = chart.querySelectorAll('.hbar-row');
+
+            vrows.forEach(function(row) {
+
+              var orig = row.style.gridTemplateColumns || '';
+
+              pdfVState.rows.push({ el: row, orig: orig, origGap: row.style.gap || '' });
+
+              row.style.gridTemplateColumns = '140px 1fr 60px';
+
+              row.style.gap = '0.35rem';
+
+            });
+
+            var labels = chart.querySelectorAll('.hbar-label');
+
+            labels.forEach(function(label) {
+
+              pdfVState.labels.push({
+
+                el: label,
+
+                ws: label.style.whiteSpace || '',
+
+                ov: label.style.overflow || '',
+
+                wb: label.style.wordBreak || '',
+
+                lh: label.style.lineHeight || '',
+
+                
+
+              });
+
+              label.style.whiteSpace = 'normal';
+
+              label.style.overflow = 'visible';
+
+              label.style.wordBreak = 'break-word';
+
+              label.style.lineHeight = '1.3';
+
+              
+
+            });
+
+          }
+
+          // Set solid background colors on disp-fill bars (html2canvas doesn't capture gradients well)
+
+          var fills = document.querySelectorAll('.disp-fill');
+
+          fills.forEach(function(fill) {
+
+            var cls = fill.className;
+
+            var color = '';
+
+            if (cls.indexOf('blue') !== -1) color = '#5b9cf5';
+
+            else if (cls.indexOf('purple') !== -1) color = '#eab308';
+
+            else if (cls.indexOf('green') !== -1) color = '#63d6a3';
+
+            else if (cls.indexOf('amber') !== -1) color = '#e6a456';
+
+            else if (cls.indexOf('red') !== -1) color = '#f16f6f';
+
+            else if (cls.indexOf('teal') !== -1) color = '#5eead4';
+
+            else if (cls.indexOf('positive') !== -1) color = '#63d6a3';
+
+            else if (cls.indexOf('neutral') !== -1) color = '#e6a456';
+
+            else if (cls.indexOf('negative') !== -1) color = '#f16f6f';
+
+            if (color) {
+
+              pdfVState.fills.push({ el: fill, orig: fill.style.background || '', origImg: fill.style.backgroundImage || '' });
+
+              fill.style.background = color;
+
+              fill.style.backgroundImage = 'none';
+
+            }
+
+          });
+
+        })();
+
+
+
+// Capture live dashboard area only (header/footer are outside <main>).
+
+
+
+        let canvas = null;
+
+
+
+        let lastCaptureError = null;
+
+
+
+        const captureScales = [1.35, 1.1, 0.9];
+
+
+
+        for (const scale of captureScales) {
+
+
+
+          try {
+
+
+
+            canvas = await html2canvas(mainEl, {
+
+
+
+              backgroundColor: '#ffffff',
+
+
+
+              scale,
+
+
+
+              useCORS: false,
+
+
+
+              allowTaint: true,
+
+
+
+              logging: false,
+
+
+
+              removeContainer: true,
+
+
+
+              imageTimeout: 0,
+
+
+
+              windowWidth: captureWidth,
+
+
+
+              windowHeight: Math.max(document.documentElement.clientHeight, mainEl.scrollHeight),
+
+
+
+            });
+
+
+
+            if (canvas && canvas.width > 0 && canvas.height > 0) break;
+
+
+
+          } catch (e) {
+
+
+
+            lastCaptureError = e;
+
+
+
+          }
+
+
+
+        }
+
+
+
+        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+
+
+
+          throw lastCaptureError || new Error('Canvas capture failed');
+
+
+
+        }
+
+
+
+        // Guard against oversized canvases that can fail on toDataURL.
+
+
+
+        const maxPixels = 12000000; // 12MP safety cap
+
+
+
+        let exportCanvas = canvas;
+
+
+
+        const currentPixels = canvas.width * canvas.height;
+
+
+
+        if (currentPixels > maxPixels) {
+
+
+
+          const ratio = Math.sqrt(maxPixels / currentPixels);
+
+
+
+          const w = Math.max(1, Math.floor(canvas.width * ratio));
+
+
+
+          const h = Math.max(1, Math.floor(canvas.height * ratio));
+
+
+
+          const resized = document.createElement('canvas');
+
+
+
+          resized.width = w;
+
+
+
+          resized.height = h;
+
+
+
+          const ctx = resized.getContext('2d');
+
+
+
+          if (!ctx) throw new Error('Canvas context unavailable');
+
+
+
+          ctx.fillStyle = '#ffffff';
+
+
+
+          ctx.fillRect(0, 0, w, h);
+
+
+
+          ctx.drawImage(canvas, 0, 0, w, h);
+
+
+
+          exportCanvas = resized;
+
+
+
+        }
+
+
+
+        const imgData = exportCanvas.toDataURL('image/jpeg', 0.92);
+
+
+
+        const pdf = new jsPDF({
+
+
+
+          orientation: 'landscape',
+
+
+
+          unit: 'mm',
+
+
+
+          format: 'a4',
+
+
+
+          compress: true,
+
+
+
+        });
+
+
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+
+
+
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+
+
+        const margin = 5;
+
+
+
+        const maxW = pageWidth - margin * 2;
+
+
+
+        const maxH = pageHeight - margin * 2;
+
+
+
+        const ratio = Math.min(maxW / exportCanvas.width, maxH / exportCanvas.height);
+
+
+
+        const renderW = exportCanvas.width * ratio;
+
+
+
+        const renderH = exportCanvas.height * ratio;
+
+
+
+        const x = (pageWidth - renderW) / 2;
+
+
+
+        const y = (pageHeight - renderH) / 2;
+
+
+
+        pdf.addImage(imgData, 'JPEG', x, y, renderW, renderH, undefined, 'FAST');
+
+
+
+        pdf.save('campaign-dashboard.pdf');
+
+
+
+      } catch (err) {
+
+
+
+        console.error('[Dashboard] PDF export failed:', err);
+
+
+
+        const msg = err && err.message ? err.message : String(err);
+
+
+
+        alert('Could not generate PDF: ' + msg);
+
+
+
+      } finally {
+
+
+
+        // Restore vehicle chart bars (widened for PDF capture)
+
+        if (typeof pdfVState !== 'undefined') {
+
+          pdfVState.rows.forEach(function(item) {
+
+            item.el.style.gridTemplateColumns = item.orig;
+
+            item.el.style.gap = item.origGap;
+
+          });
+
+          pdfVState.labels.forEach(function(item) {
+
+            item.el.style.whiteSpace = item.ws;
+
+            item.el.style.overflow = item.ov;
+
+            item.el.style.wordBreak = item.wb;
+
+            item.el.style.lineHeight = item.lh;
+
+            
+
+          });
+
+          pdfVState.fills.forEach(function(item) {
+
+            item.el.style.background = item.orig;
+
+            item.el.style.backgroundImage = item.origImg;
+
+          });
+
+        }
+
+
+
+        // Restore animated styles.
+
+
+
+        const animatedElements = mainEl.querySelectorAll('.slide-up, .fade-in, [class*="stagger-"]');
+
+
+
+        animatedElements.forEach((el) => {
+
+
+
+          el.style.opacity = '';
+
+
+
+          el.style.transform = '';
+
+
+
+          el.style.animation = '';
+
+
+
+          el.style.transition = '';
+
+
+
+        });
+
+
+
+        if (mainEl) {
+
+
+
+          mainEl.style.width = prevWidth;
+
+
+
+          mainEl.style.maxWidth = prevMaxWidth;
+
+
+
+          mainEl.style.margin = prevMargin;
+
+
+
+          mainEl.classList.remove('pdf-export-mode');
+
+
+
+        }
+
+
+
+        if (metricAudit && metricAuditOrigDisplay !== undefined) metricAudit.style.display = metricAuditOrigDisplay;
+
+
+
+        if (uploadSection) uploadSection.style.display = '';
+
+
+
+        if (btn) btn.style.visibility = '';
+
+
+
+        if (btn) btn.disabled = false;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    window.addEventListener('afterprint', clearDynamicPrintScale);
+
+
+
+    window.addEventListener('beforeprint', function() {
+
+
+
+      flushOpenKpiEdits(true);
+
+
+
+    });
+
+    async function runAiAnalysis() {
+
+      var rows = window._dashRows;
+
+      var colMap = window._dashColMap;
+
+      var isPostSales = window._dashIsPostSales;
+
+      
+
+      if (!rows || !colMap) {
+
+        showAiNotice('No dashboard data. Click Generate Dashboard first.', true);
+
+        return;
+
+      }
+
+      document.getElementById('btnAiSummary').disabled = true;
+
+      try {
+
+        // Build summaries and classify with LLM, then pass llmLookup to mineCustomerThemes
+
+        var apiKey = getApiKey();
+
+        var summaries = [];
+
+        for (var ri = 0; ri < rows.length; ri++) {
+
+          var rowText = String(colMap.summary ? rows[ri][colMap.summary] : rows[ri][colMap.detail] || rows[ri][colMap.outcome] || '').trim();
+
+          if (rowText) summaries.push({ rowIndex: ri, text: rowText });
+
+        }
+
+        var llmResults = apiKey && summaries.length > 0 ? await classifyWithLlm(summaries, isPostSales, apiKey) : null;
+
+        var llmLookup = {};
+
+        if (llmResults && Array.isArray(llmResults)) {
+
+          for (var ri2 = 0; ri2 < llmResults.length; ri2++) {
+
+            var item = llmResults[ri2];
+
+            if (item && item.rowIndex !== undefined && item.dispositions) {
+
+              llmLookup[item.rowIndex] = item.dispositions;
+
+            }
+
+          }
+
+        }
+
+        var themes = await mineCustomerThemes(rows, colMap, isPostSales, llmLookup);
+
+        var funnel = window._dashFunnel;
+
+        var healthScore = window._dashHealthScore;
+
+        var healthClass = window._dashHealthClass;
+
+        var competitors = window._dashCompetitors;
+
+        var callbacks = window._dashCallbacks;
+
+        var trends = window._dashTrends;
+
+        var agents = window._dashAgents;
+
+        var headline = generateStoryHeadline(themes, funnel, healthScore);
+
+        var execNarrative = generateExecutiveNarrative(themes, funnel, trends, healthScore, competitors, callbacks, agents);
+
+        var execEl = document.getElementById('execSummary');
+
+        if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
+
+        var badge = document.getElementById('analysisEngineBadge');
+
+        if (badge) { badge.textContent = themes.engine === 'nvidia' ? 'AI ANALYSIS' : themes.engine === 'cache' ? 'CACHED AI ANALYSIS' : 'LOCAL KEYWORD ANALYSIS'; }
+
+        document.getElementById('storyHeadline').textContent = headline;
+
+        document.getElementById('execNarrative').innerHTML = execNarrative;
+
+        var hsEl = document.getElementById('healthScore');
+
+        if (hsEl) { hsEl.textContent = healthScore + '/100'; hsEl.setAttribute('fill', healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'); }
+
+        var ring = document.querySelector('.health-ring');
+
+        if (ring) { var c = 150; ring.style.strokeDashoffset = c - (healthScore / 100) * c; ring.style.stroke = healthScore >= 75 ? 'var(--success)' : healthScore >= 50 ? 'var(--warn)' : 'var(--danger)'; }
+
+        var voiceAI = await generateVoiceInsights(themes);
+
+        renderCustomerVoice(themes, voiceAI);
+
+        var recs = generateRecommendations(themes, funnel, competitors, callbacks, trends);
+
+        renderRecommendations(recs);
+
+        var llmRecs = await generateLlmRecommendations(themes, funnel, competitors, callbacks, agents, trends, rows, colMap);
+
+        renderLlmRecommendations(llmRecs);
+
+      } catch(e) {
+
+        console.error('AI analysis failed:', e);
+
+        showAiNotice('AI analysis failed: ' + e.message, true);
+
+      } finally {
+
+        document.getElementById('btnAiSummary').disabled = false;
+
+      }
+
+    }
+

@@ -25,7 +25,7 @@
 ├── config.js                 ← API keys & settings (gitignored!)
 ├── config.example.js         ← Template for config
 │
-├── tools/                    ← Each tool = one self-contained HTML file
+├── pages/                    ← Each tool = one self-contained HTML file
 │   ├── disposition_sync_v2.html  ← PRE-SALES SYNC (most complex, 3000+ lines)
 │   ├── post_sales_disposition.html ← POST-SALES SYNC
 │   ├── recording_renamer.html     ← RECORDING RENAMER
@@ -330,12 +330,12 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; 
 1. **Never assume libraries exist** — check imports in each file. All JS libs are `<script>` loaded in the HTML.
 2. **Vanilla JS everywhere** — no frameworks, no build step. Just raw ES6+.
 3. **config.js is gitignored** — never commit API keys. Only edit config.example.js.
-4. **Self-contained HTML** — each page in `tools/` includes all its own JS/CSS inline. Shared code is in `assets/js/lib/`.
+4. **Self-contained HTML** — each page in `pages/` includes all its own JS/CSS inline. Shared code is in `assets/js/lib/`.
 5. **Brace matching in HTML** — inline JS inside HTML files can hide brace errors. Always double-check `{}` balance.
 6. **Theme system** — uses `data-theme` attribute on `<html>`, stores in `localStorage('jejo-theme')`.
 7. **Theme functions are shared** — `assets/js/lib/theme.js` contains `getStoredTheme()`, `syncBrandLogo()`, `applyTheme()`, `toggleTheme()`. All 7 pages + index.html load it. The inline blocking `<script>` (IIFE that sets `data-theme` before render) stays in each page for FOUC prevention.
 8. **Event handlers** — all use `onclick=` attributes, not addEventListener (legacy pattern).
-9. **Path references** — pages in `tools/` reference assets as `../assets/...`.
+9. **Path references** — pages in `pages/` reference assets as `../assets/...`.
 10. **New shared libs**: extract duplicated functions into `assets/js/lib/` with IIFE pattern, not modules. Add `<script>` tag to each page that needs it.
 
 ### 🎯 Multi-Agent Workflow — THE HARD RITUAL (CRITICAL!)

@@ -69,7 +69,7 @@ Theme functions have been **extracted** to `assets/js/lib/theme.js`. All 8 pages
 | File | Theme Source |
 |------|-------------|
 | `index.html` | `assets/js/lib/theme.js` (via `<script>`) + inline IIFE for FOUC |
-| All 7 `tools/*.html` | `assets/js/lib/theme.js` (via `<script>`) + inline IIFE for FOUC |
+| All 7 `pages/*.html` | `assets/js/lib/theme.js` (via `<script>`) + inline IIFE for FOUC |
 
 **✅ If you fix a theme bug, only `assets/js/lib/theme.js` needs updating!**
 
@@ -186,7 +186,7 @@ User Uploads Processed Sync File (XLSX)
 |---------|---------|
 | `#themeToggle` | `toggleTheme()` |
 
-**Connected to** → Links to ALL `tools/*.html` via `<a>` tags.
+**Connected to** → Links to ALL `pages/*.html` via `<a>` tags.
 
 ---
 
@@ -330,7 +330,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 8. `tools/disposition_sync_v2.html` — Pre-Sales Sync
+### 8. `pages/disposition_sync_v2.html` — Pre-Sales Sync
 
 **Scripts**: `config.js` → `xlsx.full.min.js` → `history-helpers.js` → `llm-batch-runner.js`
 
@@ -469,7 +469,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 9. `tools/post_sales_disposition.html` — Post-Sales Sync
+### 9. `pages/post_sales_disposition.html` — Post-Sales Sync
 
 **Scripts**: `xlsx.full.min.js` → `history-helpers.js` → `llm-batch-runner.js` → `config.js` (LAST!)
 
@@ -571,7 +571,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 10. `tools/dashboard.html` — Campaign Dashboard
+### 10. `pages/dashboard.html` — Campaign Dashboard
 
 **Scripts**: `config.js` → `xlsx.full.min.js` → `llm-batch-runner.js` → `html2canvas.min.js` → `jspdf.umd.min.js`
 
@@ -665,7 +665,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 11. `tools/call_analysis_summary.html` — Call Analysis Summary
+### 11. `pages/call_analysis_summary.html` — Call Analysis Summary
 
 **Scripts**: `config.js` → `xlsx.full.min.js`
 
@@ -734,7 +734,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 12. `tools/reattempt_filter.html` — Re-Attempt Filter
+### 12. `pages/reattempt_filter.html` — Re-Attempt Filter
 
 **Scripts**: `xlsx.full.min.js` (**NO config.js**)
 
@@ -795,7 +795,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 13. `tools/autongage_formatter.html` — AutoEngage Formatter
+### 13. `pages/autongage_formatter.html` — AutoEngage Formatter
 
 **Scripts**: `xlsx.full.min.js` (**NO config.js**)
 
@@ -837,7 +837,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 14. `tools/recording_renamer.html` — Recording Renamer
+### 14. `pages/recording_renamer.html` — Recording Renamer
 
 **Scripts**: `xlsx.full.min.js` → `config.js` → `jszip.min.js`
 
@@ -951,7 +951,7 @@ Not used by `index.html` (different layout — no header-nav).
 ## 📋 File Dependency Graph
 
 ```
-index.html ──────────────────────────────────────→ tools/*.html (links via <a>)
+index.html ──────────────────────────────────────→ pages/*.html (links via <a>)
 
 config.js ←── dashboard.html
          ←── disposition_sync_v2.html
