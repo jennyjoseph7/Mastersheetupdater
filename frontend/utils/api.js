@@ -819,18 +819,21 @@ export const executeTaskWithPolling = async (
   while (attempts < maxRetries) {
     try {
       resultRes = await api(`/gryd/result/${taskId}`, "GET");
-      if (resultRes && resultRes.result) {
+      if (resultRes && resultRes.result !== undefined && resultRes.result !== null && resultRes.result !== "null") {
         break;
       }
-      throw new Error("Failed to retrieve the final result data.");
+      throw new Error("Result is null");
     } catch (error) {
       const is404 = error?.message?.includes("404") || error?.status === 404;
-      if (is404 && attempts < maxRetries - 1) {
+      const isNullResult = error?.message === "Result is null";
+      
+      if ((is404 || isNullResult) && attempts < maxRetries - 1) {
         attempts++;
         if (onProgress) {
-          onProgress(`Result returned 404, retrying retrieval (${attempts}/${maxRetries})...`);
+          const reason = isNullResult ? "null result" : "404";
+          onProgress(`Result returned ${reason}, retrying retrieval (${attempts}/${maxRetries})...`);
         }
-        console.warn(`[executeTaskWithPolling] Result check returned 404, retrying...`, error);
+        console.warn(`[executeTaskWithPolling] Result check returned ${isNullResult ? "null" : "404"}, retrying...`, error);
         await new Promise((resolve) => setTimeout(resolve, intervalMs));
       } else {
         throw error;
@@ -838,7 +841,7 @@ export const executeTaskWithPolling = async (
     }
   }
 
-  if (!resultRes || !resultRes.result) {
+  if (!resultRes || resultRes.result === undefined || resultRes.result === null || resultRes.result === "null") {
     throw new Error("Failed to retrieve the final result data.");
   }
 
