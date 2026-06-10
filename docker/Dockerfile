@@ -11,3 +11,4 @@ RUN unzip <zipname>.zip -d app/
 WORKDIR /root/app/
 
 CMD [ "bash" , "./start_process_container.sh" ]
+

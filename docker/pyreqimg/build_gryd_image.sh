@@ -5,55 +5,38 @@ BRANCH=$1
 SERVICE=$2
 
 BASE_DIR="/mnta/autobot_agents/docker/pyreqimg"
-CONF_DIR="$BASE_DIR/Conf"
-CONFIG_FILE="${CONF_DIR}/${SERVICE}.conf"
+CONFIG_FILE="$BASE_DIR/Conf/${SERVICE}.conf"
 
 cd "$BASE_DIR"
-
-if [ ! -f "$CONFIG_FILE" ]; then
-    echo "Config not found: $CONFIG_FILE"
-    exit 1
-fi
-
 source "$CONFIG_FILE"
 
-if [ -z "${REQUIREMENTS_SOURCE:-}" ]; then
-    echo "REQUIREMENTS_SOURCE is not set"
-    exit 1
-fi
-
 update_repo() {
+    git reset --hard
     git fetch origin "$BRANCH"
-    git checkout "$BRANCH" || git checkout -b "$BRANCH" "origin/$BRANCH"
+    git checkout "$BRANCH" 
     git pull origin "$BRANCH"
 }
 
-generate_dockerfile_and_context() {
+generate_dockerfile() {
+    # Remove any existing txt files from previous builds
+    rm -f "$BASE_DIR"/*.txt
+
     cp Dockerfile Dockerfile.tmp
-    sed -i "s|__BASEIMAGE_TAG__|${BRANCH}|g" Dockerfile.tmp
+    sed -i "s|__BASEIMAGE_TAG__|$BRANCH|g" Dockerfile.tmp
 
-    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
+    IFS=',' read -ra files <<< "$REQUIREMENTS_SOURCE"
 
-    for item in "${items[@]}"; do
-        item=$(echo "$item" | xargs)
+    for file in "${files[@]}"; do
+        filename=$(basename "$file")
 
-        # HOST PATH (works on your machine)
-        if [ ! -f "$item" ]; then
-            echo "Missing file on host: $item"
-            exit 1
-        fi
+        cp "$file" .
 
-        filename=$(basename "$item")
-
-        # COPY INTO BUILD CONTEXT
-        cp "$item" "$BASE_DIR/$filename"
-
-        # USE RELATIVE PATH INSIDE DOCKER
-	echo "RUN /root/pyenv/bin/pip install --upgrade --force-reinstall --no-cache-dir -r $filename" >> Dockerfile.tmp
+        echo "RUN /root/pyenv/bin/pip install --upgrade --force-reinstall --no-cache-dir -r $filename" \
+            >> Dockerfile.tmp
     done
 }
 
-build_image() {
+build_and_push() {
     docker build \
         -f Dockerfile.tmp \
         -t autobot-pyreq-baseimage:${SERVICE}-${BRANCH} \
@@ -66,22 +49,6 @@ build_image() {
     docker push ${REPO}:${BRANCH}
 }
 
-cleanup() {
-    rm -f Dockerfile.tmp
-
-    # remove copied requirement files only
-    IFS=, read -ra items <<< "$REQUIREMENTS_SOURCE"
-    for item in "${items[@]}"; do
-        filename=$(basename "$item")
-        rm -f "$BASE_DIR/$filename"
-    done
-}
-
-main() {
-    update_repo
-    generate_dockerfile_and_context
-    build_image
-    cleanup
-}
-
-main
+update_repo
+generate_dockerfile
+build_and_push

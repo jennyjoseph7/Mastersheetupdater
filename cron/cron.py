@@ -12,7 +12,7 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from conversation.lead_post_processing import post_session_process
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel, OUTBOUND_VOICE_SERVICES, INBOUND_VOICE_SERVICES
 from crm_integration.crm_integration import load_crm
 from crm_integration.crm_integration.load_crm import load_crm
 from crm_integration.crm_integration.cron import _trigger_audience_task
@@ -2166,6 +2166,66 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
             logger.exception(
                 f"Campaign error: {campaign.get('_id')}"
             )
+
+
+def get_c_and_wcrt(c = None, wcontroller = None):
+    if os.environ.get('WORKER_CONTEOLLER') != 'gke':
+        raise hp.GrydError(f"Cannot scale service unless WORKER_CONTEOLLER is 'gke' not {os.environ.get('WORKER_CONTEOLLER')}")
+    c = c or gryd.get_service_connection()
+    wcontroller = wcontroller or beats.wctr.get_controller('gke')
+    return c, wcontroller
+
+@gryd.is_a_task('scale_up_service', logger_param = 'logger', job_param = 'job') 
+def scale_up_service(service_names, environment = None, count = 1, retries = 3, c = None, wcontroller = None, logger = None, job = None):
+    logger = logger or mlogger
+    c, wcontroller = get_c_and_wcrt(c, wcontroller)
+    environment = gryd.get_environment(environment)
+    ret = []
+    if isinstance(service_name, str):
+        service_names = service_names.split(',')
+    if not isinstance(service_name, list):
+        raise ValueError(f"Service names have to be comma separated string or list, not {service_names}")
+    for service_name in service_names:
+        service_name = service_name.strip()
+        try:
+            logger.info("Scaling up service %s (%s) by %s", service_name, environment, count)
+            ret.append(wcontroller.scale_up(service_name, environment = environment, count = count))
+        except Exception as e:
+            if 'Unauthorized' in str(e) and retries > 0:
+                wcontroller = beats.wctr.get_controller('gke')
+                return scale_down_service(service_name, environment count, retries - 1)
+            raise
+    return hp.make_single(ret)
+
+@gryd.is_a_task('scale_down_service', logger_param = 'logger', job_param = 'job') 
+def scale_down_service(service_names, environment = None, count = 1, retries = 3, logger = None, job = None):
+    return scale_up_service(service_names, environment, - count, retries = retries, logger = logger, job = job)
+
+def is_outbound_voice(service):
+    if 'voice' in service and 'inbound' not in service:
+        return True
+    return False
+
+@gryd.is_a_task('scale_up_voice', logger_param = 'logger', job_param = 'job') 
+def scale_up_voice(environment = None, count = 1, retries = 3, logger = None, job = None):
+    c, wcontroller = get_c_and_wcrt()
+    environment = gryd.get_environment(environment)
+    return list(map(lambda x: scale_up_service(
+            x, environment = environment, count = count,
+            c = c, wcontroller = wcontroller,
+        ), OUTBOUND_VOICE_SERVICES
+    ))
+
+@gryd.is_a_task('scale_down_voice', logger_param = 'logger', job_param = 'job') 
+def scale_up_voice(environment = None, count = 1, retries = 3, logger = None, job = None):
+    c, wcontroller = get_c_and_wcrt()
+    environment = gryd.get_environment(environment)
+    return list(map(lambda x: scale_down_service(
+            x, environment = environment, count = wcontroller.get_worker_count(x, environment),
+            c = c, wcontroller = wcontroller,
+        ), OUTBOUND_VOICE_SERVICES
+    ))
+
 if __name__ == "__main__":
     pass
     # print("[TEST] Running CRM cron...")
