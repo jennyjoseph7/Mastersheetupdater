@@ -155,7 +155,7 @@ CAMPAIGN_WORKFLOW = {
         "trigger": "switch_to_next_channel"
     },
     "engaged": {
-        "retries": 3,
+        "retries": 2,
         "delay": 86400,
         "trigger": "follow_up_contact"
     },
@@ -374,6 +374,8 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 if disposition in ["engaged", "converted"]:
                     attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
+                    logger.info("In current production if engaged or converted we will not follow-up: %s". disposition)
+                    return None, None, 0, None
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
                 logger.info(f"Next delay: {next_delay}")
                 #TODO: If user has requested call-back, then we should get next delay from the lead follow_up_date attribue if available
