@@ -79,57 +79,8 @@
 
       <div class="header-right">
 
-        <div class="header-nav">
-
-          <a class="nav-link" href="disposition_sync_v2.html">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-
-            Pre-Sales Sync
-
-          </a>
-
-          <a class="nav-link" href="post_sales_disposition.html">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-
-            Post-Sales Sync
-
-          </a>
-
-          <a class="nav-link" href="reattempt_filter.html">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-
-            Re-Attempt Filter
-
-          </a>
-
-          <a class="nav-link active" href="#">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-
-            Dashboard
-
-          </a>
-
-          <a class="nav-link" href="call_analysis_summary.html">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-
-            Call Summary
-
-          </a>
-
-          <a class="nav-link" href="autongage_formatter.html">
-
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-
-            Formatter
-
-          </a>
-
-        </div>
+        <div id="navContainer"></div>
+<script>fetch("../nav.html").then(function(r){return r.text()}).then(function(h){document.getElementById("navContainer").innerHTML=h;});</script>
 
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
 
@@ -1483,6 +1434,8 @@
 
       _inMemoryApiKey = key;
 
+      localStorage.setItem(NVIDIA_KEY_STORAGE, key);
+
       syncApiKeyControl('Saved locally', 'ok');
 
     }
@@ -1508,6 +1461,8 @@
 
 
     function clearNvidiaApiKey() {
+
+      localStorage.removeItem(NVIDIA_KEY_STORAGE);
 
       _inMemoryApiKey = '';
 
@@ -1847,13 +1802,11 @@
 
       if (isProxy) {
 
-        var handshake = (window.JEJO_CONFIG && window.JEJO_CONFIG.proxyHandshakeToken) 
-
-          ? window.JEJO_CONFIG.proxyHandshakeToken 
-
-          : 'jejo-presales-secure-handshake';
-
-        headers['X-Handshake-Token'] = handshake;
+        // Server-issued short-lived session token
+        if (window.AiValidator && typeof window.AiValidator.getCachedSessionToken === 'function') {
+          var st = window.AiValidator.getCachedSessionToken(endpoint);
+          if (st) headers['X-Session-Token'] = st;
+        }
 
       } else {
 
@@ -2113,7 +2066,7 @@
 
       var llmResults = null;
 
-      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length }));
+      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length, contentHash: hashStr(allSummaries.map(function(s) { return s.text; }).join('')) }));
 
       // Check cache first — return immediately if this exact set was processed before
       var cached = localStorage.getItem(cacheKey);
@@ -2390,9 +2343,9 @@
 
       if (funnel.total === 0) return 'Upload a file to see campaign insights';
 
-      const t = themes;
+      var top = themes.themes.length > 0 ? themes.themes[0] : null;
 
-      if (t.topTheme && t.topTheme.count > funnel.total * 0.2) return `${t.topTheme.count} ${t.topTheme.label.toLowerCase()} — ${t.topTheme.id === 'already_serviced' ? 'the biggest conversion blocker' : t.topTheme.id === 'voicemail' ? 'calls not reaching customers' : t.topTheme.id === 'deferred' ? 'customers in decision pipeline' : 'a key pattern affecting outcomes'}`;
+      if (top && top.count > funnel.total * 0.2) return `${top.count} ${top.label.toLowerCase()} — ${top.id === 'already_serviced' ? 'the biggest conversion blocker' : top.id === 'voicemail' ? 'calls not reaching customers' : top.id === 'deferred' ? 'customers in decision pipeline' : 'a key pattern affecting outcomes'}`;
 
       if (funnel.connected > 0 && funnel.booked / funnel.connected < 0.15) return `${(funnel.booked / funnel.connected * 100).toFixed(0)}% conversion rate — ${funnel.connected - funnel.booked} connected leads did not book`;
 
@@ -3836,7 +3789,7 @@
         }
 
         // Cache key for theme mining results
-        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length }));
+        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length, contentHash: hashStr(summaries.map(function(s) { return s.text; }).join('')) }));
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
           try { return JSON.parse(cached); } catch(e) {}
@@ -3938,6 +3891,21 @@
 
         // Clean up abort controller
         aiValidationController = null;
+
+        var themes = {
+          voicemail: { count: 0, label: 'Voicemail', excerpts: [] },
+          not_interested: { count: 0, label: 'Not Interested', excerpts: [] },
+          language_barrier: { count: 0, label: 'Language Barrier', excerpts: [] },
+          wrong_person: { count: 0, label: 'Wrong Person', excerpts: [] },
+          deferred: { count: 0, label: 'Deferred', excerpts: [], timeframes: [] },
+          callback_requested: { count: 0, label: 'Callback Requested', excerpts: [], callbackTimes: [] },
+          already_serviced: { count: 0, label: 'Already Serviced', excerpts: [], competitorNames: [] },
+          customer_busy: { count: 0, label: 'Customer Busy', excerpts: [] },
+          service_booked: { count: 0, label: 'Service Booked', excerpts: [] },
+          audio_issue: { count: 0, label: 'Audio Issue', excerpts: [] },
+          sold_vehicle: { count: 0, label: 'Sold Vehicle', excerpts: [] },
+          dissatisfied: { count: 0, label: 'Dissatisfied', excerpts: [] }
+        };
 
         for (var mi = 0; mi < summaries.length; mi++) {
 
