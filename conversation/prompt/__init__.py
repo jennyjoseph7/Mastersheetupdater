@@ -36,7 +36,7 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", temperature=0.1, messages=[], **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
