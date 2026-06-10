@@ -9,7 +9,7 @@ gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conve
 import json
 from autocrm_db_helper import get_pg_connector
 from ai_service import ai_service_app
-import language_maps
+from . import language_maps
 from config import AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
 
 mlogger = gryd.hp.get_logger(__name__)
