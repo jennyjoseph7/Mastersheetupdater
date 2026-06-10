@@ -2343,7 +2343,11 @@
 
       if (funnel.total === 0) return 'Upload a file to see campaign insights';
 
-      var top = themes.themes.length > 0 ? themes.themes[0] : null;
+      if (!themes || !themes.themes || themes.themes.length === 0) {
+        return `${funnel.total} leads processed, ${funnel.connected} connected, ${funnel.booked} booked`;
+      }
+
+      var top = themes.themes[0];
 
       if (top && top.count > funnel.total * 0.2) return `${top.count} ${top.label.toLowerCase()} — ${top.id === 'already_serviced' ? 'the biggest conversion blocker' : top.id === 'voicemail' ? 'calls not reaching customers' : top.id === 'deferred' ? 'customers in decision pipeline' : 'a key pattern affecting outcomes'}`;
 
