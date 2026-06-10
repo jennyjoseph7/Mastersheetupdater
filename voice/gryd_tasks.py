@@ -192,7 +192,8 @@ def trigger_voice_call(*args, **kwargs):
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
-            "channel":"voice_phone"
+            "channel":"voice_phone",
+            "session_data": session_data
         }):
             
             if x.get("status") and x.get("status").lower() in ["error"]:
