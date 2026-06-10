@@ -1,4 +1,6 @@
 #!/bin/bash -x
+
+
 export BASE_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 pushd $BASE_DIR > /dev/null
 export APP_NAME=${APP_NAME:-$(basename $BASE_DIR)}
@@ -68,8 +70,9 @@ if [[ $DEFAULT_WORKERS != 0 ]];then
     done
 fi
 
+export START_WORKER_CONFIG_FILE=${START_WORKER_CONFIG_FILE:-start_worker_config.json}
 
-process_config=`cat start_worker_config.json`
+process_config=`cat $START_WORKER_CONFIG_FILE`
 
 echo "APP Config"
 echo $process_config
@@ -265,8 +268,8 @@ function stop_worker() {
     shutdown_time=${2:-${TERMINATION_GRACE_PERIOD}}
     worker_type=${3:-workers}
     echo "Stopping $worker_type $worker_name with a timeout of $shutdown_time seconds" 1>&2
-    names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'` )
-    s_entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
+    names=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.name'` )
+    s_entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.entry_point'` )
     echo "Names: $names" 1>&2
     echo "Entry points: $s_entry_points" 1>&2
     is_success=0
@@ -369,19 +372,19 @@ function stop_all_workers() {
         stop_default_worker $default_worker $shutdown_time &
         pids+=($!)
     done
-    worker_names=`jq -r '.workers[].name' ${BASE_DIR}/start_worker_config.json | sort -u 2>/dev/null`
+    worker_names=`jq -r '.workers[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u 2>/dev/null`
     echo "Stopping workers $worker_names with a timeout of $shutdown_time seconds" 1>&2
     for worker_name in $worker_names; do
         stop_worker $worker_name $shutdown_time &
         pids+=($!)
     done
-    agent_names=`jq -r '.agents[].name' ${BASE_DIR}/start_worker_config.json | sort -u 2>/dev/null`
+    agent_names=`jq -r '.agents[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u 2>/dev/null`
     echo "Stopping agents $agent_names with a timeout of $shutdown_time seconds" 1>&2
     for agent_name in $agent_names; do
         stop_agent $agent_name $shutdown_time &
         pids+=($!)
     done
-    webapp_names=`jq -r '.webapps[].name' ${BASE_DIR}/start_worker_config.json | sort -u 2>/dev/null`
+    webapp_names=`jq -r '.webapps[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u 2>/dev/null`
     echo "Stopping webapps $webapp_names with a timeout of $shutdown_time seconds" 1>&2
     for webapp_name in $webapp_names; do
         stop_webapp $webapp_name $shutdown_time &
@@ -430,7 +433,7 @@ function start_worker() {
     echo "Starting $worker_type $worker_name"
     is_success=0
     if [ -z $entry_point ];then
-        entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.entry_point'` )
+        entry_points=( `jq -r ".${worker_type}[] | select(.name == \"${worker_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.entry_point'` )
     else
         entry_points=( $entry_point )
     fi
@@ -443,12 +446,12 @@ function start_worker() {
         if [[ $PARALLEL_THREADS != 0 ]];then
             parallel_threads=${PARALLEL_THREADS}
         else
-            parallel_threads=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/start_worker_config.json | jq '.parallel_threads'`
+            parallel_threads=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq '.parallel_threads'`
         fi
         if [[ $SHUTDOWN_TIME != 0 ]];then
             shutdown_time=${SHUTDOWN_TIME}
         else
-            shutdown_time=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.shutdown_time'`
+            shutdown_time=`jq -r ".${worker_type}[] | select(.name == \"${worker_name}\" and .entry_point == \"${entry_point}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.shutdown_time'`
         fi
         worker_fname=${entry_point%.*}
         pid_filename=$BASE_DIR/${worker_name}_${worker_fname}.pid
@@ -500,15 +503,15 @@ function start_webapp() {
         return 1
     fi
     echo "Starting webapp $webapp_name"
-    webapp_app_name=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.name'`
-    webapp_port=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.port'`
-    webapp_url_scheme=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.url_scheme'`
-    webapp_api_threads=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/start_worker_config.json | jq -r '.api_threads'`
+    webapp_app_name=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.name'`
+    webapp_port=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.port'`
+    webapp_url_scheme=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.url_scheme'`
+    webapp_api_threads=`jq -r ".webapps[] | select(.name == \"${webapp_name}\")" ${BASE_DIR}/$START_WORKER_CONFIG_FILE | jq -r '.api_threads'`
     if [[ $webapp_app_name == null ]];then
-        webapp_app_name=`jq -r '.webapp.name' ${BASE_DIR}/start_worker_config.json`
-        webapp_port=`jq -r '.webapp.port' ${BASE_DIR}/start_worker_config.json`
-        webapp_url_scheme=`jq -r '.webapp.url_scheme' ${BASE_DIR}/start_worker_config.json`
-        webapp_api_threads=`jq -r '.webapp.api_threads' ${BASE_DIR}/start_worker_config.json`
+        webapp_app_name=`jq -r '.webapp.name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE`
+        webapp_port=`jq -r '.webapp.port' ${BASE_DIR}/$START_WORKER_CONFIG_FILE`
+        webapp_url_scheme=`jq -r '.webapp.url_scheme' ${BASE_DIR}/$START_WORKER_CONFIG_FILE`
+        webapp_api_threads=`jq -r '.webapp.api_threads' ${BASE_DIR}/$START_WORKER_CONFIG_FILE`
     fi
     webapp_port=${webapp_port:-${SERVER_PORT}}
     webapp_url_scheme=${webapp_url_scheme:-http}
@@ -649,11 +652,11 @@ function start_all() {
     if [[ $SETUP_WEBAPP == "True" ]];then
         echo "Setting up webapp. Since SETUP_WEBAPP is True." 1>&2
         if [[ $START_WEBAPP == 1 ]];then
-            echo "Getting webapp names from start_worker_config.json" 1>&2
-            START_WEBAPP=`jq -r '.webapps[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
+            echo "Getting webapp names from $START_WORKER_CONFIG_FILE" 1>&2
+            START_WEBAPP=`jq -r '.webapps[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u | tr '\n' ',' | sed 's/,$//'`
             if [[ $START_WEBAPP == null ]];then
-                echo "Getting webapp name from start_worker_config.json" 1>&2
-                START_WEBAPP=`jq -r '.webapp.name' ${BASE_DIR}/start_worker_config.json`
+                echo "Getting webapp name from $START_WORKER_CONFIG_FILE" 1>&2
+                START_WEBAPP=`jq -r '.webapp.name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE`
             fi
         elif [[ $START_WEBAPP == 0 ]];then
             START_WEBAPP=""
@@ -677,7 +680,7 @@ function start_all() {
     fi
 
     if [[ $START_AGENTS == 1 ]]; then
-        START_AGENTS=`jq -r '.agents[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
+        START_AGENTS=`jq -r '.agents[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u | tr '\n' ',' | sed 's/,$//'`
     elif [[ $START_AGENTS == 0 ]]; then
         START_AGENTS=""
     fi
@@ -687,7 +690,7 @@ function start_all() {
     done
 
     if [[ $START_WORKERS == 1 ]];then
-        START_WORKERS=`jq -r '.workers[].name' ${BASE_DIR}/start_worker_config.json | sort -u | tr '\n' ',' | sed 's/,$//'`
+        START_WORKERS=`jq -r '.workers[].name' ${BASE_DIR}/$START_WORKER_CONFIG_FILE | sort -u | tr '\n' ',' | sed 's/,$//'`
     #elif [[ $START_WORKERS == 0 ]];then
     #    START_WORKERS=""
     fi
@@ -708,3 +711,4 @@ function start_all() {
         cat $LOG_FILE 1>&2
     fi
 }
+

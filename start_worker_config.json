@@ -86,13 +86,6 @@
             "shutdown_time": 0
         },
         {
-            "name": "spark",
-            "entry_point": "spark.py",
-            "gryd_service": "AUTOCRM_SPARK_SERVICE_NAME",
-            "parallel_threads": 0,
-            "shutdown_time": 0
-        },
-        {
             "name": "cohorts_new",
             "entry_point": "tasks.py",
             "gryd_service": "AUTOCRM_COHORT_CAMPAIGN_SERVICE_NAME",
