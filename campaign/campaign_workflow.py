@@ -89,6 +89,9 @@ DISPOSITION_OPTIONS = {
     "converted": ["converted"],
 }
 
+DISPOSITION_LOWER = {}
+
+
 REQUIRED_RETRIGGER = {
     "switch_to_next_credential": True,
     "switch_to_next_channel": True,
@@ -230,7 +233,9 @@ def get_highest_status(statuses: list):
     return "queued"
 
 def get_attempts(statuses: list, status: str):
-    return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) == status, statuses))
+    # In the scenario that lower status are missed or not upgraded, then we can align attempt with any of the statuses
+    statuses_lower_than = DISPOSITION_LOWER.get(status, [status])
+    return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) in statuses_lower_than, statuses))
 
 def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
     timezone = timezone or "Asia/Kolkata"
