@@ -175,6 +175,7 @@ class BaseWorkflow(ABC):
         key = self._normalize(workflow_name)
         handlers = self.get_handlers()
         handler = handlers.get(key)
+        print(f"Handling workflow '{workflow_name}' with handler key '{key}': found handler={bool(handler)}")
         if callable(handler):
             return handler(*args, **kwargs)
         raise NotImplementedError(f'Workflow handler not implemented: {workflow_name}')
@@ -251,8 +252,20 @@ class PresalesWorkflow(BaseWorkflow):
             'test_drive_booking_l': self.wf_test_drive_booking_l,
             'test_drive_feedback': self.wf_test_drive_feedback,
             'test_drive_remainder': self.wf_test_drive_remainder,
-            'showroom_launch_l': self.wf_showroom_launch_l,
+            'showroom_launch_l': self.wf_showroom_launch_l
         }
+
+    def wf_test_drive_booking_l(self, *args, **kwargs):
+        return {"status": "ok"}
+
+    def wf_test_drive_feedback(self, *args, **kwargs):
+        return {"status": "ok"}
+
+    def wf_test_drive_remainder(self, *args, **kwargs):
+        return {"status": "ok"}
+
+    def wf_showroom_launch_l(self, *args, **kwargs):
+        return {"status": "ok"}
 
     def run(self, *args, **kwargs):
         obj = self.load_objective()
