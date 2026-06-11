@@ -174,6 +174,8 @@ def get_rules(*args, **kwargs):
         rules = campaign_data.get("dealership_guardrails")
     if campaign_data.get("dealership_guidelines"):
         rules = "{}\n{}".format(rules,campaign_data.get("dealership_guidelines"))
+    if campaign_data.get("campaign_guardrails_guidelines"):
+        rules = "{}\n{}".format(rules,campaign_data.get("campaign_guardrails_guidelines"))
     if campaign_data.get("region_level_guardrails"):
         rules = "{}\n{}".format(rules,campaign_data.get("region_level_guardrails"))
     if campaign_data.get("region_level_guidelines"):
