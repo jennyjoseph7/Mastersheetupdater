@@ -3005,27 +3005,18 @@
 
 
 
-            var systemMsg = 'You are a strict disposition auditor for an automotive campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Vehicle Model, Call Outcome, Call Duration, Lead Source) is also provided — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.';
+            var systemMsg = 'You are a fair and accurate disposition auditor for an automotive campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.';
 
 
 
-            var examples = 'Example 1:\nTranscript: "Customer said they would think about it and call back next week"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will decide later, exploring options"\nReason: Customer did not say no — they deferred. Not Interested means explicit refusal.\n\n' +
-
-              'Example 2:\nTranscript: "Customer asked about financing options and EMI plans"\nCurrent Disposition: "General Inquiry"\n→ isCorrect: false, correctedDisposition: "Enquired for Pricing"\nReason: Asking about pricing/financing is Enquired for Pricing, not generic.\n\n' +
-
-              'Example 3:\nTranscript: "Customer said the vehicle is too expensive and they will look at other brands"\nCurrent Disposition: "Rejected"\n→ isCorrect: false, correctedDisposition: "Comparing with another brand"\nReason: Still in market, just price-shopping — not a hard rejection.\n\n' +
-
-              'Example 4:\nTranscript: "Call dropped mid-conversation while discussing test drive"\nCurrent Disposition: "Follow Up Required"\n→ isCorrect: false, correctedDisposition: "Call Disconnected"\nReason: Call physically dropped. Follow Up Required is for completed conversations needing callback.\n\n' +
-
-              'Example 5:\nTranscript: "Customer said they already own this model and do not need another"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "No buying intent"\nReason: No buying intent is for customers who do not want to purchase a car at all.\n\n' +
-
-              'Example 6:\nTranscript: "Customer asked to be called back after 5pm"\nCurrent Disposition: "Call Disconnected"\n→ isCorrect: false, correctedDisposition: "Requested Callback"\nReason: Customer explicitly requested a callback — not a disconnect.\n\n' +
-
-              'Example 7:\nTranscript: "Customer kept asking about the vehicle but would not give their details"\nCurrent Disposition: "No buying intent"\n→ isCorrect: false, correctedDisposition: "Just Exploring"\nReason: Just Exploring means they want info without buying intent.\n\n' +
-
-              'Example 8:\nTranscript: "Customer said they already booked a test drive at another dealership"\nCurrent Disposition: "Converted"\n→ isCorrect: false, correctedDisposition: "Lost to Competition"\nReason: Converted elsewhere = competitive loss, not a campaign conversion.\n\n' +
-
-              'Example 9:\nTranscript: "The customer declined the call, stating they were busy."\nCurrent Disposition: "Rejected"\n→ isCorrect: false, correctedDisposition: "Customer Busy"\nReason: "Rejected" means explicit refusal of the offer. Saying "I am busy" means the customer was not available — they did not reject the product.';
+            var examples = 'Example 1 (CORRECT):\nTranscript: "Customer: Hello? Agent: Hello, I am calling from Yamaha to discuss the FZ vehicle. Customer: Yes, I am busy right now, call me in the evening. Agent: Sure, thank you."\nCurrent Disposition: "Requested Callback"\n→ isCorrect: true, correctedDisposition: null\nReason: The transcript clearly shows the customer asked for a callback, matching the disposition.\n\n' +
+              'Example 2 (CORRECT - SHORT TRANSCRIPT):\nTranscript: "Customer: Hello?"\nSummary: "Spoke to customer Rajesh. He said he is not interested in buying a car right now and hung up."\nCurrent Disposition: "Not Interested"\n→ isCorrect: true, correctedDisposition: null\nReason: The transcript is too short/inconclusive, but the Summary explicitly states the customer is not interested, which matches the disposition.\n\n' +
+              'Example 3 (CORRECT - EMPTY TRANSCRIPT):\nTranscript: ""\nSummary: "Voicemail. Left a message."\nCurrent Disposition: "Voicemail"\n→ isCorrect: true, correctedDisposition: null\nReason: Transcript is empty, but the Summary matches the disposition perfectly.\n\n' +
+              'Example 4 (INCORRECT):\nTranscript: "Customer: I will think about it and call you back next week."\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will decide later, exploring options"\nReason: Customer did not reject the offer — they deferred the decision. Not Interested is for explicit refusal.\n\n' +
+              'Example 5 (INCORRECT):\nTranscript: "Customer: How much does the FZ model cost? Agent: It is 1.2 Lakhs. Customer: Can you send details?"\nCurrent Disposition: "General Inquiry"\n→ isCorrect: false, correctedDisposition: "Enquired for Pricing"\nReason: Customer specifically asked for pricing/costs, so "Enquired for Pricing" is more specific and accurate than "General Inquiry".\n\n' +
+              'Example 6 (INCORRECT):\nTranscript: "Customer: The vehicle is too expensive, I will buy a Honda instead."\nCurrent Disposition: "Rejected"\n→ isCorrect: false, correctedDisposition: "Comparing with another brand"\nReason: Customer is comparing the model with a competitor brand, so "Comparing with another brand" is the most specific disposition.\n\n' +
+              'Example 7 (INCORRECT):\nTranscript: "Agent: Hello? Customer: Hello. [Call disconnected/dropped]"\nCurrent Disposition: "Follow Up Required"\n→ isCorrect: false, correctedDisposition: "Call Disconnected"\nReason: The call disconnected abruptly. "Call Disconnected" is the correct status, rather than "Follow Up Required".\n\n' +
+              'Example 8 (CORRECT):\nTranscript: "Customer: I already bought a Pulsar last week from another dealer."\nCurrent Disposition: "Purchased elsewhere"\n→ isCorrect: true, correctedDisposition: null\nReason: The transcript confirms the customer bought the vehicle elsewhere, matching the disposition.';
 
 
 

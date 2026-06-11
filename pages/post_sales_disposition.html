@@ -4312,39 +4312,17 @@
 
 
 
-            var systemMsg = 'You are a strict disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to CRITICALLY evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources for each row: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence — if it conflicts with the Summary, trust the History. Additional context (Dealership, Supported Languages, Vehicle Model, Call Outcome, Call Date, Campaign ID) is also provided — use it to rule out impossible dispositions. Do NOT default to "correct" — scrutinize each match carefully.';
+            var systemMsg = 'You are a fair and accurate disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.';
 
 
 
-            var examples = 'Example 1:\nTranscript: "Customer said they will bring the car next week for service"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will call workshop themselves"\nReason: Customer intends to service — they did not refuse.\n\n' +
-
-              'Example 2:\nTranscript: "Customer complained about poor service quality and long wait times"\nCurrent Disposition: "Feedback Given"\n→ isCorrect: false, correctedDisposition: "Others"\nReason: This is a complaint, not neutral feedback.\n\n' +
-
-              'Example 3:\nTranscript: "Customer said the car was already serviced at another workshop"\nCurrent Disposition: "Vehicle Serviced"\n→ isCorrect: false, correctedDisposition: "Has serviced car in another dealership"\nReason: Has serviced car in another dealership means elsewhere. Vehicle Serviced means this campaign\'s service was done.\n\n' +
-
-              'Example 4:\nTranscript: "Call went to ringtone but no one picked up"\nCurrent Disposition: "Not Reachable"\n→ isCorrect: false, correctedDisposition: "Wrong contact number"\nReason: Wrong contact number means the call connected but was not answered. Not Reachable means phone is off.\n\n' +
-
-              'Example 5:\nTranscript: "Customer asked what services are included in the free service package"\nCurrent Disposition: "Happy Customer"\n→ isCorrect: false, correctedDisposition: "Will call workshop themselves"\nReason: The customer is asking for information, not expressing satisfaction.\n\n' +
-
-              'Example 6:\nTranscript: "Customer said not interested and hung up"\nCurrent Disposition: "Call Completed"\n→ isCorrect: false, correctedDisposition: "Rejected"\nReason: Customer explicitly declined.\n\n' +
-
-              'Example 7:\nTranscript: "Customer mentioned they have sold the car"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Has sold/given away the car"\nReason: Has sold/given away the car is more specific than Not Interested.\n\n' +
-
-              'Example 8:\nTranscript: "Call went to voicemail, left a message"\nCurrent Disposition: "Not Reachable"\n→ isCorrect: false, correctedDisposition: "Voicemail"\nReason: Reaching voicemail is not the same as not reachable.\n\n' +
-
-              'Example 9:\nTranscript: "Customer said \'I only speak Hindi\' but dealer supports Kannada/English"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Language barrier"\nReason: Language barrier — customer needs a language outside the supported set for this dealership.\n\n' +
-
-              'Example 10:\nTranscript: "Customer said they already serviced at another dealership"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Has serviced car in another dealership"\nReason: More specific — they did service elsewhere.\n\n' +
-
-              'Example 11:\nTranscript: "Customer asked for a callback later"\nCurrent Disposition: "No Response"\n→ isCorrect: false, correctedDisposition: "Requested Callback"\nReason: Customer explicitly requested a callback.\n\n' +
-
-              'Example 12:\nTranscript: "Phone rang multiple times but no one answered"\nCurrent Disposition: "Wrong Contact Number"\n→ isCorrect: false, correctedDisposition: "Others"\nReason: Others — call connected but unanswered. Wrong Contact Number means wrong number.\n\n' +
-
-              'Example 13:\nTranscript: "Could not hear the customer clearly due to network issues"\nCurrent Disposition: "No Response"\n→ isCorrect: false, correctedDisposition: "Others"\nReason: Others — there was a technical problem with audio.\n\n' +
-
-              'Example 14:\nTranscript: "Customer confirmed they would come in for service on Saturday and provided email"\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will call workshop themselves"\nReason: Customer will call workshop themselves — they intend to come in.\n\n' +
-
-              'Example 15:\nTranscript: "Customer was very happy with the service and said thank you"\nCurrent Disposition: "Converted"\n→ isCorrect: false, correctedDisposition: "Others"\nReason: Others — customer was satisfied but no booking or info provision.';
+            var examples = 'Example 1 (CORRECT):\nTranscript: "Customer: Yes, I already serviced my bike at your workshop last Friday. Agent: Great, thank you for confirming."\nCurrent Disposition: "Vehicle Serviced"\n→ isCorrect: true, correctedDisposition: null\nReason: Transcript confirms the vehicle was serviced at this dealership workshop.\n\n' +
+              'Example 2 (CORRECT - SHORT TRANSCRIPT):\nTranscript: "Customer: Hello?"\nSummary: "Voicemail reached, left a callback message."\nCurrent Disposition: "Voicemail"\n→ isCorrect: true, correctedDisposition: null\nReason: Transcript is inconclusive, but the Summary matches the disposition perfectly.\n\n' +
+              'Example 3 (INCORRECT):\nTranscript: "Customer: I will bring the car next week on Saturday for service."\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Will call workshop themselves"\nReason: Customer intends to service the vehicle — they did not refuse the service.\n\n' +
+              'Example 4 (INCORRECT):\nTranscript: "Customer: I sold my car last month to someone else."\nCurrent Disposition: "Not Interested"\n→ isCorrect: false, correctedDisposition: "Has sold/given away the car"\nReason: "Has sold/given away the car" is the specific and correct disposition, which is more accurate than "Not Interested".\n\n' +
+              'Example 5 (CORRECT):\nTranscript: "Customer: I am very busy right now, please call me tomorrow morning. Agent: Sure."\nCurrent Disposition: "Requested Callback"\n→ isCorrect: true, correctedDisposition: null\nReason: The customer explicitly requested a callback later, matching the disposition.\n\n' +
+              'Example 6 (INCORRECT):\nTranscript: "Customer: I already serviced my car at a local workshop nearby."\nCurrent Disposition: "Vehicle Serviced"\n→ isCorrect: false, correctedDisposition: "Has serviced car in another dealership"\nReason: "Vehicle Serviced" is only for servicing done under this dealership campaign. Servicing elsewhere matches "Has serviced car in another dealership".\n\n' +
+              'Example 7 (INCORRECT):\nTranscript: "Customer: Hello? I can\'t hear you, hello?" [Call dropped]\nCurrent Disposition: "No Response"\n→ isCorrect: false, correctedDisposition: "Audio Issue"\nReason: The call disconnected due to hearing/audio problems, so "Audio Issue" is correct.';
 
 
 
