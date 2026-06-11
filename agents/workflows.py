@@ -10,7 +10,6 @@ from config import AutocrmModel, clogger, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COM
 from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
-# Delay importing prompt helpers to function scope to avoid circular imports
 
 module_logger = clogger
 
@@ -61,6 +60,7 @@ class BaseWorkflow(ABC):
                     prompt_text = f"Conversation:\n{convo_text}"
 
             resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
+            self.logger.info(f"Intent detection prompt response: {resp}")
             intent_raw = ''
             if isinstance(resp, dict):
                 intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
@@ -197,9 +197,7 @@ class BaseWorkflow(ABC):
                 return {'status': 'missing_session_id'}
 
             receiver_emails = [
-                "eshwar@iamdave.ai",
-                "sahib@iamdave.ai",
-                "shanjai@iamdave.ai",
+                "sahib@iamdave.ai"
             ]
 
             subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
@@ -256,17 +254,132 @@ class PresalesWorkflow(BaseWorkflow):
             'showroom_launch_l': self.wf_showroom_launch_l
         }
 
+    def _workflow_email(self, workflow_name, *args, **kwargs):
+        try:
+            session_id = kwargs.get('session_id')
+            session_data = kwargs.get('session_data') or {}
+            session_mdl_obj = kwargs.get('session_mdl_obj') or {}
+
+            if not session_id:
+                self.logger.info(f'{workflow_name}: missing session_id')
+                return {'status': 'missing_session_id'}
+
+            from conversation.prompt import run_prompt_async
+
+            summary = session_mdl_obj.get('summary', '')
+            history = session_mdl_obj.get('history', [])
+
+            prompt = f"""
+                        Analyze the following automobile sales conversation.
+
+                        Workflow Type: {workflow_name}
+
+                        Conversation Summary:
+                        {summary}
+
+                        Conversation History:
+                        {history}
+
+                        Return ONLY valid JSON:
+
+                        {{
+                            "mood": "",
+                            "sentiment": "",
+                            "customer_intent": "",
+                            "priority": "",
+                            "recommended_action": "",
+                            "reason": ""
+                        }}
+                        """
+
+            insights = run_prompt_async(
+                user_query=" ",
+                system_prompt=prompt,
+                history=[],
+                audit_params={"session_id": session_id},
+                temperature=0.1,
+                **{
+                    "model_identifier": "gcp-gemini-3.1-flash-lite-preview",
+                    "session_id": session_id
+                }
+            )
+
+            if not isinstance(insights, dict):
+                insights = {}
+
+            receiver_emails = [
+                "sahib@iamdave.ai"
+            ]
+
+            subject = (
+                f"{workflow_name.replace('_', ' ').title()} | "
+                f"{insights.get('mood', 'Unknown')} | "
+                f"{insights.get('lead_id', '')} | "
+            )
+
+            html = f"""
+                <p>Hi Team,</p>
+
+                <p><b>Workflow:</b> {workflow_name}</p>
+                <p><b>Session ID:</b> {session_id}</p>
+
+                <h3>Conversation Insights</h3>
+
+                <p><b>Mood:</b> {insights.get('mood')}</p>
+                <p><b>Sentiment:</b> {insights.get('sentiment')}</p>
+                <p><b>Intent:</b> {insights.get('customer_intent')}</p>
+                <p><b>Priority:</b> {insights.get('priority')}</p>
+                <p><b>Recommended Action:</b> {insights.get('recommended_action')}</p>
+                <p><b>Reason:</b> {insights.get('reason')}</p>
+
+                <hr>
+
+                <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
+                <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
+
+                <h3>Conversation Summary</h3>
+                <pre>{summary}</pre>
+
+                <h3>Conversation History</h3>
+                <pre>{history}</pre>
+                """
+
+            email_payload = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {"name": "AutoCRM Alerts"},
+                "receiver": {"emails": receiver_emails},
+                "html_string": html,
+                "subject": subject,
+            }
+
+            from communication.connectors.email_communication import communication_sender
+
+            communication_sender(**email_payload)
+
+            self.logger.info(
+                f'{workflow_name}: email sent for session {session_id}'
+            )
+
+            return {
+                'status': 'email_sent',
+                'workflow': workflow_name
+            }
+
+        except Exception:
+            self.logger.exception(f'{workflow_name}: failed')
+            return {'status': 'error'}
+
     def wf_test_drive_booking_l(self, *args, **kwargs):
-        return {"status": "ok"}
+        return self._workflow_email('test_drive_booking_l',*args,**kwargs)
 
     def wf_test_drive_feedback(self, *args, **kwargs):
-        return {"status": "ok"}
+        return self._workflow_email('test_drive_feedback',*args,**kwargs)
 
     def wf_test_drive_remainder(self, *args, **kwargs):
-        return {"status": "ok"}
+        return self._workflow_email('test_drive_remainder',*args,**kwargs)
 
     def wf_showroom_launch_l(self, *args, **kwargs):
-        return {"status": "ok"}
+        return self._workflow_email('showroom_launch_l',*args,**kwargs)
 
     def run(self, *args, **kwargs):
         obj = self.load_objective()
@@ -280,21 +393,6 @@ class PresalesWorkflow(BaseWorkflow):
             except Exception:
                 self.logger.exception('Failed updating target')
         return {'status': 'ok', 'processed': len(targets)}
-
-    def wf_test_drive_feedback(self, *args, **kwargs):
-        """Handler for 'Test drive feedback' workflow."""
-        # Placeholder: implement feedback collection or status update
-        filters = kwargs.get('filters')
-        targets = self.list_targets(filters)
-        processed = 0
-        for t in targets:
-            try:
-                self.update_target(t.get('id') or t.get('lead_id'), {'test_drive_feedback_requested': True})
-                processed += 1
-            except Exception:
-                self.logger.exception('Failed updating target for test drive feedback')
-        return {'status': 'ok', 'processed': processed}
-
 
 class PostSalesWorkflow(BaseWorkflow):
     def supported_workflows(self) -> List[str]:

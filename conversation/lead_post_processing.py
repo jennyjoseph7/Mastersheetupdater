@@ -280,6 +280,7 @@ def post_session_process(*args, **kwargs):
                 prompt_text = f"Conversation:\n{convo_text}"
 
         resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
+        mlogger.info(f"Intent detection prompt response: {resp}")
         intent_raw = ''
         if isinstance(resp, dict):
             intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
@@ -288,6 +289,7 @@ def post_session_process(*args, **kwargs):
         import re
         m = re.search(r"([a-zA-Z0-9_\- ]+)", intent_raw)
         intent_phrase = m.group(1).strip().lower().replace(' ', '_') if m else intent_raw.strip().lower().replace(' ', '_')
+        mlogger.info(f"Intent detection prompt response intent_phrase: {intent_phrase}")
         if intent_phrase:
             updated_lead_data['customer_intent'] = intent_phrase
             session_update_data['customer_intent'] = intent_phrase
@@ -307,7 +309,7 @@ def post_session_process(*args, **kwargs):
                         if intent_tokens & w_tokens:
                             try:
                                 mlogger.info(f"Triggering workflow '{w}' for campaign_objective_id={campaign_objective_id} due to intent={intent_phrase}")
-                                wf_obj.handle_workflow(w)
+                                wf_obj.handle_workflow(w, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
                             except Exception:
                                 mlogger.exception(f"Failed to handle workflow {w}")
                 except Exception:
