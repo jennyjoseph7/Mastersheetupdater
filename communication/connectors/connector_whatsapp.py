@@ -324,20 +324,23 @@ def post_contact_status(*args, **data):
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
+        filters={"message_id": message_id}
+        if phone_number:
+            filters.update({"phone_number": phone_number})
         records= list(pg.list_order_by(
                 "contact_status",
-                {"message_id": message_id, 'phone_number': phone_number},
+                filters,
                 order_by="updated",
                 order="DESC"
             ))
         if not records:
             logger.warning(
-                f"[post_contact_status] No contact_status found for message_id={message_id} phone_number={phone_number}"
+                f"[post_contact_status] No contact_status found for filters ={filters}"
             )
             return
 
         existing = records[0]
-        logger.info(f"[post_contact_status] message_id={message_id} phone_number={phone_number} existing={existing}---- message_status ={existing.get('provider_status')}")
+        logger.info(f"[post_contact_status] filters={filters} existing={existing}---- message_status ={existing.get('provider_status')}")
         previous_status = (existing.get("provider_status") or "").lower()
         channel = existing.get("channel") or channel
 
