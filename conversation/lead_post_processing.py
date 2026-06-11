@@ -311,17 +311,16 @@ def post_session_process(*args, **kwargs):
             if campaign_objective_id:
                 try:
                     wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
-                    objective_model = AutocrmModel('campaign_objective')
-                    obj = objective_model.get(campaign_objective_id) or {}
-                    objective_wfs = obj.get('workflows') or []
-                    normalized_workflow = wf_obj._normalize(workflow_name)
-                    for w in objective_wfs:
-                        if wf_obj._normalize(w) == normalized_workflow:
-                            try:
-                                wf_obj.handle_workflow(w, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification, analysis=analysis)
-                                break
-                            except Exception:
-                                mlogger.exception(f"Failed to handle workflow {w}")
+                    # objective_model = AutocrmModel('campaign_objective')
+                    # obj = objective_model.get(campaign_objective_id) or {}
+                    # objective_wfs = obj.get('workflows') or []
+                    # normalized_workflow = wf_obj._normalize(workflow_name)
+                    # for w in objective_wfs:
+                    #     if wf_obj._normalize(w) == normalized_workflow:
+                    # try:
+                    wf_obj.handle_workflow(workflow_name, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification, analysis=analysis)
+                    # except Exception:
+                    #     mlogger.exception(f"Failed to handle workflow {w}")
                 except Exception:
                     mlogger.exception("Failed to load or trigger workflow based on intent")
     except Exception:
