@@ -196,9 +196,7 @@ class BaseWorkflow(ABC):
                 return {'status': 'missing_session_id'}
 
             receiver_emails = [
-                "eshwar@iamdave.ai",
-                "sahib@iamdave.ai",
-                "shanjai@iamdave.ai",
+                "sahib@iamdave.ai"
             ]
 
             subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
