@@ -35,12 +35,12 @@ window.JEJO_CONFIG = {
   llmMaxOutputTokens: 1600,
 
   // Disposition validation uses longer transcripts.
-  // llmDispositionBatchSize (6) and llmDispositionMaxConcurrent (1) are smaller than the dashboard defaults,
+  // llmDispositionBatchSize (5) and llmDispositionMaxConcurrent (3) are smaller than the dashboard defaults,
   // while llmDispositionPromptCharLimit (2500), llmDispositionTimeoutMs (90000), and
   // llmDispositionMaxOutputTokens (1800) are larger than the dashboard equivalents
   // (e.g. llmMaxOutputTokens = 1600) because disposition handles longer transcripts.
-  llmDispositionBatchSize: 6,
-  llmDispositionMaxConcurrent: 1,
+  llmDispositionBatchSize: 5,
+  llmDispositionMaxConcurrent: 3,
   llmDispositionTimeoutMs: 90000,
   llmDispositionPromptCharLimit: 2500,
   llmDispositionMaxOutputTokens: 1800,
