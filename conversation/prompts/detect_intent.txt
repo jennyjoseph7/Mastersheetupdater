@@ -1,0 +1,23 @@
+# Detect primary customer intent
+# Fill either {summary} or {conversation} (conversation preferred when available).
+
+Given the following conversation or summary, return the customer's primary intent
+as a short lowercase phrase (1-3 words) using underscores instead of spaces.
+Examples: book_test_drive, give_feedback, renew_insurance, ownership_verification, wish.
+
+Important: also consider the customer's sentiment and whether they appear satisfied
+with the agent interaction when deciding the primary intent. If the conversation
+shows clear dissatisfaction (angry, frustrated, repeated complaints, stopped
+responding, or asked to escalate), prefer intents that reflect that (for
+example: complaint, escalate_issue, unhappy_feedback). If the customer expresses
+positive sentiment or explicit satisfaction, prefer intents like satisfied,
+positive_feedback, or the specific action (e.g., book_test_drive).
+
+Return exactly the single intent phrase and nothing else — no explanation,
+no punctuation, no extra text.
+
+Summary:
+{summary}
+
+Conversation:
+{conversation}

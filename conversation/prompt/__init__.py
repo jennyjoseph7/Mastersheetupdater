@@ -9,6 +9,8 @@ gryd.SERVICE = os.environ.get("AUTOBOT_CONVERSATION_SERVICE_NAME","autocrm-conve
 import json
 from autocrm_db_helper import get_pg_connector
 from ai_service import ai_service_app
+from . import language_maps
+from config import AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
 
 mlogger = gryd.hp.get_logger(__name__)
 
@@ -34,7 +36,7 @@ def execute_orchestrator(*args, **kwargs):
     pass
 
 
-def run_prompt_sync(user_query="",system_prompt="",history="", messages=[], **kwargs):
+def run_prompt_sync(user_query="",system_prompt="",history="", temperature = 0.1, messages=[], **kwargs):
     request_data = kwargs.get("request_data",{})
     resp = ""
     if messages:
@@ -145,7 +147,7 @@ def get_cta_options(*args, **kwargs):
 
 def get_example_states_and_solutions(*args, **kwargs):
     cta_options = get_cta_options(*args, **kwargs)
-    examples = hp.copyof(language_maps.MAP[kwargs.get("language",DEFAULT_LANGUAGE)]["example_states_and_solutions"]["default"])
+    examples = hp.copyof(language_maps.MAP[kwargs.get("language",AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE)]["example_states_and_solutions"]["default"])
     if cta_options:
         examples.extend(cta_options)
     if kwargs.get("campaign_data").get("why_user_should_avail_this"):
