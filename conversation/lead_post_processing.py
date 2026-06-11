@@ -280,21 +280,33 @@ def post_session_process(*args, **kwargs):
                 prompt_text = f"Conversation:\n{convo_text}"
 
         resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
-        mlogger.info(f"Intent detection prompt response: {resp}")
-        intent_raw = ''
+        mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
         if isinstance(resp, dict):
-            intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
+            raw = resp.get("output") or resp.get("text") or resp.get("result")
         else:
-            intent_raw = str(resp)
-        import re
-        m = re.search(r"([a-zA-Z0-9_\- ]+)", intent_raw)
-        intent_phrase = m.group(1).strip().lower().replace(' ', '_') if m else intent_raw.strip().lower().replace(' ', '_')
-        mlogger.info(f"Intent detection prompt response intent_phrase: {intent_phrase}")
-        if intent_phrase:
-            updated_lead_data['customer_intent'] = intent_phrase
-            session_update_data['customer_intent'] = intent_phrase
-            mlogger.info(f"Detected intent for session {session_id}: {intent_phrase}")
+            raw = resp
 
+        if isinstance(raw, dict):
+            analysis = raw
+        else:
+            try:
+                analysis = json.loads(raw)
+            except Exception:
+                analysis = {}
+        primary_intent = analysis.get("primary_intent")
+
+        updated_lead_data["customer_intent"] = primary_intent
+
+        session_update_data.update({
+            "customer_intent": primary_intent,
+            "customer_mood": analysis.get("mood"),
+            "customer_sentiment": analysis.get("sentiment"),
+            "customer_priority": analysis.get("priority"),
+            "recommended_action": analysis.get("recommended_action"),
+        })
+    
+        workflow_name = analysis.get("workflow_to_trigger")
+        if workflow_name and workflow_name != "none":
             campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
             if campaign_objective_id:
                 try:
@@ -302,14 +314,12 @@ def post_session_process(*args, **kwargs):
                     objective_model = AutocrmModel('campaign_objective')
                     obj = objective_model.get(campaign_objective_id) or {}
                     objective_wfs = obj.get('workflows') or []
-                    intent_tokens = set(re.split(r"[^a-z0-9]+", intent_phrase.lower()))
+                    normalized_workflow = wf_obj._normalize(workflow_name)
                     for w in objective_wfs:
-                        wn = w.lower()
-                        w_tokens = set(re.split(r"[^a-z0-9]+", wn))
-                        if intent_tokens & w_tokens:
+                        if wf_obj._normalize(w) == normalized_workflow:
                             try:
-                                mlogger.info(f"Triggering workflow '{w}' for campaign_objective_id={campaign_objective_id} due to intent={intent_phrase}")
-                                wf_obj.handle_workflow(w, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
+                                wf_obj.handle_workflow(w, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification, analysis=analysis)
+                                break
                             except Exception:
                                 mlogger.exception(f"Failed to handle workflow {w}")
                 except Exception:

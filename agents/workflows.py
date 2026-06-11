@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
@@ -259,53 +260,21 @@ class PresalesWorkflow(BaseWorkflow):
             session_id = kwargs.get('session_id')
             session_data = kwargs.get('session_data') or {}
             session_mdl_obj = kwargs.get('session_mdl_obj') or {}
-
-            if not session_id:
-                self.logger.info(f'{workflow_name}: missing session_id')
-                return {'status': 'missing_session_id'}
-
-            from conversation.prompt import run_prompt_async
-
             summary = session_mdl_obj.get('summary', '')
             history = session_mdl_obj.get('history', [])
 
-            prompt = f"""
-                        Analyze the following automobile sales conversation.
+            # if not session_id:
+            #     self.logger.info(f'{workflow_name}: missing session_id')
+            #     return {'status': 'missing_session_id'}
 
-                        Workflow Type: {workflow_name}
-
-                        Conversation Summary:
-                        {summary}
-
-                        Conversation History:
-                        {history}
-
-                        Return ONLY valid JSON:
-
-                        {{
-                            "mood": "",
-                            "sentiment": "",
-                            "customer_intent": "",
-                            "priority": "",
-                            "recommended_action": "",
-                            "reason": ""
-                        }}
-                        """
-
-            insights = run_prompt_async(
-                user_query=" ",
-                system_prompt=prompt,
-                history=[],
-                audit_params={"session_id": session_id},
-                temperature=0.1,
-                **{
-                    "model_identifier": "gcp-gemini-3.1-flash-lite-preview",
-                    "session_id": session_id
-                }
-            )
+            insights = kwargs.get("analysis") or {}
 
             if not isinstance(insights, dict):
-                insights = {}
+                try:
+                    insights = json.loads(insights)
+                except Exception:
+                    insights = {}
+            intent = insights.get("customer_intent") or insights.get("primary_intent") or ""
 
             receiver_emails = [
                 "sahib@iamdave.ai"
