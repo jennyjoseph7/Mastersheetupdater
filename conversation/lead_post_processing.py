@@ -306,7 +306,7 @@ def post_session_process(*args, **kwargs):
         })
     
         workflow_name = analysis.get("workflow_to_trigger")
-        if workflow_name and workflow_name != "none":
+        if workflow_name:
             campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
             if campaign_objective_id:
                 try:
@@ -327,24 +327,26 @@ def post_session_process(*args, **kwargs):
     except Exception:
         mlogger.exception("Failed to detect customer intent via prompt")
 
-    appt_date_time_purpose = {}
-    try:
+    # try:
 
-        campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
-        if campaign_objective_id:
-            try:
-                wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
-                wf_obj.handle_workflow('sop_alert', session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
-            except Exception:
-                mlogger.exception('Failed to invoke sop_alert workflow')
-        else:
-            try:
-                mlogger.info('No campaign_objective_id found; using send_sop_alert fallback')
-                send_sop_alert(session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
-            except Exception:
-                mlogger.exception('Failed to send sop alert via fallback')
-    except Exception as e:
-        mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
+    #     campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
+    #     if campaign_objective_id:
+    #         try:
+    #             wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
+    #             wf_obj.handle_workflow('sop_alert', session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
+    #         except Exception:
+    #             mlogger.exception('Failed to invoke sop_alert workflow')
+    #     else:
+    #         try:
+    #             mlogger.info('No campaign_objective_id found; using send_sop_alert fallback')
+    #             send_sop_alert(session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification)
+    #         except Exception:
+    #             mlogger.exception('Failed to send sop alert via fallback')
+    # except Exception as e:
+    #     mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
+    
+    appt_date_time_purpose = {}
+    
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
