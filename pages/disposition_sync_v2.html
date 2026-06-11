@@ -3093,13 +3093,12 @@
 
             if (isProxy) {
 
-              // Server-issued short-lived session token
-              if (window.AiValidator && typeof window.AiValidator.getCachedSessionToken === 'function') {
-                var st = window.AiValidator.getCachedSessionToken(endpoint);
-                if (st) h['X-Session-Token'] = st;
-              }
+              // Send static handshake token -- matches Cloudflare Worker HANDSHAKE_TOKEN
+              var cfg = window.JEJO_CONFIG || {};
+              var handshakeToken = (cfg.proxyHandshakeToken || '').trim();
+              if (handshakeToken) h['X-Handshake-Token'] = handshakeToken;
 
-            } else {} else {
+            } else {
 
               h['Authorization'] = 'Bearer ' + getApiKey();
 
