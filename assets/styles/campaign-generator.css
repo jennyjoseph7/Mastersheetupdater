@@ -254,14 +254,7 @@ main {
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; transform: none; }
 .btn-secondary { background: var(--surface2); color: var(--text); }
 .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.btn-outline {
-  background: transparent; border: 1px solid var(--accent); color: var(--accent);
-}
-.btn-outline:hover { background: var(--accent-soft); }
-.btn-danger {
-  border: 1px solid var(--danger); color: var(--danger); background: var(--danger-soft);
-}
-.btn-sm { min-height: 34px; padding: 0.4rem 0.75rem; font-size: 0.75rem; }
+
 
 .status {
   font-size: 0.78rem; color: var(--text-dim); margin-top: 0.5rem;

@@ -163,6 +163,11 @@
       var total = batches.length;
       var aborted = false;
 
+      // Track active requests and current dynamic concurrency limit
+      var activeRequests = 0;
+      var currentMaxConcurrent = maxConcurrent;
+      var lastRequestStart = 0;
+
       // Track the currently-active per-request controller so the caller's signal can cancel it
       var activeControllers = new Set();
 
@@ -176,16 +181,22 @@
         });
       }
 
+      // No session pre-fetch needed — X-Handshake-Token is sent directly from config.
+
       // ── single batch request with retries and smart split-on-failure ─
       async function sendBatch(batch, batchIndex, trackFailure) {
         if (trackFailure === undefined) trackFailure = true;
+
         var prompt = buildPrompt(batch, batchIndex);
         if (!prompt) {
           return { ok: false, reason: 'buildPrompt returned null/undefined' };
         }
 
         var lastErr;
-        for (var attempt = 0; attempt <= maxRetries; attempt++) {
+        // On 429 or other retryable errors, ensure we retry up to at least 5 times
+        var allowedRetries = Math.max(maxRetries, 5);
+
+        for (var attempt = 0; attempt <= allowedRetries; attempt++) {
           if (aborted) {
             return { ok: false, reason: 'Aborted' };
           }
@@ -197,13 +208,28 @@
             if (aborted) return { ok: false, reason: 'Aborted' };
           }
 
-          // wait the gap before this attempt (skip gap for retries if it's a quick retry)
+          // wait if we exceed current dynamic concurrency limit
+          while (activeRequests >= currentMaxConcurrent && !aborted) {
+            await sleep(100);
+          }
+          if (aborted) return { ok: false, reason: 'Aborted' };
+
+          // wait the backoff if it's a retry attempt
           if (attempt > 0) {
-            var backoffMs = jitter(Math.min(10000, 1500 * Math.pow(2, attempt - 1)));
+            var backoffMs = jitter(Math.min(15000, 2000 * Math.pow(2, attempt - 1)));
             await sleep(backoffMs);
-          } else if (batchIndex > 0) {
-            // Only gap the first attempt; retries use backoff above
-            await sleep(throttle.gapMs);
+            if (aborted) return { ok: false, reason: 'Aborted' };
+          }
+
+          // stagger request starts to avoid instant burst collisions
+          now = Date.now();
+          var timeSinceLast = now - lastRequestStart;
+          if (timeSinceLast < throttle.gapMs) {
+            var delay = throttle.gapMs - timeSinceLast;
+            lastRequestStart = now + delay;
+            await sleep(delay);
+          } else {
+            lastRequestStart = now;
           }
 
           if (aborted) return { ok: false, reason: 'Aborted' };
@@ -215,6 +241,7 @@
             activeControllers.add(controller);
           }
 
+          activeRequests++;
           try {
             var endpoint = typeof window.getApiEndpoint === 'function'
               ? window.getApiEndpoint()
@@ -229,7 +256,8 @@
               headers['Accept'] = 'application/json';
               if (isProxyEndpoint(endpoint)) {
                 var cfg = window.JEJO_CONFIG || {};
-                headers['X-Handshake-Token'] = cfg.proxyHandshakeToken || 'jejo-secure-handshake';
+                var ht = (cfg.proxyHandshakeToken || '').trim();
+                if (ht) headers['X-Handshake-Token'] = ht;
               } else {
                 var apiKey = typeof window.getApiKey === 'function' ? window.getApiKey() : '';
                 if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
@@ -259,6 +287,7 @@
             if (controller) activeControllers.delete(controller);
 
             if (response.ok) {
+              activeRequests = Math.max(0, activeRequests - 1);
               var data = await response.json();
               var text = '';
               if (data.choices && data.choices[0]) {
@@ -269,6 +298,11 @@
               }
               var parsed = parseResponse(text, batch, batchIndex);
               recordSuccess(throttle);
+
+              // Dynamically scale back up max concurrency limit if we're doing well
+              if (throttle.consecutiveSuccesses >= 5 && currentMaxConcurrent < maxConcurrent) {
+                currentMaxConcurrent++;
+              }
               return { ok: true, data: parsed };
             }
 
@@ -278,25 +312,28 @@
             var errMsg = 'API ' + response.status + ': ' + (errText || 'unknown error').slice(0, 300);
 
             if (isClientError(response.status)) {
-              // Non-retryable client error — mark so the catch rethrows immediately
+              activeRequests = Math.max(0, activeRequests - 1);
               var clientErr = new Error(errMsg);
               clientErr.nonRetryable = true;
               throw clientErr;
             }
 
             if (response.status === 429) {
-              // Rate limited — use Retry-After if available
+              // Rate limited — dynamically throttle down concurrent requests to avoid piling up
+              currentMaxConcurrent = Math.max(1, currentMaxConcurrent - 1);
               var retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
               recordThrottle(throttle, retryAfter);
             }
 
             lastErr = new Error(errMsg);
+            activeRequests = Math.max(0, activeRequests - 1);
             // continue to retry
 
           } catch (e) {
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = null;
             if (controller) activeControllers.delete(controller);
+            activeRequests = Math.max(0, activeRequests - 1);
 
             // Non-retryable client error — bail immediately
             if (e.nonRetryable) {
@@ -304,7 +341,6 @@
               return { ok: false, reason: e.message };
             }
 
-            // AbortError is not retryable if we initiated the abort
             if (e.name === 'AbortError') {
               lastErr = new Error('Request timed out after ' + requestTimeout + 'ms');
             } else {
@@ -329,7 +365,6 @@
           }
         }
 
-        // Even after splitting, still failed
         if (trackFailure) failedBatches.push(batchIndex);
         return { ok: false, reason: lastErr ? lastErr.message : 'Max retries exceeded' };
       }

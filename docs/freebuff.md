@@ -150,6 +150,13 @@ The code determines endpoint dynamically:
 
 - Removed 9 temp/scratch files: `_extract_ai_config.py`, `_extract_remaining.py`, `_extract_theme.py`, `_extract_theme2.py`, `_fix_nvidia.py`, `_split_pages.py`, `_syntax_check_ai.js`, `_temp_check.js`, `nul`
 
+### 9. Cleaned Unused Files & Folder Cleanup (June 10, 2026)
+
+- **Deleted `tools/` directory** — 7 duplicate HTML files identical to `pages/`
+- **Deleted `cloudflare-worker/`** — duplicate of `worker/`
+- **Deleted `assets/js/dashboard.js`, `disposition_sync_v2.js`, `index.js`, `post_sales_disposition.js`** — orphaned JS files, zero references in any HTML page
+- **Preserved `assets/lib/` and `assets/styles/`** — confirmed actively referenced by all pages
+
 ### 6. "Unexpected token 'catch'" in dashboard.html (June 8, 2026)
 
 - **Problem**: `SyntaxError: Unexpected token 'catch'` at `dashboard.html:4004`
@@ -422,6 +429,27 @@ npx skills add affaan-m/everything-claude-code@error-handling -g -y
 
 ---
 
+### 10. Nav Replacement — Inline Nav → Shared nav.html Fetch (June 10, 2026)
+
+- **Problem**: All 7 pages in `pages/` had hardcoded `<div class="header-nav">` blocks with 6–7 SVG link elements each. Editing nav (adding/removing pages) required touching all 7 files.
+- **Fix**: Replaced every inline nav block with `<div id="navContainer"></div>` + `fetch('../nav.html').then(...)`.
+- **Pattern**:
+  - The shared `nav.html` lives at project root with all 7 tool links, SVG icons, `data-page` attributes, and an auto-activation script
+  - Each page only needs:
+    ```html
+    <div id="navContainer"></div>
+    <script>fetch('../nav.html').then(function(r){return r.text()}).then(function(h){document.getElementById('navContainer').innerHTML=h;});</script>
+    ```
+  - The nav.html script auto-highlights the current page by comparing `data-page` attribute against `window.location.pathname`'s last segment
+- **Key details**:
+  - `nav.html` links use relative hrefs (e.g., `href="disposition_sync_v2.html"`) — no directory prefix. When injected into pages served from `pages/`, these resolve relative to `pages/`, pointing to the same directory. ✓
+  - The auto-activation script splits `location.pathname` by `/` and takes the last segment. For `pages/disposition_sync_v2.html`, it gets `disposition_sync_v2.html` which matches `data-page="disposition_sync_v2.html"`. ✓
+  - Different pages had different nav sets — some had 6 links (no Recording Renamer), some had all 7. The shared nav.html now has all 7 consistently.
+  - **CRITICAL**: When using `str_replace` to match the inline nav, the old string must have `\r\n` line endings to match the file content exactly. The Node.js script approach with regex `<div class="header-nav">[\s\S]*?</div>` is more reliable than trying to match exact multi-line strings.
+- **File changed**: All 7 `pages/*.html` files — inline nav removed, fetch script added.
+
+---
+
 ## 🪲 Error Handling Conventions
 
 Installed `affaan-m/everything-claude-code@error-handling` on June 8, 2026.
@@ -467,6 +495,98 @@ try { ... } catch(e) {
   showAiNotice('AI classification failed. Using local keyword analysis.', true);
 }
 ```
+
+---
+
+### 11. Temp Fix Scripts Cleaned — Batch Code Review (June 10, 2026)
+
+**Summary**: Removed 11 temp/scratch fix scripts (`fix8.js` through `test-session-flow.py`) from project root. Verified each fix's actual application status in the source files. Full code review report below.
+
+**Files removed**:
+| File | Target | Applied? |
+|------|--------|----------|
+| `fix8.js` | Session sorting (disposition_sync_v2.html) | ✅ Applied |
+| `fix9.js` | Few-shot examples (post_sales_disposition.html) | ✅ Applied (via v2/v3) |
+| `fix9-v2.js` | Few-shot examples — \n line endings | ✅ Applied |
+| `fix9-v3.js` | Few-shot examples — \\n line endings | ✅ Redundant (same fix) |
+| `fix9-11.js` | Fixes #9, #10, #11 combined | ✅ #10, #11 applied; #9 verified |
+| `fix10.js` | showroom_code to output | ✅ Applied |
+| `fix11.js` | Re-entry guard + _aiValidationRunning | ✅ Applied |
+| `fix12-14.js` | CSP, callDateObj, date parsing (recording_renamer.html) | ✅ All 3 applied |
+| `fix-last.js` | Proxy one-time use, _sessionReady, Worker auth | ⚠️ Partial — see report |
+| `fix-issues.js` | Session init kickoff, config.js, ai-validator.js | ⚠️ Partial — see report |
+| `test-session-flow.py` | Playwright session token tests | ✅ Cleaned (test script only) |
+
+**Code Review — Detailed Findings:**
+
+#### ✅ Fix 8 (`fix8.js`) — Session Sorting
+- **Status**: APPLIED
+- **Change**: Added `sessions.slice().sort()` to sort sessions newest-first before detection loop in `disposition_sync_v2.html`
+- **Evidence**: Line 2512: `var sorted = sessions.slice().sort(function(a, b) { ... })`
+- **Assessment**: Clean implementation, no issues.
+
+#### ✅ Fix 9 (`fix9.js`, `fix9-v2.js`, `fix9-v3.js`) — Few-Shot Examples
+- **Status**: APPLIED
+- **Change**: Updated 11 few-shot examples in `post_sales_disposition.html` to use canonical `POST_SALES_DISPOSITIONS` keys (e.g., "Converted" → "Will call workshop themselves", "Already Serviced" → "Has serviced car in another dealership")
+- **Note**: 3 versions existed with different line-ending attempts (`\r\n`, `\n`, `\\n`) — the v2 version with `\n` was the one that matched the JS string literals
+- **Assessment**: Examples now align with the canonical disposition keys. Good.
+
+#### ✅ Fix 10 (`fix10.js`) — showroom_code
+- **Status**: APPLIED
+- **Change**: Added `showroom_code` to output.push in `post_sales_disposition.html` (line 2452): `showroom_code: get(row, ['showroom_code', 'show_room', 'dealer_code', 'store_code', 'location_code'])`
+- **Assessment**: Clean addition. Multiple fallback field names for robust matching.
+
+#### ✅ Fix 11 (`fix11.js`) — Re-entry Guard
+- **Status**: APPLIED
+- **Change**: Added `_aiValidationRunning` flag + re-entry guard + try/catch/finally wrapping to `validateDispositionsWithLLM()` in `post_sales_disposition.html`
+- **Evidence**: Lines 4137-4138 (guard), 4211 (declaration), 4598 (reset in finally)
+- **Assessment**: Prevents concurrent AI validation runs. Proper cleanup in finally block.
+
+#### ✅ Fix 12-14 (`fix12-14.js`) — CSP, callDateObj, Date Parsing
+- **Status**: ALL 3 APPLIED
+- **Fix 12**: CSP `connect-src` broadened from `https://integrate.api.nvidia.com` to `https:` (line 9)
+- **Fix 13**: `callDateObj` stored in matches (line 525), `getZipDateToken()` uses stored Date (line 763)
+- **Fix 14**: Inverted fallback date checks fixed in both MDY and DMY branches
+- **Assessment**: CSP broadening is more permissive but necessary for proxy flexibility. Date fixes correct logical errors.
+
+#### ⚠️ Fix-last.js — 3 Attempted Fixes
+
+**Fix 1 (proxy one-time use removal):** ⚠️ PARTIAL
+- `validateSession()` no longer checks `used` flag ✅
+- But `used: false` still in `createSession()` (line 77 of proxy.js) — harmless dead code
+- **Recommendation**: Remove `used: false` from `createSession()` for cleanliness
+
+**Fix 2 (_sessionReady removal in llm-batch-runner.js):** ❌ NOT APPLIED
+- `_sessionReady` still exists in both copies (line 180 in assets/js/lib and assets/lib)
+- Comment still says "blocking for first batch" instead of updated version
+- **Pattern mismatch**: The old text in fix-last.js didn't match the actual file content (line ending differences)
+
+**Fix 3 (Worker auth simplification):** ❌ NOT APPLIED
+- `worker/worker.js` still has full `HANDSHAKE_TOKEN` validation with `X-Session-Token` header check
+- The fix intended to remove it and rely only on origin validation + rate limiting
+- **Recommendation**: Apply manually if desired — the Worker URL being unguessable is a valid security argument
+
+#### ⚠️ Fix-issues.js — 3 Attempted Fixes
+
+**Fix 1 (session init kickoff):** ❌ NOT APPLIED
+- Both copies of `llm-batch-runner.js` still have `_sessionReady` and old "blocking for first batch" comment
+- Scheduled fix not applied due to pattern mismatch
+- **Recommendation**: The `_sessionReady` variable is unused dead code — apply removal
+
+**Fix 2 (proxyHandshakeToken in config.js):** ✅ APPLIED
+- Found at lines 26 and 31 with documentation comments
+
+**Fix 3 (auto-refetch in ai-validator.js):** ✅ APPLIED
+- Line 246-251: Token expiry triggers background refetch with `fetchSessionToken(proxyEndpoint).catch(function() {})`
+- Graceful: refetch happens asynchronously, doesn't block
+
+---
+
+#### 🔴 Remaining Issues (Not Fixed)
+
+1. **`_sessionReady` dead code** in `assets/js/lib/llm-batch-runner.js` and `assets/lib/llm-batch-runner.js` — variable declared and assigned but never consumed
+2. **`worker/worker.js`** — still has full handshake auth (may be intentional for security)
+3. **`server/proxy.js`** — `used: false` dead field in `createSession()` (harmless but untidy)
 
 ---
 

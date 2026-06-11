@@ -36,11 +36,11 @@
 
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
 
-  <script src="../config.js"></script>
+  <script src="../config.js?v=20260610"></script>
 
   <script src="../assets/lib/xlsx.full.min.js"></script>
 
-  <script src="../assets/lib/llm-batch-runner.js"></script>
+  <script src="../assets/lib/llm-batch-runner.js?v=20260610-ratelimit"></script>
 
   <script src="../assets/lib/html2canvas.min.js"></script>
 
@@ -1257,7 +1257,7 @@
 
     let _aiStatusTimer = null;
 
-    const LLM_CACHE_VERSION = 'nvidia-dispo-v3';
+    const LLM_CACHE_VERSION = 'nvidia-dispo-v7';
 
     const NVIDIA_KEY_STORAGE = 'llm-api-key';
     let _inMemoryApiKey = localStorage.getItem(NVIDIA_KEY_STORAGE) || '';
@@ -1802,11 +1802,10 @@
 
       if (isProxy) {
 
-        // Server-issued short-lived session token
-        if (window.AiValidator && typeof window.AiValidator.getCachedSessionToken === 'function') {
-          var st = window.AiValidator.getCachedSessionToken(endpoint);
-          if (st) headers['X-Session-Token'] = st;
-        }
+        // Send static handshake token directly -- no session endpoint needed.
+        var cfg = window.JEJO_CONFIG || {};
+        var handshakeToken = (cfg.proxyHandshakeToken || '').trim();
+        if (handshakeToken) headers['X-Handshake-Token'] = handshakeToken;
 
       } else {
 
@@ -1834,17 +1833,35 @@
 
       try {
 
-        return await fetch(getApiEndpoint(), {
+        var headers = buildNvidiaHeaders(apiKey);
+        console.log('[AI Debug] POSTing to:', getApiEndpoint());
+        console.log('[AI Debug] Request headers:', headers);
+
+        var res = await fetch(getApiEndpoint(), {
 
           method: 'POST',
 
-          headers: buildNvidiaHeaders(apiKey),
+          headers: headers,
 
           signal: controller.signal,
 
           body: JSON.stringify(body)
 
         });
+
+        if (!res.ok) {
+          console.error('[AI Debug] Request failed with status:', res.status, res.statusText);
+          try {
+            var errText = await res.clone().text();
+            console.error('[AI Debug] Error response body:', errText);
+          } catch (e) {
+            console.error('[AI Debug] Could not read error response body:', e);
+          }
+        } else {
+          console.log('[AI Debug] Request succeeded with status 200');
+        }
+
+        return res;
 
       } finally {
 
@@ -2012,7 +2029,7 @@
 
 
 
-    async function classifyWithLlm(allSummaries, isPostSales, apiKey) {
+        async function classifyWithLlm(allSummaries, isPostSales, apiKey) {
 
       var systemPrompt = buildLlmSystemPrompt(isPostSales);
 
@@ -2066,17 +2083,28 @@
 
       var llmResults = null;
 
-      var cacheKey = 'classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length, contentHash: hashStr(allSummaries.map(function(s) { return s.text; }).join('')) }));
+      var cacheKey = LLM_CACHE_VERSION + '-classify-' + hashStr(JSON.stringify({ system: systemPrompt, count: allSummaries.length, contentHash: hashStr(allSummaries.map(function(s) { return s.text; }).join('')) }));
 
-      // Check cache first — return immediately if this exact set was processed before
+      // Check cache first
       var cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           var parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length === allSummaries.length) {
-            return parsed;
+          if (parsed && Array.isArray(parsed.results || parsed)) {
+            var resultsArray = parsed.results || parsed;
+            var cacheEngine = parsed.engine || 'cache';
+            if (resultsArray.length === allSummaries.length) {
+              return { results: resultsArray, engine: cacheEngine };
+            }
           }
         } catch(e) {}
+      }
+
+      if (!apiKey) {
+        var fallbackResults = allSummaries.map(keywordFallback);
+        var res = { results: fallbackResults, engine: 'local' };
+        try { localStorage.setItem(cacheKey, JSON.stringify(res)); } catch(e) {}
+        return res;
       }
 
       _aiStatusStartTime = Date.now();
@@ -2093,133 +2121,131 @@
 
       var batchSize = LLM_BATCH_SIZE;
 
-      var runnerResult = await runLlmBatches({
+      try {
+        var runnerResult = await runLlmBatches({
 
-        items: allSummaries,
+          items: allSummaries,
 
-        batchSize: batchSize,
+          batchSize: batchSize,
 
-        maxConcurrent: LLM_MAX_CONCURRENT,
+          maxConcurrent: LLM_MAX_CONCURRENT,
 
-        minGapMs: 300,
+          minGapMs: 300,
 
-        maxRetries: LLM_MAX_RETRIES,
+          maxRetries: LLM_MAX_RETRIES,
 
-        requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
+          requestTimeoutMs: LLM_REQUEST_TIMEOUT_MS,
 
-        cachedData: null,
-        signal: aiValidationController.signal,
+          cachedData: null,
+          signal: aiValidationController.signal,
 
-        buildPrompt: function(batch, batchIndex) {
+          buildPrompt: function(batch, batchIndex) {
 
-          var rowsPrompt = batch.map(function(s) {
+            var rowsPrompt = batch.map(function(s) {
 
-            return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
+              return 'Row ' + s.rowIndex + ': "' + sanitizeForPrompt(s.text) + '"';
 
-          }).join('\n');
+            }).join('\n');
 
-          return {
+            return {
 
-            system: systemPrompt,
+              system: systemPrompt,
 
-            user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
+              user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
 
-            temperature: 0.1,
+              temperature: 0.1,
 
-            maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS
+              maxCompletionTokens: LLM_MAX_OUTPUT_TOKENS
 
-          };
+            };
 
-        },
+          },
 
-        parseResponse: function(text, batch, batchIndex) {
+          parseResponse: function(text, batch, batchIndex) {
 
-          return parseLlmJsonResults(text, batch);
+            try {
 
-        },
+              return parseLlmJsonResults(text, batch);
 
-        buildHeaders: function() {
+            } catch(e) {
 
-          return buildNvidiaHeaders(apiKey);
+              return batch.map(function(s) { return { rowIndex: s.rowIndex, dispositions: [] }; });
 
-        },
+            }
 
-        onProgress: function(done, total, message, pct) {
+          },
 
-          updateAiStatus(done, total, message);
+          onProgress: function(done, total, message) {
 
-        }
-
-      });
-
-
-
-      // ── Pass 2: Retry any failed batches using keyword fallback ──
-
-      if (runnerResult.failedBatches.length > 0) {
-
-        var failedCompleted = 0;
-
-        updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Retrying ' + runnerResult.failedBatches.length + ' failed batch(es) with keywords...', true);
-
-        for (var r = 0; r < runnerResult.failedBatches.length; r++) {
-
-          var idx = runnerResult.failedBatches[r];
-
-          var batchStart2 = idx * batchSize;
-
-          var fallbackResults = batches[idx].map(keywordFallback);
-
-          for (var fi = 0; fi < fallbackResults.length; fi++) {
-
-            runnerResult.results.set(batchStart2 + fi, fallbackResults[fi]);
+            updateAiStatus(done, total, message || 'Mining themes... ' + done + '/' + total + ' batches');
 
           }
 
-          failedCompleted++;
+        });
 
-          updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Fallback: ' + failedCompleted + '/' + runnerResult.failedBatches.length + ' batches');
+
+
+        // â”€â”€ Pass 2: Retry any failed batches using keyword fallback â”€â”€
+
+        if (runnerResult.failedBatches.length > 0) {
+
+          var failedCompleted = 0;
+
+          updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Retrying ' + runnerResult.failedBatches.length + ' failed batch(es) with keywords...', true);
+
+          for (var r = 0; r < runnerResult.failedBatches.length; r++) {
+
+            var idx = runnerResult.failedBatches[r];
+
+            var fallbackResults = batches[idx].map(keywordFallback);
+
+            for (var fi = 0; fi < fallbackResults.length; fi++) {
+
+              runnerResult.results.set(fallbackResults[fi].rowIndex, fallbackResults[fi]);
+
+            }
+
+            failedCompleted++;
+
+            updateAiStatus(failedCompleted, runnerResult.failedBatches.length, 'Fallback: ' + failedCompleted + '/' + runnerResult.failedBatches.length + ' batches');
+
+          }
 
         }
 
-      }
 
 
+        // Check if aborted
 
-      // Check if aborted
+        if (runnerResult.aborted) {
 
-      if (runnerResult.aborted) {
+          updateAiStatus(0, 0, '');
 
-        updateAiStatus(0, 0, '');
+          aiValidationController = null;
+
+          return { results: [], engine: 'local' };
+
+        }
 
         aiValidationController = null;
 
-        return [];
-
-      }
-
-      aiValidationController = null;
 
 
+        // Flatten: combine results for same row if multiple batches returned dups
 
-      // Flatten: combine results for same row if multiple batches returned dups
+        var results = [];
 
-      var results = [];
+        for (var j = 0; j < allSummaries.length; j++) {
 
-      for (var j = 0; j < allSummaries.length; j++) {
+          var part = runnerResult.results.get(allSummaries[j].rowIndex);
 
-        var part = runnerResult.results.get(j);
+          if (part) results.push(part);
 
-        if (part) results.push(part);
-
-      }
-
-      // Flatten: combine results for same row if multiple batches returned dups
+        }
 
 
 
-      // Combine results for same row if multiple batches returned dups
-      try {
+        // Combine results for same row if multiple batches returned dups
         var flat = {};
         for (var k = 0; k < results.length; k++) {
           var item = results[k];
@@ -2231,14 +2257,22 @@
         llmResults = Object.keys(flat).map(function(idx) {
           return { rowIndex: +idx, dispositions: flat[idx] };
         });
-        try { localStorage.setItem(cacheKey, JSON.stringify(llmResults)); } catch(cacheErr) {}
+        
+        var finalRes = { results: llmResults, engine: 'nvidia' };
+        try { localStorage.setItem(cacheKey, JSON.stringify(finalRes)); } catch(cacheErr) {}
+        return finalRes;
+
       } catch(e) {
         console.warn('LLM failed, falling back to keywords:', e);
         showAiNotice('AI classification failed. Using local keyword analysis.', true);
-        llmResults = null;
+        var fallbackResults = allSummaries.map(keywordFallback);
+        var finalRes = { results: fallbackResults, engine: 'local' };
+        try { localStorage.setItem(cacheKey, JSON.stringify(finalRes)); } catch(cacheErr) {}
+        return finalRes;
       }
-      return llmResults;
-    }    async function generateVoiceInsights(themes) {
+    }
+
+    async function generateVoiceInsights(themes) {
 
       const apiKey = getApiKey();
 
@@ -2258,7 +2292,7 @@
 
 
 
-      const cacheKey = 'voice-insights-' + hashStr(prompt);
+      const cacheKey = LLM_CACHE_VERSION + '-voice-insights-' + hashStr(prompt);
 
       const cached = localStorage.getItem(cacheKey);
 
@@ -3291,7 +3325,7 @@
 
 
 
-      const cacheKey = 'llm-recs-' + hashStr(prompt);
+      const cacheKey = LLM_CACHE_VERSION + '-llm-recs-' + hashStr(prompt);
 
       const cached = localStorage.getItem(cacheKey);
 
@@ -3737,7 +3771,7 @@
        ═══════════════════════════════════════════════════════════════════════ */
 
     
-    async function mineCustomerThemes(rows, colMap, isPostSales, llmLookup) {
+    async function mineCustomerThemes(rows, colMap, isPostSales, llmLookup, classificationEngine) {
 
       if (!rows || !rows.length || !colMap) {
 
@@ -3776,46 +3810,73 @@
 
         }
 
-        var apiKey = getApiKey();
-
-        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
-
         var systemPrompt = buildLlmSystemPrompt(isPostSales);
-
-        var promptBatches = [];
-
         var batchSize = LLM_THEME_BATCH_SIZE;
+        var cacheKey = LLM_CACHE_VERSION + '-minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length, contentHash: hashStr(summaries.map(function(s) { return s.text; }).join('')) }));
 
+        // If llmLookup was pre-computed from classifyWithLlm, process themes directly from it
+        if (Object.keys(llmLookup || {}).length > 0) {
+          var preThemes = {
+            voicemail: { id: 'voicemail', count: 0, label: 'Voicemail', excerpts: [], sentiment: 'neutral', explanation: 'Customer was not available and the call went to voicemail.', interpretation: 'These leads need follow-up attempts at different times.' },
+            not_interested: { id: 'not_interested', count: 0, label: 'Not Interested', excerpts: [], sentiment: 'negative', explanation: 'Customer explicitly declined the offer or service.', interpretation: 'Review the value proposition or timing of outreach for these segments.' },
+            language_barrier: { id: 'language_barrier', count: 0, label: 'Language Barrier', excerpts: [], sentiment: 'neutral', explanation: 'Communication was hindered by language differences.', interpretation: 'Consider multilingual agents or regional language support.' },
+            wrong_person: { id: 'wrong_person', count: 0, label: 'Wrong Person', excerpts: [], sentiment: 'neutral', explanation: 'The person reached was not the vehicle owner or decision maker.', interpretation: 'Verify contact details and ownership before calling.' },
+            deferred: { id: 'deferred', count: 0, label: 'Deferred', excerpts: [], timeframes: [], sentiment: 'neutral', explanation: 'Customer showed interest but wants to decide later.', interpretation: 'Warm leads that need timely follow-ups to convert.' },
+            callback_requested: { id: 'callback_requested', count: 0, label: 'Callback Requested', excerpts: [], callbackTimes: [], sentiment: 'positive', explanation: 'Customer asked to be called back at a specific time.', interpretation: 'High-intent leads. Ensure callbacks happen at the requested times.' },
+            already_serviced: { id: 'already_serviced', count: 0, label: 'Already Serviced', excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer already had the vehicle serviced elsewhere.', interpretation: 'Competitor activity is high. Consider proactive outreach before service intervals.' },
+            customer_busy: { id: 'customer_busy', count: 0, label: 'Customer Busy', excerpts: [], sentiment: 'neutral', explanation: 'Customer was occupied and could not engage in conversation.', interpretation: 'Retry at different hours for better connect rates.' },
+            service_booked: { id: 'service_booked', count: 0, label: 'Service Booked', excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment.', interpretation: 'Conversions are happening. Reinforce what is working with these customers.' },
+            audio_issue: { id: 'audio_issue', count: 0, label: 'Audio Issue', excerpts: [], sentiment: 'neutral', explanation: 'Call had poor audio quality making conversation difficult.', interpretation: 'Check telephony infrastructure. These leads need an immediate reattempt.' },
+            sold_vehicle: { id: 'sold_vehicle', count: 0, label: 'Sold Vehicle', excerpts: [], sentiment: 'negative', explanation: 'Customer no longer owns the vehicle.', interpretation: 'Update CRM records to avoid calling these contacts again.' },
+            dissatisfied: { id: 'dissatisfied', count: 0, label: 'Dissatisfied', excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction or complaints about service.', interpretation: 'Escalate to customer relations to prevent churn and negative reviews.' }
+          };
+          for (var pi = 0; pi < summaries.length; pi++) {
+            var ps = summaries[pi];
+            var pdispo = (llmLookup || {})[ps.originalRowIndex] || [];
+            if (pdispo.length === 0) continue;
+            var ptext = ps.text;
+            var pexcerpt = ptext.length > 150 ? ptext.slice(0, 147) + '...' : ptext;
+            var pparsed = parseSummary(ptext);
+            var pseenThemes = {};
+            for (var pdi = 0; pdi < pdispo.length; pdi++) {
+              var pkey = pdispo[pdi].toLowerCase().trim();
+              var pthemeId = DISPO_TO_THEME[pkey] || null;
+              if (pthemeId && preThemes[pthemeId] && !pseenThemes[pthemeId]) {
+                pseenThemes[pthemeId] = true;
+                preThemes[pthemeId].count++;
+                if (preThemes[pthemeId].excerpts.length < 5) preThemes[pthemeId].excerpts.push(pexcerpt);
+                if (pthemeId === 'already_serviced' && pparsed.competitorLocation && preThemes.already_serviced.competitorNames.indexOf(pparsed.competitorLocation) === -1)
+                  preThemes.already_serviced.competitorNames.push(pparsed.competitorLocation);
+                if (pthemeId === 'callback_requested' && pparsed.callbackTime && preThemes.callback_requested.callbackTimes.indexOf(pparsed.callbackTime) === -1)
+                  preThemes.callback_requested.callbackTimes.push(pparsed.callbackTime);
+                if (pthemeId === 'deferred') {
+                  var ptm = (ptext.match(/\b(today|tomorrow|next week|next month|this week|after\s+\d+\s+days|after\s+\w+)\b/i) || [])[0];
+                  if (ptm && preThemes.deferred.timeframes.indexOf(ptm.toLowerCase()) === -1) preThemes.deferred.timeframes.push(ptm.toLowerCase());
+                }
+              }
+            }
+          }
+          var preThemeList = Object.values(preThemes).filter(function(t) { return t.count > 0; }).sort(function(a, b) { return b.count - a.count; });
+          var preTotal = preThemeList.reduce(function(a, t) { return a + t.count; }, 0);
+          var preTopTheme = preThemeList.length > 0 ? preThemeList[0].label : 'General';
+          updateAiStatus(0, 0, '');
+                    var preResult = { themes: preThemeList, total: preTotal, topTheme: preTopTheme, engine: classificationEngine || 'nvidia' };
+          try { localStorage.setItem(cacheKey, JSON.stringify(preResult)); } catch(ce) {}
+          return preResult;
+        } else {
+
+        var apiKey = getApiKey();
+        if (!apiKey) return { themes: [], total: 0, topTheme: 'General', engine: 'local' };
+        var systemPrompt = buildLlmSystemPrompt(isPostSales);
+        var promptBatches = [];
+        var batchSize = LLM_THEME_BATCH_SIZE;
         for (var bi = 0; bi < summaries.length; bi += batchSize) {
-
           promptBatches.push(summaries.slice(bi, bi + batchSize));
-
         }
-
-        // Cache key for theme mining results
-        var cacheKey = 'minethemes-' + hashStr(JSON.stringify({ systemPrompt: systemPrompt, batchSize: batchSize, summariesLength: summaries.length, contentHash: hashStr(summaries.map(function(s) { return s.text; }).join('')) }));
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
           try { return JSON.parse(cached); } catch(e) {}
         }
-
-        // If llmLookup was pre-computed from classifyWithLlm, skip the duplicate API call
-        if (Object.keys(llmLookup || {}).length > 0) {
-          // Build runnerResult using summaries' originalRowIndex to correctly map into llmLookup
-          var llmResults = [];
-          for (var si = 0; si < summaries.length; si++) {
-            var s = summaries[si];
-            var dispo = (llmLookup || {})[s.originalRowIndex] || [];
-            if (dispo.length > 0) {
-              llmResults.push({ rowIndex: s.rowIndex, dispositions: dispo });
-            }
-          }
-          var runnerResult = {
-            results: new Map(llmResults.map(function(r) { return [r.rowIndex, r]; })),
-            aborted: false,
-            failedBatches: []
-          };
-        } else {
         // Show AI status for theme mining
         // Create abort controller for this run
         aiValidationController = new AbortController();
@@ -3876,7 +3937,7 @@
 
         for (var ri = 0; ri < summaries.length; ri++) {
 
-          var part = runnerResult.results.get(ri);
+          var part = runnerResult.results.get(summaries[ri].rowIndex);
 
           if (part) llmResults.push(part);
 
@@ -3897,18 +3958,18 @@
         aiValidationController = null;
 
         var themes = {
-          voicemail: { count: 0, label: 'Voicemail', excerpts: [] },
-          not_interested: { count: 0, label: 'Not Interested', excerpts: [] },
-          language_barrier: { count: 0, label: 'Language Barrier', excerpts: [] },
-          wrong_person: { count: 0, label: 'Wrong Person', excerpts: [] },
-          deferred: { count: 0, label: 'Deferred', excerpts: [], timeframes: [] },
-          callback_requested: { count: 0, label: 'Callback Requested', excerpts: [], callbackTimes: [] },
-          already_serviced: { count: 0, label: 'Already Serviced', excerpts: [], competitorNames: [] },
-          customer_busy: { count: 0, label: 'Customer Busy', excerpts: [] },
-          service_booked: { count: 0, label: 'Service Booked', excerpts: [] },
-          audio_issue: { count: 0, label: 'Audio Issue', excerpts: [] },
-          sold_vehicle: { count: 0, label: 'Sold Vehicle', excerpts: [] },
-          dissatisfied: { count: 0, label: 'Dissatisfied', excerpts: [] }
+          voicemail: { id: 'voicemail', count: 0, label: 'Voicemail', excerpts: [], sentiment: 'neutral', explanation: 'Customer was not available and the call went to voicemail.', interpretation: 'These leads need follow-up attempts at different times.' },
+          not_interested: { id: 'not_interested', count: 0, label: 'Not Interested', excerpts: [], sentiment: 'negative', explanation: 'Customer explicitly declined the offer or service.', interpretation: 'Review the value proposition or timing of outreach for these segments.' },
+          language_barrier: { id: 'language_barrier', count: 0, label: 'Language Barrier', excerpts: [], sentiment: 'neutral', explanation: 'Communication was hindered by language differences.', interpretation: 'Consider multilingual agents or regional language support.' },
+          wrong_person: { id: 'wrong_person', count: 0, label: 'Wrong Person', excerpts: [], sentiment: 'neutral', explanation: 'The person reached was not the vehicle owner or decision maker.', interpretation: 'Verify contact details and ownership before calling.' },
+          deferred: { id: 'deferred', count: 0, label: 'Deferred', excerpts: [], timeframes: [], sentiment: 'neutral', explanation: 'Customer showed interest but wants to decide later.', interpretation: 'Warm leads that need timely follow-ups to convert.' },
+          callback_requested: { id: 'callback_requested', count: 0, label: 'Callback Requested', excerpts: [], callbackTimes: [], sentiment: 'positive', explanation: 'Customer asked to be called back at a specific time.', interpretation: 'High-intent leads. Ensure callbacks happen at the requested times.' },
+          already_serviced: { id: 'already_serviced', count: 0, label: 'Already Serviced', excerpts: [], competitorNames: [], sentiment: 'negative', explanation: 'Customer already had the vehicle serviced elsewhere.', interpretation: 'Competitor activity is high. Consider proactive outreach before service intervals.' },
+          customer_busy: { id: 'customer_busy', count: 0, label: 'Customer Busy', excerpts: [], sentiment: 'neutral', explanation: 'Customer was occupied and could not engage in conversation.', interpretation: 'Retry at different hours for better connect rates.' },
+          service_booked: { id: 'service_booked', count: 0, label: 'Service Booked', excerpts: [], sentiment: 'positive', explanation: 'Customer successfully booked a service appointment.', interpretation: 'Conversions are happening. Reinforce what is working with these customers.' },
+          audio_issue: { id: 'audio_issue', count: 0, label: 'Audio Issue', excerpts: [], sentiment: 'neutral', explanation: 'Call had poor audio quality making conversation difficult.', interpretation: 'Check telephony infrastructure. These leads need an immediate reattempt.' },
+          sold_vehicle: { id: 'sold_vehicle', count: 0, label: 'Sold Vehicle', excerpts: [], sentiment: 'negative', explanation: 'Customer no longer owns the vehicle.', interpretation: 'Update CRM records to avoid calling these contacts again.' },
+          dissatisfied: { id: 'dissatisfied', count: 0, label: 'Dissatisfied', excerpts: [], sentiment: 'negative', explanation: 'Customer expressed dissatisfaction or complaints about service.', interpretation: 'Escalate to customer relations to prevent churn and negative reviews.' }
         };
 
         for (var mi = 0; mi < summaries.length; mi++) {
@@ -6648,7 +6709,9 @@ async function generateDashboard() {
           var rowText = String(colMap.summary ? rows[ri][colMap.summary] : rows[ri][colMap.detail] || rows[ri][colMap.outcome] || '').trim();
           if (rowText) summaries.push({ rowIndex: ri, text: rowText });
         }
-        var llmResults = apiKey && summaries.length > 0 ? await classifyWithLlm(summaries, isPostSales, apiKey) : null;
+        var llmClassification = summaries.length > 0 ? await classifyWithLlm(summaries, isPostSales, apiKey) : null;
+        var llmResults = llmClassification ? llmClassification.results : null;
+        var classificationEngine = llmClassification ? llmClassification.engine : 'local';
         var llmLookup = {};
         if (llmResults && Array.isArray(llmResults)) {
           for (var ri2 = 0; ri2 < llmResults.length; ri2++) {
@@ -6658,7 +6721,8 @@ async function generateDashboard() {
             }
           }
         }
-        var themes = await mineCustomerThemes(rows, colMap, isPostSales, llmLookup);
+        var themes = await mineCustomerThemes(rows, colMap, isPostSales, llmLookup, classificationEngine);
+        if (!themes) themes = { themes: [], total: 0, topTheme: "General", engine: "local" };
         var funnel = window._dashFunnel;
         var healthScore = window._dashHealthScore;
         var healthClass = window._dashHealthClass;

@@ -20,8 +20,10 @@ window.JEJO_CONFIG = {
   // Production: deploy a Cloudflare Worker and point here
   apiEndpoint: "https://autnongageleadoperations.jennyjosephofc1.workers.dev",
 
-  // Optional handshake token for the proxy
-  proxyHandshakeToken: "jejo-presales-secure-handshake",
+  // ── REQUIRED for Cloudflare Worker auth ──
+  // Must match HANDSHAKE_TOKEN in: Cloudflare Dashboard → Worker → Settings → Variables
+  // If left empty AND HANDSHAKE_TOKEN is set on the Worker, all AI calls will return 401.
+  proxyHandshakeToken: "autonage-2026-jejo3214",
 
   // ────── OPTION 2: Direct NVIDIA API Key (fallback) ──────
   // Only used if apiEndpoint is empty above.
@@ -34,8 +36,8 @@ window.JEJO_CONFIG = {
 
   // Performance tuning for slower/free endpoints
   llmBatchSize: 12,
-  llmMaxConcurrent: 5,
-  llmMaxRetries: 1,
+  llmMaxConcurrent: 2,
+  llmMaxRetries: 3,
   llmRequestTimeoutMs: 120000,
   llmPromptCharLimit: 1200,
   llmMaxOutputTokens: 1600,

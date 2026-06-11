@@ -11,7 +11,7 @@
 
 | File | Role | Depends On | Used By |
 |------|------|------------|---------|
-| `index.html` | Landing page / catalog | `assets/js/index.js`, `assets/css/index.css`, `assets/fonts/fonts.css` | Users opening the site |
+| `index.html` | Landing page / catalog | `assets/scripts/index.js`, `assets/css/index.css`, `assets/fonts/fonts.css` | Users opening the site |
 | `config.js` | API keys & settings (gitignored) | Nothing | All tools that use AI |
 | `assets/js/lib/llm-batch-runner.js` | AI batch processing engine | `config.js` (via `window.JEJO_CONFIG`) | `dashboard.html`, `post_sales_disposition.html`, `disposition_sync_v2.html` |
 | `assets/js/lib/history-helpers.js` | Session history parsing | Nothing | `post_sales_disposition.html`, `disposition_sync_v2.html` |
@@ -20,7 +20,7 @@
 | `assets/js/lib/jszip.min.js` | ZIP compression | Nothing | `recording_renamer.html` |
 | `assets/js/lib/html2canvas.min.js` | Screenshot capture | Nothing | `dashboard.html` |
 | `assets/js/lib/jspdf.umd.min.js` | PDF generation | `html2canvas` | `dashboard.html` |
-| `assets/js/index.js` | Theme toggle (landing page) | Nothing | `index.html` only |
+| `assets/scripts/index.js` | Theme toggle (landing page) | Nothing | `index.html` only |
 | `assets/fonts/fonts.css` | Self-hosted fonts | Nothing | ALL HTML files |
 | `assets/css/design-system.css` | Shared CSS — theme vars, reset, header/nav, theme-toggle, buttons, status bars | Nothing | ALL 7 tool pages |
 | `assets/css/*.css` | Per-tool styles (7 files) | `fonts.css`, `design-system.css` | Corresponding page |
@@ -179,7 +179,7 @@ User Uploads Processed Sync File (XLSX)
 
 ### 1. `index.html` — Landing Page
 
-**Dependencies**: `assets/js/index.js`, `assets/css/index.css`, `assets/fonts/fonts.css`
+**Dependencies**: `assets/scripts/index.js`, `assets/css/index.css`, `assets/fonts/fonts.css`
 
 **onclick Handlers**:
 | Element | Handler |
@@ -293,7 +293,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ---
 
-### 5. `assets/js/index.js` — Landing Page Theme
+### 5. `assets/scripts/index.js` — Landing Page Theme
 
 **Functions**: `getStoredTheme()`, `syncBrandLogo()`, `applyTheme()`, `toggleTheme()`
 
@@ -912,7 +912,7 @@ Not used by `index.html` (different layout — no header-nav).
 
 ### If I change theme functions → affects:
 - ALL 8 HTML files — each has duplicated inline theme functions
-- Exception: `index.html` uses shared `assets/js/index.js`
+- Exception: `index.html` uses shared `assets/scripts/index.js`
 
 ### If I change batch download system (localStorage key `'jejo-ae-batch-export-v1'`) → affects:
 - `reattempt_filter.html` and `autongage_formatter.html` — both use same key

@@ -200,6 +200,7 @@
 
   // ── buildHeaders (NVIDIA / proxy) ────────────────────────────────────────
   // Convenience: generates auth headers matching the llm-batch-runner defaults.
+  // For proxy endpoints, sends X-Handshake-Token from config.js proxyHandshakeToken.
   function buildHeaders() {
     var headers = {
       'Content-Type': 'application/json',
@@ -211,14 +212,70 @@
       : NV_API;
 
     if (isProxyEndpoint(endpoint)) {
+      // Send static handshake token directly — no session endpoint needed.
       var cfg = window.JEJO_CONFIG || {};
-      headers['X-Handshake-Token'] = cfg.proxyHandshakeToken || 'jejo-secure-handshake';
+      var handshakeToken = (cfg.proxyHandshakeToken || '').trim();
+      if (handshakeToken) {
+        headers['X-Handshake-Token'] = handshakeToken;
+      }
     } else {
       var apiKey = typeof window.getApiKey === 'function' ? window.getApiKey() : '';
       if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
     }
 
     return headers;
+  }
+
+  // ── Session token cache ──────────────────────────────────────────────────
+  // Kept for API compatibility — returns the cached handshake token if set.
+  // The X-Handshake-Token approach no longer requires a /session endpoint.
+  var _sessionToken = null;
+  var _sessionEndpoint = null;
+  var _sessionExpiresAt = 0;
+
+  function getCachedSessionToken(proxyEndpoint) {
+    // Legacy stub — no-op. buildHeaders() now reads proxyHandshakeToken directly.
+    return null;
+  }
+
+  /**
+   * Fetches a new session token from the proxy endpoint.
+   * The endpoint URL is derived by replacing the path suffix (/v1/chat/completions)
+   * with /session. If the endpoint doesn't end with the expected path, we fall
+   * back to using the origin + '/session'.
+   *
+   * Returns the token string, or throws on failure.
+   */
+  function fetchSessionToken(proxyEndpoint) {
+    var sessionUrl = proxyEndpoint;
+    if (/\/v1\/chat\/completions$/.test(proxyEndpoint)) {
+      sessionUrl = proxyEndpoint.replace(/\/v1\/chat\/completions$/, '/session');
+    } else {
+      // Fallback: try origin + '/session'
+      try {
+        var u = new URL(proxyEndpoint);
+        sessionUrl = u.origin + '/session';
+      } catch (e) {
+        // If URL parsing fails, just append /session
+        sessionUrl = proxyEndpoint.replace(/\/?$/, '/session');
+      }
+    }
+
+    return fetch(sessionUrl)
+      .then(function(r) {
+        if (!r.ok) throw new Error('Session endpoint returned ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        if (data && data.token) {
+          // Cache with 4-minute window (server TTL is 5 min)
+          _sessionToken = data.token;
+          _sessionEndpoint = proxyEndpoint;
+          _sessionExpiresAt = Date.now() + 4 * 60 * 1000;
+          return data.token;
+        }
+        throw new Error('No session token in response');
+      });
   }
 
   // ── isRetryableStatus ────────────────────────────────────────────────────
@@ -239,6 +296,8 @@
     isCancelled:       isCancelled,
     getSignal:         getSignal,
     buildHeaders:      buildHeaders,
-    isRetryableStatus: isRetryableStatus
+    isRetryableStatus: isRetryableStatus,
+    getCachedSessionToken: getCachedSessionToken,
+    fetchSessionToken: fetchSessionToken
   };
 })();

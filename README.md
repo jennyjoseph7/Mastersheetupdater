@@ -15,7 +15,7 @@ A suite of browser-based tools for automotive lead operations. Each tool is a se
 ├── .gitignore
 ├── README.md                           # This file
 │
-├── tools/                              # Tool HTML files
+├── pages/                              # Tool HTML files
 │   ├── disposition_sync_v2.html        # Pre-Sales Sync
 │   ├── post_sales_disposition.html     # Post-Sales Sync
 │   ├── recording_renamer.html          # Recording Renamer
@@ -81,7 +81,7 @@ window.JEJO_CONFIG = {
 Open any page directly in a browser — no server required:
 
 - **Landing page:** `index.html`
-- **Any tool:** `tools/dashboard.html` (or from the landing page)
+- **Any tool:** `pages/dashboard.html` (or from the landing page)
 
 > All tools work offline once assets are cached. No installation. No backend.
 
@@ -130,16 +130,16 @@ The project is designed to be deployed as a static site to any web server or CDN
 
 ## Development
 
-All tools are single-file HTML documents in `tools/`. To modify:
+All tools are single-file HTML documents in `pages/`. To modify:
 
-1. Edit the relevant `tools/*.html` file
+1. Edit the relevant `pages/*.html` file
 2. Open it directly in a browser to test
 3. No build step, no bundler, no npm install needed
 
 ### Adding a New Tool
 
-1. Create a new HTML file in `tools/`
-2. Add a link in `index.html` with `href="tools/your-tool.html"`
+1. Create a new HTML file in `pages/`
+2. Add a link in `index.html` with `href="pages/your-tool.html"`
 3. Reference assets with `../assets/` prefix (e.g., `../assets/fonts/fonts.css`)
 
 ---

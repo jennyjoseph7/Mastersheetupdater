@@ -17,7 +17,6 @@
 // Set these via Cloudflare Dashboard → Worker → Settings → Variables
 // NEVER hardcode secrets in this file!
 
-const HANDSHAKE_TOKEN_VAR = 'HANDSHAKE_TOKEN';
 const ALLOWED_ORIGINS = '*';  // ⚠ RESTRICT THIS in production: set to your frontend URL(s), e.g. ['http://localhost:5500', 'https://yourdomain.com']
 
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -25,7 +24,7 @@ const DEFAULT_UPSTREAM_TIMEOUT_MS = 90_000;
 
 // ── Rate limiting (simple in-memory per IP) ──────────────────────────────
 const rateLimitMap = new Map();
-const RATE_LIMIT = 100;     // max requests
+const RATE_LIMIT = 1000;    // max requests
 const RATE_WINDOW = 60_000; // per 60 seconds
 
 function checkRateLimit(ip) {
@@ -68,7 +67,6 @@ export default {
 
     // Read secrets from env (set via Cloudflare Dashboard → Settings → Variables)
     const NVIDIA_API_KEY = env.NVIDIA_API_KEY;
-    const HANDSHAKE_TOKEN = env.HANDSHAKE_TOKEN || 'jejo-presales-secure-handshake';
     const UPSTREAM_TIMEOUT_MS = Number(env.UPSTREAM_TIMEOUT_MS) > 0
       ? Number(env.UPSTREAM_TIMEOUT_MS)
       : DEFAULT_UPSTREAM_TIMEOUT_MS;
@@ -100,13 +98,29 @@ export default {
       });
     }
 
-    // ── Validate handshake token ────────────────────────────────────────
-    const token = request.headers.get('X-Handshake-Token');
-    if (!token || token !== HANDSHAKE_TOKEN) {
-      return jsonResponse(401, {
-        error: 'Unauthorized',
-        message: 'Missing or invalid X-Handshake-Token header.',
-      });
+    // ── Authentication ─────────────────────────────────────────────────────
+    // HANDSHAKE_TOKEN (env secret) — validate X-Handshake-Token header against it.
+    // Set HANDSHAKE_TOKEN in: Cloudflare Dashboard → Worker → Settings → Variables.
+    // Set the same value in config.js → proxyHandshakeToken.
+    const HANDSHAKE_TOKEN = env.HANDSHAKE_TOKEN;
+    if (HANDSHAKE_TOKEN) {
+      const token = request.headers.get('X-Handshake-Token');
+      if (!token || token !== HANDSHAKE_TOKEN) {
+        return jsonResponse(401, {
+          error: 'Unauthorized',
+          message: 'Missing or invalid handshake token. Set proxyHandshakeToken in config.js.',
+        });
+      }
+    }
+    if (ALLOWED_ORIGINS !== '*') {
+      const origin = request.headers.get('Origin') || request.headers.get('Referer') || '';
+      const allowed = ALLOWED_ORIGINS.split(',').map(s => s.trim());
+      if (origin && !allowed.some(o => origin.startsWith(o))) {
+        return jsonResponse(403, {
+          error: 'Forbidden',
+          message: 'Origin not allowed.',
+        });
+      }
     }
 
     // ── Validate API key is configured ──────────────────────────────────

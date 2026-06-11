@@ -12,9 +12,6 @@ window.JEJO_CONFIG = {
   // Example: "https://autonage-proxy.yourname.workers.dev"
   apiEndpoint: "",
 
-  // Optional: A custom handshake token to authenticate with your proxy
-  proxyHandshakeToken: "jejo-presales-secure-handshake",
-
   // --- OPTION 2: DIRECT NVIDIA API KEY (FALLBACK) ---
   // Use this if you are not running a proxy server. 
   nvidiaApiKey: "",
