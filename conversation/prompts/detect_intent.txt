@@ -3,7 +3,7 @@ Do NOT include markdown, explanations, or extra text.
 
 Return strictly this JSON schema:
 
-{
+{{
   "primary_intent": "string",
   "mood": "string",
   "sentiment": "positive | negative | neutral",
@@ -11,7 +11,7 @@ Return strictly this JSON schema:
   "workflow_to_trigger": "test_drive_booking_l | test_drive_feedback | test_drive_remainder | showroom_launch_l | sop_alert | none",
   "recommended_action": "string",
   "reason": "string"
-}
+}}
 
 Rules:
 
