@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev http://localhost:3456; form-action 'self' " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self' " />
 
   <script>
 
@@ -4501,6 +4501,8 @@
 
       }
 
+    try {
+
 var correctedIndices = Object.keys(correctedResults);
 
       for (var k = 0; k < correctedIndices.length; k++) {
@@ -4576,7 +4578,7 @@ var correctedIndices = Object.keys(correctedResults);
       document.getElementById('btnValidateAI').textContent = '↻ Re-run AI';
       document.getElementById('btnValidateAI').onclick = function() { validateDispositionsWithLLM(true); };
     }
-
+    }
 
 
     syncApiKeyControl();
