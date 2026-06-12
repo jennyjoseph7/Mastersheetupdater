@@ -398,7 +398,7 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
         return
     campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
     def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "Active"}))
         if not a:
             logger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
             return
