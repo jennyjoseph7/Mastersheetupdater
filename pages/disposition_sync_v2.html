@@ -264,31 +264,33 @@
           Process Both Files
 
         </button>
+          <div class="control-group">
 
-        <div class="control-group">
+            <span class="control-label">Dealership</span>
 
-          <span class="control-label">Dealership</span>
+            <div class="lang-select-wrapper">
 
-          <div class="lang-select-wrapper">
+              <select class="lang-select" id="dealerSelect" onchange="handleDealerChange()">
 
-            <select class="lang-select" id="dealerSelect" onchange="handleDealerChange()">
+                <option value="anant_cars">Anant Cars</option>
 
-              <option value="anant_cars">Anant Cars</option>
+                <option value="anant_wa">Anant WA</option>
 
-              <option value="chennai_ev">ChennaiEV</option>
-              <option value="singhal">Singhal</option>
+                <option value="chennai_ev">ChennaiEV</option>
 
-              <option value="fortune_hyryder">Fortune Hyryder</option>
+                <option value="singhal">Singhal</option>
 
-              <option value="fortune_honda">Fortune Honda</option>
+                <option value="fortune_hyryder">Fortune Hyryder</option>
 
-              <option value="stellantis_wa">Stellantis WA</option>
+                <option value="fortune_honda">Fortune Honda</option>
 
-            </select>
+                <option value="stellantis_wa">Stellantis WA</option>
+
+              </select>
+
+            </div>
 
           </div>
-
-        </div>
 
         <div class="control-group">
 
@@ -1015,6 +1017,31 @@
     const DEALER_CONFIGS = {
 
       anant_cars:      { name: 'Anant Cars',      summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
+
+      anant_wa:        { name: 'Anant WA',        summarySource: 'lead_summary',      columns: [
+        { header: 'Lead_ID', key: 'lead_id' },
+        { header: 'Full_Name', key: 'full_name' },
+        { header: 'Phone', key: 'phone' },
+        { header: 'City', key: 'city' },
+        { header: 'Pincode', key: 'pincode' },
+        { header: 'Language', key: 'language' },
+        { header: 'Lead_Source', key: 'lead_source' },
+        { header: 'Cohort', key: 'cohort' },
+        { header: 'Campaign_ID', key: 'campaign_id' },
+        { header: 'Call_Triggered', key: 'call_triggered' },
+        { header: 'Outcome', key: 'outcome' },
+        { header: 'Disposition', key: 'disposition' },
+        { header: 'SUMMARY', key: 'summary' },
+        { header: 'Conversion', key: 'conversion' },
+        { header: 'History', key: 'session_history' },
+        { header: 'Call_Date', key: 'call_date' },
+        { header: 'No. of Attempts', key: 'num_attempts' },
+        { header: 'SENTIMENT', key: 'sentiment' },
+        { header: 'Session ID', key: 'last_session_id' },
+        { header: 'Channel', key: 'channel' },
+        { header: 'Model', key: 'model' },
+        { header: 'Seating', key: 'seating' },
+      ]},
 
       chennai_ev:      { name: 'ChennaiEV',        summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
       singhal:         { name: 'Singhal',          summarySource: 'lead_summary',      columns: COMMON_COLUMNS },
@@ -2395,6 +2422,32 @@
 
 
 
+    // ─── ANANT WA HELPER FUNCTIONS ───────────────────────────────────────────────
+
+    function isAnantWAConfig() {
+      const cfg = getActiveDealerConfig();
+      return cfg.name === 'Anant WA';
+    }
+
+    function formatAnantWAFields(record) {
+      return {
+        ...record,
+        // Anant WA specific field formatting
+        conversion: '',
+        session_history: record.session_history || '',
+        last_session_id: record.last_session_id || '',
+        pincode: record.pincode?.toLowerCase() || '',
+        channel: record.channel || '',
+        num_attempts: formatNumberAttempts(record.num_attempts),
+        sentiment: record.sentiment?.toUpperCase() || '',
+      };
+    }
+
+    function formatNumberAttempts(attempts) {
+      return attempts ? `No. of Attempts` : '0';
+    }
+
+
     // ─── CORE PROCESSING ──────────────────────────────────────────────────────────
 
     async function processFiles() {
@@ -2767,6 +2820,11 @@
 
           });
 
+          // Anant WA specific processing
+          if (isAnantWAConfig()) {
+            output[output.length - 1] = formatAnantWAFields(output[output.length - 1]);
+          }
+
         }
 
 
@@ -3005,7 +3063,48 @@
 
 
 
-            var systemMsg = 'You are a fair and accurate disposition auditor for an automotive campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.';
+            var systemMsg = 'You are a fair and accurate disposition auditor for automotive Pre-Sales campaigns. ' +
+'Your job is to evaluate whether the "Current Disposition" accurately describes the call. ' +
+'You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). ' +
+'The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction.\n\n' +
+'General guidance for automotive outbound calls — use the KEY PHRASES to detect the correct disposition:\n\n' +
+'- "No Response" — only when the customer did not speak at all or the summary explicitly says "No Response" / "customer remained unresponsive" / "did not respond" / "no further conversation". ' +
+'KEY PHRASES: "no response", "did not respond", "remained unresponsive", "customer did not speak", "no further conversation", "session history is empty", "no content to summarize", "no messages were exchanged", "blank entries". ' +
+'Do NOT use "No Response" when there was actual conversation (even if the customer interrupted or declined quickly).\n' +
+'- "Audio Issue" — when the summary mentions trouble hearing the customer. ' +
+'KEY PHRASES: "could not hear", "unable to hear", "speak louder", "connection issues", "audio issues", "technical difficulties", "communication difficulties", "could not hear clearly", "failed to hear", "trouble hearing", "connectivity issues", "unable to hear the customer", "could not hear the customer", "could not hear the user", "repeated requests to speak louder", "inaudible", "difficulty hearing". ' +
+'These should be flagged if currently set to "No Response" or "Others".\n' +
+'- "Voicemail" — when the call reached an automated recording or voicemail prompt. ' +
+'KEY PHRASES: "voicemail", "automated recording", "automated message", "automated voicemail", "instructing the caller to hang up", "leave a message", "after the beep", "leave a message after the tone", "voicemail prompt", "recording is complete and the user may hang up", "prompted to leave a message", "notification indicating that the recording is complete". ' +
+'Do NOT confuse with "No Response" — voicemail means system-detected answering machine.\n' +
+'- "Invalid Lead" — when the customer says it is the wrong number or not the right person. ' +
+'KEY PHRASES: "wrong number", "not the person", "did not make an inquiry", "did not initiate the inquiry", "no knowledge of the inquiry", "expressed confusion about being contacted", "not a valid lead", "already owns the vehicle", "recipient clarified that they are not the person", "the person stated they did not inquire", "the inquiry belongs to someone else", "stated that this is a wrong number". ' +
+'Also when the customer already owns the vehicle in question.\n' +
+'- "Purchased Elsewhere" — customer explicitly states they already bought a vehicle (any brand, any dealer). ' +
+'KEY PHRASES: "already purchased", "already bought", "already booked", "congratulated him on his new car", "congratulated him on his new vehicle", "congratulated him on his purchase", "purchased a [brand]", "bought a [brand]", "informed that he has already purchased". ' +
+'NOT the same as "Not Interested" (where no purchase was made, just lack of interest). ' +
+'If both could apply, prefer "Purchased Elsewhere".\n' +
+'- "Not Interested" — customer explicitly says they do not want the vehicle, no purchase mentioned. ' +
+'KEY PHRASES: "not interested", "no longer interested", "stated they are not interested", "declined the offer", "do not want the vehicle", "not currently interested", "declined the conversation", "declined to speak", "declined further discussion", "declined the call". ' +
+'If they bought elsewhere, use "Purchased Elsewhere" which is more specific.\n' +
+'- "Language Barrier" — when the conversation centered on language preference and the campaign objective was not completed. ' +
+'KEY PHRASES: "English or Telugu", "English or Kannada", "language preference", "preferred language", "continue the conversation in English or", "asked to speak in [language]", "does not support [language]", "Hindi not supported", "language mismatch", "could not accommodate [language]". ' +
+'Only when the language preference itself stalled the conversation.\n' +
+'- "Call Disconnected" — when the call dropped mid-conversation or customer disconnected themselves. ' +
+'KEY PHRASES: "call disconnected", "customer disconnected", "call dropped", "customer hung up", "disconnected the call", "ended the call abruptly", "call was terminated", "disconnected abruptly", "the call was unsuccessful", "could not be completed", "failed to establish communication". ' +
+'NOT the same as "No Response" (no connection ever) or "Others".\n' +
+'- "Requested Callback" — customer asked to be called back at a specific time or later. ' +
+'KEY PHRASES: "requested to be called back", "asked to call back", "called back at", "reschedule", "call back later", "follow up at", "callback", "requested a callback", "asked for a callback", "agreed to reschedule", "said to call back", "requested a follow-up call", "requested to be contacted later", "asked the agent to call back". ' +
+'If they just said "not a good time" without scheduling, prefer "Purchase Postponed" or "Call Disconnected".\n' +
+'- "Others" — catch-all for interactions that had some conversation but no specific disposition signal. ' +
+'Do NOT use "Others" when a more specific disposition clearly fits. Only use when the interaction is truly ambiguous — e.g., customer just said "hello" and call ended, or generic greeting with no follow-up. ' +
+'KEY PHRASES in isolation: "customer confirmed they are available to speak", "conversation is in the initial stages", "the assistant initiated a conversation", "no further details were exchanged".\n' +
+'- "Follow Up Required" — customer needs follow-up to convince them to complete the campaign objective. ' +
+'KEY PHRASES: "follow up required", "needs convincing", "customer needs follow up", "will decide later", "asked for more information", "wants to think about it", "not ready to decide yet". ' +
+'"Purchase Postponed" is for when the customer explicitly defers the buying decision due to external reasons (funds, family, timing).\n\n' +
+'Be balanced: if the current disposition reasonably fits, mark as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch or a significantly more accurate disposition available. ' +
+'Use the KEY PHRASES as strong signals but always consider the full context of the Summary and Conversation History together.';
+
 
 
 
