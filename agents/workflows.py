@@ -281,37 +281,65 @@ class PresalesWorkflow(BaseWorkflow):
             ]
 
             subject = (
-                f"{workflow_name.replace('_', ' ').title()} | "
-                f"{insights.get('mood', 'Unknown')} | "
-                f"{insights.get('lead_id', '')} | "
+                f"CSS Alert — Service SOP Breach | "
+                f"{insights.get('customer_name', 'Unknown')} | "
+                f"{insights.get('dealership_name', 'Unknown Dealership')} | "
+                f"{insights.get('service_date', 'Today')}"
             )
 
             html = f"""
-                <p>Hi Team,</p>
+            <p>Dear Service Manager,</p>
 
-                <p><b>Workflow:</b> {workflow_name}</p>
-                <p><b>Session ID:</b> {session_id}</p>
+            <p>During a recent Customer Satisfaction Survey call, the following SOP breach was identified:</p>
 
-                <h3>Conversation Insights</h3>
+            <table style="border-collapse: collapse; width: 100%; max-width: 600px; font-family: Arial, sans-serif;">
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid #dddddd; text-align: left; padding: 8px; width: 30%;">Field</th>
+                    <th style="border: 1px solid #dddddd; text-align: left; padding: 8px; width: 70%;">Details</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Name</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('customer_name')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Vehicle Model</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('vehicle_category')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Dealership</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('dealership_name')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Service Date</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('service_date', "Unknown")}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Mood</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('mood')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Complaint Category</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('complaint_category')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Complaint Raised</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('reason')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Severity Level</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px; text-transform: capitalize;">{insights.get('priority')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Corrective Action Required</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('recommended_action')}</td>
+                </tr>
+            </table>
 
-                <p><b>Mood:</b> {insights.get('mood')}</p>
-                <p><b>Sentiment:</b> {insights.get('sentiment')}</p>
-                <p><b>Intent:</b> {insights.get('customer_intent')}</p>
-                <p><b>Priority:</b> {insights.get('priority')}</p>
-                <p><b>Recommended Action:</b> {insights.get('recommended_action')}</p>
-                <p><b>Reason:</b> {insights.get('reason')}</p>
+            <p>Please ensure the corrective action is completed within the timeline specified in the escalation matrix. This record will be tracked and reviewed during the next dealership performance review.</p>
 
-                <hr>
-
-                <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
-                <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
-
-                <h3>Conversation Summary</h3>
-                <pre>{summary}</pre>
-
-                <h3>Conversation History</h3>
-                <pre>{history}</pre>
-                """
+            <p>Regards,<br>
+            <b>{insights.get('dealership_name')} | Customer Experience Team</b></p>
+            """
 
             email_payload = {
                 "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,

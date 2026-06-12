@@ -39,15 +39,17 @@ Rules:
 
 - Negative feedback alone does NOT require escalation.
 - Always return all fields.
+- With mode also provide a brief in 3-4 words for the issue faced
 
 Return strictly this JSON schema:
 
 {{
   "primary_intent": "string",
-  "mood": "string",
+  "mood": "string (include a 3-4 word brief of the issue faced, e.g., 'Frustrated - long wait times')",
   "sentiment": "positive | negative | neutral",
+  "complaint_category": "Delivery" | "Service Quality" | "Staff Behaviour" | "None",
   "priority": "low | medium | high",
-  "workflow_to_trigger": "test_drive_booking_l | test_drive_feedback | test_drive_remainder | showroom_launch_l",
+  "workflow_to_trigger": "test_drive_booking_l | test_drive_feedback | test_drive_remainder | showroom_launch_l"
   "recommended_action": "string",
   "reason": "string"
 }}

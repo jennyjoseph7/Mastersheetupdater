@@ -279,7 +279,7 @@ def post_session_process(*args, **kwargs):
             else:
                 prompt_text = f"Conversation:\n{convo_text}"
 
-        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
+        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
         mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
         if isinstance(resp, dict):
             raw = resp.get("output") or resp.get("text") or resp.get("result")
@@ -294,9 +294,11 @@ def post_session_process(*args, **kwargs):
             except Exception:
                 analysis = {}
         primary_intent = analysis.get("primary_intent")
+        cust_num = session_mdl_obj.get("phone_number")
+        cust_name = session_mdl_obj.get("person_name")
 
         updated_lead_data["customer_intent"] = primary_intent
-
+        analysis.update({"customer_number": cust_num, "customer_name": cust_name, "dealership_name": campaign_data.get("dealership_name", "Unknown"), 'vehicle_category': campaign_data.get("vehicle_category")})
         session_update_data.update({
             "customer_intent": primary_intent,
             "customer_mood": analysis.get("mood"),
@@ -311,16 +313,7 @@ def post_session_process(*args, **kwargs):
             if campaign_objective_id:
                 try:
                     wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
-                    # objective_model = AutocrmModel('campaign_objective')
-                    # obj = objective_model.get(campaign_objective_id) or {}
-                    # objective_wfs = obj.get('workflows') or []
-                    # normalized_workflow = wf_obj._normalize(workflow_name)
-                    # for w in objective_wfs:
-                    #     if wf_obj._normalize(w) == normalized_workflow:
-                    # try:
                     wf_obj.handle_workflow(workflow_name, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification, analysis=analysis)
-                    # except Exception:
-                    #     mlogger.exception(f"Failed to handle workflow {w}")
                 except Exception:
                     mlogger.exception("Failed to load or trigger workflow based on intent")
     except Exception:
