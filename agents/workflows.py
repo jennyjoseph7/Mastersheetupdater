@@ -302,6 +302,10 @@ class PresalesWorkflow(BaseWorkflow):
                     <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('customer_name')}</td>
                 </tr>
                 <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Number</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('customer_number')}</td>
+                </tr>
+                <tr>
                     <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Vehicle Model</td>
                     <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('vehicle_category')}</td>
                 </tr>
