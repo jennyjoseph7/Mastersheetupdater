@@ -348,8 +348,8 @@ def manage_active_sessions(*args, **kwargs):
     INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by default 10 mins..
 
     mlogger.info("------------ Managing active sessions ------------")
-
-    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~"}
+    
+    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~","disposition":"failed~"}
     condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
@@ -467,7 +467,7 @@ def manage_active_sessions(*args, **kwargs):
         mlogger.info("************************************************")
         return
 
-def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,):
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
     if session_id:
@@ -496,6 +496,14 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
         else:
             conditions.append("dict->>'session_live' = %s")
             params += (session_live,)
+    if disposition:
+        if disposition.endswith('~'):
+            conditions.append("dict->>'disposition' <> %s")
+            disposition = disposition[:-1]
+            params += (disposition,)
+        else:
+            conditions.append("dict->>'disposition' = %s")
+            params += (disposition,)
 
     condition = "Where " + " AND ".join(conditions)
     return condition, params
