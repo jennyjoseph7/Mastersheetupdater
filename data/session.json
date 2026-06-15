@@ -415,7 +415,7 @@
         },
         {
             "name": "emotion_analysis",
-            "type": "text"
+            "type": "nested_object"
         },
         {
             "name": "sentiment_classification",

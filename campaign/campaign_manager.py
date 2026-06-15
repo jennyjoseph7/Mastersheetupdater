@@ -429,9 +429,8 @@ class BaseCustomCampaignManager:
                 
                 logger.info(f"Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
-                logger.info(f"sender num-------{campaign_data.get('sender')}")
-                
-                session_data=handle_session_logic(mobile_number,campaign_data.get('sender'),channel.lower(),False,campaign_d)
+                logger.info(f"Sender Number: {campaign_data.get('sender')}")
+                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d)
                 # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")

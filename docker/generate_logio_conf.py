@@ -24,11 +24,15 @@ def generate_conf(host, port, log_files, service_name):
             print("log file name formating issue, error in parsing log stream name, using fullname.")
             streamName = spl[0]
 
+        logf = os.path.abspath(logf)
+        bp, _ = os.path.splitext(logf)
+        logf = f"{bp}*"
+
         j = {}
         j["source"] = service_name
         j["stream"] = streamName
         j["config"] = {
-            "path" : os.path.abspath(logf)
+            "path" : logf
         }
         finputs.append(j)
 

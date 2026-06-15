@@ -265,6 +265,14 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
     condition = "Where " + " AND ".join(conditions)
     return condition, params
 
+def _format_mobile_number(number: str, country_code: str = "91") -> str:
+    number = str(number).strip()
+    number = hp.re.sub(r'[^0-9]', '', number)
+    number = number.lstrip("0")
+    if len(number) <= 10:
+        number = country_code + number
+    return number
+
 def get_or_create_session(data,channel=None,engaged=False,from_number=None):
     """
     Find active session or create new one.
@@ -795,7 +803,7 @@ def get_or_create_person(phone_number,dealership_id=None):
     logger.info(f"Getting or creating person for phone_number: {phone_number}")
     
     country_code=get_phone_code_from_dealership(dealership_id,False)
-    phone_number=f"{country_code}{phone_number}"
+    phone_number= _format_mobile_number(phone_number, country_code)
     logger.info(f"Get or create person for phone_number: {phone_number}")
     with get_pg_connector() as pg:
         # filters={"phone_number":phone_number,"_sort_by": "updated", "_sort_reverse": True}
