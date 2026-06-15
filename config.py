@@ -190,8 +190,8 @@ AUTOCRM_DOCUMENT_PROCESSOR_PIPELINE_SERVICE_NAME = os.environ.get('AUTOCRM_DOCUM
 # Add tuples in the below list in the format ---> ("<model_identifier>", "<model_type>")
 AI_MODELS_REQUIRED = [
     ('databricks-gpt-5.4-mini','llm'),
-    ('databricks-gpt-5-4','llm'),
-    ('databricks-gemini-3-1-flash-lite','llm'),
+    ('databricks-gpt-5.4','llm'),
+    ('databricks-gemini-3.1-flash-lite','llm'),
     ('databricks-gemini-3.5-flash','llm'),
 ]
 

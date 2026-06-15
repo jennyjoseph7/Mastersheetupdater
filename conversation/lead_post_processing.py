@@ -220,7 +220,7 @@ def post_session_process(*args, **kwargs):
     emotion_analysis = {}
 
     if messages:
-        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="databricks-gemini-3-1-flash-lite")
+        sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="databricks-gemini-3.1-flash-lite")
         aa = sentiment_agent.run()
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
@@ -280,7 +280,7 @@ def post_session_process(*args, **kwargs):
             else:
                 prompt_text = f"Conversation:\n{convo_text}"
 
-        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"databricks-gemini-3-1-flash-lite", "session_id": session_id})
+        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
         mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
         if isinstance(resp, dict):
             raw = resp.get("output") or resp.get("text") or resp.get("result")
@@ -741,7 +741,7 @@ def get_summary(session_id,session_data):
         prompt = no_summary_prompt_template.format(messages = messages)
     
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
     mlogger.info("get_summary prompt response ======= {}".format(resp))
     return resp
 
@@ -1456,10 +1456,10 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     prompt_template = get_prompt_file("disposition.txt")
     prompt = prompt_template.format(purpose=purpose, campaign_description = campaign_description, purpose_steps = purpose_steps, session_summary = session_summary, message_history = message_history, disp_details_options = details_options, example_disposition_response=example_disposition_response)
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id}, temperature = 0.2, **{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id}, temperature = 0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
 
     mlogger.info("prompt == {}".format(prompt))
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id, "temperature": 0.2})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id, "temperature": 0.2})
     # mlogger.info("disposition prompt response ======= {}".format(resp))
 
     return hp.json.loads(resp)
@@ -1541,7 +1541,7 @@ def get_appt_date_time_purpose(session_id,session_data_cache):
     datetime_format = datetime.now().strftime("%A, %B %d, %Y %I:%M:%S %p")
     prompt = prompt_template.format(campaign_objective=campaign_objective, campaign_description=campaign_description, message_history=message_history, datetime_format=datetime_format, response_example=json.dumps(response_example))
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
     mlogger.info("get_appt_date_time_purpose prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1583,7 +1583,7 @@ def get_preffered_language(session_id,session_data_cache):
     prompt = prompt_template.format(message_history=message_history, datetime_format=datetime_format, response_example= json.dumps(response_example))
 
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
     mlogger.info("get_preffered_language prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
         
@@ -1613,7 +1613,7 @@ def get_callback_date_time(session_id,session_data_cache):
     prompt_template = get_prompt_file("callback_date_time.txt")
     prompt = prompt_template.format(message_history=message_history, datetime_format=datetime_format, response_example= json.dumps(response_example))
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
     mlogger.info("get_callback_date_time prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
@@ -1652,7 +1652,7 @@ def get_extra_data(session_id,session_data_cache):
     prompt_template = get_prompt_file("extra_data.txt")
     prompt = prompt_template.format(purpose=purpose, campaign_description=campaign_description, lead_data=json.dumps(lead_data), lead_variable_campaign_type=json.dumps(lead_variable_campaign_type), message_history=json.dumps(message_history), example_data=json.dumps(example_data))
 
-    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+    resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
     mlogger.info("got extra data response as ===== {} --{}".format(resp,type(resp)))
     
     if resp and isinstance(resp,str):
@@ -1671,7 +1671,7 @@ def get_extra_data(session_id,session_data_cache):
         else:
             prompt = prompt_current_summary.format(current_summary = current_summary, message_history = message_history)
 
-        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3-1-flash-lite","session_id":session_id})
+        resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
         updated_dict["vehicle_persona_summary"] = resp
 
     return updated_dict
@@ -1872,7 +1872,7 @@ def get_disposition_classification(query = None, session_id = None, session_data
 
     prompt = prompt_template.format(campaign_purpose=purpose, campaign_description=campaign_description, purpose_steps=purpose_steps, session_summary=session_summary, message_history=message_history)
 
-    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"databricks-gemini-3-1-flash-lite"})
+    result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"databricks-gemini-3.1-flash-lite"})
     return result
 
 
