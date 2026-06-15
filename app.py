@@ -77,7 +77,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="template_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
+              schedule = "0 */2 * * *",
               add_schedule_to_queue=False
         )
         
@@ -101,7 +101,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="daily_dealership_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-             schedule = "*/10 * * * *",
+             schedule = "0 0 * * *",
               add_schedule_to_queue=False
         )
         
@@ -126,6 +126,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
+            kwargs={"dealership_id":['ambal-auto-india']},
             add_schedule_to_queue=False
         )
         
@@ -133,7 +134,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
-            schedule = "*/20 2-15 * * *", #till 9:10pm it runs..
+            schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
+            kwargs={"dealership_id":['ambal-auto-india']},
             add_schedule_to_queue=False
         )
         

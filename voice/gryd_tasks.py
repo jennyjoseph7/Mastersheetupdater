@@ -135,14 +135,10 @@ def trigger_voice_call(*args, **kwargs):
     session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
     if lead_id and config_data:
         with get_pg_connector() as pg:
-            l=list(pg.list(config_data.get("table"),{f"{config_data.get('pk')}": lead_id}))
-            if not l:
-                logger.info(f"No lead found for lead_id: {lead_id} in model: {config_data.get('table')}")
-            l=l[0] if l else {}
+            l = pg.get(config_data.get("table"), config_data.get('pk'), lead_id) or {}
             l_person_name = l.get("person_name",None)
             l_campaign_obj_name = l.get("campaign_objective_name",None)
             l_campaign_name = l.get("campaign_name",None)
-        
             session_obj = {
                 "user_id": person_obj.get("user_id"),
                 "campaign_id": campaign_id,
@@ -192,7 +188,8 @@ def trigger_voice_call(*args, **kwargs):
     if user_data.get("generate_prompt", True):
         for x in converse.get_primary_prompt(*args, **{
             "session_id" : session_data['session_id'],
-            "channel":"voice_phone"
+            "channel":"voice_phone",
+            "session_data": session_data
         }):
             
             if x.get("status") and x.get("status").lower() in ["error"]:

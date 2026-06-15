@@ -427,9 +427,10 @@ class BaseCustomCampaignManager:
             if channel.upper() in ["WHATSAPP_CHAT","RCS"]:
                 logger.info(f"[{count}] Sent {channel} message for {mobile_number}")
                 
-                logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
+                logger.info(f"Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
-                session_data=handle_session_logic(mobile_number,None,channel.lower(),False,campaign_d)
+                logger.info(f"Sender Number: {campaign_data.get('sender')}")
+                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d)
                 # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
@@ -724,8 +725,6 @@ def trigger_campaign(*args, **kwargs):
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
     lead_model = AutocrmModel(lead_table)
-
-
     total_leads = lead_model.count(**filters)
     logger.info(f"Total leads fetched: {total_leads}")
     valid_leads = 0
@@ -744,7 +743,7 @@ def trigger_campaign(*args, **kwargs):
                 continue
         else:  
             if not lead.get("phone_number"):
-                logger.info(f"Skipping pre-sales lead (no phone number): {lead_id}")
+                logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('pre_sales_lead_id')}")
                 continue
         valid_leads += 1
         logger.info(f"Valid leads processed: {valid_leads}")
@@ -1182,6 +1181,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 dealership_id=lead_data.get("dealership_id"),
                 lead_info={}
             )
+            # template_data=testing_whatsapp_template()
         except Exception as e:
             logger.error(f"Error in get_template for channel email: {str(e)}")
             update_error_to_models(
@@ -1502,50 +1502,50 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 
 def testing_whatsapp_template():
     
-    # return [
-    #     {
-    #         "sender": "917795030599",
-    #         "status": "approved",
-    #         "buttons": [
-    #             {
-    #                 "text": "Book Test Drive",
-    #                 "type": "QUICK_REPLY"
-    #             },
-    #             {
-    #                 "text": "Explore Aircross",
-    #                 "type": "QUICK_REPLY"
-    #             },
-    #             {
-    #                 "text": "Request a Call Back",
-    #                 "type": "QUICK_REPLY"
-    #             }
-    #         ],
-    #         "channel": "whatsapp_chat",
-    #         "created": 1776770802.5813954,
-    #         "updated": 1776771015.0534973,
-    #         "language": "english",
-    #         "dealer_name": "Dave AI",
-    #         "region_name": "India",
-    #         "search_term": "aircross_confirm_test_drives_for_value_advantage text english pre-sales hi person_name thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the aircross for yourself — nothing beats a real drive",
-    #         "template_id": "950110724542119",
-    #         "campaign_type": "pre-sales",
-    #         "dealership_id": "dave-ai-india",
-    #         "provider_name": "Rml",
-    #         "template_name": "aircross_confirm_test_drives_for_value_advantage",
-    #         "template_type": "text",
-    #         "template_message": "Hi {{person_name}},\n\nThank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km* \n✅ Additional benefits worth ₹1.15 Lakh ⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n",
-    #         "template_variables": [
-    #             "person_name"
-    #         ],
-    #         "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
-    #         "template_button_payloads": [
-    #             "aircross_confirm_test_drives_for_value_advantage-book_test_drive",
-    #             "aircross_confirm_test_drives_for_value_advantage-explore_aircross",
-    #             "aircross_confirm_test_drives_for_value_advantage-request_a_call_back"
-    #         ],
-    #         "communication_credentials_id": "rml-whatsapp_chat-917795030599"
-    #     }
-    # ]
+    return [
+        {
+            "sender": "919187210943",
+            "status": "approved",
+            "buttons": [
+                {
+                    "text": "Book Test Drive",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Explore Aircross",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Request a Call Back",
+                    "type": "QUICK_REPLY"
+                }
+            ],
+            "channel": "whatsapp_chat",
+            "created": 1776943306.747671,
+            "updated": 1776943306.7487023,
+            "language": "english",
+            "dealer_name": "Stellantis",
+            "region_name": "South India",
+            "search_term": "citroen_tech_and_safety_aircross text english pre-sales hi person_name thank you for showing your interest in the citroën aircross 😊 built for family powered by smart tech ✨✨ 🔹 seamless connectivity infotainment 🔹 6 airbags strong safety package comfort outside confidence inside. shall i book a test drive for you 🙂",
+            "template_id": "01kpwxjwz3g7ep0sgvny1gmmxh",
+            "campaign_type": "pre-sales",
+            "dealership_id": "stellantis-india",
+            "provider_name": "Airtel",
+            "template_name": "citroen_tech_and_safety_aircross",
+            "template_type": "text",
+            "template_message": "Hi {{person_name}}!\n\nThank you for showing your interest in the Citroën Aircross! 😊\n \nBuilt for family, powered by smart tech ✨✨\n \n🔹 Seamless connectivity & infotainment\n🔹 6 airbags + strong safety package\n \nComfort outside, confidence inside.\n \nShall I book a test drive for you? 🙂\n",
+            "template_variables": [
+                "person_name"
+            ],
+            "campaign_objective_name": "Aircross- Confirm Test Drive for Smart Cabin Tech- WhatsApp",
+            "template_button_payloads": [
+                "citroen_tech_and_safety_aircross-book_test_drive",
+                "citroen_tech_and_safety_aircross-explore_aircross",
+                "citroen_tech_and_safety_aircross-request_a_call_back"
+            ],
+            "communication_credentials_id": "airtel-whatsapp_chat-919187210943"
+        }
+    ]
     
     return "No Template Found"
 

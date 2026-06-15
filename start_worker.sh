@@ -711,3 +711,4 @@ function start_all() {
         cat $LOG_FILE 1>&2
     fi
 }
+

@@ -78,7 +78,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.ai_generation = source.get("ai_generation",True)
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier =   'azure-gpt-4o-mini' #"gcp-gemini-2.5-flash-lite" #"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'
+        self.model_identifier =   'databricks-gpt-5.4-mini' #"gcp-gemini-2.5-flash-lite" #"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'
 
     def _validate_campaign_objective(self, objective):
         """Validate campaign objective."""

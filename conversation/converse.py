@@ -306,7 +306,7 @@ def setup_session_data_cache(*args, **kwargs):
     session_id = kwargs.get("session_id")
     language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE
     with get_pg_connector() as pg:
-        session_data = pg.get("session","session_id",session_id)
+        session_data = kwargs.get("session_data", {}) or pg.get("session","session_id",session_id)
         mlogger.info("session_data fetched == {}".format(session_data))
         person_data = pg.get("person","user_id",session_data.get("user_id"))
         language = AUTOCRM_CONVERSATION_DEFAULT_LANGUAGE

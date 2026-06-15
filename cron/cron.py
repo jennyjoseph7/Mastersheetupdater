@@ -177,8 +177,7 @@ def performance_summary(from_time_ms=None):
     total_processed = 0
 
     with get_pg_connector() as pg:
-        campaigns = fetch_campaigns(pg,run_started_at_ms,from_time_ms=from_time_ms
-)
+        campaigns = fetch_campaigns(pg,run_started_at_ms,from_time_ms=from_time_ms)
 
         if not campaigns:
             mlogger.info("[CRON] No campaigns to process")
@@ -188,7 +187,9 @@ def performance_summary(from_time_ms=None):
 
         for campaign_id, campaign_type in campaigns:
             mlogger.info(f"campaign_id: {campaign_id}, campaign_type: {campaign_type}")
-
+            if not campaign_id or not campaign_type:
+                mlogger.error(f"[CRON] Invalid campaign data: campaign_id={campaign_id}, campaign_type={campaign_type}")
+                continue
             lead_model = (
                 "pre_sales_lead" if campaign_type == "pre-sales"
                 else "post_sales_lead"
@@ -347,8 +348,8 @@ def manage_active_sessions(*args, **kwargs):
     INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by default 10 mins..
 
     mlogger.info("------------ Managing active sessions ------------")
-
-    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~"}
+    
+    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~","disposition":"failed~"}
     condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
@@ -466,7 +467,7 @@ def manage_active_sessions(*args, **kwargs):
         mlogger.info("************************************************")
         return
 
-def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,):
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
     if session_id:
@@ -495,6 +496,14 @@ def apply_filters(session_id=None, user_id=None, channel=None, session_live=None
         else:
             conditions.append("dict->>'session_live' = %s")
             params += (session_live,)
+    if disposition:
+        if disposition.endswith('~'):
+            conditions.append("dict->>'disposition' <> %s")
+            disposition = disposition[:-1]
+            params += (disposition,)
+        else:
+            conditions.append("dict->>'disposition' = %s")
+            params += (disposition,)
 
     condition = "Where " + " AND ".join(conditions)
     return condition, params
@@ -540,35 +549,53 @@ def schedule_campaign_trigger(*args, **kwargs):
                 
                 
 
-@gryd.is_a_task(function_name="end_campaigns")
+@gryd.is_a_task(function_name="end_campaigns")     
 def end_campaigns():
     """
-    Ends campaigns which have end_date earlier than the current epoch time.
-
-    This function is used by the cron service to periodically end campaigns which have expired.
-    It checks both pre-sales and post-sales campaigns and sets the campaign_status to "Completed".
-
-    :return: None
-    :rtype: NoneType
+    Ends campaigns whose end_date is less than current epoch time.
     """
-    epoch_time = int(time.time())
-    where_clause = f"(dict->>'end_date')::bigint < {epoch_time}"
+    current_epoch = int(time.time())
 
-    tables = ["pre_sales_campaign", "post_sales_campaign"]
+    tables = ["pre_sales_campaign","post_sales_campaign"]
 
     with get_pg_connector() as pg:
-        for table in tables:
-            campaigns = list(pg.list(table, where_clause))
-            mlogger.info(f"Found {len(campaigns)} campaigns to end in {table}")
 
-            for campaign in campaigns:
-                pg.update(
-                    table,
-                    "campaign_id",
-                    campaign.get("campaign_id"),
-                    {"campaign_status": "Completed"},
-                )
-                        
+        for table in tables:
+
+            query = f"""
+            SELECT *
+            FROM {table}
+            WHERE (dict->>'end_date')::BIGINT < %s
+            AND (dict->>'campaign_status') = 'Active'
+            """
+
+            campaigns = list(
+                pg.fetch_all(query, [current_epoch])
+            )
+
+            mlogger.info(
+                f"Found {len(campaigns)} campaigns to end in {table}"
+            )
+
+            # for campaign in campaigns:
+
+            #     campaign_id = campaign[0]
+
+            #     mlogger.info(
+            #         f"Ending campaign_id={campaign_id} in {table}"
+            #     )
+
+            #     pg.update(
+            #         table,
+            #         "campaign_id",
+            #         campaign_id,
+            #         {
+            #             "campaign_status": "Completed"
+            #         }
+            #     )
+
+            mlogger.info(f"Completed processing for {table}")
+            
 @gryd.is_a_task(logger_param='logger', job_param='job')
 def create_campaign_ideas_for_dealerships(
         campaign_types:Union[List[str], None]=None, 
@@ -1614,7 +1641,7 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
             "id": dealership_id,
             "channels": channels
         })
-
+    mlogger.info("Got %s dealers matching with channels %s", len(dealerships), channels)
     return dealerships
 
 @gryd.is_a_task(function_name="mark_inactive_dealerships")
@@ -1719,12 +1746,18 @@ def process_lead(pg,lead, channel):
         data, lead_type = lead  
         if not data:
             return
+    
         campaign_type=data.get("campaign_type")
         lead_model="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
         lead_model_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
         lead_id=data.get(lead_model_id)
-        c_i=CHANNEL_IDENTIFIER_MAP.get(channel)
-        channel_identifier=data.get(c_i).replace("+","") if c_i and data.get(c_i) else None or None
+        channel = data.get("next_channel") if data.get("next_channel") else channel
+        if data.get("next_channel_identifier"):
+            mlogger.info("Since we have a next channel identifier %s, we are using it.", data.get("next_channel_identifier"))
+            channel_identifier=data.get("next_channel_identifier") 
+        else:
+            c_i=CHANNEL_IDENTIFIER_MAP.get(channel)
+            channel_identifier=data.get(c_i).replace("+","") if c_i and data.get(c_i) else None
         mlogger.info("[PROCESS] Processing lead %s for channel %s", lead_id,channel)
         mlogger.info("[PROCESS] channel identifier %s", channel_identifier)
         # mlogger.info("[PROCESS] lead data %s", json.dumps(data,indent=4))
@@ -1794,35 +1827,73 @@ def fetch_leads(dealership_id, channel, batch_size):
         yield _leads
         # return _leads
 
+# @gryd.is_a_task(function_name="test_campaign_workflow")
+# def test_campaign_workflow(*args, **kwargs):
+#     dealership_id = kwargs.get("dealership_id")
+#     channel = kwargs.get("channel")
+#     batch_size = kwargs.get("batch_size") or VOICE_BATCH_SIZE
+
+#     try:
+#         leads = next(fetch_leads(dealership_id, channel, batch_size))
+#     except StopIteration:
+#         leads = []
+
+#     mlogger.info(f"TEST [FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+
+#     if not leads:
+#         mlogger.info(f"TEST [EMPTY] No leads for {dealership_id} - {channel}")
+#         return
+
+#     mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
+
+#     with get_pg_connector() as pg:
+#         for lead in leads:
+#             process_lead(pg, lead, channel)
+            
+#     return {
+#         "status": "success",
+#         "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
+#         "count": len(leads)
+#     }
+
 @gryd.is_a_task(function_name="test_campaign_workflow")
 def test_campaign_workflow(*args, **kwargs):
     dealership_id = kwargs.get("dealership_id")
     channel = kwargs.get("channel")
     batch_size = kwargs.get("batch_size") or VOICE_BATCH_SIZE
-
+    max_threshold= kwargs.get("voice_max_queue_size") or VOICE_MAX_QUEUE_LENGTH
     try:
-        leads = next(fetch_leads(dealership_id, channel, batch_size))
-    except StopIteration:
-        leads = []
+        queue_length = get_queue_length(channel, dealership_id)
+        mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
+        # leads = next(fetch_leads(dealership_id, channel, batch_size))
+        if queue_length <= max_threshold:
+            leads = next(fetch_leads(dealership_id, channel, batch_size),[])
+            mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+            # mlogger.info(f"[FETCH] LEAD_DATA-->{json.dumps(leads,indent=4)}")
+            if not leads:
+                mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
+                return
+            mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
 
-    mlogger.info(f"TEST [FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
+            with get_pg_connector() as pg:
+                for lead in leads:
+                    process_lead(pg,lead, channel)
 
-    if not leads:
-        mlogger.info(f"TEST [EMPTY] No leads for {dealership_id} - {channel}")
-        return
-
-    mlogger.info(f"[PROCESS] Processing {len(leads)} leads for {dealership_id} - {channel}")
-
-    with get_pg_connector() as pg:
-        for lead in leads:
-            process_lead(pg, lead, channel)
-            
-    return {
-        "status": "success",
-        "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
-        "count": len(leads)
-    }
-
+            return {
+                "status": "success",
+                "message": f"Leads processed successfully for dealership_id={dealership_id} and channel={channel}",
+                "count": len(leads)
+            }
+        else:
+            mlogger.info(f"[SKIP] Queue({queue_length})> max_threshold({max_threshold}) for dealership={dealership_id}, channel={channel}")
+            return
+    except Exception as e:
+        mlogger.error(f"[ERROR] Failed for dealership={dealership_id}, channel={channel}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+    
 @gryd.is_a_task(function_name="process_all_dealerships_for_voice")    
 def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,voice_start_time=None,voice_end_time=None, **kwargs):  
     

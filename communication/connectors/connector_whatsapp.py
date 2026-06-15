@@ -323,20 +323,23 @@ def post_contact_status(*args, **data):
             # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
             return
         
+        filters={"message_id": message_id}
+        if phone_number:
+            filters.update({"phone_number": phone_number})
         records= list(pg.list_order_by(
                 "contact_status",
-                {"message_id": message_id, "phone_number": phone_number},
+                filters,
                 order_by="updated",
                 order="DESC"
             ))
         if not records:
             mlogger.warning(
-                f"[post_contact_status] No contact_status found for message_id={message_id} phone_number={phone_number}"
+                f"[post_contact_status] No contact_status found for filters ={filters}"
             )
             return
 
         existing = records[0]
-        mlogger.info(f"[post_contact_status] phone_number={phone_number} message_id={message_id} existing={existing}---- message_status ={existing.get('provider_status')}")
+        mlogger.info(f"[post_contact_status] filters={filters} existing={existing}---- message_status ={existing.get('provider_status')}")
         previous_status = (existing.get("provider_status") or "").lower()
         channel = existing.get("channel") or channel
 
@@ -395,7 +398,8 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
         return
     campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
     def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_status": "Active"}))
+        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "active"}))
+        # TODO:just check the above query in staging and unstable lower active seems not be working..
         if not a:
             mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
             return

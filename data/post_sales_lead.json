@@ -198,7 +198,8 @@
         {
             "name": "campaign_type",
             "type": "text",
-            "default": "post-sales"
+            "default": "post-sales",
+            "indexed": true
         },
         {
             "name": "campaign_id",
