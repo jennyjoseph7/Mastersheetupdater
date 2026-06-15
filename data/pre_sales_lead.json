@@ -254,7 +254,8 @@
         },
         {
             "name": "campaign_type",
-            "default": "pre-sales"
+            "default": "pre-sales",
+            "indexed": true
         },
         {
             "name": "campaign_sub_type",

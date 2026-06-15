@@ -66,23 +66,24 @@
             "auto_updater": true
         },
         {
-            "name": "channel",
-            "type": "text",
-            "options": [
-                "rcs",
-                "email",
-                "web_chat",
-                "web_chat_voice",
-                "fb_chat",
-                "insta_chat",
-                "twitter_chat",
-                "voice_phone",
-                "whatsapp_chat",
-                "whatsapp_voice_note",
-                "whatsapp_voice_call",
-                "zoom_bot",
-                "ms_teams"
-            ]
+          "name": "channel",
+          "type": "text",
+          "options": [
+            "rcs",
+            "email",
+            "web_chat",
+            "web_chat_voice",
+            "fb_chat",
+            "insta_chat",
+            "twitter_chat",
+            "voice_phone",
+            "whatsapp_chat",
+            "whatsapp_voice_note",
+            "whatsapp_voice_call",
+            "zoom_bot",
+            "ms_teams"
+          ],
+          "indexed": true
         },
         {
             "name": "campaign_id",
@@ -92,16 +93,12 @@
             "required": true
         },
         {
-            "name": "campaign_type",
-            "type": "text",
-            "options": [
-                "inbound",
-                "pre-sales",
-                "post-sales",
-                "dealer"
-            ],
-            "default": "inbound",
-            "required": true
+          "name": "campaign_type",
+          "type": "text",
+          "options": ["inbound", "pre-sales", "post-sales", "dealer"],
+          "default": "inbound",
+          "required": true,
+          "indexed": true
         },
         {
             "name": "campaign_model",
@@ -231,7 +228,8 @@
         {
             "name": "last_response_time",
             "type": "number",
-            "required": false
+            "required": false,
+            "indexed": true
         },
         {
             "name": "last_interaction_time",
@@ -275,12 +273,14 @@
         {
             "name": "history_updated_time",
             "type": "number",
-            "required": false
+            "required": false,
+            "indexed":true
         },
         {
             "name": "last_post_process_time",
             "type": "number",
-            "required": false
+            "required": false,
+            "indexed": true
         },
         {
             "name": "history",
@@ -291,7 +291,8 @@
             "name": "has_unprocessed_history",
             "type": "bool",
             "required": false,
-            "default": false
+            "default": false,
+            "indexed":true
         },
         {
             "name": "disposition",
@@ -414,7 +415,7 @@
         },
         {
             "name": "emotion_analysis",
-            "type": "text"
+            "type": "nested_object"
         },
         {
             "name": "sentiment_classification",
