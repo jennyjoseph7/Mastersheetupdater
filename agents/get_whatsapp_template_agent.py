@@ -59,7 +59,7 @@ class get_whatsapp_template_agent(BaseAgent):
         ))
         communication_credential = records[0]
         communication_credentials_id = communication_credential.get("communication_credentials_id")
-        logger.info("communication_credentials_id: %s", communication_credentials_id)
+        logger.info(f"communication_credentials_id -{communication_credentials_id}")
         return communication_credentials_id
 
     def slugify_disposition_detail(self,detail: str) -> str:
@@ -93,7 +93,7 @@ class get_whatsapp_template_agent(BaseAgent):
                 }
             ))
 
-        logger.info("records: %s", records)
+        logger.info(f"records--{records}")
 
         return records or []
     
@@ -102,7 +102,7 @@ class get_whatsapp_template_agent(BaseAgent):
         if isinstance(tpl_vars, list):
             return tpl_vars
         
-        logger.info("tpl_vars: %s", tpl_vars)
+        logger.info(f"tpl_vars --{tpl_vars}")
 
         if isinstance(tpl_vars, str):
             # Postgres array "{a,b,c}"
@@ -125,7 +125,7 @@ class get_whatsapp_template_agent(BaseAgent):
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
 
-        logger.info("data_attrs_list: %s", data_attrs_list)
+        logger.info(f"data_attrs_list--{data_attrs_list}")
 
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]

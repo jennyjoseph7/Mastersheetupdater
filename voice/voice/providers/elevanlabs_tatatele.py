@@ -727,7 +727,7 @@ class CallSession:
             # Start parallel readers
             async def tatatele_reader(timeout = 60):
                 logger.info(f"[{self.call_id}] TataTele reader started")
-                while True:
+                while not self.stop_event.is_set():
                     try:
                         message = await asyncio.wait_for(wb.recv(), timeout=timeout)
                         tt_msg = _loads(message)
@@ -796,7 +796,7 @@ class CallSession:
 
             async def dave_reader(timeout=60):
                 logger.info(f"[{self.call_id}] ElevenLabs reader started")
-                while True:
+                while not self.stop_event.is_set():
                     try:
                         message = await asyncio.wait_for(self.dave_ws.recv(), timeout=timeout)
                         await handle_dave_message(message)

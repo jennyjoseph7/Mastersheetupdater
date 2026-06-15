@@ -89,6 +89,9 @@ DISPOSITION_OPTIONS = {
     "converted": ["converted"],
 }
 
+DISPOSITION_LOWER = {}
+
+
 REQUIRED_RETRIGGER = {
     "switch_to_next_credential": True,
     "switch_to_next_channel": True,
@@ -131,7 +134,7 @@ CAMPAIGN_WORKFLOW = {
     "failed": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 600,
+        "delay": 1200,
         "trigger": "switch_to_next_credential"
     },
     "error": {
@@ -141,21 +144,21 @@ CAMPAIGN_WORKFLOW = {
     "attempted": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 600,
+        "delay": 1200,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
-        "retries": 0,
+        "retries": 2,
         "delay": 1200,
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
-        "retries": 0,
+        "retries": 2,
         "delay": 3600,
         "trigger": "switch_to_next_channel"
     },
     "engaged": {
-        "retries": 3,
+        "retries": 2,
         "delay": 86400,
         "trigger": "follow_up_contact"
     },
@@ -230,7 +233,9 @@ def get_highest_status(statuses: list):
     return "queued"
 
 def get_attempts(statuses: list, status: str):
-    return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) == status, statuses))
+    # In the scenario that lower status are missed or not upgraded, then we can align attempt with any of the statuses
+    statuses_lower_than = DISPOSITION_LOWER.get(status, [status])
+    return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) in statuses_lower_than, statuses))
 
 def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
     timezone = timezone or "Asia/Kolkata"
@@ -374,6 +379,8 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 if disposition in ["engaged", "converted"]:
                     attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
+                    logger.info("In current production if engaged or converted we will not follow-up: %s". disposition)
+                    return None, None, 0, None
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
                 logger.info(f"Next delay: {next_delay}")
                 #TODO: If user has requested call-back, then we should get next delay from the lead follow_up_date attribue if available

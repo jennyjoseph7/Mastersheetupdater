@@ -190,7 +190,6 @@ def performance_summary(from_time_ms=None):
             if not campaign_id or not campaign_type:
                 mlogger.error(f"[CRON] Invalid campaign data: campaign_id={campaign_id}, campaign_type={campaign_type}")
                 continue
-            
             lead_model = (
                 "pre_sales_lead" if campaign_type == "pre-sales"
                 else "post_sales_lead"
@@ -349,8 +348,8 @@ def manage_active_sessions(*args, **kwargs):
     INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by default 10 mins..
 
     mlogger.info("------------ Managing active sessions ------------")
-
-    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~","disposition": "failed~"}
+    
+    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~","disposition":"failed~"}
     condition, param = apply_filters(**filters)
 
     with get_pg_connector() as pg:
@@ -468,8 +467,7 @@ def manage_active_sessions(*args, **kwargs):
         mlogger.info("************************************************")
         return
 
-
-def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None,disposition=None):
+def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
     if session_id:
