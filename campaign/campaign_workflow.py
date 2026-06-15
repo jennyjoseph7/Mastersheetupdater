@@ -153,12 +153,12 @@ CAMPAIGN_WORKFLOW = {
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
-        "retries": 2,
+        "retries": 0,
         "delay": 3600,
         "trigger": "switch_to_next_channel"
     },
     "engaged": {
-        "retries": 2,
+        "retries": 0,
         "delay": 86400,
         "trigger": "follow_up_contact"
     },
