@@ -1,10 +1,11 @@
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel
 import config
 from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
@@ -458,6 +459,40 @@ def update_channel_identifier(user_id,**data):
         mlogger.info(f"[update_channel_identifier] Updated channel identifier for user_id={user_id} with payload={person_payload}")
     return 
 
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None,skip_workflow=False):
+    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    mlogger.info(f"Skip workflow flag={skip_workflow} for campaign_id: {campaign_id} and lead_id: {lead_id}")
+    if skip_workflow:
+        mlogger.info(f"Skipping workflow for campaign_id:{campaign_id}, lead_id:{lead_id}")
+        return
+
+    if not campaign_id:
+        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        return
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+    def _do_db_work(pg_conn):
+        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "Active"}))
+        # TODO:just check the above query in staging and unstable lower active seems not be working..
+        if not a:
+            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+            return
+        # TODO:before calling ananth task check the campaign status and then call.. 
+        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        gryd.create_async_task(
+            "determine_campaign_next_action",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
+        )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+  
+  
 @gryd.is_a_task(function_name="update_lead_disposition_and_post_billing")
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
     mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
@@ -491,7 +526,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
     lead_table = (
         "post_sales_lead"
-        if campaign_type == "post-sales"
+        if campaign_type == "post-sales" 
         else "pre_sales_lead"
     )
     lead_pk = (
@@ -567,7 +602,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 lead_key,
                 update_payload,
             )
-        
+        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{data.get('channel_identifier')},{lead.get('disposition')},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),data.get("channel_identifier"),lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:

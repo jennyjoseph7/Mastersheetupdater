@@ -520,10 +520,12 @@ def schedule_campaign_trigger(*args, **kwargs):
     :return: None
     """
     epoch_time = int(time.time())
-
+    batch_size= kwargs.get("batch_size", 50)
+    
     where_clause = f"""
     (dict->>'campaign_status') = 'Planned'
     AND (dict->>'start_date')::bigint <= {epoch_time}
+    LIMIT {batch_size}
     """
 
     tables = ["pre_sales_campaign", "post_sales_campaign"]
@@ -537,14 +539,16 @@ def schedule_campaign_trigger(*args, **kwargs):
             
             for campaign in campaigns:
                 mlogger.info(f"Triggering campaign for- campaign_id: {campaign.get('campaign_id')} , campaign_type: {campaign.get('campaign_type')} , delearship_id: {campaign.get('dealership_id')}")
-                
+            
+            #TODO: we need to get the channels, check the queue length and if the queue length is <= max_thresold we proceed and get leads and trigger the campaign, else we skip and wait for the next cron cycle to trigger the campaign.
+            # and at the end change the campaign status to "Active"
+            
             #     pg.update(
             #         table,
             #         "campaign_id",
             #         campaign.get("campaign_id"),
             #         {"campaign_status": "Active"},
             #     )
-                # call trigger task
                 
                 
                 

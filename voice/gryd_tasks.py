@@ -145,6 +145,7 @@ def trigger_voice_call(*args, **kwargs):
                 "campaign_type": campaign_type,
                 "lead_id": lead_id,
                 "status":"attempted",
+                "origin":"outbound", #added an origin
                 "channel": channel,
                 "person_name": l_person_name or None,
                 "campaign_objective_name": l_campaign_obj_name or None,

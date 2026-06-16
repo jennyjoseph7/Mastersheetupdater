@@ -66,7 +66,7 @@ NullEmptyCheck=[None, "", "null", "None"]
 
 # common functions
 
-def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None):
+def handle_session_logic(phone_number,from_number=None,channel=None,engaged=False,campaign_details=None, from_web_chat=False, profile_name=None,origin="outbound"):
     
     """
     Handles the session logic for a user. Checks and creates the user first and then session.
@@ -123,7 +123,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                 "campaign_type": campaign_details.get("campaign_type"),
                 "lead_id": campaign_details.get("lead_id"),
             })
-            session = get_or_create_session(payload,channel,engaged)
+            session = get_or_create_session(payload,channel,engaged,origin=origin)
             if session is None:
                 return {"error": "Failed to create or retrieve session"}
             return {**session}
@@ -214,7 +214,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
                     _ = list(pg.list("communication_credential", {"dealership_id": dealership_id}))
 
             logger.info(f"TEST BEFORE SESSION FINAL PAYLOAD: {payload}")
-            session = get_or_create_session(payload,channel,engaged,from_number)
+            session = get_or_create_session(payload,channel,engaged,from_number,origin=origin)
             if session is None:
                 return {"error": "Failed to create or retrieve session"}
             return {**session, "dealership_id": dealership_id}
@@ -228,7 +228,7 @@ def handle_session_logic(phone_number,from_number=None,channel=None,engaged=Fals
         #     dealership_id = creds[0].get("dealership_id")
         #     payload["dealership_id"] = dealership_id
 
-        new_session = get_or_create_session(payload, channel, engaged,from_number)
+        new_session = get_or_create_session(payload, channel, engaged,from_number,origin=origin)
         if new_session is None:
             return {"error": "Failed to create or retrieve session"}
         session.update(new_session)
@@ -570,7 +570,7 @@ def handle_session_post_process_or_end(session_id,pg,history_updated,can_call_po
 #         return s 
 
 
-def create_new_session(data, channel=None, engaged=False,from_number=None):
+def create_new_session(data, channel=None, engaged=False,from_number=None,origin="outbound"):
     """
 Create a new session based on the provided data, channel, and engaged flag.
 
@@ -610,14 +610,15 @@ Returns:
         "email_name":data.get("email")
     }
     now = time.time()
-
+    
+    data['origin'] = origin
     with get_pg_connector() as pg:
         campaign_data = {}
 
         # Handling engaged (inbound) scenario
         if engaged:
             logger.info("User initiated conversation → inbound session. NEW USER..")
-
+            data["origin"] = "inbound"
             campaign_model = (
                 "pre_sales_campaign"
                 if campaign_type == "pre-sales"
@@ -685,6 +686,7 @@ Returns:
 
         logger.info(f"session_data for new session: {json.dumps(session,indent=4)}")
         logger.info(f"Session created for user_id: {user_id} → session_id: {session_id}")
+        logger.info(f"origin for the session is {data.get('origin')}")
         # updating lead last_session_channel 
         lead_id = session.get("lead_id")
         if not lead_id:

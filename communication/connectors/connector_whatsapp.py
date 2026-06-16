@@ -317,10 +317,9 @@ def post_contact_status(*args, **data):
                 args=[incoming_status],
                 kwargs={"user_id": user_id , **data},
             )
-            mlogger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
+            # mlogger.info(f"[post_contact_status] New contact_status created for incoming_status={incoming_status}.Also calling next determine_campaign_next_action--{json.dumps(data,indent=4)}")
             
-            call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=data.get("skip_workflow", False))
-            # update_lead_disposition(pg, incoming_status,user_id=user_id, **data) 
+            # call_next_campaign_workflow_task(data.get("campaign_id"),data.get("campaign_type"),data.get("lead_id"),data.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=data.get("skip_workflow", False))
             return
         
         filters={"message_id": message_id}
@@ -361,9 +360,7 @@ def post_contact_status(*args, **data):
                 contact_status_id,
                 payload
             )
-            mlogger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}. Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
-            # mlogger.info(f"Skip workflow value: {data.get('skip_workflow')}")
-            call_next_campaign_workflow_task(payload.get("campaign_id"),payload.get("campaign_type"),payload.get("lead_id"),payload.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=payload.get("skip_workflow", False))
+            mlogger.info(f"[post_contact_status] contact_status created with incoming_status={incoming_status} and contact_status_id={contact_status_id}.")
 
         # post billing obj
         should_bill = (channel in ["whatsapp_chat"]
@@ -374,6 +371,7 @@ def post_contact_status(*args, **data):
         mlogger.info(f"[post_contact_status] should_bill={should_bill} | message_id={message_id} | prev={previous_status} → incoming={incoming_status}")
         
         # mlogger.info(f"Checking data for lead_disposition- Payload--{json.dumps(payload,indent=4)}")
+        
         # updating lead disposition
         gryd.create_async_task(
             "update_lead_disposition_and_post_billing",
@@ -381,44 +379,14 @@ def post_contact_status(*args, **data):
             args=[incoming_status],
             kwargs={ "should_bill":should_bill,"post_template_message":True,**payload} 
         )
-        # update_lead_disposition(pg,incoming_status,**payload)
 
-    return 
+        # mlogger.info(f"[post_contact_status] Also calling next determine_campaign_next_action in--{json.dumps(data,indent=4)}")
+        # call_next_campaign_workflow_task(payload.get("campaign_id"),payload.get("campaign_type"),payload.get("lead_id"),payload.get("channel"),data.get(channel_identifier),incoming_status,pg=pg,skip_workflow=payload.get("skip_workflow", False))
+
+    return
 
 
-def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None,skip_workflow=False):
-    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-    mlogger.info(f"Skip workflow flag={skip_workflow} for campaign_id: {campaign_id} and lead_id: {lead_id}")
-    if skip_workflow:
-        mlogger.info(f"Skipping workflow for campaign_id:{campaign_id}, lead_id:{lead_id}")
-        return
 
-    if not campaign_id:
-        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        return
-    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
-    def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "active"}))
-        # TODO:just check the above query in staging and unstable lower active seems not be working..
-        if not a:
-            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
-            return
-        # TODO:before calling ananth task check the campaign status and then call.. 
-        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
-        gryd.create_async_task(
-            "determine_campaign_next_action",
-            AUTOCRM_CAMPAIGN_SERVICE_NAME,
-            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
-            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
-        )
-        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
-
-    if pg:
-        _do_db_work(pg)
-    else:
-        with get_pg_connector() as pg_conn:
-            _do_db_work(pg_conn)
-  
 # @gryd.is_a_task(function_name="check_or_create_session")
 # def check_or_create_session(phone_number, campaign_details, from_web_chat): 
 #     return BaseWebhookConverter().handle_session_logic(phone_number, campaign_details, from_web_chat)
