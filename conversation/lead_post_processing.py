@@ -18,6 +18,7 @@ from communication.common_functions import get_communication_credential,generate
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
+import autocrm_validator as auto_val
 import time
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 THREADS_PER_SESSION = 0.1
@@ -363,6 +364,8 @@ def post_session_process(*args, **kwargs):
                 mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
+        session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
