@@ -273,7 +273,7 @@ def _format_mobile_number(number: str, country_code: str = "91") -> str:
         number = country_code + number
     return number
 
-def get_or_create_session(data,channel=None,engaged=False,from_number=None):
+def get_or_create_session(data,channel=None,engaged=False,from_number=None,origin="outbound"):
     """
     Find active session or create new one.
     data: This is a dictionary that contains the data needed to create or find a session. It is expected to have the following keys:
@@ -336,7 +336,7 @@ def get_or_create_session(data,channel=None,engaged=False,from_number=None):
                 )
                 # TODO: call it as a function end_session_and_post_process(**{"session_id":sessions[0].get("session_id"),"pg":pg})
                 # create new session
-                s=create_new_session(data,channel,engaged,from_number)
+                s=create_new_session(data,channel,engaged,from_number,origin=origin)
                 return s
             else:
                 logger.info("Session has exisiting campaign_id. So we are returning the existing session.")
@@ -378,7 +378,7 @@ def get_or_create_session(data,channel=None,engaged=False,from_number=None):
         logger.info(f"No Existing session found. Creating a new one..")
         logger.info(f"CREATE NEW SESSION CHECKING engaged--{engaged}")
         # Create new session
-        s=create_new_session(data,channel,engaged,from_number)
+        s=create_new_session(data,channel,engaged,from_number,origin=origin)
         
         return s
     
