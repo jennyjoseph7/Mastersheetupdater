@@ -28,6 +28,7 @@ jobs:
           # init a fresh git repo and push an initial commit.
           git clone --depth 1 --branch main $REPO_URL staging-deploy 2>/dev/null || {
             echo "Staging repo is empty — initializing..."
+            rm -rf staging-deploy
             mkdir -p staging-deploy
             cd staging-deploy
             git init -b main
