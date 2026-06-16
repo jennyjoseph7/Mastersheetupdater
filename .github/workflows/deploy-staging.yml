@@ -29,7 +29,7 @@ jobs:
 
       - name: Deploy to staging repo
         env:
-          # 1. Create a repo called "-Mastersheetupdater-staging" on GitHub
+          # 1. Create a repo called "Mastersheetupdater-staging" on GitHub
           # 2. Create a classic Personal Access Token with "repo" scope:
           #    https://github.com/settings/tokens
           # 3. Add it as a secret here:
@@ -42,7 +42,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Force-push the staging branch contents to the staging repo's main branch
-          REPO="${{ github.repository_owner }}/-Mastersheetupdater-staging"
+          REPO="${{ github.repository_owner }}/Mastersheetupdater-staging"
           git push --force \
             "https://x-access-token:${TOKEN}@github.com/${REPO}.git" \
             staging:main
@@ -53,7 +53,7 @@ jobs:
           echo "╔══════════════════════════════════════════════════════════╗"
           echo "║  Staging deployed!                                     ║"
           echo "║                                                         ║"
-          echo "║  https://${OWNER}.github.io/-Mastersheetupdater-staging/ ║"
+          echo "║  https://${OWNER}.github.io/Mastersheetupdater-staging/ ║"
           echo "║                                                         ║"
           echo "║  (Make sure GitHub Pages is enabled on the staging repo)║"
           echo "╚══════════════════════════════════════════════════════════╝
