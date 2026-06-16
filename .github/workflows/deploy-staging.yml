@@ -3,8 +3,6 @@ name: Deploy Staging
 on:
   push:
     branches: [staging]
-
-  # Allows you to also trigger manually from the Actions tab
   workflow_dispatch:
 
 jobs:
@@ -14,46 +12,49 @@ jobs:
       group: staging-deploy
       cancel-in-progress: true
     steps:
-      - name: Checkout staging branch
+      - name: Checkout original repo (staging branch)
         uses: actions/checkout@v4
         with:
           ref: staging
+          path: original
 
-      - name: Check staging PAT secret is set
-        run: |
-          if [ -z "${{ secrets.STAGING_PAT }}" ]; then
-            echo "::error::STAGING_PAT secret is not set."
-            echo "::error::Add it in: Settings → Secrets and variables → Actions → New repository secret"
-            exit 1
-          fi
+      - name: Checkout staging repo with PAT
+        uses: actions/checkout@v4
+        with:
+          repository: jennyjoseph7/Mastersheetupdater-staging
+          token: ${{ secrets.STAGING_PAT }}
+          path: staging-deploy
 
-      - name: Deploy to staging repo
-        env:
-          # 1. Create a repo called "Mastersheetupdater-staging" on GitHub
-          # 2. Create a classic Personal Access Token with "repo" scope:
-          #    https://github.com/settings/tokens
-          # 3. Add it as a secret here:
-          #    Settings → Secrets and variables → Actions → New repository secret
-          #    Name: STAGING_PAT
-          TOKEN: ${{ secrets.STAGING_PAT }}
+      - name: Copy files and push to staging
         run: |
-          # Configure git
+          # Sync all files from original to staging (except .git and the staging checkout)
+          rsync -av --delete \
+            --exclude='original' \
+            --exclude='.git' \
+            ./original/ ./staging-deploy/
+
+          cd staging-deploy
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Force-push the staging branch contents to the staging repo's main branch
-          REPO="${{ github.repository_owner }}/Mastersheetupdater-staging"
-          git push --force \
-            "https://x-access-token:${TOKEN}@github.com/${REPO}.git" \
-            staging:main
+          # Only commit if there are changes
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Deploy staging $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git push origin main
+            echo "DEPLOYED=true" >> $GITHUB_ENV
+          else
+            echo "No changes to deploy"
+            echo "DEPLOYED=false" >> $GITHUB_ENV
+          fi
 
       - name: Print staging URL
         run: |
           OWNER="${{ github.repository_owner }}"
           echo "╔══════════════════════════════════════════════════════════╗"
           echo "║  Staging deployed!                                     ║"
-          echo "║                                                         ║"
+          echo "║                                                        ║"
           echo "║  https://${OWNER}.github.io/Mastersheetupdater-staging/ ║"
-          echo "║                                                         ║"
-          echo "║  (Make sure GitHub Pages is enabled on the staging repo)║"
-          echo "╚══════════════════════════════════════════════════════════╝
+          echo "║                                                        ║"
+          echo "║  (Enable Pages in staging repo: Settings → Pages)      ║"
+          echo "╚══════════════════════════════════════════════════════════╝"
