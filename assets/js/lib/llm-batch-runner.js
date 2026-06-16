@@ -92,17 +92,12 @@
     state.cooldownUntil = Date.now() + (retryAfterMs || state.gapMs);
   }
 
-  var NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-  var OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-
-  function isProxyEndpoint(endpoint) {
-    return endpoint !== NVIDIA_ENDPOINT && endpoint !== OPENROUTER_ENDPOINT;
-  }
+  function isProxyEndpoint() { return true; }
 
   function getConfiguredModel() {
     var cfg = window.JEJO_CONFIG || {};
     if (typeof window.getLlmModel === 'function') return window.getLlmModel();
-    return window.NVIDIA_MODEL || cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+    return cfg.grydModel || 'gcp-gemini-3.1-flash-lite-preview';
   }
 
   // ── main runner ──────────────────────────────────────────────────────────
@@ -214,11 +209,14 @@
           }
           if (aborted) return { ok: false, reason: 'Aborted' };
 
+          // Reserve slot immediately to prevent race condition
+          activeRequests++;
+
           // wait the backoff if it's a retry attempt
           if (attempt > 0) {
             var backoffMs = jitter(Math.min(15000, 2000 * Math.pow(2, attempt - 1)));
             await sleep(backoffMs);
-            if (aborted) return { ok: false, reason: 'Aborted' };
+            if (aborted) { activeRequests--; return { ok: false, reason: 'Aborted' }; }
           }
 
           // stagger request starts to avoid instant burst collisions
@@ -232,7 +230,7 @@
             lastRequestStart = now;
           }
 
-          if (aborted) return { ok: false, reason: 'Aborted' };
+          if (aborted) { activeRequests--; return { ok: false, reason: 'Aborted' }; }
 
           var controller = window.AbortController ? new window.AbortController() : null;
           var timeoutId = null;
@@ -241,27 +239,24 @@
             activeControllers.add(controller);
           }
 
-          activeRequests++;
           try {
             var endpoint = typeof window.getApiEndpoint === 'function'
               ? window.getApiEndpoint()
-              : NVIDIA_ENDPOINT;
+              : (cfg.grydEndpoint || 'http://localhost:3456') + '/gryd/v1/chat/completions';
 
             var headers = {};
             if (typeof buildHeaders === 'function') {
               headers = buildHeaders() || {};
             } else {
-              // default: NVIDIA API or proxy
+              // default: Gryd headers
               headers['Content-Type'] = 'application/json';
               headers['Accept'] = 'application/json';
-              if (isProxyEndpoint(endpoint)) {
-                var cfg = window.JEJO_CONFIG || {};
-                var ht = (cfg.proxyHandshakeToken || '').trim();
-                if (ht) headers['X-Handshake-Token'] = ht;
-              } else {
-                var apiKey = typeof window.getApiKey === 'function' ? window.getApiKey() : '';
-                if (apiKey) headers['Authorization'] = 'Bearer ' + apiKey;
-              }
+              var cfg = window.JEJO_CONFIG || {};
+              headers['X-GRYD-TOKEN'] = sessionStorage.getItem('gryd_token') || '';
+              headers['X-GRYD-SESSION-ID'] = sessionStorage.getItem('gryd_session_id') || '';
+              headers['X-GRYD-ENTERPRISE-ID'] = sessionStorage.getItem('gryd_enterprise_id') || 'autocrm';
+              headers['X-GRYD-SIGNUP-TOKEN'] = cfg.grydSignupToken || '';
+              headers['X-GRYD-APPLICATION-ID'] = 'autocrm';
             }
 
             var bodyObj = {
@@ -425,6 +420,8 @@
           fromCache: false,
           aborted: aborted
         });
+      }).catch(function (err) {
+        reject(err);
       });
     });
   }

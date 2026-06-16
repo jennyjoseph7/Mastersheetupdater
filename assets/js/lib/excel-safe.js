@@ -16,7 +16,8 @@
  */
 window.excelSafe = function excelSafe(v) {
   var s = String(v ?? '');
-  if (/^[=+\-@]/.test(s)) return "'" + s;
+  var trimmed = s.replace(/^[\s\x00-\x1F]+/, '');
+  if (/^[=+\-@]/.test(trimmed)) return "'" + s;
   return s;
 };
 

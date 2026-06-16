@@ -358,9 +358,9 @@
     }
 
     .btn-success {
-      background: linear-gradient(135deg, var(--success), #3ecf8e);
-      color: #082018;
-      box-shadow: 0 4px 16px rgba(90, 215, 161, 0.2);
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #08181b;
+      box-shadow: 0 4px 16px rgba(249, 115, 22, 0.2);
     }
 
     .btn-secondary {
@@ -495,7 +495,7 @@
     }
 
     .green {
-      color: var(--success);
+      color: var(--accent);
     }
 
     .amber {
@@ -818,8 +818,8 @@
       letter-spacing: 0.03em;
     }
     .ai-badge.verified {
-      color: var(--success);
-      background: var(--success-soft);
+      color: var(--accent);
+      background: var(--accent-soft);
     }
     .ai-badge.corrected {
       color: var(--warn);
@@ -833,6 +833,7 @@
     .ai-key-control {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.45rem;
       flex-wrap: wrap;
       padding: 0.35rem;
@@ -889,7 +890,11 @@
       transition: all 0.3s ease;
     }
 
-    .api-key-status.ok { color: var(--success); }
+    .api-key-status.ok {
+      color: var(--success);
+      text-shadow: 0 0 8px rgba(99, 214, 163, 0.4);
+      animation: pulse-proxy 2s ease-in-out infinite;
+    }
     .api-key-status.warn { color: var(--warn); }
     .api-key-status.err { color: var(--danger); }
 
@@ -903,8 +908,8 @@
       text-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
     }
     @keyframes pulse-proxy {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(0.98); }
+      0%, 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 8px rgba(99, 214, 163, 0.4); }
+      50% { opacity: 0.85; transform: scale(0.97); text-shadow: 0 0 16px rgba(99, 214, 163, 0.7); }
     }
   
     /* ── AI Validation Status Bar ─────────────────────────────────────── */
@@ -942,7 +947,7 @@
       color: var(--text);
       white-space: nowrap;
     }
-    .ai-status-msg.ok { color: var(--success); }
+    .ai-status-msg.ok { color: var(--accent); }
     .ai-status-msg.err { color: var(--danger); }
     .ai-status-badge {
       font-family: var(--mono);
@@ -955,14 +960,14 @@
       color: var(--accent);
     }
     .ai-status-badge.corrected {
-      background: var(--success-soft);
-      border-color: rgba(90, 215, 161, 0.25);
-      color: var(--success);
+      background: var(--accent-soft);
+      border-color: rgba(249, 115, 22, 0.25);
+      color: var(--accent);
     }
     .ai-status-badge.done {
-      background: var(--success-soft);
-      border-color: rgba(90, 215, 161, 0.25);
-      color: var(--success);
+      background: var(--accent-soft);
+      border-color: rgba(249, 115, 22, 0.25);
+      color: var(--accent);
     }
     .ai-status-badge.err {
       background: var(--danger-soft);
@@ -987,7 +992,7 @@
       transition: width 0.3s ease;
     }
     .ai-status-fill.ok {
-      background: linear-gradient(90deg, var(--success), #3ecf8e);
+      background: linear-gradient(90deg, var(--accent), var(--accent-dim));
     }
     .ai-status-fill.err {
       background: var(--danger);

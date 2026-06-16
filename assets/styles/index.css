@@ -19,13 +19,17 @@
   --accent6-soft: rgba(244, 114, 182, 0.13);
   --accent7: #3b82f6;
   --accent7-soft: rgba(59, 130, 246, 0.13);
+  --accent8: #5eead4;
+  --accent8-soft: rgba(94, 234, 212, 0.12);
   --success: #63d6a3;
   --card-hover-shadow-green: 0 24px 70px rgba(34, 197, 94, 0.1);
   --card-hover-shadow-pink: 0 24px 70px rgba(244, 114, 182, 0.1);
   --card-hover-shadow-blue: 0 24px 70px rgba(59, 130, 246, 0.1);
+  --card-hover-shadow-teal: 0 24px 70px rgba(94, 234, 212, 0.1);
   --card-hover-border-green: rgba(34, 197, 94, 0.4);
   --card-hover-border-pink: rgba(244, 114, 182, 0.4);
   --card-hover-border-blue: rgba(59, 130, 246, 0.4);
+  --card-hover-border-teal: rgba(94, 234, 212, 0.4);
   --text: #f4f0e8;
   --text-dim: #aeb8c3;
   --text-muted: #6f7b88;
@@ -68,13 +72,17 @@
   --accent6-soft: rgba(219, 39, 119, 0.08);
   --accent7: #2563eb;
   --accent7-soft: rgba(37, 99, 235, 0.08);
+  --accent8: #0d9488;
+  --accent8-soft: rgba(13, 148, 136, 0.08);
   --success: #1a9960;
   --card-hover-shadow-green: 0 16px 48px rgba(22, 163, 74, 0.1);
   --card-hover-shadow-pink: 0 16px 48px rgba(219, 39, 119, 0.1);
   --card-hover-shadow-blue: 0 16px 48px rgba(37, 99, 235, 0.1);
+  --card-hover-shadow-teal: 0 16px 48px rgba(13, 148, 136, 0.1);
   --card-hover-border-green: rgba(22, 163, 74, 0.35);
   --card-hover-border-pink: rgba(219, 39, 119, 0.35);
   --card-hover-border-blue: rgba(37, 99, 235, 0.35);
+  --card-hover-border-teal: rgba(13, 148, 136, 0.35);
   --text: #1a1e26;
   --text-dim: #4a5568;
   --text-muted: #8896a6;
@@ -242,6 +250,34 @@ h1 {
   text-overflow: ellipsis;
 }
 
+/* ── SIGN OUT BUTTON ─────────────────────────────────────────────── */
+.signout-btn {
+  position: fixed;
+  top: 1.25rem;
+  right: 4.5rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 0.25s;
+  z-index: 30;
+}
+
+.signout-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+[data-theme="light"] .signout-btn {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 /* ── THEME TOGGLE ───────────────────────────────────────────────── */
 .theme-toggle {
   position: fixed;
@@ -337,6 +373,11 @@ h1 {
   box-shadow: var(--card-hover-shadow-blue);
 }
 
+.tool-card.teal:hover {
+  border-color: var(--card-hover-border-teal);
+  box-shadow: var(--card-hover-shadow-teal);
+}
+
 .tool-icon {
   width: 48px;
   height: 48px;
@@ -388,6 +429,16 @@ h1 {
   color: var(--accent7);
 }
 
+.tool-icon.teal {
+  background: var(--accent8-soft);
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  color: var(--accent8);
+}
+
+[data-theme="light"] .tool-icon.teal {
+  border-color: rgba(13, 148, 136, 0.25);
+}
+
 [data-theme="light"] .tool-icon.green {
   border-color: rgba(22, 163, 74, 0.25);
 }
@@ -437,6 +488,7 @@ h1 {
 .tool-card.green:hover .tool-arrow { color: var(--accent5); }
 .tool-card.pink:hover .tool-arrow { color: var(--accent6); }
 .tool-card.blue:hover .tool-arrow { color: var(--accent7); }
+.tool-card.teal:hover .tool-arrow { color: var(--accent8); }
 
 footer {
   margin-top: 3rem;

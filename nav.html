@@ -49,20 +49,3 @@
     Recording Renamer
   </a>
 </nav>
-<script>
-(function() {
-  var nav = document.querySelector('.header-nav');
-  if (!nav) return;
-  var parts = window.location.pathname.split('/');
-  var pageName = parts.pop() || parts.slice(-2, -1)[0] || 'index.html';
-  nav.querySelectorAll('a[data-page]').forEach(function(a) {
-    if (a.getAttribute('data-page') === pageName || (pageName === 'index.html' && a.getAttribute('href') === 'index.html')) {
-      a.className = 'nav-link active';
-      a.setAttribute('href', '#');
-    } else if (pageName === '' || pageName === 'index.html') {
-      // On landing page, no nav link should be active, remove active class
-      a.className = 'nav-link';
-    }
-  });
-})();
-</script>

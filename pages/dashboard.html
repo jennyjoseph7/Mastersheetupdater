@@ -14,19 +14,9 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev; form-action 'self'; " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
 
-  <script>
-
-    (function() {
-
-      var theme = localStorage.getItem('jejo-theme') || 'dark';
-
-      document.documentElement.setAttribute('data-theme', theme);
-
-    })();
-
-  </script>
+  <script src="../assets/js/init.js"></script>
 
   <title>Campaign Dashboard — AutoNage</title>
 
@@ -38,13 +28,15 @@
 
   <script src="../config.js?v=20260610"></script>
 
-  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
 
-  <script src="../assets/lib/llm-batch-runner.js?v=20260610-ratelimit"></script>
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
 
-  <script src="../assets/lib/html2canvas.min.js"></script>
+  <script src="../assets/js/lib/llm-batch-runner.js?v=20260610-ratelimit"></script>
 
-  <script src="../assets/lib/jspdf.umd.min.js"></script>
+  <script src="../assets/js/vendor/html2canvas.min.js"></script>
+
+  <script src="../assets/js/vendor/jspdf.umd.min.js"></script>
 
   <link rel="stylesheet" href="../assets/styles/dashboard.css" />
 
@@ -80,7 +72,7 @@
       <div class="header-right">
 
         <div id="navContainer"></div>
-<script>fetch("../nav.html").then(function(r){return r.text()}).then(function(h){document.getElementById("navContainer").innerHTML=h;});</script>
+<script src="../assets/js/nav-init.js"></script>
 
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
 
@@ -134,20 +126,8 @@
 
           <option value="MDY">MM/DD/YYYY</option>
 
-        </select>
-
-        <div class="ai-key-control" title="When saved, call summaries are sent to NVIDIA API for Mistral classification.">
-
-          <span class="mode-label">AI Key</span>
-
-          <input id="openRouterApiKey" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
-
-          <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
-
-          <button type="button" class="api-key-btn subtle" onclick="clearNvidiaApiKey()">Clear</button>
-
-          <span class="api-key-status" id="apiKeyStatus">Optional</span>
-
+        </select>        <div class="ai-key-control">
+          <span class="api-key-status ok" id="apiKeyStatus">✓ AI Active</span>
         </div>
 
       </div>
@@ -1213,12 +1193,9 @@
 
     /* ═══════════════════════════════════════════════════════════════════════
 
-       LLM CONFIG — NVIDIA / Mistral
+       LLM CONFIG — GRYD AI
 
        ═══════════════════════════════════════════════════════════════════════ */
-
-    const NVIDIA_DIRECT_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-    const OPENROUTER_DIRECT_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
     function getConfigNumber(key, fallback) {
       var cfg = window.JEJO_CONFIG || {};
@@ -1228,14 +1205,10 @@
 
     function getLlmModel() {
       var cfg = window.JEJO_CONFIG || {};
-      return cfg.nvidiaModel || cfg.openRouterModel || 'mistralai/mistral-medium-3.5-128b';
+      return cfg.grydModel || 'gcp-gemini-3.1-flash-lite-preview';
     }
 
-    function isProxyEndpoint(endpoint) {
-      return endpoint !== NVIDIA_DIRECT_ENDPOINT && endpoint !== OPENROUTER_DIRECT_ENDPOINT;
-    }
-
-    var NVIDIA_MODEL = getLlmModel();
+    function isProxyEndpoint() { return true; }
 
     const LLM_BATCH_SIZE = getConfigNumber('llmBatchSize', 12);
 
@@ -1257,217 +1230,21 @@
 
     let _aiStatusTimer = null;
 
-    const LLM_CACHE_VERSION = 'nvidia-dispo-v7';
-
-    const NVIDIA_KEY_STORAGE = 'llm-api-key';
-    let _inMemoryApiKey = localStorage.getItem(NVIDIA_KEY_STORAGE) || '';
-
-
+    const LLM_CACHE_VERSION = 'gryd-dispo-v1';
 
     function getApiEndpoint() {
-
-      if (window.JEJO_CONFIG && window.JEJO_CONFIG.apiEndpoint) {
-
-        const url = window.JEJO_CONFIG.apiEndpoint.trim();
-
-        if (url && url !== 'YOUR_PROXY_URL_HERE') return url;
-
-      }
-
-      return NVIDIA_DIRECT_ENDPOINT;
-
+      var cfg = window.JEJO_CONFIG || {};
+      return (cfg.grydEndpoint || 'http://localhost:3456') + '/gryd/v1/chat/completions';
     }
 
+    function getApiKey() { return 'GRYD_ACTIVE'; }
 
-
-    function getApiKey() {
-
-      if (isProxyEndpoint(getApiEndpoint())) {
-
-        return 'PROXY_ACTIVE';
-
+    function syncApiKeyControl() {
+      var status = document.getElementById('apiKeyStatus');
+      if (status) {
+        status.textContent = '✓ AI Active';
+        status.className = 'api-key-status ok';
       }
-
-      if (_inMemoryApiKey) return _inMemoryApiKey;
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const typedKey = input ? input.value.trim() : '';
-
-      if (typedKey) {
-
-        _inMemoryApiKey = typedKey;
-
-        return typedKey;
-
-      }
-
-      if (window.JEJO_CONFIG && (window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey)) {
-
-        const key = String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim();
-
-        if (key && key !== 'YOUR_NVIDIA_API_KEY_HERE') return key;
-
-      }
-
-      var saved = (localStorage.getItem(NVIDIA_KEY_STORAGE) || '').trim();
-      if (saved) _inMemoryApiKey = saved;
-      return saved;
-
-    }
-
-
-
-    function syncApiKeyControl(message, tone) {
-
-      const container = document.querySelector('.ai-key-control');
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const status = document.getElementById('apiKeyStatus');
-
-      const saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
-
-      const clearBtn = container ? container.querySelector('button.subtle') : null;
-
-
-
-      const endpoint = getApiEndpoint();
-
-      const isProxy = isProxyEndpoint(endpoint);
-
-      
-
-      const configuredKey = window.JEJO_CONFIG
-        ? String(window.JEJO_CONFIG.nvidiaApiKey || window.JEJO_CONFIG.openRouterApiKey || '').trim()
-        : '';
-
-      const keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
-        ? configuredKey
-        : '';
-
-      
-
-      const isAutoConfigured = isProxy || keyFromConfig;
-
-
-
-      if (isAutoConfigured) {
-
-        if (input) input.style.display = 'none';
-
-        if (saveBtn) saveBtn.style.display = 'none';
-
-        if (clearBtn) clearBtn.style.display = 'none';
-
-        
-
-        if (status) {
-
-          if (isProxy) {
-
-            status.textContent = '✓ AI Active (Secure Proxy)';
-
-            status.className = 'api-key-status ok active-proxy';
-
-            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
-
-          } else {
-
-            status.textContent = '✓ AI Active (Configured)';
-
-            status.className = 'api-key-status ok';
-
-          }
-
-        }
-
-      } else {
-
-        if (input) input.style.display = '';
-
-        if (saveBtn) saveBtn.style.display = '';
-
-        if (clearBtn) clearBtn.style.display = '';
-
-        
-
-        const hasSavedKey = !!_inMemoryApiKey;
-
-        if (input) {
-
-          input.value = '';
-
-          input.placeholder = hasSavedKey ? 'NVIDIA key saved' : 'NVIDIA API key';
-
-        }
-
-        if (status) {
-
-          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
-
-          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
-
-          status.style.animation = '';
-
-        }
-
-      }
-
-    }
-
-
-
-    function saveNvidiaApiKey() {
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const key = input ? input.value.trim() : '';
-
-      if (!key) {
-
-        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
-
-        return;
-
-      }
-
-      _inMemoryApiKey = key;
-
-      localStorage.setItem(NVIDIA_KEY_STORAGE, key);
-
-      syncApiKeyControl('Saved locally', 'ok');
-
-    }
-
-
-
-    function useTypedApiKeyForRun() {
-
-      const input = document.getElementById('openRouterApiKey');
-
-      const key = input ? input.value.trim() : '';
-
-      if (!key) return false;
-
-      _inMemoryApiKey = key;
-
-      syncApiKeyControl('Saved locally', 'ok');
-
-      return true;
-
-    }
-
-
-
-    function clearNvidiaApiKey() {
-
-      localStorage.removeItem(NVIDIA_KEY_STORAGE);
-
-      _inMemoryApiKey = '';
-
-      syncApiKeyControl('Cleared', 'warn');
-
     }
 
 
@@ -1550,7 +1327,7 @@
 
         }
 
-        if (txt) txt.textContent = msg || 'Analyzing with Mistral... ' + current + '/' + total;
+        if (txt) txt.textContent = msg || 'Analyzing with AI... ' + current + '/' + total;
 
         if (dot) dot.style.background = isError ? 'var(--danger)' : 'var(--accent)';
 
@@ -1647,18 +1424,6 @@
       s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
       s = s.replace(/"/g, "'");
-
-      s = s.replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
-
-      s = s.replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
-
-      s = s.replace(/you\s+are\s+(now|not\s+required\s+to)/gi, '[REDACTED]');
-
-      s = s.replace(/system\s+(prompt|message|instruction)/gi, '[REDACTED]');
-
-      s = s.replace(/\bDAN\b|do\s+anything\s+now/gi, '[REDACTED]');
-
-      s = s.replace(/output\s+(format|as|in)\s+json/i, '[REDACTED]');
 
       if (s.length > LLM_PROMPT_CHAR_LIMIT) s = s.substring(0, LLM_PROMPT_CHAR_LIMIT) + '...[truncated]';
 
@@ -1786,46 +1551,22 @@
 
        ═══════════════════════════════════════════════════════════════════════ */
 
-    function buildNvidiaHeaders(apiKey) {
-
-      var endpoint = getApiEndpoint();
-
-      var isProxy = isProxyEndpoint(endpoint);
-
-      var headers = {
-
+    function buildHeaders() {
+      var cfg = window.JEJO_CONFIG || {};
+      return {
         'Content-Type': 'application/json',
-
-        'Accept': 'application/json'
-
+        'Accept': 'application/json',
+        'X-GRYD-TOKEN': sessionStorage.getItem('gryd_token') || '',
+        'X-GRYD-SESSION-ID': sessionStorage.getItem('gryd_session_id') || '',
+        'X-GRYD-ENTERPRISE-ID': sessionStorage.getItem('gryd_enterprise_id') || 'autocrm',
+        'X-GRYD-SIGNUP-TOKEN': cfg.grydSignupToken || '',
+        'X-GRYD-APPLICATION-ID': 'autocrm'
       };
-
-      if (isProxy) {
-
-        // Send static handshake token directly -- no session endpoint needed.
-        var cfg = window.JEJO_CONFIG || {};
-        var handshakeToken = (cfg.proxyHandshakeToken || '').trim();
-        if (handshakeToken) headers['X-Handshake-Token'] = handshakeToken;
-
-      } else {
-
-        headers['Authorization'] = 'Bearer ' + apiKey;
-
-        headers['X-Title'] = 'AutoNage Dashboard';
-
-        var origin = (window.location && window.location.origin) ? window.location.origin : '';
-
-        if (/^https?:\/\//i.test(origin)) headers['HTTP-Referer'] = origin;
-
-      }
-
-      return headers;
-
     }
 
 
 
-    async function fetchLlmCompletion(apiKey, body, timeoutMs) {
+    async function fetchLlmCompletion(body, timeoutMs) {
 
       var controller = new AbortController();
 
@@ -1833,9 +1574,8 @@
 
       try {
 
-        var headers = buildNvidiaHeaders(apiKey);
+        var headers = buildHeaders();
         console.log('[AI Debug] POSTing to:', getApiEndpoint());
-        console.log('[AI Debug] Request headers:', headers);
 
         var res = await fetch(getApiEndpoint(), {
 
@@ -1897,7 +1637,7 @@
 
 
 
-    function isRetryableNvidiaError(status) {
+    function isRetryableApiError(status) {
 
       return status === 408 || status === 409 || status === 425 || status === 429 ||
 
@@ -1907,15 +1647,15 @@
 
 
 
-    function isNonRetryableNvidiaErrorMessage(message) {
+    function isNonRetryableApiErrorMessage(message) {
 
-      var m = String(message || '').match(/^NVIDIA\s+(\d+)/);
+      var m = String(message || '').match(/^API\s+(\d+)/);
 
       if (!m) return false;
 
       var status = Number(m[1]);
 
-      return status >= 400 && status < 500 && !isRetryableNvidiaError(status);
+      return status >= 400 && status < 500 && !isRetryableApiError(status);
 
     }
 
@@ -1995,11 +1735,22 @@
 
     function parseLlmJsonResults(text, summaries) {
 
+      try {
+        var fullParsed = JSON.parse(text);
+        if (typeof fullParsed === 'string') {
+          text = fullParsed;
+        } else if (Array.isArray(fullParsed)) {
+          return normalizeLlmResults(fullParsed, summaries);
+        }
+      } catch(e) {}
+
       var cleaned = String(text || '')
 
         .replace(/```(?:json)?\s*/gi, '')
 
         .replace(/\s*```/g, '')
+
+        .replace(/\\"/g, '"')
 
         .replace(/"rowIndex":\s*#/g, '"rowIndex":')
 
@@ -2109,7 +1860,7 @@
 
       _aiStatusStartTime = Date.now();
 
-      updateAiStatus(0, batches.length, 'Starting NVIDIA classification...');
+      updateAiStatus(0, batches.length, 'Starting AI classification...');
 
       
 
@@ -2151,7 +1902,7 @@
 
               system: systemPrompt,
 
-              user: 'Classify these ' + batch.length + ' call summaries:\n\n' + rowsPrompt,
+              user: 'Classify these ' + batch.length + ' call summaries:\n\n' + window.USER_DATA_DELIMITER + '\n' + rowsPrompt + '\n' + window.USER_DATA_END_DELIMITER,
 
               temperature: 0.1,
 
@@ -2258,7 +2009,7 @@
           return { rowIndex: +idx, dispositions: flat[idx] };
         });
         
-        var finalRes = { results: llmResults, engine: 'nvidia' };
+        var finalRes = { results: llmResults, engine: 'gryd' };
         try { localStorage.setItem(cacheKey, JSON.stringify(finalRes)); } catch(cacheErr) {}
         return finalRes;
 
@@ -2309,13 +2060,13 @@
 
       try {
 
-        const response = await fetchLlmCompletion(apiKey, {
+        const response = await fetchLlmCompletion({
 
-            model: NVIDIA_MODEL,
+            model: getLlmModel(),
 
             messages: [
 
-              { role: 'system', content: 'You are a campaign analyst. Analyze customer themes and return a concise summary and per-theme recommended actions. Output ONLY valid JSON.' },
+              { role: 'system', content: 'You are a campaign analyst. Analyze customer themes and return a concise summary and per-theme recommended actions. Output ONLY valid JSON.' + window.INJECTION_GUARD },
 
               { role: 'user', content: prompt }
 
@@ -2421,9 +2172,9 @@
 
       if (topThemes.length > 0) {
 
-        const themeDesc = topThemes.map(t => `<strong>${t.count}</strong> ${t.label.toLowerCase()}`).join(', ');
+        const themeDesc = topThemes.map(t => `<strong>${t.count}</strong> ${esc(t.label.toLowerCase())}`).join(', ');
 
-        if (topThemes[0].explanation && topThemes[0].interpretation) { parts.push(`The dominant customer signals are: ${themeDesc}. ${topThemes[0].explanation}. This affects conversion because ${topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1)}`); } else { parts.push(`The dominant customer signals are: ${themeDesc}.`); }
+        if (topThemes[0].explanation && topThemes[0].interpretation) { parts.push(`The dominant customer signals are: ${themeDesc}. ${esc(topThemes[0].explanation)}. This affects conversion because ${esc(topThemes[0].interpretation.charAt(0).toLowerCase() + topThemes[0].interpretation.slice(1))}`); } else { parts.push(`The dominant customer signals are: ${themeDesc}.`); }
 
       }
 
@@ -2693,7 +2444,7 @@
 
       document.getElementById('healthScore').className = 'health-score ' + healthClass;
 
-      document.getElementById('execNarrative').innerHTML = summary;
+      document.getElementById('execNarrative').textContent = summary;
 
     }
 
@@ -2713,7 +2464,7 @@
 
         chip.className = 'insight-chip ' + (ins.tone || 'info');
 
-        chip.innerHTML = '<span class="chip-dot"></span> ' + ins.label + ': <strong>' + ins.value + '</strong>';
+        chip.innerHTML = '<span class="chip-dot"></span> ' + esc(ins.label) + ': <strong>' + esc(ins.value) + '</strong>';
 
         el.appendChild(chip);
 
@@ -2777,7 +2528,7 @@
 
             <div class="funnel-dropoff-grid">
 
-              ${dropoffEntries.map(([cat, count]) => `<div class="funnel-dropoff-item"><strong>${cat}</strong> (${count})</div>`).join('')}
+              ${dropoffEntries.map(([cat, count]) => `<div class="funnel-dropoff-item"><strong>${esc(cat)}</strong> (${count})</div>`).join('')}
 
             </div>
 
@@ -2821,7 +2572,7 @@
 
           <div class="disp-row">
 
-            <span class="disp-label" title="${cat}">${cat}</span>
+            <span class="disp-label" title="${esc(cat)}">${esc(cat)}</span>
 
             <div class="disp-track"><div class="disp-fill ${colorClass}" style="width:${width}%"></div></div>
 
@@ -2955,11 +2706,11 @@
 
         <div class="anomaly-card">
 
-          <div class="anomaly-severity ${a.severity}">${a.severity === 'high' ? '!' : 'i'}</div>
+          <div class="anomaly-severity ${esc(a.severity)}">${a.severity === 'high' ? '!' : 'i'}</div>
 
-          <div class="anomaly-text">${a.text}</div>
+          <div class="anomaly-text">${esc(a.text)}</div>
 
-          <span class="anomaly-action">${a.action}</span>
+          <span class="anomaly-action">${esc(a.action)}</span>
 
         </div>
 
@@ -2989,7 +2740,7 @@
 
         <div class="comp-row">
 
-          <span class="comp-name">${name}</span>
+          <span class="comp-name">${esc(name)}</span>
 
           <div class="comp-bar"><div class="comp-bar-fill" style="width:${(count / maxCount * 100).toFixed(0)}%"></div></div>
 
@@ -3023,7 +2774,7 @@
 
           <div class="stat-val">${count}</div>
 
-          <div class="stat-label">Requested ${lang}</div>
+          <div class="stat-label">Requested ${esc(lang)}</div>
 
         </div>
 
@@ -3073,7 +2824,7 @@
 
           <div class="src-row">
 
-            <span class="src-name" title="${s.name}">${s.name}</span>
+            <span class="src-name" title="${esc(s.name)}">${esc(s.name)}</span>
 
             <div class="src-bar"><span class="src-bar-fill ${tone}" style="width:${w}%"></span></div>
 
@@ -3091,7 +2842,7 @@
 
       narrative.innerHTML = srcData.best
 
-        ? `<strong>${srcData.best.name}</strong> leads with ${srcData.best.connRate}% connected rate (${srcData.best.connected}/${srcData.best.total}). ${srcData.worst ? srcData.worst.name + ' has ' + srcData.worst.invalidRate + '% invalid rate.' : ''}`
+        ? `<strong>${esc(srcData.best.name)}</strong> leads with ${srcData.best.connRate}% connected rate (${srcData.best.connected}/${srcData.best.total}). ${srcData.worst ? esc(srcData.worst.name) + ' has ' + srcData.worst.invalidRate + '% invalid rate.' : ''}`
 
         : '';
 
@@ -3145,7 +2896,7 @@
 
           <div class="blk-row">
 
-            <span class="blk-reason" title="${reason}">${reason}</span>
+            <span class="blk-reason" title="${esc(reason)}">${esc(reason)}</span>
 
             <div class="blk-track"><span class="blk-fill" style="width:${w}%"></span></div>
 
@@ -3233,15 +2984,15 @@
 
               <span class="voice-pct">${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%</span>
 
-              <span class="voice-label">${t.label}</span>
+              <span class="voice-label">${esc(t.label)}</span>
 
             </div>
 
-            <div class="voice-signal">${t.explanation}</div>
+            <div class="voice-signal">${esc(t.explanation)}</div>
 
             ${excerpts}
 
-            <div class="voice-interp">${t.interpretation}</div>
+            <div class="voice-interp">${esc(t.interpretation)}</div>
 
             ${extras.join('')}
 
@@ -3321,7 +3072,7 @@
 
 
 
-      const prompt = `As a senior campaign analyst, generate 3-5 specific, actionable recommendations based on this data. For each: specify what to do, why (with data support), and estimated impact. Be specific — mention customer segments, vehicle models, locations, or timeframes if applicable.\n\n${summary}\n\nRespond ONLY with a valid JSON array: [{"action":"...","reason":"...","impact":"..."}]`;
+      const prompt = `As a senior campaign analyst, generate 3-5 specific, actionable recommendations based on this data. For each: specify what to do, why (with data support), and estimated impact. Be specific — mention customer segments, vehicle models, locations, or timeframes if applicable.\n\n${window.USER_DATA_DELIMITER}\n${summary}\n${window.USER_DATA_END_DELIMITER}\n\nRespond ONLY with a valid JSON array: [{"action":"...","reason":"...","impact":"..."}]`;
 
 
 
@@ -3342,13 +3093,13 @@
 
       try {
 
-        const response = await fetchLlmCompletion(apiKey, {
+        const response = await fetchLlmCompletion({
 
-            model: NVIDIA_MODEL,
+            model: getLlmModel(),
 
             messages: [
 
-              { role: 'system', content: 'You are a campaign analyst. Generate 3-5 specific, actionable recommendations. Each must include: action (what to do), reason (why, data-backed), and impact (estimated improvement). Be specific — mention locations, vehicle models, customer segments, or timeframes. Output ONLY valid JSON array.' },
+              { role: 'system', content: 'You are a campaign analyst. Generate 3-5 specific, actionable recommendations. Each must include: action (what to do), reason (why, data-backed), and impact (estimated improvement). Be specific — mention locations, vehicle models, customer segments, or timeframes. Output ONLY valid JSON array.' + window.INJECTION_GUARD },
 
               { role: 'user', content: prompt }
 
@@ -3516,9 +3267,9 @@
 
         <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
 
-          <div class="phase-card"><div class="phase-label">Early Phase</div><div class="phase-value">${trends.firstLabel}</div><div class="phase-stat">Avg ${trends.firstAvg.toFixed(0)} calls/day</div></div>
+          <div class="phase-card"><div class="phase-label">Early Phase</div><div class="phase-value">${esc(trends.firstLabel)}</div><div class="phase-stat">Avg ${trends.firstAvg.toFixed(0)} calls/day</div></div>
 
-          <div class="phase-card ${dirClass}"><div class="phase-label">Late Phase</div><div class="phase-value">${trends.secondLabel}</div><div class="phase-stat">Avg ${trends.secondAvg.toFixed(0)} calls/day</div></div>
+          <div class="phase-card ${dirClass}"><div class="phase-label">Late Phase</div><div class="phase-value">${esc(trends.secondLabel)}</div><div class="phase-stat">Avg ${trends.secondAvg.toFixed(0)} calls/day</div></div>
 
           <div class="phase-card ${dirClass}"><div class="phase-label">Change</div><div class="phase-value" style="font-size:1.3rem;">${dirSymbol} ${Math.abs(trends.pctChange)}%</div><div class="phase-stat">${dirLabel}</div></div>
 
@@ -3660,7 +3411,10 @@
 
     fileDash.addEventListener('change', () => {
 
-      if (fileDash.files.length) handleFile(fileDash.files[0]);
+      if (fileDash.files.length) {
+        if (!validateFileSize(fileDash.files[0])) { fileDash.value = ''; return; }
+        handleFile(fileDash.files[0]);
+      }
 
     });
 
@@ -3860,7 +3614,7 @@
           var preTotal = preThemeList.reduce(function(a, t) { return a + t.count; }, 0);
           var preTopTheme = preThemeList.length > 0 ? preThemeList[0].label : 'General';
           updateAiStatus(0, 0, '');
-                    var preResult = { themes: preThemeList, total: preTotal, topTheme: preTopTheme, engine: classificationEngine || 'nvidia' };
+                    var preResult = { themes: preThemeList, total: preTotal, topTheme: preTopTheme, engine: classificationEngine || 'gryd' };
           try { localStorage.setItem(cacheKey, JSON.stringify(preResult)); } catch(ce) {}
           return preResult;
         } else {
@@ -4032,7 +3786,7 @@
 
         // Hide AI status on success
         updateAiStatus(0, 0, '');
-        return { themes: themeList, total: total, topTheme: topTheme, engine: 'nvidia' };
+        return { themes: themeList, total: total, topTheme: topTheme, engine: 'gryd' };
 
         }
 
@@ -4914,7 +4668,7 @@ async function generateDashboard() {
 
       if (chipEl) {
 
-        chipEl.innerHTML = chips.map(c => `<span class="anomaly-chip ${c.tone}">${c.label}: <strong>${c.value}</strong></span>`).join('');
+        chipEl.innerHTML = chips.map(c => `<span class="anomaly-chip ${esc(c.tone)}">${esc(c.label)}: <strong>${esc(c.value)}</strong></span>`).join('');
 
         chipEl.style.display = chips.length ? 'flex' : 'none';
 
@@ -5428,9 +5182,9 @@ async function generateDashboard() {
 
           <span class="chart-bar-val">${count}</span>
 
-          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${displayDate}: ${count} calls"></div>
+          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${esc(displayDate)}: ${count} calls"></div>
 
-          <span class="chart-bar-label">${displayDate}</span>
+          <span class="chart-bar-label">${esc(displayDate)}</span>
 
         `;
 
@@ -6779,7 +6533,7 @@ async function generateDashboard() {
         var execEl = document.getElementById('execSummary');
         if (execEl) { execEl.style.display = ''; execEl.className = 'intel-banner slide-up ' + healthClass; }
         var badge = document.getElementById('analysisEngineBadge');
-        if (badge) { badge.textContent = themes.engine === 'nvidia' ? 'AI ANALYSIS' : themes.engine === 'cache' ? 'CACHED AI ANALYSIS' : 'LOCAL KEYWORD ANALYSIS'; }
+        if (badge) { badge.textContent = themes.engine === 'gryd' ? 'AI ANALYSIS' : themes.engine === 'cache' ? 'CACHED AI ANALYSIS' : 'LOCAL KEYWORD ANALYSIS'; }
         document.getElementById('storyHeadline').textContent = headline;
         document.getElementById('execNarrative').innerHTML = execNarrative;
         var hsEl = document.getElementById('healthScore');

@@ -6,19 +6,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https: http://localhost:3456; form-action 'self' " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https: https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " />
   <script>
     (function () {
       var theme = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
+  <script>
+    (function() {
+      function requireAuth() {
+        var token = sessionStorage.getItem('gryd_token');
+        var expiry = sessionStorage.getItem('gryd_expiry');
+        if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
+          window.location.replace('../login.html');
+          return false;
+        }
+        return true;
+      }
+      requireAuth();
+      window.addEventListener('pageshow', function() { requireAuth(); });
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') requireAuth();
+      });
+      window.addEventListener('unload', function() {});
+    })();
+  </script>
   <title>Recording Renamer - AutoNage</title>
   <meta name="description" content="Rename local call recordings from a processed Pre-Sales Sync export." />
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
-  <script src="../assets/lib/xlsx.full.min.js"></script>
-  <script src="../assets/lib/jszip.min.js"></script>
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
+  <script src="../assets/js/vendor/jszip.min.js"></script>
   <link rel="stylesheet" href="../assets/styles/recording-renamer.css" />
 </head>
 
@@ -34,7 +54,7 @@
       </div>
       <div class="header-right">
         <div id="navContainer"></div>
-<script>fetch("../nav.html").then(function(r){return r.text()}).then(function(h){document.getElementById("navContainer").innerHTML=h;});</script>
+<script>loadNavSafe("navContainer");</script>
         <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
           <svg class="icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
           <svg class="icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
@@ -593,10 +613,30 @@
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    function isAllowedRecordingUrl(url) {
+      if (!url || typeof url !== 'string') return false;
+      try {
+        var parsed = new URL(url);
+        if (parsed.protocol !== 'https:') return false;
+        // Block private/internal IPs to prevent SSRF
+        var host = parsed.hostname;
+        if (host === 'localhost' || host === '127.0.0.1' || host === '::1' ||
+            host === '0.0.0.0' || host.startsWith('10.') || host.startsWith('192.168.') ||
+            host.startsWith('172.') || host.endsWith('.local') || host.endsWith('.internal')) {
+          return false;
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
     function buildFetchUrl(originalUrl) {
       if (useCorsProxy) {
         var proxyUrl = getCorsProxyUrl();
         if (proxyUrl) {
+          if (!isAllowedRecordingUrl(originalUrl)) {
+            console.warn('Blocked recording URL (SSRF prevention):', originalUrl);
+            return null;
+          }
           return proxyUrl + '?url=' + encodeURIComponent(originalUrl);
         }
         // Proxy mode on but no URL configured — toggle off silently
@@ -612,6 +652,7 @@
       let lastError = null;
       let lastTimedOut = false;
       var fetchUrl = buildFetchUrl(row.url);
+      if (!fetchUrl) return { ok: false, error: 'URL blocked by security policy' };
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         if (onAttempt) onAttempt(attempt, maxAttempts);
@@ -893,6 +934,7 @@
     setupDropZone('dataZone', 'dataInput', files => {
       const file = files[0];
       if (!file) return;
+      if (!validateFileSize(file)) return;
       dataFile = file;
       document.getElementById('dataZone').classList.add('has-file');
       document.getElementById('dataStatus').className = 'dz-status ok';

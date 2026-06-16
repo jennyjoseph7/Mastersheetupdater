@@ -77,7 +77,7 @@
       if (!row || row.every(function (c) { return window.cellToString(c) === ''; })) continue;
       var obj = { __rowIndex: i, __raw: [] };
       headers.forEach(function (h, j) {
-        if (h) obj[h] = window.cellToString(row[j]);
+        if (h && !DANGEROUS_KEYS[h]) obj[h] = window.cellToString(row[j]);
         obj.__raw.push(window.cellToString(row[j]));
       });
       result.push(obj);
@@ -91,6 +91,9 @@
     return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
   window.escapeHtml = window.esc; // alias
+
+  // Property names that must not be used as object keys from spreadsheet headers
+  var DANGEROUS_KEYS = { '__proto__': 1, 'constructor': 1, 'prototype': 1, 'toString': 1, 'valueOf': 1, 'hasOwnProperty': 1 };
 
   // ── CLEAN / LOWER ───────────────────────────────────────────────────────
   window.clean = function (value) {

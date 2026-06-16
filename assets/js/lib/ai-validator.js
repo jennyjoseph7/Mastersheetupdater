@@ -83,8 +83,12 @@
 
     if (cor && correctedResults) {
       var count = 0;
-      for (var k in correctedResults) {
-        if (correctedResults.hasOwnProperty(k)) count++;
+      if (correctedResults instanceof Map) {
+        count = correctedResults.size;
+      } else {
+        for (var k in correctedResults) {
+          if (correctedResults.hasOwnProperty(k)) count++;
+        }
       }
       if (count > 0) {
         cor.style.display = 'inline';
@@ -114,8 +118,12 @@
     // Count corrections
     var correctedCount = 0;
     if (correctedResults) {
-      for (var k in correctedResults) {
-        if (correctedResults.hasOwnProperty(k)) correctedCount++;
+      if (correctedResults instanceof Map) {
+        correctedCount = correctedResults.size;
+      } else {
+        for (var k in correctedResults) {
+          if (correctedResults.hasOwnProperty(k)) correctedCount++;
+        }
       }
     }
 
@@ -126,14 +134,24 @@
       if (fill) { fill.style.width = '0%'; fill.className = 'ai-status-fill err'; }
       if (bat)  bat.className = 'ai-status-badge err';
 
-      var dismissFn = 'document.getElementById(\'aiValidationStatus\').style.display=\'none\'';
-      var rerunHtml = rerunFn
-        ? '<button class="ai-status-btn primary" onclick="(' + rerunFn.toString() + ')()">\u21bb Run again</button>'
-        : '';
       if (act) {
-        act.innerHTML =
-          '<button class="ai-status-btn" onclick="' + dismissFn + '">Dismiss</button>' +
-          rerunHtml;
+        act.textContent = '';
+        var dismissBtn = document.createElement('button');
+        dismissBtn.className = 'ai-status-btn';
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.addEventListener('click', function () {
+          var el = document.getElementById('aiValidationStatus');
+          if (el) el.style.display = 'none';
+        });
+        act.appendChild(dismissBtn);
+
+        if (typeof rerunFn === 'function') {
+          var rerunBtn = document.createElement('button');
+          rerunBtn.className = 'ai-status-btn primary';
+          rerunBtn.textContent = '\u21bb Run again';
+          rerunBtn.addEventListener('click', rerunFn);
+          act.appendChild(rerunBtn);
+        }
       }
 
       _controller = null;
@@ -168,11 +186,23 @@
 
     // Actions: Dismiss + Re-run
     if (act) {
-      var dismissHtml = '<button class="ai-status-btn" onclick="document.getElementById(\'aiValidationStatus\').style.display=\'none\'">Dismiss</button>';
-      var rerunHtml2 = rerunFn
-        ? '<button class="ai-status-btn primary" onclick="(' + rerunFn.toString() + ')()">\u21bb Re-run AI</button>'
-        : '';
-      act.innerHTML = dismissHtml + rerunHtml2;
+      act.textContent = '';
+      var dismissBtn2 = document.createElement('button');
+      dismissBtn2.className = 'ai-status-btn';
+      dismissBtn2.textContent = 'Dismiss';
+      dismissBtn2.addEventListener('click', function () {
+        var el = document.getElementById('aiValidationStatus');
+        if (el) el.style.display = 'none';
+      });
+      act.appendChild(dismissBtn2);
+
+      if (typeof rerunFn === 'function') {
+        var rerunBtn2 = document.createElement('button');
+        rerunBtn2.className = 'ai-status-btn primary';
+        rerunBtn2.textContent = '\u21bb Re-run AI';
+        rerunBtn2.addEventListener('click', rerunFn);
+        act.appendChild(rerunBtn2);
+      }
     }
 
     _controller = null;

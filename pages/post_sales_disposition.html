@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com https://autnongageleadoperations.jennyjosephofc1.workers.dev https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self' " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " />
 
   <script>
 
@@ -36,12 +36,32 @@
 
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
 
-  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
+  <script>
+    (function() {
+      function requireAuth() {
+        var token = sessionStorage.getItem('gryd_token');
+        var expiry = sessionStorage.getItem('gryd_expiry');
+        if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
+          window.location.replace('../login.html');
+          return false;
+        }
+        return true;
+      }
+      requireAuth();
+      window.addEventListener('pageshow', function() { requireAuth(); });
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') requireAuth();
+      });
+      window.addEventListener('unload', function() {});
+    })();
+  </script>
 
   <script src="../assets/js/lib/history-helpers.js"></script>
 
   <script src="../assets/js/lib/llm-batch-runner.js?v=20260610-ratelimit"></script>
 
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
 
   <link rel="stylesheet" href="../assets/styles/post-sales-disposition.css" />
@@ -95,7 +115,7 @@
       <div class="header-right">
 
         <div id="navContainer"></div>
-<script>fetch("../nav.html").then(function(r){return r.text()}).then(function(h){document.getElementById("navContainer").innerHTML=h;});</script>
+<script>loadNavSafe("navContainer");</script>
 
         <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
 
@@ -289,18 +309,8 @@
 
         </div>
 
-        <div class="ai-key-control" title="Paste your NVIDIA API key for AI disposition validation.">
-
-          <span class="control-label" style="font-size:0.72rem;font-weight:700;color:var(--text-dim);">AI Key</span>
-
-          <input id="nvidiaApiKeyInput" class="api-key-input" type="password" placeholder="NVIDIA API key" autocomplete="off" spellcheck="false">
-
-          <button type="button" class="api-key-btn" onclick="saveNvidiaApiKey()">Save</button>
-
-          <button type="button" class="api-key-btn subtle" onclick="clearNvidiaApiKey()">Clear</button>
-
-          <span class="api-key-status" id="apiKeyStatus">Required</span>
-
+        <div class="ai-key-control" style="display:none;">
+          <span class="api-key-status ok" id="apiKeyStatus">✓ AI Active</span>
         </div>
 
         <button class="btn btn-primary" id="btnProcess" disabled onclick="processFiles()">
@@ -3676,6 +3686,7 @@
     document.getElementById('f1').addEventListener('change', function () {
 
       if (!this.files[0]) return;
+      if (!validateFileSize(this.files[0])) { this.value = ''; return; }
 
       rawFile1 = this.files[0];
 
@@ -3692,6 +3703,7 @@
     document.getElementById('f2').addEventListener('change', function () {
 
       if (!this.files[0]) return;
+      if (!validateFileSize(this.files[0])) { this.value = ''; return; }
 
       rawFile2 = this.files[0];
 
@@ -3791,8 +3803,6 @@
 
        ═══════════════════════════════════════════════════════════════════════ */
 
-    var NVIDIA_DIRECT_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-
     function getConfigNumber(key, fallback) {
       var cfg = window.JEJO_CONFIG || {};
       var value = Number(cfg[key]);
@@ -3801,29 +3811,18 @@
 
     function getLlmModel() {
       var cfg = window.JEJO_CONFIG || {};
-      return cfg.nvidiaModel || 'mistralai/mistral-medium-3.5-128b';
+      return cfg.grydModel || 'gcp-gemini-3.1-flash-lite-preview';
     }
 
-    function isProxyEndpoint(endpoint) {
-      return endpoint !== NVIDIA_DIRECT_ENDPOINT;
-    }
 
     function sanitizeForPrompt(text) {
       if (!text) return '';
       var s = String(text);
       s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
       s = s.replace(/"/g, "'");
-      s = s.replace(/ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
-      s = s.replace(/forget\s+(all\s+)?(previous|prior|above)\s+(instructions|directions|prompts?)/gi, '[REDACTED]');
-      s = s.replace(/you\s+are\s+(now|not\s+required\s+to)/gi, '[REDACTED]');
-      s = s.replace(/system\s+(prompt|message|instruction)/gi, '[REDACTED]');
-      s = s.replace(/\bDAN\b|do\s+anything\s+now/gi, '[REDACTED]');
-      s = s.replace(/output\s+(format|as|in)\s+json/i, '[REDACTED]');
       if (s.length > LLM_PROMPT_CHAR_LIMIT) s = s.substring(0, LLM_PROMPT_CHAR_LIMIT) + '...[truncated]';
       return s;
     }
-
-    var NVIDIA_MODEL = getLlmModel();
 
     var LLM_DISPOSITION_BATCH_SIZE = getConfigNumber('llmDispositionBatchSize', getConfigNumber('llmBatchSize', 6));
     var LLM_DISPOSITION_MAX_CONCURRENT = getConfigNumber('llmDispositionMaxConcurrent', 1);
@@ -3832,177 +3831,12 @@
     var LLM_PROMPT_CHAR_LIMIT = getConfigNumber('llmDispositionPromptCharLimit', getConfigNumber('llmPromptCharLimit', 2500));
     var LLM_DISPOSITION_MAX_TOKENS = getConfigNumber('llmDispositionMaxOutputTokens', getConfigNumber('llmMaxOutputTokens', 1800));
 
-    var NVIDIA_KEY_STORAGE = 'llm-api-key';
-
-
-
     function getApiEndpoint() {
-
-      if (window.JEJO_CONFIG && window.JEJO_CONFIG.apiEndpoint) {
-
-        var url = window.JEJO_CONFIG.apiEndpoint.trim();
-
-        if (url && url !== 'YOUR_PROXY_URL_HERE') return url;
-
-      }
-
-      return NVIDIA_DIRECT_ENDPOINT;
-
+      var cfg = window.JEJO_CONFIG || {};
+      return (cfg.grydEndpoint || 'http://localhost:3456') + '/gryd/v1/chat/completions';
     }
 
-
-
-    function getApiKey() {
-
-      if (isProxyEndpoint(getApiEndpoint())) {
-
-        return 'PROXY_ACTIVE';
-
-      }
-
-      if (window.JEJO_CONFIG && window.JEJO_CONFIG.nvidiaApiKey) {
-
-        var key = String(window.JEJO_CONFIG.nvidiaApiKey || '').trim();
-
-        if (key && key !== 'YOUR_NVIDIA_API_KEY_HERE') return key;
-
-      }
-
-      return (localStorage.getItem(NVIDIA_KEY_STORAGE) || '').trim();
-
-    }
-
-
-
-    function syncApiKeyControl(message, tone) {
-
-      var container = document.querySelector('.ai-key-control');
-
-      var input = document.getElementById('nvidiaApiKeyInput');
-
-      var status = document.getElementById('apiKeyStatus');
-
-      var saveBtn = container ? container.querySelector('button:not(.subtle)') : null;
-
-      var clearBtn = container ? container.querySelector('button.subtle') : null;
-
-
-
-      var endpoint = getApiEndpoint();
-
-      var isProxy = isProxyEndpoint(endpoint);
-
-      
-
-      var configuredKey = window.JEJO_CONFIG
-        ? String(window.JEJO_CONFIG.nvidiaApiKey || '').trim()
-        : '';
-
-      var keyFromConfig = configuredKey && configuredKey !== 'YOUR_NVIDIA_API_KEY_HERE'
-        ? configuredKey
-        : '';
-
-      
-
-      var isAutoConfigured = isProxy || keyFromConfig;
-
-
-
-      if (isAutoConfigured) {
-
-        if (input) input.style.display = 'none';
-
-        if (saveBtn) saveBtn.style.display = 'none';
-
-        if (clearBtn) clearBtn.style.display = 'none';
-
-        
-
-        if (status) {
-
-          if (isProxy) {
-
-            status.textContent = '✓ AI Active (Secure Proxy)';
-
-            status.className = 'api-key-status ok active-proxy';
-
-            status.style.animation = 'pulse-proxy 2s infinite ease-in-out';
-
-          } else {
-
-            status.textContent = '✓ AI Active (Configured)';
-
-            status.className = 'api-key-status ok';
-
-          }
-
-        }
-
-      } else {
-
-        if (input) input.style.display = '';
-
-        if (saveBtn) saveBtn.style.display = '';
-
-        if (clearBtn) clearBtn.style.display = '';
-
-        
-
-        var hasSavedKey = !!(localStorage.getItem(NVIDIA_KEY_STORAGE) || '').trim();
-
-        if (input) {
-
-          input.value = '';
-
-          input.placeholder = hasSavedKey ? 'Key saved in browser' : 'NVIDIA API key';
-
-        }
-
-        if (status) {
-
-          status.textContent = message || (hasSavedKey ? 'Saved locally' : 'Required');
-
-          status.className = 'api-key-status ' + (tone || (hasSavedKey ? 'ok' : ''));
-
-          status.style.animation = '';
-
-        }
-
-      }
-
-    }
-
-
-
-    function saveNvidiaApiKey() {
-
-      var input = document.getElementById('nvidiaApiKeyInput');
-
-      var key = input ? input.value.trim() : '';
-
-      if (!key) {
-
-        syncApiKeyControl(getApiKey() ? 'Already saved' : 'Paste key first', 'warn');
-
-        return;
-
-      }
-
-      localStorage.setItem(NVIDIA_KEY_STORAGE, key);
-
-      syncApiKeyControl('Saved locally', 'ok');
-
-    }
-
-
-
-    function clearNvidiaApiKey() {
-
-      localStorage.removeItem(NVIDIA_KEY_STORAGE);
-
-      syncApiKeyControl('Cleared', 'warn');
-
-    }
+    function getApiKey() { return 'GRYD_ACTIVE'; }
 
 
 
@@ -4312,7 +4146,7 @@
 
 
 
-            var systemMsg = 'You are a fair and accurate disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.';
+            var systemMsg = 'You are a fair and accurate disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.\n' + window.INJECTION_GUARD;
 
 
 
@@ -4326,7 +4160,7 @@
 
 
 
-            var userPrompt = 'VALID DISPOSITIONS:\n' + dispDefs + '\n\nLANGUAGE BARRIER RULE:\nThe active dealership is "' + dealerContext + '". The customer\'s transcript/summary may be in a language different from the dealership\'s supported languages. If the customer requested or attempted to speak in a language NOT in the supported languages list for their dealership, the disposition MUST be "Language barrier". Pay close attention to phrases like "I don\'t understand", "speak [language]", "[language] please", etc. — especially if the requested language is outside the supported set. The supported languages are only those listed for the dealership; any other language the customer requests is a barrier.\n\nEXAMPLES (learn from these patterns):\n' + examples + '\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + promptLines + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
+            var userPrompt = 'VALID DISPOSITIONS:\n' + dispDefs + '\n\nLANGUAGE BARRIER RULE:\nThe active dealership is "' + dealerContext + '". The customer\'s transcript/summary may be in a language different from the dealership\'s supported languages. If the customer requested or attempted to speak in a language NOT in the supported languages list for their dealership, the disposition MUST be "Language barrier". Pay close attention to phrases like "I don\'t understand", "speak [language]", "[language] please", etc. — especially if the requested language is outside the supported set. The supported languages are only those listed for the dealership; any other language the customer requests is a barrier.\n\nEXAMPLES (learn from these patterns):\n' + examples + '\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n' + window.USER_DATA_DELIMITER + '\n' + promptLines + '\n' + window.USER_DATA_END_DELIMITER + '\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.';
 
 
 
@@ -4346,7 +4180,26 @@
 
           parseResponse: function(text, batch, batchIndex) {
 
+            try {
+              var fullParsed = JSON.parse(text);
+              if (typeof fullParsed === 'string') {
+                text = fullParsed;
+              } else if (Array.isArray(fullParsed)) {
+                return fullParsed.map(function(item, idx) {
+                  return {
+                    rowIndex: (batchIndex * BATCH_SIZE) + idx,
+                    isCorrect: item.isCorrect,
+                    correctedDisposition: item.correctedDisposition,
+                    confidence: item.confidence,
+                    reason: item.reason
+                  };
+                });
+              }
+            } catch(e) {}
+
             var cleaned = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+
+            cleaned = cleaned.replace(/\\"/g, '"');
 
             var match = cleaned.match(/\[[\s\S]*\]/);
 
@@ -4379,33 +4232,17 @@
           },
 
           buildHeaders: function() {
-
-            var endpoint = getApiEndpoint();
-
-            var isProxy = isProxyEndpoint(endpoint);
-
-            var h = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-
-            if (isProxy) {
-
-              // Send static handshake token -- matches Cloudflare Worker HANDSHAKE_TOKEN
-              var cfg = window.JEJO_CONFIG || {};
-              var handshakeToken = (cfg.proxyHandshakeToken || '').trim();
-              if (handshakeToken) h['X-Handshake-Token'] = handshakeToken;
-
-            } else {
-
-              h['Authorization'] = 'Bearer ' + getApiKey();
-
-              h['HTTP-Referer'] = window.location.origin;
-
-              h['X-Title'] = 'AutoNage Post-Sales Sync';
-
-            }
-
-            return h;
-
-          },
+            var cfg = window.JEJO_CONFIG || {};
+            return {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'X-GRYD-TOKEN': sessionStorage.getItem('gryd_token') || '',
+              'X-GRYD-SESSION-ID': sessionStorage.getItem('gryd_session_id') || '',
+              'X-GRYD-ENTERPRISE-ID': sessionStorage.getItem('gryd_enterprise_id') || 'autocrm',
+              'X-GRYD-SIGNUP-TOKEN': cfg.grydSignupToken || '',
+              'X-GRYD-APPLICATION-ID': 'autocrm'
+            };
+            },
 
           onProgress: function(done, total, message, pct) {
 

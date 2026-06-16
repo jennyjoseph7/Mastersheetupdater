@@ -3,6 +3,7 @@
 .env.*
 *.local
 server/.env
+config.js
 
 # Temp & cache
 set_key_temp.txt

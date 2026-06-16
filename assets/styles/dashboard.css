@@ -418,17 +418,16 @@
       font-size: 0.8rem;
       min-width: 180px;
       outline: none;
-    }
-
-    .ai-key-control {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45rem;
-      flex-wrap: wrap;
-      padding: 0.35rem;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface2);
+    }    .ai-key-control {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      padding: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
     }
 
     .api-key-input {
@@ -477,24 +476,26 @@
       font-weight: 700;
       color: var(--text-muted);
       transition: all 0.3s ease;
-    }
-
-    .api-key-status.ok { color: var(--success); }
-    .api-key-status.warn { color: var(--warn); }
-    .api-key-status.err { color: var(--danger); }
-
-    .api-key-status.active-proxy {
-      background: rgba(46, 213, 115, 0.15);
-      color: #2ed573 !important;
-      padding: 3px 8px;
-      border-radius: 4px;
-      display: inline-block;
-      border: 1px solid rgba(46, 213, 115, 0.3);
-      text-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
-    }
-    @keyframes pulse-proxy {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(0.98); }
+    }    .api-key-status.ok {
+      color: var(--success);
+      text-shadow: 0 0 8px rgba(99, 214, 163, 0.4);
+      animation: pulse-proxy 2s ease-in-out infinite;
+    }
+    .api-key-status.warn { color: var(--warn); }
+    .api-key-status.err { color: var(--danger); }
+
+    .api-key-status.active-proxy {
+      background: rgba(46, 213, 115, 0.15);
+      color: #2ed573 !important;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid rgba(46, 213, 115, 0.3);
+      text-shadow: 0 0 8px rgba(46, 213, 115, 0.3);
+    }
+    @keyframes pulse-proxy {
+      0%, 100% { opacity: 1; transform: scale(1); text-shadow: 0 0 8px rgba(99, 214, 163, 0.4); }
+      50% { opacity: 0.85; transform: scale(0.97); text-shadow: 0 0 16px rgba(99, 214, 163, 0.7); }
     }
 
     .drop-zone-dash {

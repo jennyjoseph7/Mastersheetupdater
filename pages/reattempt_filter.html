@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://integrate.api.nvidia.com http://localhost:3456; form-action 'self' " />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " />
 
   <script>
 
@@ -28,6 +28,30 @@
 
   </script>
 
+  <script>
+
+    (function() {
+
+      function requireAuth() {
+        var token = sessionStorage.getItem('gryd_token');
+        var expiry = sessionStorage.getItem('gryd_expiry');
+        if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
+          window.location.replace('../login.html');
+          return false;
+        }
+        return true;
+      }
+      requireAuth();
+      window.addEventListener('pageshow', function() { requireAuth(); });
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') requireAuth();
+      });
+      window.addEventListener('unload', function() {});
+
+    })();
+
+  </script>
+
   <title>Re-Attempt Filter — AutoNage</title>
 
   <meta name="description"
@@ -36,7 +60,8 @@
 
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
 
-  <script src="../assets/lib/xlsx.full.min.js"></script>
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
+  <script src="../assets/js/vendor/xlsx.full.min.js"></script>
 
   <link rel="stylesheet" href="../assets/styles/reattempt-filter.css" />
 
@@ -85,7 +110,7 @@
       </div>
 
       <div id="navContainer"></div>
-<script>fetch("../nav.html").then(function(r){return r.text()}).then(function(h){document.getElementById("navContainer").innerHTML=h;});</script>
+<script>loadNavSafe("navContainer");</script>
 
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
 
@@ -2568,6 +2593,7 @@
     document.getElementById('fileInput').addEventListener('change', function () {
 
       if (!this.files[0]) return;
+      if (!validateFileSize(this.files[0])) { this.value = ''; return; }
 
       rawFile = this.files[0];
 
