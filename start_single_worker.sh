@@ -33,6 +33,7 @@ export PRIMARY=${PRIMARY:-0}
 export WAITRESS_PATH=waitress-serve
 export CRON_SCHEDULER_PATH=execute-cron-continuous
 export CRON_WORKER_PATH=cron_worker
+export TERMINATION_GRACE_PERIOD=${TERMINATION_GRACE_PERIOD:-590}
 export APP_DIR=${APP_DIR:-"/root/app/"}
 
 export log_append_text="$HOSTNAME"_$(date +%s) 
@@ -83,7 +84,7 @@ function setup_logio_agent() {
 
 	if [ $status == 0 ];then
 		echo "Start input server"
-		nohup log.io-file-input &
+		nohup log.io-file-input > "$LOGDIR/logio_agent_$log_append_text.log" 2>&1 &
 		echo $! > $BASE_PATH/$APP_NAME/logio.pid
                 logio_agent_check_start_time=$(eval $tnow)
 	else
@@ -207,7 +208,9 @@ function restart_logio_agent() {
 function docheckup() {
     if [ $kill_signal == 0 ];then
 	    echo "Running Checks."
-	    restart_logio_agent
+        if [ $SETUP_LOGIO_AGENT == "True" ];then
+	        restart_logio_agent
+        fi
     else
 	    echo "Kill received, skipping checks."
 	    return 
