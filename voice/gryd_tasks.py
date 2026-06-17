@@ -298,7 +298,8 @@ def trigger_voice_call(*args, **kwargs):
                         kwargs={
                             "session_id": session_data["session_id"],
                             "additional_dict":{
-                                "status": "busy"
+                                "status": "completed",
+                                "disposition": "busy"
                             }
                         }
                     )
