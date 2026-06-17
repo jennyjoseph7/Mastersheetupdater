@@ -2247,7 +2247,7 @@ def get_c_and_wcrt(c = None, wcontroller = None):
     if os.environ.get('WORKER_CONTEOLLER') != 'gke':
         raise hp.GrydError(f"Cannot scale service unless WORKER_CONTEOLLER is 'gke' not {os.environ.get('WORKER_CONTEOLLER')}")
     c = c or gryd.get_service_connection()
-    wcontroller = wcontroller or beats.wctr.get_controller('gke')
+    wcontroller = wcontroller or cron_worker.wctr.get_controller('gke')
     return c, wcontroller
 
 @gryd.is_a_task('scale_up_service', logger_param = 'logger', job_param = 'job') 
@@ -2267,8 +2267,8 @@ def scale_up_service(service_names, environment = None, count = 1, retries = 3, 
             ret.append(wcontroller.scale_up(service_name, environment = environment, count = count))
         except Exception as e:
             if 'Unauthorized' in str(e) and retries > 0:
-                wcontroller = beats.wctr.get_controller('gke')
-                return scale_down_service(service_name, environment count, retries - 1)
+                wcontroller = cron_worker.wctr.get_controller('gke')
+                return scale_down_service(service_name, environment, count, retries - 1)
             raise
     return hp.make_single(ret)
 

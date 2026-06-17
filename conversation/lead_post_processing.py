@@ -16,6 +16,7 @@ from communication.common_functions import get_communication_credential, generat
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 import time
 from agents.workflows import WorkflowFactory, send_sop_alert
 import autocrm_validator as auto_val
@@ -605,9 +606,10 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 lead_key,
                 update_payload,
             )
+        channel_identifier=get_channel_identifier(data)
         # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
-        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{data.get('channel_identifier')},{lead.get('disposition')},{data.get('skip_workflow', False)}")
-        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),data.get("channel_identifier"),lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{lead.get('disposition')},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
@@ -656,6 +658,20 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 )
             
         return 
+def get_channel_identifier(data):
+    
+    identifier_key = CHANNEL_IDENTIFIER_MAP.get(data.get("channel"))
+
+    if not identifier_key:
+        raise ValueError(f"Unsupported channel: {data.get('channel')}")
+
+    channel_ide = data.get(identifier_key)
+
+    if not channel_ide:
+        raise ValueError(
+            f"Missing '{identifier_key}' for channel '{data.get('channel')}'"
+        )
+    return channel_ide
 
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")
