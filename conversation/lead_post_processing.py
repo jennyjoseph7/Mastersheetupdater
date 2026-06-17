@@ -606,10 +606,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 lead_key,
                 update_payload,
             )
-        channel_identifier=get_channel_identifier(data)
-        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
-        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{lead.get('disposition')},{data.get('skip_workflow', False)}")
-        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
+        
         # also updating session dispositon--
         template_message = data.get("template_message") if data else None
         if channel in ["whatsapp_chat"]:
@@ -656,7 +653,12 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     args=[],
                     kwargs=p
                 )
-            
+        
+        
+        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
+        
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{lead.get('disposition')},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
 def get_channel_identifier(data):
     

@@ -365,7 +365,8 @@ def get_or_create_session(data,channel=None,engaged=False,from_number=None,origi
                     
                     
                     # updating disposition in lead
-                    update_lead_disposition_and_post_billing("engaged",**data)
+                    update_lead_disposition_and_post_billing("engaged",**{**data, "channel": channel})
+                    
                     
                     # if data.get("campaign_type") == "pre-sales":
                     #     pg.update("pre_sales_lead","pre_sales_lead_id",data.get("lead_id"),{"disposition":"engaged"})
