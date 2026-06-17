@@ -14,9 +14,16 @@ from gryd_worker import gryd
 from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
 from config import AutocrmModel
+import requests
 
 load_dotenv()
 logger = get_logger(__name__)
+
+
+VECTOR_SERVICE_URL = os.getenv("VECTOR_SERVICE_URL")
+VECTOR_ENTERPRISE_ID = os.getenv("VECTOR_ENTERPRISE_ID")
+VECTOR_SESSION_ID = os.getenv("VECTOR_SESSION_ID")
+VECTOR_TOKEN = os.getenv("VECTOR_TOKEN")
 
 def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
     gryd_tasks = []
@@ -166,7 +173,8 @@ def run_summary_dispatcher(document_id: str, job_id: str, vehicle_model_id: str,
         logger.warning("⚠️ No vector tasks were produced by the summary worker.")
 
     return {"status": "completed", "model_year_id": model_year_id, "results": results}
-
+    
+    
 def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id: str, expected_variants: list):
     logger.info(f"🤖 [Worker] Generating TOON summaries for Model Year ID: {model_year_id}")
     
@@ -177,9 +185,45 @@ def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id:
         logger.error("❌ Summaries failed to generate.")
         return {"status": "failed"}
 
+    
+    try:
+        vehicle_model_summary = llm_response.get("vehicle_model", {}).get("summary_text", "")
+        parts = vehicle_model_summary.strip().split(" ", 1)
+        brand = parts[0] if len(parts) > 0 else ""
+        model = parts[1] if len(parts) > 1 else ""
+
+        tracker_payload = {
+            "summary_id": model_year_id,
+            "model_year_id": model_year_id,
+            "brand": brand,
+            "model": model,
+            "status": "completed",
+            "vector_ingestion_status": "pending",
+            "extraction_items": json.dumps({
+                "variants": [v.get("variant_name") for v in llm_response.get("variants", [])],
+                "feature_categories": [f.get("summary_text") for f in llm_response.get("feature_categories", [])],
+                "specific_features": [f.get("summary_text") for f in llm_response.get("specific_features", [])]
+            }),
+            "extraction_meta": json.dumps({
+                "variant_count": len(llm_response.get("variants", [])),
+                "feature_category_count": len(llm_response.get("feature_categories", [])),
+                "specific_feature_count": len(llm_response.get("specific_features", []))
+            }),
+            "raw_llm_response": llm_response,
+            "error_detail": None,
+            "job_id": None
+        }
+
+        tracker_db = AutocrmModel('brochure_summary_tracker')
+        tracker_db.post(tracker_payload)
+        logger.info(f"✅ Summary stored in brochure_summary_tracker for model_year_id: {model_year_id}")
+
+    except Exception as e:
+        logger.error(f"❌ Failed to store in brochure_summary_tracker: {e}")
+
     doc_prefix = (model_year_id or str(uuid.uuid4())).replace(" ", "_").lower()
 
-    # --- 1. BUILD AUTOCRM DB UPDATES ---
+    
     db_updates = {
         "vehicle_model": {
             "toon_text": llm_response.get("vehicle_model", {}).get("toon_text", "")
@@ -211,26 +255,46 @@ def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id:
         "status": "success", 
         "vector_tasks_payload": gryd_tasks
     }
-
 def run_vector_ingestion(tasks_payload: list):
     """
-    Takes the generated tasks payload directly and fires off vector upload commands.
+    Takes the generated tasks payload and fires off vector upload commands
+    via HTTP POST to the vector service.
     """
     if not tasks_payload:
         logger.error("❌ No tasks payload provided.")
         return {"status": "failed", "message": "Empty tasks_payload."}
+
+    if not VECTOR_SERVICE_URL:
+        logger.error("❌ VECTOR_SERVICE_URL not set in environment.")
+        return {"status": "failed", "message": "Missing VECTOR_SERVICE_URL."}
+
+    headers = {
+        "accept": "*/*",
+        "content-type": "application/json",
+        "x-gryd-enterprise-id": VECTOR_ENTERPRISE_ID,
+        "x-gryd-session-id": VECTOR_SESSION_ID,
+        "x-gryd-token": VECTOR_TOKEN
+    }
 
     successful, failed = 0, 0
     logger.info(f"🚀 Starting ingestion of {len(tasks_payload)} items...")
 
     for item in tasks_payload:
         try:
-            gryd.create_async_task(
-                service=item.get("service", "vector_document"),
-                function_name=item.get("function_name", "update_vector"),
-                kwargs=item.get("kwargs", {})
+            logger.info( f"this is testing: {(item)}")
+            response = requests.post(
+
+                VECTOR_SERVICE_URL,
+                headers=headers,
+                json={"kwargs": item},
+                timeout=30
             )
-            successful += 1
+            if response.status_code in (200, 201, 202):
+                successful += 1
+                logger.info(f"✅ Vector item ingested successfully.")
+            else:
+                failed += 1
+                logger.error(f"❌ Vector ingestion failed. Status: {response.status_code}, Response: {response.text}")
         except Exception as e:
             failed += 1
             logger.error(f"❌ Failed to ingest item: {e}")
