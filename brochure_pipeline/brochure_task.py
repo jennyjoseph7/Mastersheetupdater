@@ -43,12 +43,27 @@ def brochure_dispatcher_task(**kwargs):
 
 @gryd.is_a_task()
 def summary_dispatcher_task(**kwargs):
-    """Dispatcher task for managing summary generation."""
     document_id = kwargs.get("document_id") 
     job_id = kwargs.get("job_id")
     vehicle_model_id = kwargs.get("vehicle_model_id")
     model_year_id = kwargs.get("model_year_id")
     expected_variants = kwargs.get("expected_variants", [])
+    
+    
+    variant_id_list = kwargs.get("variant_id", [])
+    if not expected_variants and variant_id_list:
+        expected_variants = []
+        for v_id in variant_id_list:
+            parts = v_id.split("-")
+            fuel_keywords = {"petrol", "diesel", "cng", "electric", "hybrid"}
+            name_parts = []
+            for part in parts:
+                if part.lower() in fuel_keywords:
+                    break
+                name_parts.append(part)
+            variant_name = " ".join(name_parts[-2:]).title()
+            expected_variants.append({"id": v_id, "name": variant_name})
+        logger.info(f"Built expected_variants from variant_id: {expected_variants}")
     
     return run_summary_dispatcher(document_id, job_id, vehicle_model_id, model_year_id, expected_variants)
 
