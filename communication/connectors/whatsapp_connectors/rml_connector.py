@@ -158,7 +158,7 @@ class RMLWebhookConverter(BaseWebhookConverter):
 class RMLWhatsAppMessenger(BaseWhatsappMessenger):
     '''
     '''
-    SUPPORTED_TEMPLATES = {"text_template", "media_template", "carousel_template"}
+    SUPPORTED_TEMPLATES = {"text", "media", "carousel"}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.temporary_data = {}
@@ -217,7 +217,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # ----------------------
         # CASE 1: MEDIA TEMPLATE
         # ----------------------
-        if template_type == "media_template":
+        if template_type == "media":
             media_type = (kwargs.get("media_type") or "").lower()
             media_url = kwargs.get("media_url", "")
             media_file_name = kwargs.get("media_file_name", "")
@@ -239,7 +239,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # ----------------------
         # CASE 2: TEXT TEMPLATE
         # ----------------------
-        if template_type == "text_template":
+        if template_type == "text":
             if params_data:
                 payload["body"] = params_data
             if buttons:
@@ -249,7 +249,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # ----------------------
         # CASE 3: CAROUSEL TEMPLATE
         # ----------------------
-        if template_type == "carousel_template":
+        if template_type == "carousel":
             carousel_data = kwargs.get("carousel", [])
             carousel = []
 

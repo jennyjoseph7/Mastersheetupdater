@@ -5,9 +5,9 @@ logger= hp.get_logger(__name__,level=hp.logging.DEBUG)
 class RMLCampaignManager:
     def __init__(self,*args,**kwargs):
         self.template_func_dict = {
-            "text_template": self._create_text_template,
-            "media_template": self._create_media_template,
-            "carousal_template": self._create_carousel_template,
+            "text": self._create_text_template,
+            "media": self._create_media_template,
+            "carousal": self._create_carousel_template,
         }
 
         logger.info("RMLCampaignManager initialized with template functions: {}".format(self.template_func_dict.keys()))
@@ -161,7 +161,7 @@ class RMLCampaignManager:
             })
 
         return {
-            "type": "media_template",
+            "type": "media",
             "template_name": template_id,
             "lang_code": lang_code,
             "body": top_body,
