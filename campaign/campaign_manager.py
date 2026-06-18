@@ -322,7 +322,7 @@ class BaseCampaignCreater:
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
-                    "provider_status":msg_status,
+                    "provider_status": "queued",
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
@@ -331,13 +331,12 @@ class BaseCampaignCreater:
                 }
             
             #NOTE: if msg_status is failed then we dont want to call post_contact_status from campaign bcoz at this point we dont get error message.So once we receive the error message from the provider we will call post_contact_status from the webhook handler.
-            if msg_status not in ["failed"]:
-                logger.info(f"Calling post_contact_status with data from campaign: {data}")
-                gryd.create_async_task(
-                    "post_contact_status", 
-                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-                    kwargs=data
-                )
+            logger.info(f"Calling post_contact_status with data from campaign: {data}")
+            gryd.create_async_task(
+                "post_contact_status", 
+                AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                kwargs=data
+            )
 
 
 
