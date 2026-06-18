@@ -1270,12 +1270,7 @@ if __name__ == "__main__":
     python spark.py --function validate_prompt --kwargs prompt=Change the background to scenic view from the suburbs of Mumbai,car_manufacturer=Maruti,car_model=Swift
     python spark.py --function distortion_report --kwargs image_path=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/9f13e041-1014-4cd4-bf3c-dce4421f0cd9-6988a6cf_testimage.webp
 
-    python spark.py --function create_rooftop_images_batch --kwargs "region_id=india,\
-    brand_id=jeep-jeep-india,\
-    rooftop_type=showroom,\
-    base_png=https://d24ohqpcwj3ww1.cloudfront.net/gryd_file_system/media/image/c06608a2-8f94-4e14-8122-8a6196e27df2-69c27292_Base_image.png,\
-    rooftop_id=stellantis - kht-agencies-private-limited - bengaluru,\
-    template_id=india-default-jeep-theme-jeep-jeep-india-meridian-jeep-jeep-default-1080x1350"
+    python spark.py --function create_rooftop_images_batch --kwargs "post_idea_id=india-pre-sales-pre-sales-test-drive-booking-english-change-the-background-to-a-modern-city-street-at-night-with-neon-lights-wet-roads-luxury-urban-vibe-realistic-shadows-and-reflections-high-end-car-advertisement-style."
     
     
     python spark.py --function create_rooftop_image --kwargs "rooftop_type=showroom,\
