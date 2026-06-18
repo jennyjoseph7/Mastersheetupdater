@@ -420,13 +420,13 @@ def create_rooftop_images_batch(post_idea_id: str, debug: bool = False, job: dic
     brand_model = AutocrmModel('brand')
     template_model = AutocrmModel('autosphere_template')
     dealership_model = AutocrmModel('dealership')
+    post_idea = post_idea_model.get(post_idea_id)
+    if not post_idea:
+        raise ValueError(f"Post idea not found: {post_idea_id}")
     rooftop_type = {'pre-sales': 'showroom', 'post-sales': 'workshop', 'exchange': 'buyback_center'}.get(post_idea.get('campaign_type'))
     if not rooftop_type:
         raise ValueError(f"Invalid campaign type: {post_idea.get('campaign_type')}")
     rooftop_model = get_rooftop_model(rooftop_type, logger=logger)
-    post_idea = post_idea_model.get(post_idea_id)
-    if not post_idea:
-        raise ValueError(f"Post idea not found: {post_idea_id}")
     region_id = post_idea.get('region_id')
     brand_id = post_idea.get('brand_id')
     brand = brand_model.get(brand_id)
@@ -443,13 +443,13 @@ def create_rooftop_images_batch(post_idea_id: str, debug: bool = False, job: dic
     }
     offer = offer or DEFAULT_OFFER
     base_png = post_idea.get('image_url')
+    files_to_delete = []
     base_png = do_download(base_png, files_to_delete)
     if not base_png:
         logger.error(f"Base PNG not found: {base_png}")
         raise ValueError(f"Base PNG not found: {base_png}")
     rooftop_params = {"region_id": region_id, "supported_brands": brand_id, '_as_option': True}
     any_rooftops = 0
-    files_to_delete = []
     for rooftop in rooftop_model.model.yield_list(**rooftop_params):
         logger.info(f"Rooftop: {rooftop}")
         any_rooftops += 1
