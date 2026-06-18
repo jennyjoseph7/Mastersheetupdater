@@ -63,26 +63,13 @@
         <div class="session-info" id="sessionInfo"></div>
       </div>
 
-      <!-- Debug Log Container -->
-      <div id="debugLogContainer" style="display:none; margin-top:1.5rem; border-top:1px dashed var(--border); padding-top:1rem; text-align:left;">
-        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:bold;">Debug Log:</div>
-        <pre id="debugLog" style="font-family:var(--sans); font-size:0.7rem; background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:6px; overflow-x:auto; color:var(--text-dim); max-height:150px; overflow-y:auto; white-space:pre-wrap;"></pre>
-        <button onclick="localStorage.removeItem('jejo_auth_log'); location.reload();" style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-dim); padding:0.25rem 0.5rem; border-radius:4px; margin-top:0.5rem; cursor:pointer;">Clear Log</button>
-      </div>
-
     </div>
-  </div>
+</div>
 
 <script>
 var CONFIG = window.JEJO_CONFIG || {};
 var GRYD_ENDPOINT = CONFIG.grydEndpoint || 'https://autobot-webapp-dev.gryd.in';
 var GRYD_SIGNUP_TOKEN = CONFIG.grydSignupToken || '';
-
-function logAuthEvent(msg) {
-  var log = localStorage.getItem('jejo_auth_log') || '';
-  log += '[' + new Date().toISOString() + '] ' + msg + '\n';
-  localStorage.setItem('jejo_auth_log', log);
-}
 
 function escapeHtml(str) {
   var div = document.createElement('div');
@@ -189,15 +176,12 @@ function checkSession() {
       sessionStorage.setItem('gryd_session_id', localStorage.getItem('gryd_session_id') || '');
       sessionStorage.setItem('gryd_enterprise_id', localStorage.getItem('gryd_enterprise_id') || 'autocrm');
       sessionStorage.setItem('gryd_user_id', localStorage.getItem('gryd_user_id') || '');
-      logAuthEvent('login:checkSession: synced valid session from localStorage to sessionStorage');
     }
   }
   
-  logAuthEvent('login:checkSession: token=' + (token ? 'exists' : 'null') + ', expiry=' + expiry);
   if (token && expiry) {
     var expiryVal = parseInt(expiry);
     var now = Math.floor(Date.now() / 1000);
-    logAuthEvent('login:checkSession: parsedExpiry=' + expiryVal + ', now=' + now + ', diff=' + (expiryVal - now));
     if (!isNaN(expiryVal) && expiryVal > now) {
       // Break redirect loop if we came back here from index.html or another app page in under 3 seconds
       var ref = document.referrer || '';
@@ -205,9 +189,7 @@ function checkSession() {
       var nowMs = Date.now();
       var isRapidRedirect = (nowMs - lastRedirectTime < 3000);
       
-      logAuthEvent('login:checkSession: valid token found, referrer=' + ref + ', isRapid=' + isRapidRedirect + ', diff=' + (nowMs - lastRedirectTime));
       if (ref && (ref.indexOf('index.html') !== -1 || ref.indexOf('/pages/') !== -1) && isRapidRedirect) {
-        logAuthEvent('login:checkSession: LOOP DETECTED! Clearing session and showing warning.');
         console.warn('Redirect loop detected from referrer:', ref, '- clearing session and staying on login page.');
         sessionStorage.removeItem('gryd_token');
         sessionStorage.removeItem('gryd_expiry');
@@ -216,11 +198,11 @@ function checkSession() {
         showWarning('⚠️ <strong>Authentication redirect loop detected.</strong> Your browser is isolating session storage between pages. Ensure you are accessing the site via a local web server (http:// or https://) rather than opening the files directly.');
         return false;
       }
-      logAuthEvent('login:checkSession: Redirecting to index.html');
       sessionStorage.setItem('last_login_redirect_time', String(Date.now()));
       window.location.replace('index.html');
       return true;
     }
+ 21}
   }
   return false;
 }
@@ -263,9 +245,7 @@ async function handleLogin(event) {
 
     // Validate response before persisting
     var absoluteExpiry = parseExpiry(data.expiry);
-    logAuthEvent('login:handleLogin success: rawExpiry=' + data.expiry + ', parsedAbsoluteExpiry=' + absoluteExpiry);
     if (!data.token || !absoluteExpiry || absoluteExpiry <= Math.floor(Date.now() / 1000)) {
-      logAuthEvent('login:handleLogin validation failed! token=' + (data.token ? 'exists' : 'null') + ', absoluteExpiry=' + absoluteExpiry);
       showError('Invalid server response: missing token or expired session.');
       setLoading(false);
       return;
@@ -283,8 +263,6 @@ async function handleLogin(event) {
     localStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
     localStorage.setItem('gryd_user_id', data.user_id || userId);
     localStorage.setItem('gryd_expiry', String(absoluteExpiry));
-
-    logAuthEvent('login:handleLogin stored token successfully. Redirecting to index.html in 1.2s.');
 
     // Show flash and redirect after a moment
     var loginForm = document.getElementById('loginForm');
@@ -311,13 +289,6 @@ async function handleLogin(event) {
 applyTheme(localStorage.getItem('jejo-theme') || 'dark');
 if (window.location.protocol === 'file:') {
   showWarning('⚠️ <strong>Running via file:// protocol.</strong> Modern browsers isolate session storage for local files, which prevents login state from sharing between pages. Please use a local web server (e.g. VS Code Live Server, python http.server, or npm serve).');
-}
-
-// Show the debug log if it has entries
-var savedLog = localStorage.getItem('jejo_auth_log');
-if (savedLog) {
-  document.getElementById('debugLogContainer').style.display = 'block';
-  document.getElementById('debugLog').textContent = savedLog;
 }
 
 if (!checkSession()) { updateSessionInfo(); }
