@@ -18,6 +18,7 @@ from communication.common_functions import get_communication_credential,generate
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
+import autocrm_validator as auto_val
 import time
 gryd.SERVICE = AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME
 THREADS_PER_SESSION = 0.1
@@ -189,7 +190,7 @@ def post_session_process(*args, **kwargs):
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
     lead_data = {}
     with get_pg_connector() as pg:
-        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
         sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
@@ -257,40 +258,40 @@ def post_session_process(*args, **kwargs):
     if sentiment_classification:
         session_update_data["sentiment_classification"] = sentiment_classification
 
-    try:
-        if sentiment_classification in ["negative", "neutral"]:
-            receiver_emails = [
-                "eshwar@iamdave.ai",
-                "sahib@iamdave.ai",
-                "shanjai@iamdave.ai",
-            ]
+    # try:
+    #     if sentiment_classification in ["negative", "neutral"]:
+    #         receiver_emails = [
+    #             "eshwar@iamdave.ai",
+    #             "sahib@iamdave.ai",
+    #             "shanjai@iamdave.ai",
+    #         ]
 
-            subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
-            html = f"""
-            <p>Hi Team,</p>
-            <p>A customer interaction was classified as <b>{sentiment_classification}</b> for session <b>{session_id}</b>.</p>
-            <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
-            <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
-            <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
-            <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
-            <p><b>Conversation summary:</b></p>
-            <pre>{session_mdl_obj.get('summary','')}</pre>
-            <p>Message history:</p>
-            <pre>{json.dumps(session_mdl_obj.get('history',[]))}</pre>
-            <p>Please review the SOPs and take corrective action.</p>
-            """
+    #         subject = f"SOP Alert: {updated_lead_data.get('disposition_detail','').strip()}"
+    #         html = f"""
+    #         <p>Hi Team,</p>
+    #         <p>A customer interaction was classified as <b>{sentiment_classification}</b> for session <b>{session_id}</b>.</p>
+    #         <p><b>Disposition:</b> {updated_lead_data.get('disposition')}</p>
+    #         <p><b>Detail:</b> {updated_lead_data.get('disposition_detail')}</p>
+    #         <p><b>Lead ID:</b> {session_data.get('lead_id')}</p>
+    #         <p><b>Campaign:</b> {session_data.get('campaign_id')} / {session_data.get('campaign_name')}</p>
+    #         <p><b>Conversation summary:</b></p>
+    #         <pre>{session_mdl_obj.get('summary','')}</pre>
+    #         <p>Message history:</p>
+    #         <pre>{json.dumps(session_mdl_obj.get('history',[]))}</pre>
+    #         <p>Please review the SOPs and take corrective action.</p>
+    #         """
 
-            email_payload = {
-                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
-                "sender": {"name": "AutoCRM Alerts"},
-                "receiver": {"emails": receiver_emails},
-                "html_string": html,
-                "subject": subject,
-            }
-            from communication.connectors.email_communication import communication_sender
-            communication_sender(**email_payload)
-    except Exception as e:
-        mlogger.exception(f"Failed to send SOP alert email: {e}")
+    #         email_payload = {
+    #             "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+    #             "sender": {"name": "AutoCRM Alerts"},
+    #             "receiver": {"emails": receiver_emails},
+    #             "html_string": html,
+    #             "subject": subject,
+    #         }
+    #         from communication.connectors.email_communication import communication_sender
+    #         communication_sender(**email_payload)
+    # except Exception as e:
+    #     mlogger.exception(f"Failed to send SOP alert email: {e}")
     appt_date_time_purpose = {}
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
@@ -363,6 +364,8 @@ def post_session_process(*args, **kwargs):
                 mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
+        session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
