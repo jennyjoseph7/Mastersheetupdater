@@ -509,11 +509,22 @@ class BaseWebhookConverter:
             message_dict["message_status"]=wa_status
             logger.info(f"Calling post_contact_status with Message dict : {message_dict}")
             logger.info(f"Calling post_contact_status and checking the disposition : {wa_status}")    
+            # gryd.create_async_task(
+            #     'post_contact_status',
+            #     AUTOCRM_COMMUNICATION_SERVICE_NAME,
+            #     args = (message_dict.get('message_id'),), 
+            #     kwargs=message_dict)
+            
+            # NOTE: since RML sends failed status in the received webhook itself, we need to call post_contact_status for failed status without message_id as it is not coming in the webhook for failed status. For other status we will call post_contact_status with message_id as usual.
             gryd.create_async_task(
                 'post_contact_status',
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
-                args = (message_dict.get('message_id'),),
-                kwargs=message_dict)
+                args=() if (
+                    message_dict.get("whatsapp_provider") == "rml"
+                    and message_dict.get("wa_status") == "failed"
+                ) else (message_dict.get("message_id"),),
+                kwargs=message_dict
+            )
             # post_contact_status(message_dict.get('message_id'),**message_dict)
             
         #Still any othere status hook there we will return  
