@@ -656,7 +656,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         
         
         # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
-        
+        channel_identifier = get_channel_identifier(data)
         mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{lead.get('disposition')},{data.get('skip_workflow', False)}")
         call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
