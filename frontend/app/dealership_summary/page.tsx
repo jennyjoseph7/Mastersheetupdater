@@ -437,7 +437,9 @@ function DealershipSummaryContent() {
               disabled={loading}
               className="gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
               Sync
             </Button>
 
@@ -459,7 +461,7 @@ function DealershipSummaryContent() {
         <CardHeader className="flex flex-row items-center space-x-2 pb-2">
           <Filter className="h-4 w-4 text-primary" />
           <CardTitle className="text-sm font-medium">
-            Interactive Dashboard Filters
+            Dashboard Filters
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -549,9 +551,7 @@ function DealershipSummaryContent() {
           <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Campaigns
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Campaigns</CardTitle>
               <Megaphone className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
@@ -585,9 +585,7 @@ function DealershipSummaryContent() {
           <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-sky-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Connected
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Connected</CardTitle>
               <PhoneCall className="h-4 w-4 text-sky-500" />
             </CardHeader>
             <CardContent>
@@ -603,9 +601,7 @@ function DealershipSummaryContent() {
           <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Converted
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Converted</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
@@ -698,7 +694,10 @@ function DealershipSummaryContent() {
                       <Legend
                         verticalAlign="top"
                         height={36}
-                        wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          color: "var(--foreground)",
+                        }}
                       />
                       <Line
                         type="monotone"
@@ -825,7 +824,10 @@ function DealershipSummaryContent() {
                       <Legend
                         verticalAlign="bottom"
                         iconType="circle"
-                        wrapperStyle={{ fontSize: 11, color: "var(--foreground)" }}
+                        wrapperStyle={{
+                          fontSize: 11,
+                          color: "var(--foreground)",
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -888,7 +890,10 @@ function DealershipSummaryContent() {
                       <Legend
                         verticalAlign="top"
                         height={36}
-                        wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          color: "var(--foreground)",
+                        }}
                       />
                       <Bar
                         dataKey="Connect Rate (%)"
@@ -954,9 +959,7 @@ function DealershipSummaryContent() {
                       .slice()
                       .reverse()
                       .map((row, i) => (
-                        <TableRow
-                          key={row.daily_dealership_summary_id || i}
-                        >
+                        <TableRow key={row.daily_dealership_summary_id || i}>
                           <TableCell className="px-6 font-medium text-foreground">
                             {row.formattedDate}
                           </TableCell>
