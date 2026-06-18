@@ -1318,7 +1318,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if template_data:
         template_vars = custom_template_variables if custom_template_variables else template_data.get("template_variables", [])
         render_data = {v: variable_mapping.get(v, "") for v in template_vars}
-        template_data["media_url"]= image_url or None
+        template_data["media_url"]= image_url or template_data.get("media_url")
         
         if channel in ("whatsapp_chat", "sms"):
             buttons = template_data.get("buttons")

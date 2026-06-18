@@ -173,7 +173,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         Unified template creation for text, media and carousel templates.
         Uses kwargs for flexible inputs.
         """
-        logger.info("*****************")
+        logger.info(f"***************** In create_template - template_type: {template_type} *****************")
         # logger.info(f"RML create_template template_type: {template_type}, kwargs: {kwargs}")
         if template_type not in RMLWhatsAppMessenger.SUPPORTED_TEMPLATES:
             raise ValueError(f"Unsupported template type: {template_type}")
@@ -186,7 +186,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # params_data = kwargs.get("params_data", {}) or {}
         params_data = kwargs.get("body", {}) or  kwargs.get("params_data", {})
         template_variables = kwargs.get("template_variables", [])
-        button_payloads = kwargs.get("template_buttons_payload", [])
+        button_payloads = kwargs.get("template_button_payloads", [])
 
         # ------ Body Resolution ------
         # resolved_body = [
@@ -284,6 +284,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
 
             payload["carousel"] = carousel
             
+            logger.info(f"RML create template payload: {payload}")
             return payload
 
     
@@ -335,16 +336,16 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
                         logger.warning("Flow Action Payload is there but not screen name is missing")
                 self._prepare_send_request(payload,**kwargs)
                 return
-            if message_type=="template":
-                logger.info("*****************")
-                logger.info(f"In RML Template {data}, response_data: {response_data}")
-                # rt= self.create_template(data.pop("template_type",None),**data)
-                rt= self.create_template(response_data.pop("type",None),**response_data)
+            # if message_type=="template":
+            #     logger.info("*****************")
+            #     logger.info(f"In RML Template {data}, response_data: {response_data}")
+            #     # rt= self.create_template(data.pop("template_type",None),**data)
+            #     rt= self.create_template(response_data.pop("type",None),**response_data)
                 
-                logger.info(json.dumps(rt,indent=4 ) )
-                # {"media":rt}
-                self._prepare_send_request({"media":rt},**kwargs)
-                return
+            #     logger.info(json.dumps(rt,indent=4 ) )
+            #     # {"media":rt}
+            #     self._prepare_send_request({"media":rt},**kwargs)
+            #     return
                  
 
 
