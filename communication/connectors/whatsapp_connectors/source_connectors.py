@@ -521,7 +521,7 @@ class BaseWebhookConverter:
                 AUTOCRM_COMMUNICATION_SERVICE_NAME,
                 args=() if (
                     message_dict.get("whatsapp_provider") == "rml"
-                    and message_dict.get("wa_status") == "failed"
+                    and wa_status == "failed"
                 ) else (message_dict.get("message_id"),),
                 kwargs=message_dict
             )
