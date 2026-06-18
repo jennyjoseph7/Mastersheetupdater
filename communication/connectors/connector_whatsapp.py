@@ -289,7 +289,7 @@ def post_contact_status(*args, **data):
                     order="DESC",
                 )
             )
-            mlogger.info(f"[post_contact_status] user with phone_number={data.get('phone_number')} has person records: {person_d}")
+            mlogger.info(f"[post_contact_status] user with phone_number={phone_number} has person records: {person_d}")
             if person_d and channel:
                 person = person_d[0]
                 user_id = person.get("user_id")
@@ -309,6 +309,7 @@ def post_contact_status(*args, **data):
             }
             contact_status_id = generate_uid(payload)
             mlogger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id}")
+            # mlogger.info(f"[post_contact_status] Payload for new contact_status --{json.dumps(payload,indent=4)}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
             # mlogger.info(f"Checking data for lead_disposition- Payload new --{json.dumps(data,indent=4)}")
             
