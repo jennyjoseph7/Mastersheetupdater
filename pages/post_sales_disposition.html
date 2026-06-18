@@ -3902,7 +3902,7 @@
 
       "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant. KEY PHRASES: \"I want to talk to a real person\", \"can you connect me to a human executive\", \"I need to speak with a customer service representative\", \"please transfer me to an actual person\", \"I don't want to talk to a machine\", \"connect me to a human agent please\", \"I need to speak with someone who can help directly\", \"can I talk to a live person\", \"I want to speak with a customer care executive\", \"please connect me to your support team\", \"I need a human to help me with this\", \"let me speak to your manager\", \"I want to talk to a real human being\", \"transfer me to a customer service agent\" ",
 
-      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\""};
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\" ",
 
     };
 
@@ -3986,7 +3986,7 @@
 
         var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
 
-        if (r.disposition === 'contacted' && r.summary !== 'No Response') {
+        if (r.disposition === 'engaged' && r.summary !== 'No Response') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, callDate: r.call_date || '', outcome: r.outcome || '', vehicleModel: r.vehicle_model || '', campaignId: r.campaign_id || '', dealerName: dealerName, supportedLanguages: supportedLangs.join(', ') });
 
