@@ -2735,13 +2735,13 @@
 
         var r = processedData[i];
 
-        var summ = (r.summary || '').trim();
+        var summ = (r.session_summary || '').trim();
 
         var hist = (r.session_history || '').trim();
 
         var disp = (r.disposition_detail || '').trim();
 
-        if (r.disposition === 'contacted' && r.summary !== 'No Response') {
+        if (r.disposition === 'contacted' && r.session_summary !== 'No Response') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
 
