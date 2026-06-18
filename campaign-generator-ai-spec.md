@@ -99,11 +99,11 @@ After the last suggestion card is accepted/rejected:
 
 **Important Clarification**: The AI generation should use the existing `window.JEJO_CONFIG` system from `config.js`, which points to the NVIDIA proxy endpoint (`apiEndpoint`) with `proxyHandshakeToken` authentication. This is consistent with other AI features in the codebase (dashboard, disposition pages).
 
-The endpoint in the current config is `https://autnongageleadoperations.jennyjosephofc1.workers.dev` and requires the `proxyHandshakeToken` of `"autonage-2026-jejo3214"`.
+The endpoint in the current config is `https://autongagetools.jennyjoseph-k.workers.dev` and requires the `proxyHandshakeToken` of `"autonage-2026-jejo3214"`.
 
 ```js
 // Primary: apiEndpoint (Cloudflare Worker)
-// Current: "https://autnongageleadoperations.jennyjosephofc1.workers.dev"
+// Current: "https://autongagetools.jennyjoseph-k.workers.dev"
 // Required: proxyHandshakeToken "autonage-2026-jejo3214"
 
 // Fallback: nvidiaApiKey (direct NVIDIA API) - optional, set to empty string if not needed

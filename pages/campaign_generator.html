@@ -3,33 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " /> 
-  <script>
-    (function () {
-      var theme = localStorage.getItem('jejo-theme') || 'dark';
-      document.documentElement.setAttribute('data-theme', theme);
-    })();
-  </script>
-  <script>
-    (function() {
-      function requireAuth() {
-        var token = sessionStorage.getItem('gryd_token');
-        var expiry = sessionStorage.getItem('gryd_expiry');
-        if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
-          window.location.replace('../login.html');
-          return false;
-        }
-        return true;
-      }
-      requireAuth();
-      window.addEventListener('pageshow', function() { requireAuth(); });
-      document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') requireAuth();
-      });
-      window.addEventListener('unload', function() {});
-    })();
-  </script>
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" /><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" /> 
+  <script src="../assets/js/init.js"></script>
   <title>Campaign Objective Generator - AutoNage</title>
   <meta name="description" content="Generate structured 20-field campaign objectives for voice AI and WhatsApp campaigns." />
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />

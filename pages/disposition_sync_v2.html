@@ -10,45 +10,9 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" /><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
 
-  
-
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " />
-
-  <script>
-
-    (function () {
-
-      var theme = localStorage.getItem('jejo-theme') || 'dark';
-
-      document.documentElement.setAttribute('data-theme', theme);
-
-    })();
-
-  </script>
-
-  <script>
-
-    (function() {
-      function requireAuth() {
-        var token = sessionStorage.getItem('gryd_token');
-        var expiry = sessionStorage.getItem('gryd_expiry');
-        if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
-          window.location.replace('../login.html');
-          return false;
-        }
-        return true;
-      }
-      requireAuth();
-      window.addEventListener('pageshow', function() { requireAuth(); });
-      document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') requireAuth();
-      });
-      window.addEventListener('unload', function() {});
-    })();
-
-  </script>
+  <script src="../assets/js/init.js"></script>
 
   <title>Pre-Sales Sync - AutoNage</title>
 
@@ -60,7 +24,6 @@
 
   <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
-  <script src="../config.staging.js?v=20260616"></script>
 
   <script src="../assets/js/vendor/xlsx.full.min.js"></script>
 
@@ -1165,79 +1128,79 @@
 
       // ── Pre-Sales ──
 
-      "Voicemail": "If the customer has asked to leave a message or voicemail.",
+      "Voicemail": "If the customer has asked to leave a message or voicemail. KEY PHRASES: \"please leave a message\", \"your call is very important to us\", \"the person you are trying to reach is not available\", \"please leave your name and number\", \"we will get back to you as soon as possible\", \"you have reached the voicemail of\", \"please call back later\", voicemail greeting, automated message, recording prompt",
 
-      "Rejected": "If the customer has rejected the offer or to even speak with the agent.",
+      "Rejected": "If the customer has rejected the offer or to even speak with the agent. KEY PHRASES: \"I am not interested in this\", \"please stop calling me\", \"do not call me again\", \"I do not want this service\", \"I already said no\", \"how many times do I have to say no\", \"I told you I am not interested\", \"please remove my number\", \"I don't need anything from you\", \"stop wasting my time\", \"I am not going to take this service\", \"do not contact me anymore\", \"I have no requirement at this time\", \"not now and not ever\"",
 
-      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign.",
+      "Language barrier": "If the customer has asked to speak in a different language and did not finish the conversation or intent of the campaign. KEY PHRASES: \"I do not understand what you are saying\", \"can you speak in Hindi\", \"I speak Telugu only\", \"please talk in Kannada\", \"I cannot follow English\", \"main Hindi mein baat karta hoon\", \"nenu Telugu lo matladatha\", \"do you speak Tamil\", \"I don't know this language\", \"I can't understand you\", \"please get someone who speaks Malayalam\", \"I need to speak in my language\", \"I am not comfortable in English\", \"speak slower I don't understand\", \"what language are you speaking?\"",
 
-      "Is not decision maker": "the customer said they are not the right person to speak to about this in their family.",
+      "Is not decision maker": "the customer said they are not the right person to speak to about this in their family. KEY PHRASES: \"I am not the owner of the vehicle\", \"the car belongs to my father\", \"my husband handles all car matters\", \"someone else takes care of the vehicle\", \"I cannot decide about this\", \"you need to speak to the owner\", \"this is not my vehicle to decide on\", \"I don't handle the car maintenance\", \"my son takes care of the car\", \"the vehicle is registered under my wife's name\", \"I am just the driver\", \"the decision maker is not here\", \"I have no authority to book service\", \"you need to talk to the person who owns the car\"",
 
-      "Will decide later, will purchase within 15 days": "The customer said they would decide to buy the vehicle within 15 days.",
+      "Will decide later, will purchase within 15 days": "The customer said they would decide to buy the vehicle within 15 days. KEY PHRASES: \"I will decide in a couple of days\", \"give me 2 to 3 days to decide\", \"I will get back to you in a few days\", \"I need 2 days to think about it\", \"let me check and I will call you back in 2 days\", \"I will decide within the next 3 days\", \"give me some time, I will let you know in 2 to 3 days\", \"I will confirm in a day or two\", \"I need a few days to decide on this\", \"I will let you know in about 3 days\", \"I will decide in the next few days\"",
 
-      "Will decide later, will purchase within 1 to 3 months": "The customer said they would decide to buy the vehicle within 1 to 3 months.",
+      "Will decide later, will purchase within 1 to 3 months": "The customer said they would decide to buy the vehicle within 1 to 3 months. KEY PHRASES: \"I will decide in about a month\", \"give me a month's time to decide\", \"I will get back to you in 3 to 4 weeks\", \"I need about 20 days to decide\", \"I will confirm in a month\", \"I will decide within the next month\", \"call me after a month I will have an answer\", \"I need about 30 days to check and confirm\", \"I will decide in around 3 weeks to a month\", \"give me a month to think it over\", \"I will decide in about 2 months\", \"call me after 2 months I will decide then\"",
 
-      "Will decide later, exploring options": "The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now.",
+      "Will decide later, exploring options": "The customer said they will decide on the purchase of the vehicle at a later time and are only exploring all their options now. KEY PHRASES: \"I am just looking around\", \"I am exploring all my options\", \"I haven't decided yet\", \"I am still considering my choices\", \"I will think about it and let you know\", \"I need to compare first\", \"I am not ready to commit yet\", \"just browsing for now\", \"I will let you know later when I decide\", \"I am gathering information before deciding\"",
 
-      "No buying intent": "the customer Do not want to purchase a car. Neither are the interested in the car.",
+      "No buying intent": "the customer Do not want to purchase a car. Neither are the interested in the car. KEY PHRASES: \"I do not want to purchase a car\", \"I have no intention of buying\", \"I am not looking to buy a car\", \"no buying intent at all\", \"I have no interest in purchasing a car\", \"I do not plan to buy a car\", \"I am not in the market for a car right now\"",
 
-      "Just Exploring": "the customer Only want to know about the vehicle but do not show intent to buy.",
+      "Just Exploring": "the customer Only want to know about the vehicle but do not show intent to buy. KEY PHRASES: \"I am just exploring\", \"I just want to know about the vehicle\", \"I am checking options\", \"I do not show intent to buy\", \"I am only looking for information\", \"just browsing, not buying now\", \"I am in the early stages of research\"",
 
-      "Will call showroom themselves": "the customer will contact the dealership or showroom themselves.",
+      "Will call showroom themselves": "the customer will contact the dealership or showroom themselves. KEY PHRASES: \"I will call the showroom myself\", \"I will contact the dealership directly\", \"let me reach out to them on my own\", \"I will call them myself\", \"I do not need you to call, I will call them\", \"I prefer to call the showroom directly\", \"I will call the sales team myself\"",
 
-      "Requested Callback": "the customer Asked to call back at a later date and or time.",
+      "Requested Callback": "the customer Asked to call back at a later date and or time. KEY PHRASES: \"call me back sometime later\", \"please call me after some time\", \"call me in the evening\", \"can you call back tomorrow\", \"please call me next week\", \"I am busy right now call me later\", \"call me after an hour\", \"please call again in some time\", \"I am in a meeting call me later\", \"call me back in the afternoon\", \"can you call after two days\", \"I am occupied call me later\", \"please call me after 6 PM\", \"I will be free later call me then\", \"call me back at this time tomorrow\"",
 
-      "Purchased elsewhere": "the customer Already purchased a vehicle elsewhere.",
+      "Purchased elsewhere": "the customer Already purchased a vehicle elsewhere. KEY PHRASES: \"I already purchased a car from another dealer\", \"I already bought a vehicle elsewhere\", \"I purchased a car from a different showroom\", \"already purchased from another brand\", \"already bought, not interested anymore\", \"I already made the purchase elsewhere\", \"I already have a car from another dealer\"",
 
-      "Enquired for Pricing": "the customer by themselves asked for the price of the vehicle.",
+      "Enquired for Pricing": "the customer by themselves asked for the price of the vehicle. KEY PHRASES: \"what is the price of the vehicle\", \"how much does it cost\", \"what is the pricing\", \"I want to know the price\", \"can you tell me the cost\", \"what is the price range\", \"do you have a price list\", \"how much is the car\", \"what is the on-road price\"",
 
-      "Enquired for Specifications": "the customer by themselves asked for the specifications of the vehicle.",
+      "Enquired for Specifications": "the customer by themselves asked for the specifications of the vehicle. KEY PHRASES: \"what are the specifications\", \"tell me about the features\", \"what is the mileage\", \"what engine does it have\", \"what is the fuel type\", \"does it have automatic transmission\", \"what is the seating capacity\", \"what are the safety features\", \"I want to know the specs\"",
 
-      "Enquired for Test Drive": "the customer by themselves asked for a test drive of the vehicle.",
+      "Enquired for Test Drive": "the customer by themselves asked for a test drive of the vehicle. KEY PHRASES: \"can I book a test drive\", \"I want to schedule a test drive\", \"when can I take a test drive\", \"is a test drive available\", \"I would like to test drive the car\", \"how do I book a test drive\", \"I want to experience the vehicle first\"",
 
-      "Enquired for Showroom Visit": "the customer by themselves asked for a showroom visit of the vehicle.",
+      "Enquired for Showroom Visit": "the customer by themselves asked for a showroom visit of the vehicle. KEY PHRASES: \"can I visit the showroom\", \"I want to come to the showroom\", \"when is the showroom open\", \"I would like to see the car at the showroom\", \"can I come see the vehicle\", \"I want a showroom visit\", \"when can I visit your dealership\"",
 
-      "Enquired for Brochure": "the customer by themselves asked for a brochure of the vehicle.",
+      "Enquired for Brochure": "the customer by themselves asked for a brochure of the vehicle. KEY PHRASES: \"can I get a brochure\", \"send me the brochure please\", \"I want the vehicle brochure\", \"where can I download the brochure\", \"I need a brochure for this car\", \"brochure please\", \"share the brochure link\"",
 
-      "Enquired for Dealership Details": "the customer by themselves asked for dealership details.",
+      "Enquired for Dealership Details": "the customer by themselves asked for dealership details. KEY PHRASES: \"what is your dealership address\", \"where is your showroom located\", \"can you give me the dealership contact\", \"what are your opening hours\", \"how do I reach your showroom\", \"I need the dealership location\", \"give me the showroom address\"",
 
-      "Enquired for Others": "the customer by themselves asked for other details not listed above.",
+      "Enquired for Others": "the customer by themselves asked for other details not listed above. KEY PHRASES: \"I have another question\", \"can I ask about something else\", \"I need other information\", \"I want to know about something different\", \"this is not what I was looking for, I need...\"",
 
-      "Comparing with another brand": "The customer by themselves is comparing the vehicle with another brand.",
+      "Comparing with another brand": "The customer by themselves is comparing the vehicle with another brand. KEY PHRASES: \"I am comparing this with another brand\", \"I am also looking at other brands\", \"how does this compare to Brand X\", \"I am considering other options too\", \"I want to compare before deciding\", \"I am looking at competitors as well\"",
 
-      "Customer Busy": "The customer was busy and could not speak at that moment.",
+      "Customer Busy": "The customer was busy and could not speak at that moment. KEY PHRASES: \"I am busy right now\", \"I am in a meeting\", \"I am driving at the moment\", \"I am at work can't talk\", \"I am currently occupied\", \"I am in the middle of something\", \"I am not free now\", \"this is not a good time\", \"I am with a client right now\", \"I am in a conference\", \"I am on the other line\", \"I cannot talk I am busy\", \"I am attending to something urgent\", \"I am in a class right now\"",
 
-      "Call Disconnected": "The customer by themselves has disconnected the call.",
+      "Call Disconnected": "The customer by themselves has disconnected the call. KEY PHRASES: \"call got disconnected\", \"line went dead\", \"the call dropped\", \"the line disconnected suddenly\", \"we lost the connection\", \"the call cut off\", \"I got disconnected\", \"the network dropped the call\", \"the call got cut in between\", \"we were talking and then it disconnected\", \"the line broke\", \"call ended unexpectedly\", \"suddenly the call ended\"",
 
-      "Others": "All other disposition details not listed above.",
+      "Others": "All other disposition details not listed above. KEY PHRASES: any other response that does not match any of the above dispositions exactly, miscellaneous responses, unique situations not covered by other categories",
 
-      "General Inquiry": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle.",
+      "General Inquiry": "the customer is Asking generic questions not specific to the purpose of the campaign or the vehicle. KEY PHRASES: \"can you tell me more about the company\", \"what does your company do\", \"how can I reach you\", \"do you have a website\", \"what is your customer care number\", \"general questions about the brand\", \"I want to know about your services in general\"",
 
-      "Not Interested": "the customer Specifically said they are not interested in the vehicle.",
+      "Not Interested": "the customer Specifically said they are not interested in the vehicle. KEY PHRASES: \"I am not interested in this offer\", \"I have no interest in service right now\", \"don't need any kind of service\", \"I am not looking for any car maintenance\", \"I am not interested please don't call\", \"I don't want to avail any service\", \"I have no interest in anything from you\", \"I am not interested in anything you are offering\", \"this does not interest me\", \"I don't need anything regarding my car\", \"not interested in any service campaign\", \"please don't waste my time I am not interested\"",
 
-      "Follow Up Required": "the customer Needs a follow up to convince them to complete the campaign objective.",
+      "Follow Up Required": "the customer Needs a follow up to convince them to complete the campaign objective. KEY PHRASES: \"I need to think about it\", \"I will consider and get back to you\", \"can you call me again next week\", \"I need to discuss with my family first\", \"not ready to decide yet, please follow up\", \"send me more information first\", \"I am interested but need more details\"",
 
-      "No Response": "the customer did not say anything at all.",
+      "No Response": "the customer did not say anything at all. KEY PHRASES: the customer remained completely silent, did not respond, no answer on the call, complete silence on the line, customer did not speak a single word, dead air during the call, customer did not acknowledge, no verbal response from the customer",
 
-      "Lost to Competition": "the customer Bought a competitor brands vehicle.",
+      "Lost to Competition": "the customer Bought a competitor brands vehicle. KEY PHRASES: \"I already bought from a competitor\", \"I purchased a different brand\", \"I went with another manufacturer\", \"I bought a car from Brand X instead\", \"I chose another brand over yours\", \"I already have a vehicle from your competitor\", \"I made the purchase with another dealer\"",
 
-      "Test Drive Completed": "the customer Already completed a test drive.",
+      "Test Drive Completed": "the customer Already completed a test drive. KEY PHRASES: \"I already did the test drive\", \"I have already taken a test drive\", \"test drive was completed last week\", \"I already experienced the vehicle\", \"I have already driven the car\", \"test drive completed with your dealership\"",
 
-      "Invalid Lead": "the customer Not a valid lead.",
+      "Invalid Lead": "the customer Not a valid lead. KEY PHRASES: \"this is not a valid number\", \"the number is not reachable\", \"I don't know anything about this\", \"there is no such person here\", \"this lead is incorrect\", \"the information you have is wrong\", \"I don't have any vehicle from this brand\", \"I never owned such a car\", \"this number is not associated with any service\", \"the details you have are outdated and wrong\", \"this is an invalid record\", \"I have no relation to this vehicle\"",
 
-      "Purchase Postponed": "the customer indicates that the Purchase has been postponed",
+      "Purchase Postponed": "the customer indicates that the Purchase has been postponed. KEY PHRASES: \"I will buy later not now\", \"my purchase is postponed\", \"I am delaying the purchase\", \"I will buy after some months\", \"not buying right now, maybe later\", \"the purchase has been deferred to next quarter\", \"I will purchase once I have the funds ready\"",
 
-      "Audio Issue": "There was issues with hearing the customer or the agent for either party.",
+      "Audio Issue": "There was issues with hearing the customer or the agent for either party. KEY PHRASES: \"I cannot hear you properly\", \"your voice is breaking\", \"you are sounding very distant\", \"I am not able to hear clearly\", \"there is a lot of disturbance\", \"I can barely hear you\", \"the audio is not clear\", \"your voice is cutting in and out\", \"speak louder I can't hear\", \"there is an echo on the line\", \"I cannot hear what you are saying\", \"the audio is very poor\", \"I am struggling to hear your voice\", \"you are breaking up I can't hear\"",
 
-      "Showroom Visit Planned": "the customer Already booked a showroom visit.",
+      "Showroom Visit Planned": "the customer Already booked a showroom visit. KEY PHRASES: I already have a visit planned to the showroom, I already booked an appointment at the showroom, I am scheduled to visit the showroom already, I have a planned visit to the showroom next week, I already scheduled a showroom visit, my showroom visit is already fixed, I have an appointment booked with the showroom, I already planned my visit to the showroom, I am coming to the showroom already, my visit to the showroom is already confirmed, I already have an appointment at the dealership",
 
-      "Converted": "The customer completes the purpose of the campaign and provides the necessary information.",
+      "Converted": "The customer completes the purpose of the campaign and provides the necessary information. KEY PHRASES: \"I will come in for the service\", \"please book my appointment\", \"yes I am interested please schedule it\", \"I want to book a service appointment\", \"please confirm my booking\", \"I will come to the service center tomorrow\", \"yes please go ahead and schedule the service\", \"I would like to avail this service\", \"book my slot for next week\", \"I am ready to come in for the service\", \"yes please proceed with the booking\", \"I am coming to the workshop this weekend\", \"I want to schedule a service visit\", \"I will be there at the appointed time\", \"thank you I will come for the service\"",
 
       // ── Additional ──
 
-      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant.",
+      "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant. KEY PHRASES: \"I want to talk to a real person\", \"can you connect me to a human executive\", \"I need to speak with a customer service representative\", \"please transfer me to an actual person\", \"I don't want to talk to a machine\", \"connect me to a human agent please\", \"I need to speak with someone who can help directly\", \"can I talk to a live person\", \"I want to speak with a customer care executive\", \"please connect me to your support team\", \"I need a human to help me with this\", \"let me speak to your manager\", \"I want to talk to a real human being\", \"transfer me to a customer service agent\"",
 
-      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership."
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\""
 
     };
 

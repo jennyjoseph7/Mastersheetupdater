@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autnongageleadoperations.jennyjosephofc1.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
   <script>
     (function() {
       var t = localStorage.getItem('jejo-theme') || 'dark';
@@ -17,7 +17,6 @@
   <link rel="stylesheet" href="assets/styles/login.css" />
   <script src="assets/js/lib/theme.js"></script>
   <script src="config.js?v=20260610"></script>
-  <script src="config.staging.js?v=20260616"></script>
 </head>
 <body>
   <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
@@ -37,6 +36,7 @@
         <div class="login-subtitle">Sign in with your autoNgage account</div>
 
         <div class="error-msg" id="errorMsg"></div>
+        <div class="warning-msg" id="warningMsg"></div>
 
         <form id="loginFormElement" onsubmit="handleLogin(event)">
           <div class="form-group">
@@ -63,6 +63,12 @@
         <div class="session-info" id="sessionInfo"></div>
       </div>
 
+      <!-- Debug Log Container -->
+      <div id="debugLogContainer" style="display:none; margin-top:1.5rem; border-top:1px dashed var(--border); padding-top:1rem; text-align:left;">
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem; font-weight:bold;">Debug Log:</div>
+        <pre id="debugLog" style="font-family:var(--sans); font-size:0.7rem; background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:6px; overflow-x:auto; color:var(--text-dim); max-height:150px; overflow-y:auto; white-space:pre-wrap;"></pre>
+        <button onclick="localStorage.removeItem('jejo_auth_log'); location.reload();" style="font-size:0.65rem; background:rgba(255,255,255,0.05); border:1px solid var(--border); color:var(--text-dim); padding:0.25rem 0.5rem; border-radius:4px; margin-top:0.5rem; cursor:pointer;">Clear Log</button>
+      </div>
 
     </div>
   </div>
@@ -71,6 +77,12 @@
 var CONFIG = window.JEJO_CONFIG || {};
 var GRYD_ENDPOINT = CONFIG.grydEndpoint || 'https://autobot-webapp-dev.gryd.in';
 var GRYD_SIGNUP_TOKEN = CONFIG.grydSignupToken || '';
+
+function logAuthEvent(msg) {
+  var log = localStorage.getItem('jejo_auth_log') || '';
+  log += '[' + new Date().toISOString() + '] ' + msg + '\n';
+  localStorage.setItem('jejo_auth_log', log);
+}
 
 function escapeHtml(str) {
   var div = document.createElement('div');
@@ -97,9 +109,20 @@ function showError(msg) {
   setTimeout(function() { el.classList.remove('show'); }, 5000);
 }
 
+function showWarning(msg) {
+  var el = document.getElementById('warningMsg');
+  if (msg) {
+    el.innerHTML = msg;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
 function setLoading(loading) {
   var btn = document.getElementById('btnLogin');
   var txt = document.getElementById('btnText');
+  if (!btn || !txt) return;
   if (loading) {
     btn.classList.add('loading');
     btn.disabled = true;
@@ -109,6 +132,25 @@ function setLoading(loading) {
     btn.disabled = false;
     txt.textContent = 'Sign In';
   }
+}
+
+function parseExpiry(expiryVal) {
+  if (!expiryVal) return 0;
+  var num = Number(expiryVal);
+  if (!isNaN(num)) {
+    if (num > 30000000000) {
+      return Math.floor(num / 1000); // convert milliseconds to seconds
+    }
+    if (num < 31536000) {
+      return Math.floor(Date.now() / 1000) + num; // duration to absolute epoch
+    }
+    return num; // absolute epoch seconds
+  }
+  var parsedDate = Date.parse(expiryVal);
+  if (!isNaN(parsedDate)) {
+    return Math.floor(parsedDate / 1000); // date string to absolute epoch seconds
+  }
+  return 0;
 }
 
 function updateSessionInfo() {
@@ -132,9 +174,50 @@ function updateSessionInfo() {
 function checkSession() {
   var token = sessionStorage.getItem('gryd_token');
   var expiry = sessionStorage.getItem('gryd_expiry');
+  
+  // Sync from localStorage if sessionStorage is empty (e.g. new tab)
+  if (!token && localStorage.getItem('gryd_token')) {
+    var localToken = localStorage.getItem('gryd_token');
+    var localExpiry = localStorage.getItem('gryd_expiry');
+    var localExpiryVal = parseInt(localExpiry);
+    var localNow = Math.floor(Date.now() / 1000);
+    if (localToken && !isNaN(localExpiryVal) && localExpiryVal > localNow) {
+      token = localToken;
+      expiry = localExpiry;
+      sessionStorage.setItem('gryd_token', token);
+      sessionStorage.setItem('gryd_expiry', expiry);
+      sessionStorage.setItem('gryd_session_id', localStorage.getItem('gryd_session_id') || '');
+      sessionStorage.setItem('gryd_enterprise_id', localStorage.getItem('gryd_enterprise_id') || 'autocrm');
+      sessionStorage.setItem('gryd_user_id', localStorage.getItem('gryd_user_id') || '');
+      logAuthEvent('login:checkSession: synced valid session from localStorage to sessionStorage');
+    }
+  }
+  
+  logAuthEvent('login:checkSession: token=' + (token ? 'exists' : 'null') + ', expiry=' + expiry);
   if (token && expiry) {
-    if (parseInt(expiry) > Math.floor(Date.now() / 1000)) {
-      // Already logged in — skip the login page entirely
+    var expiryVal = parseInt(expiry);
+    var now = Math.floor(Date.now() / 1000);
+    logAuthEvent('login:checkSession: parsedExpiry=' + expiryVal + ', now=' + now + ', diff=' + (expiryVal - now));
+    if (!isNaN(expiryVal) && expiryVal > now) {
+      // Break redirect loop if we came back here from index.html or another app page in under 3 seconds
+      var ref = document.referrer || '';
+      var lastRedirectTime = parseInt(sessionStorage.getItem('last_login_redirect_time') || '0');
+      var nowMs = Date.now();
+      var isRapidRedirect = (nowMs - lastRedirectTime < 3000);
+      
+      logAuthEvent('login:checkSession: valid token found, referrer=' + ref + ', isRapid=' + isRapidRedirect + ', diff=' + (nowMs - lastRedirectTime));
+      if (ref && (ref.indexOf('index.html') !== -1 || ref.indexOf('/pages/') !== -1) && isRapidRedirect) {
+        logAuthEvent('login:checkSession: LOOP DETECTED! Clearing session and showing warning.');
+        console.warn('Redirect loop detected from referrer:', ref, '- clearing session and staying on login page.');
+        sessionStorage.removeItem('gryd_token');
+        sessionStorage.removeItem('gryd_expiry');
+        localStorage.removeItem('gryd_token');
+        localStorage.removeItem('gryd_expiry');
+        showWarning('⚠️ <strong>Authentication redirect loop detected.</strong> Your browser is isolating session storage between pages. Ensure you are accessing the site via a local web server (http:// or https://) rather than opening the files directly.');
+        return false;
+      }
+      logAuthEvent('login:checkSession: Redirecting to index.html');
+      sessionStorage.setItem('last_login_redirect_time', String(Date.now()));
       window.location.replace('index.html');
       return true;
     }
@@ -179,8 +262,11 @@ async function handleLogin(event) {
     }
 
     // Validate response before persisting
-    if (!data.token || !data.expiry || parseInt(data.expiry) <= 0) {
-      showError('Invalid server response: missing token or expiry.');
+    var absoluteExpiry = parseExpiry(data.expiry);
+    logAuthEvent('login:handleLogin success: rawExpiry=' + data.expiry + ', parsedAbsoluteExpiry=' + absoluteExpiry);
+    if (!data.token || !absoluteExpiry || absoluteExpiry <= Math.floor(Date.now() / 1000)) {
+      logAuthEvent('login:handleLogin validation failed! token=' + (data.token ? 'exists' : 'null') + ', absoluteExpiry=' + absoluteExpiry);
+      showError('Invalid server response: missing token or expired session.');
       setLoading(false);
       return;
     }
@@ -189,18 +275,30 @@ async function handleLogin(event) {
     sessionStorage.setItem('gryd_session_id', data.session_id || '');
     sessionStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
     sessionStorage.setItem('gryd_user_id', data.user_id || userId);
-    sessionStorage.setItem('gryd_expiry', String(data.expiry));
+    sessionStorage.setItem('gryd_expiry', String(absoluteExpiry));
+
+    // Also write to localStorage for multi-tab sync and durability
+    localStorage.setItem('gryd_token', data.token);
+    localStorage.setItem('gryd_session_id', data.session_id || '');
+    localStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
+    localStorage.setItem('gryd_user_id', data.user_id || userId);
+    localStorage.setItem('gryd_expiry', String(absoluteExpiry));
+
+    logAuthEvent('login:handleLogin stored token successfully. Redirecting to index.html in 1.2s.');
 
     // Show flash and redirect after a moment
     var loginForm = document.getElementById('loginForm');
     var btn = document.getElementById('btnLogin');
-    btn.classList.remove('loading');
-    btn.disabled = false;
+    if (btn) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
 
     // Replace form with a brief success flash
     loginForm.innerHTML = '<div class="flash-success"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Signed in as ' + escapeHtml(data.user_id || userId) + ' — redirecting&hellip;</div>';
 
     setTimeout(function() {
+      sessionStorage.setItem('last_login_redirect_time', String(Date.now()));
       window.location.replace('index.html');
     }, 1200);
   } catch (err) {
@@ -211,6 +309,17 @@ async function handleLogin(event) {
 }
 
 applyTheme(localStorage.getItem('jejo-theme') || 'dark');
+if (window.location.protocol === 'file:') {
+  showWarning('⚠️ <strong>Running via file:// protocol.</strong> Modern browsers isolate session storage for local files, which prevents login state from sharing between pages. Please use a local web server (e.g. VS Code Live Server, python http.server, or npm serve).');
+}
+
+// Show the debug log if it has entries
+var savedLog = localStorage.getItem('jejo_auth_log');
+if (savedLog) {
+  document.getElementById('debugLogContainer').style.display = 'block';
+  document.getElementById('debugLog').textContent = savedLog;
+}
+
 if (!checkSession()) { updateSessionInfo(); }
 </script>
 </body>

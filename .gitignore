@@ -20,3 +20,6 @@ nul
 
 # Dependencies (if any)
 node_modules/
+
+# Mimocode
+.mimocode

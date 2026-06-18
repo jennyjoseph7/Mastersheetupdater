@@ -6,16 +6,16 @@
 
 window.JEJO_CONFIG = {
   // --- GRYD AI BACKEND ---
-  grydEndpoint: "https://autnongageleadoperations.jennyjosephofc1.workers.dev",
+  grydEndpoint: "https://autongagetools.jennyjoseph-k.workers.dev",
   grydModel: "gcp-gemini-3.1-flash-lite-preview",
 
   // ⚠ REPLACE THIS with your actual gryd signup token
-  grydSignupToken: "",
+  grydSignupToken: "YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0",
 
   useGrydLlm: true,
 
   // --- Proxy settings (for Cloudflare Worker auth) ---
-  apiEndpoint: "https://autnongageleadoperations.jennyjosephofc1.workers.dev",
+  apiEndpoint: "https://autongagetools.jennyjoseph-k.workers.dev",
   proxyHandshakeToken: "autonage-2026-jejo3214",
 
   // --- AI PERFORMANCE TUNING ---

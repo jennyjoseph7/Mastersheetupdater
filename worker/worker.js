@@ -115,6 +115,10 @@ export default {
         const v = request.headers.get(h);
         if (v) grydHeaders[h] = v;
       }
+      // Inject signup token from Worker env if frontend didn't send one
+      if (!grydHeaders['x-gryd-signup-token'] && env.GRYD_SIGNUP_TOKEN) {
+        grydHeaders['x-gryd-signup-token'] = env.GRYD_SIGNUP_TOKEN;
+      }
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 90000);
@@ -143,15 +147,22 @@ export default {
     }
 
     // ── GRYD PROXY ROUTE (login, etc.) ───────────────────────────────
-    // Forwards /gryd/* requests to gryd backend, strips browser origin
+    // Forwards /gryd/* requests to gryd backend, strips browser origin.
+    // Signup token is injected from Worker env (GRYD_SIGNUP_TOKEN) so the
+    // frontend never needs to expose it.
     if (url.pathname.startsWith('/gryd/')) {
       const grydHeaders = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
+
       for (const h of ['x-gryd-enterprise-id', 'x-gryd-token', 'x-gryd-session-id', 'x-gryd-signup-token', 'x-gryd-application-id']) {
         const val = request.headers.get(h);
         if (val) grydHeaders[h] = val;
+      }
+      // Inject signup token from Worker env if frontend didn't send one
+      if (!grydHeaders['x-gryd-signup-token'] && env.GRYD_SIGNUP_TOKEN) {
+        grydHeaders['x-gryd-signup-token'] = env.GRYD_SIGNUP_TOKEN;
       }
 
       const controller = new AbortController();
