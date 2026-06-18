@@ -2741,7 +2741,7 @@
 
         var disp = (r.disposition_detail || '').trim();
 
-        if (r.disposition === 'contacted' && r.session_summary !== 'No Response') {
+        if (r.disposition === 'engaged' && r.session_summary !== 'No Response') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, model: r.model || '', outcome: r.outcome || '', callDuration: r.call_duration || '', leadSource: r.lead_source || '' });
 
