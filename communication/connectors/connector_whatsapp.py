@@ -289,7 +289,7 @@ def post_contact_status(*args, **data):
                     order="DESC",
                 )
             )
-            mlogger.info(f"[post_contact_status] user with phone_number={data.get('phone_number')} has person records: {person_d}")
+            mlogger.info(f"[post_contact_status] user with phone_number={phone_number} has person records: {person_d}")
             if person_d and channel:
                 person = person_d[0]
                 user_id = person.get("user_id")
