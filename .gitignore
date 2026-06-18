@@ -85,3 +85,4 @@ crm_integration/.gitignore
 unstable_setup.sh
 logs/*
 *.log
+frontend/tsconfig.tsbuildinfo
