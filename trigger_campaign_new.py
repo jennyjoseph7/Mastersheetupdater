@@ -6,7 +6,7 @@ from gryd_worker import gryd
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
-from campaign.campaign_worker import trigger_campaign,process_single_lead
+# from campaign.campaign_worker import trigger_campaign,process_single_lead
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 if __name__ == "__main__":
     
@@ -27,13 +27,18 @@ if __name__ == "__main__":
     #         kwargs={}
     #     )
     
-    # gryd.create_async_task(
-    #         "process_single_lead",
-    #         "autocrm-campaign",
-    #         args=["whatsapp_chat", "tn37dm7087-ambal-auto-scheduled-service-reminder","post-sales","74f260b8-e8dc-3c52-ab8d-31bd0fc49943"],
-    #         kwargs={}
-    #     )
-    
+    gryd.create_async_task(
+            "process_single_lead",
+            "autocrm-campaign",
+            args=["whatsapp_chat", "test-8277676778-test@iamdave.ai-dave-ai-us-india-12a55ed4-5db5-3287-91c2-5aa09beae444","pre-sales","12a55ed4-5db5-3287-91c2-5aa09beae444"],
+            kwargs={
+                "templateID":"787147271056124"
+                # "templateID":"2130646657782594"
+            }
+        )
+
+
+
     # tn99t7877-ambal-auto-scheduled-service-reminder
     
     # gryd.create_async_task(
@@ -43,6 +48,6 @@ if __name__ == "__main__":
     #     kwargs={"session_id":"2f7a2c16541d3348"}
     # )
     
-    BaseWebhookConverter.end_session(**{"session_id":"a1f05f1c7f6834ef"})
+    # BaseWebhookConverter.end_session(**{"session_id":"a1f05f1c7f6834ef"})
     
     
