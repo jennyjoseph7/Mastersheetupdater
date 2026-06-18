@@ -1797,8 +1797,8 @@ def fetch_leads(dealership_id, channel, batch_size):
                 WHERE 
                     dict->>'dealership_id' = %s
                     AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             ),
             post AS (
@@ -1807,8 +1807,8 @@ def fetch_leads(dealership_id, channel, batch_size):
                 WHERE 
                     dict->>'dealership_id' = %s
                     AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             )
             SELECT *
@@ -1817,7 +1817,7 @@ def fetch_leads(dealership_id, channel, batch_size):
                 UNION ALL
                 SELECT * FROM post
             ) t
-            ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+            ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
             LIMIT %s
         """
         params = (
@@ -1828,8 +1828,36 @@ def fetch_leads(dealership_id, channel, batch_size):
         _leads=pg.fetch_all(query, params)
         mlogger.info(f"[fetch_leads] TOTAL LEADS for dealership_id={dealership_id} and channel={channel} is {len(_leads)}")
         # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
-        yield _leads
-        # return _leads
+        # yield _leads
+        
+        seen = set()
+        duplicates = []
+        unique_leads = []
+
+        for lead in _leads:
+            data, lead_type = lead
+
+            if lead_type == "pre_sales":
+                lead_model = "pre_sales_lead"
+                lead_id = data.get("pre_sales_lead_id")
+            else:
+                lead_model = "post_sales_lead"
+                lead_id = data.get("post_sales_lead_id")
+
+            unique_key = f"{lead_model}:{lead_id}"
+
+            if unique_key in seen:
+                duplicates.append(unique_key)
+                continue
+
+            seen.add(unique_key)
+            unique_leads.append(lead)
+
+        if duplicates:
+            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
+
+        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
+        return unique_leads
 
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
@@ -1932,7 +1960,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, batch_size))
+                        leads = fetch_leads(dealership_id, channel, batch_size)
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
                         # mlogger.info(f"[FETCH] LEAD_DATA-->{json.dumps(leads,indent=4)}")
                         if not leads:
@@ -1986,7 +2014,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, b_z))
+                        leads = fetch_leads(dealership_id, channel, b_z)
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
                         if not leads:
                             mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
