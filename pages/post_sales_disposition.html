@@ -2529,6 +2529,8 @@
 
             summary: sess.summary || '',
 
+            session_summary: sess.summary || '',
+
             session_history: sess.history_text || '',
 
             sentiment_score: sess.sentiment || '',
@@ -3978,7 +3980,7 @@
 
         var r = processedData[i];
 
-        var summ = (r.summary || '').trim();
+        var summ = (r.session_summary || '').trim();
 
         var hist = (r.session_history || '').trim();
 
@@ -3986,7 +3988,7 @@
 
         var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
 
-        if (r.disposition === 'engaged' && r.summary !== 'No Response') {
+        if (r.disposition === 'engaged' && r.session_summary !== 'No Response') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, callDate: r.call_date || '', outcome: r.outcome || '', vehicleModel: r.vehicle_model || '', campaignId: r.campaign_id || '', dealerName: dealerName, supportedLanguages: supportedLangs.join(', ') });
 
