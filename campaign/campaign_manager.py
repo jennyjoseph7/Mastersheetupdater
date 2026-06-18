@@ -330,16 +330,17 @@ class BaseCampaignCreater:
                     "skip_workflow": campaign_details.get("skip_workflow", False)
                 }
             
-            logger.info(f"Calling post_contact_status with data from campaign: {data}")
-            gryd.create_async_task(
-                "post_contact_status", 
-                AUTOCRM_COMMUNICATION_SERVICE_NAME, 
-                kwargs=data
-            )
-        
-        
-        
-        
+            #NOTE: if msg_status is failed then we dont want to call post_contact_status from campaign bcoz at this point we dont get error message.So once we receive the error message from the provider we will call post_contact_status from the webhook handler.
+            if msg_status not in ["failed"]:
+                logger.info(f"Calling post_contact_status with data from campaign: {data}")
+                gryd.create_async_task(
+                    "post_contact_status", 
+                    AUTOCRM_COMMUNICATION_SERVICE_NAME, 
+                    kwargs=data
+                )
+
+
+
         return patch_user_data
         
         
