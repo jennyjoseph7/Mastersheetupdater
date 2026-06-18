@@ -303,6 +303,7 @@ function CampaignInsightsContent() {
   const [selectedLead, setSelectedLead] = useState<{
     userId: string;
     personName?: string;
+    leadTimeline?: string;
   } | null>(null);
 
   const [activeRecording, setActiveRecording] = useState<{
@@ -1389,6 +1390,7 @@ function CampaignInsightsContent() {
                                             setSelectedLead({
                                               userId: effectiveUserId,
                                               personName: lead.person_name,
+                                              leadTimeline: lead.lead_timeline,
                                             });
                                             setEngagementModalOpen(true);
                                           }
@@ -1863,6 +1865,7 @@ function CampaignInsightsContent() {
           userId={selectedLead.userId}
           campaignId={campaignId}
           personName={selectedLead.personName}
+          leadTimeline={selectedLead.leadTimeline}
         />
       )}
 
