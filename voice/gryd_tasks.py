@@ -99,7 +99,7 @@ def trigger_voice_call(*args, **kwargs):
         }
 
     person_model = gryd.base_model.Model("person", config.AUTOCRM_APP_ENTERPRISE_ID)
-    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number")}).get('data',{})
+    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number"),"_sort_by":"updated","_sort_reverse":True}).get('data',{})
     person_obj = person_obj[0] if person_obj else {}
     if not person_obj:
         logger.error(f"No person found with mobile number: {user_data.get('mobile_number')}")
