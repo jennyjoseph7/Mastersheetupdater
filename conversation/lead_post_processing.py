@@ -475,9 +475,9 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
         return
     campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
     def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "Active"}))
-        # TODO:just check the above query in staging and unstable lower active seems not be working..
-        if not a:
+        a=pg_conn.get(campaign_model,"campaign_id",campaign_id)
+        
+        if not a or a.get("campaign_status", "").lower() != "active":
             mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
             return
         # TODO:before calling ananth task check the campaign status and then call.. 
