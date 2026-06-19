@@ -7,7 +7,10 @@ if BASE_DIR not in sys.path:
 from config import AUTOCRM_APP_ENTERPRISE_ID, \
     AUTOCRM_CAMPAIGN_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME, \
     gryd, hp, AutocrmModel, AUTOCRM_ALLOWED_CHANNELS, AUTOCRM_CHEAPEST_CHANNELS, \
-    get_phone_code_from_dealership
+    CHANNEL_IDENTIFIER_MAP, \
+    get_phone_code_from_dealership, \
+    get_cheapest_channel, \
+    get_channel_identifier_from_lead
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from functools import reduce
@@ -99,18 +102,6 @@ REQUIRED_RETRIGGER = {
     "confirmation_message": False
 }
 
-CHANNEL_IDENTIFIER_MAP = {
-    "whatsapp": "phone_number",
-    "whatsapp_chat": "phone_number",
-    "voice_phone": "phone_number",
-    "voice": "phone_number",
-    "voicebot": "phone_number",
-    "email": "email",
-    "sms": "phone_number",
-    "rcs": "phone_number",
-    "whatsapp_voice_note": "phone_number",
-    "whatsapp_voice_call": "phone_number"
-}
 
 CHANNEL_LAST_CONTACTED_MAP = {
     "whatsapp": "whatsapp_number",
@@ -205,12 +196,6 @@ def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
         raise ValueError(f"Invalid campaign type: {campaign_type}")
     return campaign_model, lead_model, user_model, user_id_attr, lead_id_attr
 
-def get_cheapest_channel(channels: list, channel_sequence = None):
-    channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
-    for c in channel_sequence:
-        if c in channels:
-            return c
-    return channels[0]
 
 def sort_channel_by_cheapest(channels: list, current_channel: str = None, channel_sequence = None, last_contacted_channel = None):
     channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
@@ -278,21 +263,6 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
         return None
     return statuses
 
-def get_channel_identifier_from_lead(channel: str, lead: dict, channel_identifier: str = None, logger=None):
-    logger = logger or mlogger
-    st = hp.time()
-    channel_identifier_list = []
-    channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
-    if channel_type == "phone_number":
-        channel_identifier_list = get_phone_number_identifier_from_lead(channel_type, lead, logger=logger)
-    elif channel_type == "email":
-        channel_identifier_list = get_email_identifier_from_lead(lead, logger=logger)
-    else:
-        logger.error(f"Invalid channel: {channel}, doing nothing. channel_type: {channel_type}")
-    if channel_identifier:
-        channel_identifier_list = channel_identifier_list[channel_identifier_list.index(channel_identifier):]
-    logger.info(f"Time taken to get channel identifier: {hp.time() - st} seconds")
-    return channel_identifier_list
 
 @gryd.is_a_task(function_name="get_channel_from_lead", job_param='job', auth_param='auth', logger_param='logger')
 def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Union[str, None] = None, workflow = None, current_channel = None, current_channel_identifier = None, disposition = None, lead_id = None, logger=None, job=None, auth=None, *args, **kwargs):
@@ -408,68 +378,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
     return None, None, 0, None
 
-def get_email_identifier_from_lead(lead: dict, logger=None):
-    logger = logger or mlogger
-    st = hp.time()
-    rlist = []
-    priority = []
-    email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
-    email_last_contacted_name = "last_contacted_email"
-    for email in email_list:
-        if lead.get(email):
-            if lead.get(email) in rlist:
-                continue
-            rlist.append(lead.get(email))
-    for person in lead.get('persons_involved', []):
-        for email in email_list:
-            if person.get(email):
-                if person.get(email) in rlist:
-                    continue
-                rlist.append(person.get(email))
-                if person.get(email_last_contacted_name) == email:
-                    priority.append((person.get(f'updated'), person.get(email_last_contacted_name)))
-    priority.sort(key=lambda x: x[0])
-    for p0, p1 in priority:
-        if p1 in rlist:
-            rlist.remove(p1)
-        rlist.insert(0, p1)
-    logger.info(f"Time taken to get email identifiers: {hp.time() - st} seconds")
-    return rlist
 
-def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None):
-    logger = logger or mlogger
-    st = hp.time()
-    rlist = []
-    priority = []
-    ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
-    channel_last_contacted_name = CHANNEL_LAST_CONTACTED_MAP.get(channel)
-    for ph in ph_list:
-        d = lead.get(ph)
-        if d:
-            d = process_phone_number(d, lead.get('dealership_id'))
-            if d in rlist:
-                continue
-            logger.info(f"Adding {ph}: {d} to rlist")
-            rlist.append(d)
-    for person in lead.get('persons_involved', []):
-        for ph in ph_list:
-            if person.get(ph):
-                d = process_phone_number(person.get(ph), lead.get('dealership_id'))
-                if d in rlist:
-                    continue
-                logger.info(f"Adding {ph}: {d} to rlist for person {person.get('user_id')}")
-                rlist.append(d)
-        if person.get(channel_last_contacted_name) == ph:
-            logger.info(f"Adding {ph} as last contacted channel from person")
-            priority.append((person.get(f'updated'), person.get(channel_last_contacted_name)))
-    priority.sort(key=lambda x: x[0])
-    for p0, p1 in priority:
-        if p1 in rlist:
-            rlist.remove(p1)
-        rlist.insert(0, p1)
-    logger.info(f"List of phone numbers for lead {lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id')} is \"{', '.join(rlist)}\"")
-    logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
-    return rlist
 
 
 def remap_workflow(workflows: dict, campaign_id: str, dealership_id: str, campaign_objective_id: str, campaign_type: str, logger=None):
