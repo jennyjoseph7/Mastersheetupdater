@@ -546,7 +546,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         if not lead:
             mlogger.warning(f"[post_contact_status] No lead found for {lead_key}")
             return
-
+        
+        latest_lead_disposition = lead.get("disposition")
+        
         if campaign_type == "post-sales" and user_id and channel:
             mlogger.info(f"[post_contact_status] Updating lead for post-sales with user_id={user_id} and channel={channel}")
             persons = lead.get("persons_involved") or []
@@ -582,7 +584,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 f"(current={lead.get('disposition')}, incoming={incoming_status})"
             )
             update_payload["disposition"] = incoming_status
-            
+            latest_lead_disposition = incoming_status
             if incoming_status == "failed":
                 update_payload["disposition_detail"] = data.get("failure_reason")
 
@@ -657,9 +659,11 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         
         # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
         channel_identifier = get_channel_identifier(data)
-        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{lead.get('disposition')},{data.get('skip_workflow', False)}")
-        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for latest lead disposition -- {latest_lead_disposition} for filters: {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,latest_lead_disposition,pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
+
+
 def get_channel_identifier(data):
     
     identifier_key = CHANNEL_IDENTIFIER_MAP.get(data.get("channel"))
