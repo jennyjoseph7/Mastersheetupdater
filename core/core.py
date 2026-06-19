@@ -345,12 +345,6 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
                 ), 
                 row.get('next_schedule_time', hp.time())
             )
-
-    if is_valid_value(row, 'next_schedule_time'):
-        row['next_channel'] = get_cheapest_channel(dealership.get('channels') or ['voice_phone'])
-        row['next_channel_identifier'] = get_channel_identifier_from_lead(row['next_channel'], row, logger = logger)
-        row['next_trigger'] = 'switch_to_next_credential'
-    
     row, missing_reason = get_vehicle_id(models['vehicle_model'], row, missing_reason, required_attributes = required_attributes, logger = logger)
     row, missing_reason = get_persons_involved(row, models, missing_reason, logger = logger)
     return row, missing_reason
@@ -570,7 +564,58 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         row, missing_reason = process_dealership_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
     else:
         raise ValueError(f"Invalid campaign type: {campaign_type}")
+    row = update_next_schedule_time(row, campaign = models['campaign'].get(campaign_id, {}))
     return row, missing_reason
+
+@gryd.is_a_task('update_next_schedule_time', logger_param = 'logger', job_param = 'job')
+def update_next_schedule_time(lead_object, next_schedule_time = None, campaign = None, channels = None, channel_sequence = None, logger = None, job = None):
+    """
+    Update the next schedule time in a lead lead_object, to add the channel, etc.
+    """
+    campaign_type = lead_object.get('campaign_type')
+    lead_id_attr = f"{campaign_type.replace('-', '_')}_lead_id"
+    if not isinstance(campaign, dict):
+        campaign_model = f"{campaign_type.replace('-', '_')}_campaign"
+        cm = AutocrmModel(campaign_model)
+        campaign = campaign or cm.get(lead_object.get('campaign_id'))
+    channels = channels or campaign.get('channels') or ['voice_phone']
+    channel_sequence = channel_sequence or campaign.get('channel_sequence')
+    if next_schedule_time:
+        lead_object['next_schedule_time'] = hp.to_epoch(next_schedule_time)
+    if is_valid_value(lead_object, 'next_schedule_time'):
+        logger.info("Next scheduled time set to %s for lead %s in %s campaign %s", 
+            hp.to_datetime(lead_object.get('next_schedule_time')), 
+            lead_object.get(lead_id_attr),
+            campaign_type,
+            lead_object.get('campaign_id')
+        )
+        lead_object['next_channel'] = get_cheapest_channel(channels, channel_sequence)
+        lead_object['next_channel_identifier'] = get_channel_identifier_from_lead(lead_object['next_channel'], lead_object, logger = logger, job = job)
+        lead_object['next_trigger'] = 'switch_to_next_credential'
+    return lead_object
+
+@gryd.is_a_task("update_next_schedule_time_batch", logger_param = 'logger', job_param = 'job')
+def update_next_schedule_time_batch(campaign_type, next_schedule_time, campaign = None, channels = None, channel_sequence = None, **kwargs):
+    """
+    Filters leads based on kwargs and updates the next_schedule_time for them
+    """
+    if not isinstance(campaign, dict):
+        campaign_model = f"{campaign_type.replace('-', '_')}_campaign"
+        cm = AutocrmModel(campaign_model)
+        campaign = campaign or cm.get(lead_object.get('campaign_id'))
+    channels = channels or campaign.get('channels') or ['voice_phone']
+    channel_sequence = channel_sequence or campaign.get('channel_sequence')
+    kwargs['_sort_by'] = kwargs.get('_sort_by') or 'created'
+    updated_count = 0
+    for lead in lm.filter(**kwargs):
+        lead = update_next_schedule_time(lead, next_schedule_time, campaign = campaign, channels = channels, channel_sequence = channel_sequence, looger = logger, job = job)
+        try:
+            lm.post(lead)
+        except Exception as e:
+            hp.print_error(e)
+        else:
+            updated_count += 1
+    return updated_count
 
 def process_headers(headers, mapping, rooftop_id, campaign_type, logger = None):
     logger = logger or mlogger
@@ -753,7 +798,7 @@ def gryd_task_clone_leads_between_campaigns(
                         logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
                         skipped += 1
                         continue
-
+                
                 # --- Data Preparation for Re-Posting ---
                 # Create a fresh dictionary and strip unique database identifiers
                 new_lead_data = dict(lead)
