@@ -331,7 +331,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 if disposition in ["engaged", "converted"]:
                     attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
-                    logger.info("In current production if engaged or converted we will not follow-up: %s". disposition)
+                    logger.info(f"In current production if engaged or converted we will not follow-up: {disposition}")
                     return None, None, 0, None
                 next_delay = get_next_delay(highest_status, attempts, workflow_stage)
                 logger.info(f"Next delay: {next_delay}")
