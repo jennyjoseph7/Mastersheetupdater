@@ -10,7 +10,9 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, \
     CHANNEL_IDENTIFIER_MAP, \
     get_phone_code_from_dealership, \
     get_cheapest_channel, \
-    get_channel_identifier_from_lead
+    get_channel_identifier_from_lead, \
+    process_phone_number
+    
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from functools import reduce
@@ -103,19 +105,6 @@ REQUIRED_RETRIGGER = {
 }
 
 
-CHANNEL_LAST_CONTACTED_MAP = {
-    "whatsapp": "whatsapp_number",
-    "whatsapp_chat": "whatsapp_number",
-    "voice_phone": "phone_number",
-    "voice": "phone_number",
-    "voicebot": "phone_number",
-    "email": "email",
-    "sms": "phone_number",
-    "rcs": "phone_number",
-    "whatsapp_voice_note": "phone_number",
-    "whatsapp_voice_call": "phone_number"
-}
-
 CAMPAIGN_WORKFLOW = {
     "queued": {
         "retries": 10,
@@ -162,14 +151,7 @@ CAMPAIGN_WORKFLOW = {
 
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
-def process_phone_number(phone_number, dealership_id = None):
-    phone_code = '91'
-    if dealership_id:
-        phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
-    phone_number = re.sub(r'\D', '', phone_number)
-    if len(phone_number) > 10:
-        return phone_number
-    return f"{phone_code}{phone_number}"
+
 
 
 def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):

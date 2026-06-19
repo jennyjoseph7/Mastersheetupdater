@@ -70,6 +70,19 @@ AUTOCRM_SUPPORTED_LANGUAGES = [
     "portuguese"
 ]
 
+CHANNEL_LAST_CONTACTED_MAP = {
+    "whatsapp": "whatsapp_number",
+    "whatsapp_chat": "whatsapp_number",
+    "voice_phone": "phone_number",
+    "voice": "phone_number",
+    "voicebot": "phone_number",
+    "email": "email",
+    "sms": "phone_number",
+    "rcs": "phone_number",
+    "whatsapp_voice_note": "phone_number",
+    "whatsapp_voice_call": "phone_number"
+}
+
 CHANNEL_IDENTIFIER_MAP = {
     "whatsapp": "phone_number",
     "whatsapp_chat": "phone_number",
@@ -518,6 +531,14 @@ def get_cheapest_channel(channels: list, channel_sequence = None):
             return c
     return channels[0]
 
+def process_phone_number(phone_number, dealership_id = None):
+    phone_code = '91'
+    if dealership_id:
+        phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
+    phone_number = re.sub(r'\D', '', phone_number)
+    if len(phone_number) > 10:
+        return phone_number
+    return f"{phone_code}{phone_number}"
 
 def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None):
     logger = logger or mlogger
