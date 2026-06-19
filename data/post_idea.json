@@ -132,6 +132,16 @@
             "auto_updater": true
         },
         {
+            "name": "sample_image_url",
+            "type": "text",
+            "constraint": {
+                "function": "url_validator"
+            },
+            "converter": {
+                "function": "url_converter"
+            }
+        },
+        {
             "name": "image_url",
             "type": "text",
             "constraint": {

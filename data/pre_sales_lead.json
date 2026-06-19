@@ -776,11 +776,14 @@
         {
             "name": "payment_preference",
             "type": "text",
+            "option_others": true,
             "options": [
                 "cash",
                 "bank transfer",
                 "loan",
-                "emi"
+                "emi",
+                "subscription",
+                "lease"
             ]
         },
         {

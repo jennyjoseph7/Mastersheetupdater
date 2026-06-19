@@ -1,4 +1,6 @@
 import argparse
+import base64
+import glob
 import io
 import os, sys
 from PIL import Image
@@ -46,13 +48,92 @@ def load_png_layer(path, scale):
     return img
 
 
+_FONT_DIRS = [
+    '/usr/local/share/fonts', '/usr/share/fonts',
+    os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts',
+]
+
+# PostScript weight suffix → (font-weight value, fallback style if file not found)
+_PS_WEIGHT = {
+    'Black': ('900', None), 'ExtraBold': ('800', None), 'Bold': ('700', None),
+    'SemiBold': ('600', None), 'Medium': ('400', 'Regular'), 'Regular': ('400', None),
+    'Light': ('300', None), 'ExtraLight': ('200', None), 'Thin': ('100', None),
+}
+
+def _find_font_file(family: str, style: str) -> str | None:
+    for d in _FONT_DIRS:
+        for stem in (f'{family} {style}', f'{family}-{style}'):
+            for ext in ('.ttf', '.otf'):
+                hits = glob.glob(os.path.join(d, '**', f'{stem}{ext}'), recursive=True)
+                if hits:
+                    return hits[0]
+    return None
+
+def _embed_fonts_in_svg(svg_content: str) -> str:
+    """Normalize PostScript font names and embed font files as @font-face."""
+    soup = bs4.BeautifulSoup(svg_content, 'xml')
+    elements = soup.find_all(attrs={'font-family': True})
+    mlogger.info(f'[font-embed] found {len(elements)} elements with font-family attribute')
+
+    face_rules = []
+    seen = set()
+
+    for el in elements:
+        ff = el['font-family'].strip('\'"').split(',')[0].strip()  # take first in fallback list
+        mlogger.info(f'[font-embed] element font-family="{ff}"')
+        if '-' not in ff:
+            continue
+        family, suffix = ff.rsplit('-', 1)
+        if suffix not in _PS_WEIGHT:
+            mlogger.warning(f'[font-embed] unknown suffix "{suffix}" in "{ff}", skipping')
+            continue
+        weight, fallback_style = _PS_WEIGHT[suffix]
+
+        # Normalize element so fontconfig can resolve by family + weight
+        el['font-family'] = family
+        el['font-weight'] = weight
+        mlogger.info(f'[font-embed] normalized "{ff}" → family="{family}" weight={weight}')
+
+        if ff in seen:
+            continue
+        seen.add(ff)
+
+        font_file = _find_font_file(family, suffix) or (
+            _find_font_file(family, fallback_style) if fallback_style else None
+        )
+        mlogger.info(f'[font-embed] font file for "{ff}": {font_file}')
+        if not font_file:
+            mlogger.warning(f'[font-embed] font file not found for "{ff}", skipping embed')
+            continue
+        ext = os.path.splitext(font_file)[1].lower()
+        mime, fmt = ('font/ttf', 'truetype') if ext == '.ttf' else ('font/otf', 'opentype')
+        b64 = base64.b64encode(open(font_file, 'rb').read()).decode('ascii')
+        face_rules.append(
+            f"@font-face{{font-family:'{family}';font-weight:{weight};"
+            f"src:url('data:{mime};base64,{b64}')format('{fmt}');}}"
+        )
+        mlogger.info(f'[font-embed] embedded {font_file} as "{family}" weight={weight}')
+
+    mlogger.info(f'[font-embed] total @font-face rules added: {len(face_rules)}')
+    if face_rules:
+        style_tag = soup.new_tag('style')
+        style_tag.string = '\n'.join(face_rules)
+        soup.find('svg').insert(0, style_tag)
+
+    return str(soup)
+
+
 def load_svg_layer(path, scale, base_size):
     if not cairosvg:
         raise ValueError("CairoSVG not loaded, cannot perform merge on this system")
     base_w, base_h = base_size
-    
+
+    with open(path, 'r', encoding='utf-8') as f:
+        svg_content = f.read()
+    svg_content = _embed_fonts_in_svg(svg_content)
+
     svg_png_bytes = cairosvg.svg2png(
-        url=path,
+        bytestring=svg_content.encode('utf-8'),
         output_width=int(base_w * scale),
         output_height=int(base_h * scale)
     )
