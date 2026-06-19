@@ -607,6 +607,10 @@
             "type": "nested_object"
         },
         {
+            "name": "attempt_time_on_due_date",
+            "type": "nested_object"
+        },
+        {
             "name": "dealership_id",
             "type": "uid",
             "indexed": true,
