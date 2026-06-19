@@ -1642,7 +1642,7 @@ def gryd_task_import_leads_from_csv(
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
-    next_schedule_time = kwarg.get("next_schedule_time")
+    next_schedule_time = kwargs.get("next_schedule_time")
     logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}, audience_name: {audience_name}")
     # Model selection
     models = load_models(campaign_type)
