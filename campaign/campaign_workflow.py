@@ -134,7 +134,7 @@ CAMPAIGN_WORKFLOW = {
     "failed": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 1200,
+        "delay": 3600 * 4,
         "trigger": "switch_to_next_credential"
     },
     "error": {
@@ -144,12 +144,12 @@ CAMPAIGN_WORKFLOW = {
     "attempted": {
         "retries": 4,
         "delay_type": "exponential",
-        "delay": 1200,
+        "delay": 3600 * 4,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
         "retries": 2,
-        "delay": 1200,
+        "delay": 3600 * 4,
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
@@ -376,6 +376,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 logger.info(f"Workflow stage for disposition: {disposition} is {workflow_stage}")
                 attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
                 logger.info(f"Attempts: {attempts}")
+                return None, None, 0, None  # In current production if contacted we will not follow-up
                 if disposition in ["engaged", "converted"]:
                     attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
