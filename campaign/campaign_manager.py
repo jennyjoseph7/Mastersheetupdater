@@ -937,14 +937,19 @@ def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kw
     logger.info(f"Constructed row for manual registration: {row}")
     # 4. Construct Final Data Payload
     allowed_keys = [
-        "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
-        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email", 
-        "last_contacted_phone_number", "brand_preference", "model_preference", 
-        "variant_preference", "color_preference", "engine_type_preference", 
-        "transmission_preference", "range_preference", "feature_preferences", 
-        "segment_preference", "competitor_brands", "competitor_models", "emotions", 
-        "engagement_events", "previous_interaction_ids", "lead_tags", 
-        "interested_vehicle_competitor_vehicles"
+        "phone_number", "email", "person_name", "campaign_id", "dealership_id",
+        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email",
+        "last_contacted_phone_number", "brand_preference", "model_preference",
+        "variant_preference", "color_preference", "engine_type_preference",
+        "transmission_preference", "range_preference", "feature_preferences",
+        "segment_preference", "competitor_brands", "competitor_models", "emotions",
+        "engagement_events", "previous_interaction_ids", "lead_tags",
+        "interested_vehicle_competitor_vehicles",
+    
+        # Generic nested object for any CRM / ad-platform source metadata.
+        # Meta Lead Ads stores: {"source": "meta", "leadgen_id": "...", "ad_id": "...", ...}
+        # Any future CRM integration can add its own keys here without schema changes.
+        "external_source_data",
     ]
     
     data = {k: row.get(k) for k in allowed_keys if row.get(k) is not None}

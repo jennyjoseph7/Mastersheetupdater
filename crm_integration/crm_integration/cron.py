@@ -259,9 +259,9 @@ AUTOCRM_API_HEADERS = {
     "Content-Type":          "application/json",
     "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "gryd"),
     "X-GRYD-ENTERPRISE-ID":  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm"),
-    "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "34997628-7b8c-30d8-bab4-1b7b2c4ca2d3"),
-    "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "3caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
-    "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "agent"),
+    "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "b82606f6-c191-3189-8bcc-f2fb009c68ac"),
+    "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "33caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
+    "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "admin"),
 }
 
 
@@ -373,6 +373,7 @@ def _trigger_audience_task(
     email        = lead.get("email", "")       # not in sheet yet → empty string
 
     vehicle_model    = lead.get("vehicle_model", "")
+    vehicle_category = lead.get("vehicle_category", "Passenger Vehicle") or "Passenger Vehicle"
     model_preference = [vehicle_model] if vehicle_model else []
 
     payload = {
@@ -388,6 +389,7 @@ def _trigger_audience_task(
             "brand_preference":      [],
             "color_preference":      [],
             "feature_preferences":   [],
+            "vehicle_category":      vehicle_category,
         },
         "runtime_limit": 30000,
         "cancellable":   True,
