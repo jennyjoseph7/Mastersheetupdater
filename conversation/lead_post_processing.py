@@ -460,7 +460,7 @@ def post_session_process(*args, **kwargs):
             mlogger.warning("[CAPI] Non-fatal: CAPI push failed: %s", capi_err)
 
         if appt_date_time_purpose.get("appointment_date"):
-            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data, session_mdl_obj)
             mlogger.info("visit data == {}".format(visit_data))
             if not visit_data:
                 return
@@ -1565,12 +1565,12 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
 
     return hp.json.loads(resp)
 
-def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
+def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data, session_mdl_obj):
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
-    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
 
     if campaign_data.get("campaign_type") == "pre-sales":
         if not lead_data.get("showroom_id"):
