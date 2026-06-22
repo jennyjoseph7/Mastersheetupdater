@@ -35,6 +35,7 @@
 
     _active = true;
     _startTime = Date.now();
+    $log('AI', 'Status bar shown — ' + total + ' items to validate');
 
     // Set default states — caller can override msg/batch afterwards
     var msg = document.getElementById('aiStatusMsg');
@@ -127,6 +128,12 @@
       }
     }
 
+    if (abortWasRequested) {
+      $log('AI', 'Status bar hidden — CANCELLED' + (correctedCount > 0 ? ', ' + correctedCount + ' corrections before cancel' : ''));
+    } else {
+      $log('AI', 'Status bar hidden — ' + correctedCount + ' corrections total' + (rerunFn ? ', re-run available' : ''));
+    }
+
     // ─── CANCELLED STATE ───────────────────────────────────────────────
     if (abortWasRequested) {
       if (bar)  bar.className = 'ai-status-bar aborted';
@@ -215,6 +222,7 @@
   }
 
   function cancel() {
+    $log('AI', 'Status bar — cancel requested');
     if (_controller) {
       _controller.abort();
     }

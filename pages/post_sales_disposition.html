@@ -12,6 +12,7 @@
 
   <meta http-equiv="X-Content-Type-Options" content="nosniff" /><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
 
+  <script src="../assets/js/lib/logger.js"></script>
   <script src="../assets/js/init.js"></script>
 
   <title>Post-Sales Disposition Sync - AutoNage</title>
@@ -29,8 +30,8 @@
 
   <script src="../assets/js/lib/llm-batch-runner.js?v=20260610-ratelimit"></script>
 
-  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
 
   <link rel="stylesheet" href="../assets/styles/post-sales-disposition.css" />
 
@@ -1021,6 +1022,8 @@
 
         { header: 'DISPOSITION_DETAILS', key: 'disposition_detail' },
 
+        { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+
 
 
         { header: 'MANUAL_DISPOSITION', key: 'manual_disposition' },
@@ -1425,7 +1428,9 @@
 
 
 
-    function parseSheet(ab) {
+    function parseSheet
+      $log('Data', 'parseSheet — parsing workbook...');
+      (ab) {
 
       const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
 
@@ -1465,6 +1470,7 @@
 
       if (!raw) return null;
 
+      $log('Data', 'normalizePhone input: ' + $mask(raw, 'phone'));
       let s = String(raw).trim();
 
       if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) s = String(Math.round(parseFloat(s)));
@@ -2841,15 +2847,15 @@
 
         var tr = document.createElement('tr');
 
-        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
-        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
 
           + '<td>' + esc(r.vehicle_model) + '</td>'
 
-          + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
+          + '<td>' + esc(r.updated_disposition || r.disposition_detail || r.disposition) + '</td>'
 
           + '<td>' + esc(location) + '</td>'
 
@@ -2891,15 +2897,15 @@
 
         var tr = document.createElement('tr');
 
-        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
-        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
 
           + '<td>' + esc(r.vehicle_model) + '</td>'
 
-          + '<td>' + esc(r.disposition_detail || r.disposition) + '</td>'
+          + '<td>' + esc(r.updated_disposition || r.disposition_detail || r.disposition) + '</td>'
 
           + '<td>' + esc(location) + '</td>'
 
@@ -2939,7 +2945,7 @@
 
         var tr = document.createElement('tr');
 
-        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
         tr.innerHTML = '<td class="cell-phone">' + esc(r.phone_number) + '</td>'
 
@@ -3069,9 +3075,9 @@
 
         var isPerfectRiders = dealerKey === 'perfect_riders_service';
 
-        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '';
+        var location = isPerfectRiders ? extractPerfectRidersLocation(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
-        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '';
+        var creRemarks = isPerfectRiders ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '';
 
         return keys.map(function(k) {
 
@@ -3081,7 +3087,7 @@
 
           if (k === 'common_remarks') return '';
 
-          if (k === 'disposition_detail') return r.disposition_detail || r.disposition || '';
+          if (k === 'disposition_detail') return r.updated_disposition || r.disposition_detail || r.disposition || '';
 
           if (k === 'summary') return r.summary || '';
 
@@ -3185,7 +3191,7 @@
 
             var isPR = dealerKey === 'perfect_riders_service';
 
-            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : '', ''];
+            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '', ''];
 
           })
 
@@ -3207,7 +3213,7 @@
 
             var isPR = dealerKey === 'perfect_riders_service';
 
-            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : ''];
+            return [r.phone_number || '', r.vehicle_model || '', r.disposition_detail || r.disposition || '', isPR ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : ''];
 
           })
 
@@ -3229,7 +3235,7 @@
 
             var isPR = dealerKey === 'perfect_riders_service';
 
-            return [r.phone_number || '', r.vehicle_model || '', r.summary || '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.disposition_detail) : ''];
+            return [r.phone_number || '', r.vehicle_model || '', r.summary || '', r.call_date || '', isPR ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : ''];
 
           })
 
@@ -3362,6 +3368,7 @@
       if (_aiStatusTimer) { clearInterval(_aiStatusTimer); _aiStatusTimer = null; }
 
       _aiStatusActive = true;
+    $log('AI', 'Status bar shown — ' + total + ' items to validate');
 
       _aiStatusStartTime = Date.now();
 
@@ -3986,9 +3993,7 @@
 
         var disp = (r.disposition_detail || r.disposition || '').trim();
 
-        var hasText = (summ && summ !== 'No Response' && summ !== 'The session history is empty and contains no content to summarize.') || (hist && hist.length > 0);
-
-        if (r.disposition === 'engaged' && r.session_summary !== 'No Response') {
+        if (r.session_status === 'completed') {
 
           candidates.push({ index: i, summary: summ, history: hist, currentDisp: disp, callDate: r.call_date || '', outcome: r.outcome || '', vehicleModel: r.vehicle_model || '', campaignId: r.campaign_id || '', dealerName: dealerName, supportedLanguages: supportedLangs.join(', ') });
 
@@ -4226,6 +4231,8 @@
 
 
 
+        $log('AI', 'Runner result — ' + (runnerResult.aborted ? 'ABORTED' : runnerResult.correctedCount + ' corrections, ' + runnerResult.failedBatches.length + ' failed'));
+
         var runnerResult = await runLlmBatches(runnerOpts);
 
         
@@ -4309,6 +4316,7 @@
       }
 
     try {
+      $log('AI', 'Applied ' + correctedIndices.length + ' corrections out of ' + candidates.length + ' validated rows');
 
 var correctedIndices = Object.keys(correctedResults);
 

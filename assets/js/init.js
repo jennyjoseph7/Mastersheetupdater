@@ -2,6 +2,7 @@
 (function() {
   var theme = localStorage.getItem('jejo-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
+  $log('App', 'Page init — theme: ' + theme);
 
   function requireAuth() {
     var token = sessionStorage.getItem('gryd_token');
@@ -25,25 +26,31 @@
     }
 
     if (!token || !expiry || parseInt(expiry) <= Math.floor(Date.now() / 1000)) {
+      $warn('Auth', 'Token missing/expired — redirecting to login');
       window.location.replace('../login.html');
       return false;
     }
+    $log('Auth', 'Token valid — access granted');
     return true;
   }
 
+  $log('Auth', 'Running initial auth check...');
   requireAuth();
 
   // Re-check on bfcache restore (back/forward navigation).
   // Check on EVERY pageshow, not just persisted — some browsers don't set persisted correctly.
-  window.addEventListener('pageshow', function() { requireAuth(); });
+  window.addEventListener('pageshow', function() {
+    $log('App', 'pageshow fired — re-checking auth');
+    requireAuth();
+  });
 
   // Also check on visibility change — covers cases where bfcache fires
   // but pageshow fires before sessionStorage is updated.
   document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') requireAuth();
+    if (document.visibilityState === 'visible') {
+      $log('App', 'Page became visible — re-checking auth');
+      requireAuth();
+    }
   });
 
-  // Prevent bfcache by registering unload listener.
-  // This forces a fresh page load on back/forward, so auth gate always runs.
-  window.addEventListener('unload', function() {});
 })();

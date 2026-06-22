@@ -21,20 +21,27 @@
 
 // ─── DETECTION ────────────────────────────────────────────────────────────
 window.detectHistory = function detectHistory(obj) {
+  if (!obj) { $log('Data', 'detectHistory — object is null/undefined'); return ''; }
   var candidates = ['history', 'session_history', 'transcript', 'conversation_history', 'chat_history', 'messages'];
   for (var i = 0; i < candidates.length; i++) {
     var c = candidates[i];
-    if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
+    if (obj[c] !== undefined && obj[c] !== '') {
+      var val = String(obj[c]).trim();
+      $log('Data', 'detectHistory — found in column "' + c + '" (' + val.length + ' chars)');
+      return val;
+    }
   }
   // Fallback: check raw values for JSON-like content with role+message
   if (Array.isArray(obj.__raw)) {
     for (var j = 0; j < obj.__raw.length; j++) {
       var v = String(obj.__raw[j] || '').trim();
       if (v.length > 10 && (v.includes('"role"') || v.includes("'role'")) && (v.includes('"message"') || v.includes("'message'"))) {
+        $log('Data', 'detectHistory — found in __raw[' + j + '] via fallback (' + v.length + ' chars)');
         return v;
       }
     }
   }
+  $log('Data', 'detectHistory — no history found');
   return '';
 };
 
@@ -80,7 +87,12 @@ window.normalizeRoleLabel = function normalizeRoleLabel(role) {
 // ─── FORMAT HISTORY FOR PROMPT ────────────────────────────────────────────
 window.formatHistoryForPrompt = function formatHistoryForPrompt(raw) {
   var entries = window.parseHistoryJson(raw);
-  if (!entries || !entries.length) return '';
+  if (!entries || !entries.length) {
+    $log('Data', 'formatHistoryForPrompt — no entries to format');
+    return '';
+  }
+
+  $log('Data', 'formatHistoryForPrompt — formatting ' + entries.length + ' history entries');
 
   var lines = [];
   var firstTs = null;
@@ -92,16 +104,19 @@ window.formatHistoryForPrompt = function formatHistoryForPrompt(raw) {
       var ts = typeof e.timestamp === 'number' ? e.timestamp * 1000 : Number(e.timestamp);
       if (Number.isFinite(ts) && ts > 1000000000000) {
         firstTs = ts;
+        $log('Data', 'formatHistoryForPrompt — first timestamp at entry ' + i);
         break;
       }
     }
   }
 
+  var messageCount = 0;
   for (var j = 0; j < entries.length; j++) {
     var entry = entries[j];
     if (!entry) continue;
     var msg = String(entry.message || '').trim();
     if (!msg) continue;
+    messageCount++;
     var label = window.normalizeRoleLabel(entry.role);
     var timePrefix = '';
     if (firstTs && entry.timestamp) {
@@ -115,5 +130,6 @@ window.formatHistoryForPrompt = function formatHistoryForPrompt(raw) {
     lines.push(timePrefix + label + ': ' + msg);
   }
 
+  $log('Data', 'formatHistoryForPrompt — ' + messageCount + ' messages formatted into ' + lines.length + ' lines (' + (lines.join('\n').length) + ' chars)');
   return lines.join('\n');
 };

@@ -334,3 +334,32 @@ Etios → Etios
 Etios Liva → Etios Liva
 Corolla Altis → Corolla Altis
 
+---
+
+## 9. Bimal Auto — Service Reminder
+
+### Product Family → `vehicle_model_name` (formatter normalization)
+
+Client shared model name (even if the client shares variants like below, the formatter normalizes `vehicle_model_name`):
+
+| Output       | Client-style name                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| Alto K10     | New Alto K10, AltoK10, alto k10, k10, Maruti Suzuki Alto K10, Maruti AltoK10, NEW ALTO K10             |
+| Brezza       | Brezza, NEW BREZZA, Maruti Suzuki Brezza, Maruti Brezza                                                |
+| Celerio      | Celerio, NEW CELERIO, CELERIO, Maruti Suzuki Celerio, Maruti Celerio                                   |
+| Dzire        | Dzire, DZIRE, dsire, Maruti Suzuki Dzire, Maruti Dzire, Dazzling New Dzire                             |
+| Eeco         | Eeco, EECO, eco, eko, ekko, Maruti Suzuki Eeco, Maruti Eeco                                            |
+| Ertiga       | Ertiga, ERTIGA, NEW ERTIGA, Artiga, Maruti Suzuki Ertiga, Maruti Ertiga                                |
+| S-presso     | S-presso, S-PRESSO, espresso, expresso, spresso, s presso, Maruti Suzuki S-Presso, Maruti Spresso      |
+| Swift        | Swift, swift, new swift, Epic New Swift, NEW SWIFT, NEW SWIFT DZIRE, Maruti Suzuki Swift, Maruti Swift |
+| Victoris     | Victoris, victoris, VICTORIS, Maruti Victoris, Maruti Suzuki Victoris                                  |
+| WagonR       | WagonR, Wagon-R, wagon R, Maruti Suzuki WagonR, Maruti Wagon R                                         |
+| Baleno       | Baleno, baleno, new baleno, Maruti Suzuki Baleno, Maruti Baleno                                        |
+| Ciaz         | Ciaz, Maruti Ciaz, Maruti Suzuki Ciaz                                                                  |
+| Fronx        | Fronx, Fronx SUV, Maruti Fronx, Maruti Suzuki Fronx, Nexa Fronx                                        |
+| Grand Vitara | Grand Vitara, New Grand Vitara, Maruti Grand Vitara, Maruti Suzuki Grand Vitara, Nexa Grand Vitara     |
+| Ignis        | Ignis, ignus, Maruti Ignis, Maruti Suzuki Ignis, Nexa Ignis                                            |
+| Invicto      | Invicto, Maruti Invicto, Maruti Suzuki Invicto, Nexa Invicto                                           |
+| Jimny        | Jimny, jiminee, Maruti Jimny, Maruti Suzuki Jimny, Nexa Jimny                                          |
+| XL6          | XL6, XL 6, Maruti XL6, Maruti Suzuki XL6, Nexa XL6                                                     |
+

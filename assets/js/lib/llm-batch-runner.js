@@ -128,15 +128,17 @@
         batches.push(items.slice(i, i + batchSize));
       }
 
+      $log('AI', 'Runner started — ' + items.length + ' items, ' + batches.length + ' batches, ' + maxConcurrent + ' concurrent, gap ' + minGapMs + 'ms, timeout ' + requestTimeout + 'ms');
+
       if (batches.length === 0) {
+        $log('AI', 'Runner — no batches to process');
         resolve({ results: new Map(), correctedCount: 0, failedBatches: [], aborted: false });
         return;
       }
 
       // ── handle cache ─────────────────────────────────────────────────
       if (cachedData && Array.isArray(cachedData)) {
-        // Cache hit: caller's responsibility to apply cachedData. We just skip API.
-        // We still need to return results in the expected shape.
+        $log('AI', 'Cache hit — ' + cachedData.length + ' cached results, ' + (cachedData.filter(function(e) { return e && e.isCorrect === false; }).length) + ' corrections');
         var cachedResults = new Map();
         var correctedCount = 0;
         for (var ci = 0; ci < cachedData.length; ci++) {
@@ -184,8 +186,11 @@
 
         var prompt = buildPrompt(batch, batchIndex);
         if (!prompt) {
+          $warn('AI', 'Batch ' + (batchIndex + 1) + ' — buildPrompt returned null');
           return { ok: false, reason: 'buildPrompt returned null/undefined' };
         }
+
+        $log('AI', 'Batch ' + (batchIndex + 1) + '/' + total + ' — ' + batch.length + ' items, attempt 1');
 
         var lastErr;
         // On 429 or other retryable errors, ensure we retry up to at least 5 times
@@ -193,6 +198,7 @@
 
         for (var attempt = 0; attempt <= allowedRetries; attempt++) {
           if (aborted) {
+            $log('AI', 'Batch ' + (batchIndex + 1) + ' — aborted');
             return { ok: false, reason: 'Aborted' };
           }
 
@@ -270,6 +276,8 @@
               max_tokens: prompt.maxTokens || prompt.maxCompletionTokens || 8192
             };
 
+            $log('AI', 'Batch ' + (batchIndex + 1) + ' — fetching ' + endpoint + ' model=' + (bodyObj.model || 'default') + ' attempt=' + (attempt + 1));
+
             var response = await fetch(endpoint, {
               method: 'POST',
               headers: headers,
@@ -289,14 +297,17 @@
                 text = data.choices[0].message ? data.choices[0].message.content : (data.choices[0].text || '');
               }
               if (!text) {
+                $warn('AI', 'Batch ' + (batchIndex + 1) + ' — empty response from model');
                 throw new Error('Empty response from model');
               }
               var parsed = parseResponse(text, batch, batchIndex);
               recordSuccess(throttle);
+              $log('AI', 'Batch ' + (batchIndex + 1) + ' — success (' + text.length + ' chars, ' + (parsed ? parsed.length : 0) + ' results)');
 
               // Dynamically scale back up max concurrency limit if we're doing well
               if (throttle.consecutiveSuccesses >= 5 && currentMaxConcurrent < maxConcurrent) {
                 currentMaxConcurrent++;
+                $log('AI', 'Throttle — scaling up concurrency to ' + currentMaxConcurrent);
               }
               return { ok: true, data: parsed };
             }
@@ -314,9 +325,11 @@
             }
 
             if (response.status === 429) {
+              $warn('AI', 'Batch ' + (batchIndex + 1) + ' — 429 rate limited, scaling concurrency ' + currentMaxConcurrent + '→' + Math.max(1, currentMaxConcurrent - 1) + ', gap ' + throttle.gapMs + 'ms');
               // Rate limited — dynamically throttle down concurrent requests to avoid piling up
               currentMaxConcurrent = Math.max(1, currentMaxConcurrent - 1);
               var retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
+              if (retryAfter) $log('AI', 'Batch ' + (batchIndex + 1) + ' — Retry-After: ' + retryAfter + 'ms');
               recordThrottle(throttle, retryAfter);
             }
 
@@ -345,9 +358,11 @@
           }
         }
 
+        $warn('AI', 'Batch ' + (batchIndex + 1) + ' — retries exhausted, splitting batch of ' + batch.length + ' into halves');
         // All retries exhausted — try splitting batch in half and retrying
         if (batch.length > MIN_SPLIT_SIZE) {
           var mid = Math.ceil(batch.length / 2);
+          $log('AI', 'Batch ' + (batchIndex + 1) + ' — split: left=' + mid + ' items, right=' + (batch.length - mid) + ' items');
           var leftResult = await sendBatch(batch.slice(0, mid), batchIndex, false);
           var rightResult = await sendBatch(batch.slice(mid), batchIndex, false);
 
@@ -360,7 +375,10 @@
           }
         }
 
-        if (trackFailure) failedBatches.push(batchIndex);
+        if (trackFailure) {
+          $warn('AI', 'Batch ' + (batchIndex + 1) + ' — permanently failed: ' + (lastErr ? lastErr.message : 'Max retries exceeded'));
+          failedBatches.push(batchIndex);
+        }
         return { ok: false, reason: lastErr ? lastErr.message : 'Max retries exceeded' };
       }
 
@@ -371,6 +389,7 @@
         while (nextBatch < batches.length && !aborted) {
           var idx = nextBatch++;
           var batch = batches[idx];
+          $log('AI', 'Worker picking batch ' + (idx + 1) + '/' + total);
           var result = await sendBatch(batch, idx);
           batchResults[idx] = result;
           completed++;
@@ -379,7 +398,7 @@
           if (result.ok) {
             onProgress(completed, total, msg, pct);
           } else {
-            console.error('Batch ' + (idx + 1) + ' failed:', result && result.reason);
+            $error('AI', 'Batch ' + (idx + 1) + ' failed: ' + (result && result.reason));
             onProgress(completed, total, 'Batch ' + (idx + 1) + ' failed, continuing…', pct);
           }
         }
@@ -413,6 +432,8 @@
           }
         }
 
+        $log('AI', 'Runner complete — ' + correctedCount + ' corrections, ' + failedBatches.length + ' failed batches' + (aborted ? ', ABORTED' : ''));
+
         resolve({
           results: resultsMap,
           correctedCount: correctedCount,
@@ -421,6 +442,7 @@
           aborted: aborted
         });
       }).catch(function (err) {
+        $error('AI', 'Runner Promise failed: ' + err.message);
         reject(err);
       });
     });

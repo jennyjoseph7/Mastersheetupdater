@@ -7,12 +7,13 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https: https://autobot-webapp-dev.gryd.in http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none'; " />
+  <script src="../assets/js/lib/logger.js"></script>
   <script src="../assets/js/init.js"></script>
   <title>Recording Renamer - AutoNage</title>
   <meta name="description" content="Rename local call recordings from a processed Pre-Sales Sync export." />
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
-  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../assets/js/vendor/xlsx.full.min.js"></script>
   <script src="../assets/js/vendor/jszip.min.js"></script>
   <link rel="stylesheet" href="../assets/styles/recording-renamer.css" />
@@ -244,6 +245,7 @@
     function normalizePhone(raw) {
       if (raw === undefined || raw === null || raw === '') return '';
       let s = String(raw).trim();
+      $log('Data', 'normalizePhone input: ' + $mask(raw, 'phone'));
       if (/^\d[\d.]*e[+\-]?\d+$/i.test(s)) {
         s = String(Math.round(parseFloat(s)));
       }
@@ -938,6 +940,7 @@
 
     applyTheme(localStorage.getItem('jejo-theme') || 'dark');
     function detectDateFormat(dateStrings) {
+      $log('Data', 'detectDateFormat — sampling ' + Math.min(dateStrings.length, 250) + ' dates to determine format');
       var sampleLimit = Math.min(dateStrings.length, 250);
       for (var i = 0; i < sampleLimit; i++) {
         var s = String(dateStrings[i] || '').trim();

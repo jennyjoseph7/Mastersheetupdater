@@ -12,6 +12,7 @@
 
   <meta http-equiv="X-Content-Type-Options" content="nosniff" /><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
 
+  <script src="../assets/js/lib/logger.js"></script>
   <script src="../assets/js/init.js"></script>
 
   <title>Pre-Sales Sync - AutoNage</title>
@@ -22,8 +23,8 @@
 
   <link rel="stylesheet" href="../assets/fonts/fonts.css" />
 
-  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
   <script src="../config.js?v=20260610"></script>
+  <script src="../assets/js/lib/ai-config.js?v=20260613"></script>
 
   <script src="../assets/js/vendor/xlsx.full.min.js"></script>
 
@@ -1470,7 +1471,7 @@
 
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
 
-      if (rows.length < 2) return [];
+      if (rows.length < 2) { $log('Data', 'parseSheet — only header row, no data'); return []; }
 
       const headers = rows[0].map(h => String(h).trim().toLowerCase().replace(/\s+/g, '_'));
 
@@ -1529,6 +1530,7 @@
     // ─── ROBUST COLUMN DETECTION (File 2 column-shift bug fix) ────────────────────
 
     function detectPhones(obj) {
+      $log('Data', 'detectPhones — scanning object for phone numbers');
 
       const phones = new Set();
 
@@ -1591,6 +1593,7 @@
 
 
     function detectRecording(obj) {
+      $log('Data', 'detectRecording — scanning for recording URL');
 
       function cleanLink(str) {
 
@@ -1733,6 +1736,7 @@
 
 
     function detectSummary(obj) {
+      $log('Data', 'detectSummary — scanning for summary text');
 
       const candidates = ['summary', 'call_summary', 'conversation_summary', 'notes'];
 
@@ -2243,6 +2247,7 @@
     // ─── CORE PROCESSING ──────────────────────────────────────────────────────────
 
     async function processFiles() {
+      $log('Data', 'processFiles — starting file processing');
 
       if (!rawFile1 || !rawFile2) return;
 
@@ -3024,6 +3029,8 @@ window.INJECTION_GUARD + '\n\n' +
         if (runnerResult.aborted) {
 
           hideAiStatusBar(correctedResults);
+n        $log('AI', 'Disposition validation result — ' + (runnerResult.aborted ? 'ABORTED' : runnerResult.correctedCount + ' corrections, ' + runnerResult.failedBatches.length + ' failed batches'));
+
 
           return;
 

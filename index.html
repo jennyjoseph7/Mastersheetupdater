@@ -21,6 +21,7 @@
     })();
   </script>
   <script>
+    $log('App', 'Index page loaded');
     (function() {
       function logAuthEvent(msg) {
         var log = localStorage.getItem('jejo_auth_log') || '';
@@ -49,27 +50,37 @@
         }
 
         var now = Math.floor(Date.now() / 1000);
-        logAuthEvent('index:requireAuth: token=' + (token ? 'exists' : 'null') + ', expiry=' + expiry + ', now=' + now);
+        var hasToken = token ? 'exists' : 'null';
+        logAuthEvent('index:requireAuth: token=' + hasToken + ', expiry=' + expiry + ', now=' + now);
         if (!token || !expiry || parseInt(expiry) <= now) {
+          $warn('Auth', 'Token missing/expired — redirecting to login');
           logAuthEvent('index:requireAuth failed! Redirecting to login.html');
           window.location.replace('login.html');
           return false;
         }
+        $log('Auth', 'Token valid — access granted');
         logAuthEvent('index:requireAuth passed!');
         return true;
       }
+      $log('Auth', 'Running initial auth check...');
       requireAuth();
-      window.addEventListener('pageshow', function() { requireAuth(); });
-      document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') requireAuth();
+      window.addEventListener('pageshow', function() {
+        $log('App', 'pageshow fired — re-checking auth');
+        requireAuth();
       });
-      window.addEventListener('unload', function() {});
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          $log('App', 'Page became visible — re-checking auth');
+          requireAuth();
+        }
+      });
     })();
   </script>
   <title>AutoNage — Lead Operations</title>
   <meta name="description" content="AutoNage Lead Operations Automation — Pre-Sales Sync, Post-Sales Sync, Re-Attempt Filter, Campaign Dashboard, Recording Renamer, Call Summary, and AutoEngage Formatter tools." />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
   <link rel="stylesheet" href="assets/styles/index.css" />
+  <script src="assets/js/lib/logger.js"></script>
 </head>
 
 <body>
@@ -194,7 +205,7 @@
       </div>
     </a>
 
-    <a class="tool-card yellow" href="pages/dashboard.html">
+    <a class="tool-card yellow" href="pages/dashboardv2.html">
       <div class="tool-icon yellow">
         <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
           <path stroke-linecap="round" stroke-linejoin="round"

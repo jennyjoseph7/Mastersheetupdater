@@ -14,7 +14,7 @@
 
   
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456 https://cdn.jsdelivr.net; form-action 'self'; base-uri 'self'; object-src 'none';" />
 
   <script src="../assets/js/init.js"></script>
 
@@ -317,6 +317,7 @@
 
 
       <!-- KPI Row 1 -->
+      <p class="section-label">Core Metrics</p>
 
       <div class="kpi-grid" id="kpiRow1"></div>
 
@@ -329,26 +330,28 @@
 
 
       <!-- Daily Calls Breakdown (moved after KPIs) -->
+      <p class="section-label">Daily Trends</p>
 
       <div class="data-panel slide-up stagger-5 full-width-chart">
 
         <div class="panel-title">Daily Calls Breakdown</div>
 
-        <div class="chart-bars" id="dailyChart"></div>
+        <canvas id="dailyChart"></canvas>
 
       </div>
 
 
 
       <!-- Vehicle Models -->
+      <p class="section-label">Combined campaign — core metrics</p>
 
       <div class="data-panels two-column" style="display:grid;gap:0.75rem;margin-bottom:0.75rem;">
 
-        <div class="data-panel slide-up stagger-6">
+        <div class="data-panel slide-up stagger-6" style="grid-column:1/-1;">
 
           <div class="panel-title">Vehicle Models</div>
 
-          <div id="vehicleChart"></div>
+          <canvas id="vehicleChart"></canvas>
 
         </div>
 
@@ -365,6 +368,7 @@
 
 
       <!-- What Customers Are Saying -->
+      <p class="section-label">Customer Insights</p>
 
       <div class="insight-panel slide-up" id="customerVoicePanel" style="display:none;">
 
@@ -378,13 +382,14 @@
 
         <div id="voiceSummary" class="voice-summary" style="display:none;"></div>
 
-        <div class="voice-grid" id="customerVoiceSection"></div>
+        <div class="insights-grid" id="customerVoiceSection"></div>
 
       </div>
 
 
 
       <!-- Conversion Funnel -->
+      <p class="section-label">Conversion Analysis</p>
 
       <div class="insight-panel slide-up" id="conversionFunnelPanel" style="display:none;">
 
@@ -411,6 +416,7 @@
 
 
       <!-- Agent Performance Table -->
+      <p class="section-label">Operations</p>
 
       <div class="insight-panel slide-up" id="agentTablePanel" style="display:none;">
 
@@ -452,7 +458,7 @@
 
         <div class="insight-section-title">Disposition Intelligence</div>
 
-        <div id="dispositionBars"></div>
+        <canvas id="dispositionBars"></canvas>
 
         <div class="narrative-mini" id="dispositionNarrative"></div>
 
@@ -539,6 +545,7 @@
 
 
       <!-- Recommended Actions -->
+      <p class="section-label">Recommendations</p>
 
       <div class="insight-panel slide-up" id="recsPanel" style="display:none;">
 
@@ -637,6 +644,9 @@
 
       syncBrandLogo(theme);
 
+      // Redraw Chart.js charts for dark/light mode
+      _redrawAllCharts();
+
     }
 
 
@@ -654,6 +664,16 @@
     // Apply stored theme on load
 
     applyTheme(getStoredTheme());
+
+    // Listen for system-level dark mode changes
+    var _themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    var _themeListener = function(e) {
+      // Only respond if user hasn't explicitly set a theme
+      if (!localStorage.getItem('jejo-theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    _themeMedia.addEventListener('change', _themeListener);
 
 
 
@@ -2543,52 +2563,67 @@
 
 
     function renderDispositionIntelligence(patterns) {
-
-      const barsEl = document.getElementById('dispositionBars');
-
+      window._chartData = window._chartData || {};
+      window._chartData.disposition = patterns;
+      const canvas = document.getElementById('dispositionBars');
       const narrativeEl = document.getElementById('dispositionNarrative');
-
       const panel = document.getElementById('dispositionPanel');
-
-      if (!barsEl || !narrativeEl || !panel) return;
-
+      if (!canvas || !narrativeEl || !panel) return;
+      if (_chartInstances.disposition) { _chartInstances.disposition.destroy(); delete _chartInstances.disposition; }
       if (patterns.top.length === 0) { panel.style.display = 'none'; return; }
-
       panel.style.display = 'block';
-
-      const maxVal = patterns.top.length > 0 ? patterns.top[0][1] : 1;
-
-      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
-
-      barsEl.innerHTML = patterns.top.map(([cat, count], i) => {
-
-        const width = (count / maxVal * 100).toFixed(0);
-
-        const pct = patterns.total > 0 ? (count / patterns.total * 100).toFixed(1) : '0.0';
-
-        const colorClass = colors[i % colors.length];
-
-        return `
-
-          <div class="disp-row">
-
-            <span class="disp-label" title="${esc(cat)}">${esc(cat)}</span>
-
-            <div class="disp-track"><div class="disp-fill ${colorClass}" style="width:${width}%"></div></div>
-
-            <span class="disp-count">${count} <span style="font-size:0.6rem;color:var(--text-muted);font-weight:500;">${pct}%</span></span>
-
-          </div>
-
-        `;
-
-      }).join('');
-
-      const topCat = patterns.top[0];
-
-      narrativeEl.textContent = `"${topCat[0]}" (${topCat[1]}) is the most common value at ${(topCat[1]/patterns.total*100).toFixed(0)}% of rows.`;
-
+      canvas.style.height = ''; // Let CSS control height
+      var colors = _getChartColors();
+      var ctx = canvas.getContext('2d');
+      _chartInstances.disposition = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: patterns.top.map(function(e) { return e[0]; }),
+          datasets: [{
+            data: patterns.top.map(function(e) { return e[1]; }),
+            backgroundColor: patterns.top.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; }),
+            borderRadius: 5,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 4, right: 50, bottom: 4, left: 4 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: colors.border,
+              titleColor: colors.text,
+              bodyColor: colors.text,
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: function(ctx) {
+                  var pct = patterns.total > 0 ? (ctx.parsed.x / patterns.total * 100).toFixed(1) : '0.0';
+                  return ' ' + ctx.parsed.x + ' (' + pct + '%)';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: colors.muted, font: { size: 10, family: 'IBM Plex Mono, monospace' } },
+              grid: { color: colors.grid }
+            },
+            y: {
+              ticks: { color: colors.text, font: { size: 10, family: 'IBM Plex Mono, monospace' }, crossAlign: 'far' },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+      var topCat = patterns.top[0];
+      narrativeEl.textContent = '"' + topCat[0] + '" (' + topCat[1] + ') is the most common value at ' + (topCat[1]/patterns.total*100).toFixed(0) + '% of rows.';
     }
+
 
 
 
@@ -2958,45 +2993,21 @@
 
         const cls = sentimentColors[t.sentiment] || 'warn';
 
-        const excerpts = t.excerpts.slice(0, 1).map(e => `<div class="voice-excerpt">"${esc(e)}"</div>`).join('');
-
-        const extras = [];
-
-        if (t.competitorNames && t.competitorNames.length) extras.push(`<div class="voice-extras">Competitors identified: ${t.competitorNames.map(esc).join(', ')}</div>`);
-
-        if (t.callbackTimes && t.callbackTimes.length) extras.push(`<div class="voice-extras">Callback timing preferences: ${t.callbackTimes.map(esc).join(', ')}</div>`);
-
-        if (t.timeframes && t.timeframes.length) extras.push(`<div class="voice-extras">Decision timeframes: ${t.timeframes.map(esc).join(', ')}</div>`);
-
-        // Per-theme LLM action
-
-        const action = voiceAI && voiceAI.actions && voiceAI.actions[t.label] ? esc(voiceAI.actions[t.label]) : null;
-
-        const actionHtml = action ? `<div class="voice-action">${action}</div>` : '';
-
         return `
 
-          <div class="voice-card ${cls}">
+          <div class="insight-card ${cls}">
 
-            <div class="voice-header">
+            <div class="insight-top">
 
-              <span class="voice-count">${t.count}</span>
+              <span class="insight-count">${t.count}</span>
 
-              <span class="voice-pct">${themes.total > 0 ? (t.count / themes.total * 100).toFixed(0) : 0}%</span>
-
-              <span class="voice-label">${esc(t.label)}</span>
+              <span class="insight-label">${esc(t.label)}</span>
 
             </div>
 
-            <div class="voice-signal">${esc(t.explanation)}</div>
+            <h4>${esc(t.explanation)}</h4>
 
-            ${excerpts}
-
-            <div class="voice-interp">${esc(t.interpretation)}</div>
-
-            ${extras.join('')}
-
-            ${actionHtml}
+            <p>${esc(t.interpretation)}</p>
 
           </div>
 
@@ -4418,11 +4429,11 @@ async function generateDashboard() {
 
         { label: 'CALLS TRIGGERED', value: callsTriggered, sub: kpi1sub.ct, color: 'purple', delay: 1, insight: kpi1ins.ct },
 
-        { label: 'CONNECTED', value: connected, sub: kpi1sub.cn, color: 'blue', delay: 2, insight: kpi1ins.cn },
+        { label: 'CONNECTED', value: connected, sub: kpi1sub.cn, color: 'blue', delay: 2, insight: kpi1ins.cn , badge: { text: (rows.length > 0 ? (connected / rows.length * 100).toFixed(0) : '0') + '%', color: 'green' } },
 
-        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: kpi1sub.nc, color: 'red', delay: 3, insight: kpi1ins.nc },
+        { label: 'NOT CONNECTED', value: notConnectedStrict, sub: kpi1sub.nc, color: 'red', delay: 3, insight: kpi1ins.nc , badge: { text: (rows.length > 0 ? ((rows.length - connected) / rows.length * 100).toFixed(0) : '0') + '%', color: 'red' } },
 
-        { label: 'VOICEMAIL', value: voicemail, sub: kpi1sub.vm, color: 'amber', delay: 4, insight: kpi1ins.vm },
+        { label: 'VOICEMAIL', value: voicemail, sub: kpi1sub.vm, color: 'amber', delay: 4, insight: kpi1ins.vm , badge: { text: (rows.length > 0 ? (voicemail / rows.length * 100).toFixed(0) : '0') + '%', color: 'amber' } },
 
       ];
 
@@ -4466,7 +4477,7 @@ async function generateDashboard() {
 
             { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
 
-            { label: 'SERVICE BOOKED', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
+            { label: 'SERVICE BOOKED', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk , badge: { text: (connected > 0 ? (bookings / connected * 100).toFixed(0) : '0') + '%', color: 'blue' } },
 
             { label: 'SERVICE COMPLETED', value: serviceCompletedPostSales, sub: kpR2subs.postDone, color: 'pink', delay: 7 },
 
@@ -4478,9 +4489,9 @@ async function generateDashboard() {
 
             { label: 'UNIQUE CALLS', value: uniqueCallsByAttempt, sub: kpR2subs.uniq, color: 'green', delay: 5 },
 
-            { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk },
+            { label: 'TEST DRIVE BOOKINGS', value: bookings, sub: kpR2subs.bk, color: 'teal', delay: 6, insight: kpR2ins.bk , badge: { text: (testDriveCount ? (testDriveCount / connected * 100).toFixed(0) : '0') + '%', color: 'purple' } },
 
-            { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: kpR2subs.cb, color: 'pink', delay: 7, insight: kpR2ins.cb },
+            { label: 'CALLBACK REQUESTED', value: callbackRequestedFromSummary, sub: kpR2subs.cb, color: 'pink', delay: 7, insight: kpR2ins.cb , badge: { text: (connected > 0 ? ((cbCount || 0) / connected * 100).toFixed(0) : '0') + '%', color: 'neutral' } },
 
             { label: 'INVALID LEAD', value: invalidLead, sub: kpR2subs.inv, color: 'orange', delay: 8, insight: kpR2ins.inv },
 
@@ -4876,7 +4887,7 @@ async function generateDashboard() {
 
     function flushOpenKpiEdits(commit) {
 
-      document.querySelectorAll('.kpi-card.kpi-is-editing').forEach(function(card) {
+      document.querySelectorAll('.kpi.kpi-is-editing').forEach(function(card) {
 
         finishKpiEdit(card, commit !== false);
 
@@ -4886,7 +4897,7 @@ async function generateDashboard() {
 
 
 
-    function makeKPI({ label, value, sub, color, delay }) {
+    function makeKPI({ label, value, sub, color, delay, badge }) {
 
       let num = Number(value);
 
@@ -4896,35 +4907,69 @@ async function generateDashboard() {
 
       const card = document.createElement('div');
 
-      card.className = `kpi-card ${color} slide-up stagger-${delay}`;
+      card.className = `kpi ${color} slide-up stagger-${delay}`;
 
       card.dataset.kpiOriginal = String(n);
 
       card.dataset.kpiNumeric = String(n);
 
 
+      // Label
 
-      const top = document.createElement('div');
+      const labelEl = document.createElement('p');
 
-      top.className = 'kpi-card-top';
+      labelEl.className = 'kpi-label';
 
+      labelEl.textContent = label;
 
-
-      const dotWrap = document.createElement('div');
-
-      const dot = document.createElement('span');
-
-      dot.className = 'kpi-dot';
-
-      dotWrap.appendChild(dot);
+      card.appendChild(labelEl);
 
 
+      // Value row
 
-      const controls = document.createElement('div');
+      const vals = document.createElement('div');
 
-      controls.className = 'kpi-edit-controls';
+      vals.className = 'kpi-vals';
 
 
+      const valueEl = document.createElement('span');
+
+      valueEl.className = 'kpi-val kpi-value kpi-value-display';
+
+      valueEl.textContent = numberWithCommas(n);
+
+      vals.appendChild(valueEl);
+
+
+      // Badge or sub
+
+      if (badge) {
+
+        const badgeEl = document.createElement('span');
+
+        badgeEl.className = 'badge ' + ({'green':'bg','red':'br','amber':'ba','neutral':'bn','blue':'bg','purple':'bg'}[badge.color] || 'bg');
+
+        badgeEl.textContent = badge.text || '';
+
+        vals.appendChild(badgeEl);
+
+      } else if (sub) {
+
+        const subEl = document.createElement('span');
+
+        subEl.className = 'kpi-sub';
+
+        subEl.textContent = sub;
+
+        vals.appendChild(subEl);
+
+      }
+
+
+      card.appendChild(vals);
+
+
+      // Edit button (simplified, positioned top-right)
 
       const btnEdit = document.createElement('button');
 
@@ -4932,50 +4977,31 @@ async function generateDashboard() {
 
       btnEdit.className = 'kpi-edit-btn';
 
-      btnEdit.title = 'Adjust KPI value';
+      btnEdit.title = 'Adjust value';
 
-      btnEdit.setAttribute('aria-label', 'Adjust KPI value');
+      btnEdit.setAttribute('aria-label', 'Adjust value');
 
-      btnEdit.innerHTML = '<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>';
-
-
-
-      const badge = document.createElement('span');
-
-      badge.className = 'kpi-adjusted-badge';
-
-      badge.textContent = 'Adjusted';
-
-      badge.hidden = true;
+      btnEdit.innerHTML = '<svg width=\"12\" height=\"12\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z\"/></svg>';
 
 
+      // Adjusted badge
 
-      controls.appendChild(btnEdit);
+      const badgeEl = document.createElement('span');
 
-      controls.appendChild(badge);
+      badgeEl.className = 'kpi-adjusted-badge';
 
+      badgeEl.textContent = 'Adjusted';
 
-
-      top.appendChild(dotWrap);
-
-      top.appendChild(controls);
-
+      badgeEl.hidden = true;
 
 
-      const valueEl = document.createElement('div');
-
-      valueEl.className = 'kpi-value kpi-value-display';
-
-      valueEl.textContent = numberWithCommas(n);
-
-
+      // Edit panel (hidden, shown on edit)
 
       const panel = document.createElement('div');
 
       panel.className = 'kpi-value-edit-panel';
 
       panel.hidden = true;
-
 
 
       const input = document.createElement('input');
@@ -4991,11 +5017,9 @@ async function generateDashboard() {
       input.setAttribute('aria-label', 'KPI value');
 
 
-
       const actions = document.createElement('div');
 
       actions.className = 'kpi-edit-actions';
-
 
 
       const btnApply = document.createElement('button');
@@ -5007,7 +5031,6 @@ async function generateDashboard() {
       btnApply.textContent = 'Apply';
 
 
-
       const btnCancel = document.createElement('button');
 
       btnCancel.type = 'button';
@@ -5017,63 +5040,14 @@ async function generateDashboard() {
       btnCancel.textContent = 'Cancel';
 
 
-
       actions.appendChild(btnApply);
 
       actions.appendChild(btnCancel);
 
+
       panel.appendChild(input);
 
       panel.appendChild(actions);
-
-
-
-      const labelEl = document.createElement('div');
-
-      labelEl.className = 'kpi-label';
-
-      labelEl.textContent = label;
-
-
-
-      const subEl = document.createElement('div');
-
-      subEl.className = 'kpi-sub';
-
-      subEl.textContent = sub;
-
-
-
-      if (arguments[0].pct !== undefined) {
-
-        const trendBadge = document.createElement('span');
-
-        const pv = arguments[0].pct;
-
-        const cls = pv >= 50 ? 'pct-ok' : pv >= 20 ? 'pct-warn' : pv < 5 ? 'pct-blue' : 'pct-danger';
-
-        trendBadge.className = 'kpi-trend-badge ' + cls;
-
-        trendBadge.textContent = pv + '% of total';
-
-        subEl.after(trendBadge);
-
-      }
-
-
-
-      if (arguments[0].insight) {
-
-        const insightEl = document.createElement('div');
-
-        insightEl.className = 'kpi-insight';
-
-        insightEl.textContent = arguments[0].insight;
-
-        card.appendChild(insightEl);
-
-      }
-
 
 
       btnEdit.addEventListener('click', function(e) {
@@ -5086,6 +5060,7 @@ async function generateDashboard() {
 
       });
 
+
       btnApply.addEventListener('click', function(e) {
 
         e.preventDefault();
@@ -5094,6 +5069,7 @@ async function generateDashboard() {
 
       });
 
+
       btnCancel.addEventListener('click', function(e) {
 
         e.preventDefault();
@@ -5101,6 +5077,7 @@ async function generateDashboard() {
         finishKpiEdit(card, false);
 
       });
+
 
       input.addEventListener('keydown', function(e) {
 
@@ -5121,21 +5098,78 @@ async function generateDashboard() {
       });
 
 
+      card.appendChild(btnEdit);
 
-      card.appendChild(top);
-
-      card.appendChild(valueEl);
+      card.appendChild(badgeEl);
 
       card.appendChild(panel);
 
-      card.appendChild(labelEl);
 
-      card.appendChild(subEl);
+      // Trend badge if pct provided
 
+      if (arguments[0].pct !== undefined) {
+
+        const trendBadge = document.createElement('span');
+
+        const pv = arguments[0].pct;
+
+        const cls = pv >= 50 ? 'pct-ok' : pv >= 20 ? 'pct-warn' : pv < 5 ? 'pct-blue' : 'pct-danger';
+
+        trendBadge.className = 'kpi-trend-badge ' + cls;
+
+        trendBadge.textContent = pv + '% of total';
+
+        vals.appendChild(trendBadge);
+
+      }
+
+
+      // Insight
+
+      if (arguments[0].insight) {
+
+        const insightEl = document.createElement('div');
+
+        insightEl.className = 'kpi-insight';
+
+        insightEl.textContent = arguments[0].insight;
+
+        card.appendChild(insightEl);
+
+      }
 
 
       return card;
 
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       CHART.JS -- INSTANCES, COLOR HELPER
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    const _chartInstances = {};
+
+    function _getChartColors() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      return {
+        text: isDark ? '#c9c8c2' : '#3a3a38',
+        muted: isDark ? '#9b9a94' : '#6b6a65',
+        grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+        border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+      };
+    }
+
+    const CHART_PALETTE = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+
+    /**
+     * Store chart data so we can redraw on theme change.
+     * Each chart's original data is saved when first rendered.
+     */
+    function _redrawAllCharts() {
+      var cd = window._chartData || {};
+      if (cd.daily) renderDailyChart(cd.daily);
+      if (cd.vehicle) renderVehicleChart(cd.vehicle);
+      if (cd.disposition) renderDispositionIntelligence(cd.disposition);
     }
 
 
@@ -5143,242 +5177,161 @@ async function generateDashboard() {
     /* ── Daily Bar Chart ──────────────────────────────────────────────── */
 
     function renderDailyChart(dailyCounts) {
-
-      const container = document.getElementById('dailyChart');
-
-      container.innerHTML = '';
-
-
-
+      window._chartData = window._chartData || {};
+      window._chartData.daily = dailyCounts;
+      const canvas = document.getElementById('dailyChart');
+      if (!canvas) return;
+      if (_chartInstances.daily) { _chartInstances.daily.destroy(); delete _chartInstances.daily; }
       const entries = Object.entries(dailyCounts).sort((a, b) => a[0].localeCompare(b[0]));
-
-
-
-      if (entries.length === 0) {
-
-        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;width:100%;padding:3rem 0;">No date data available</div>';
-
-        return;
-
-      }
-
-
-
-      const maxVal = Math.max(...entries.map(e => e[1]));
-
-
-
-      entries.forEach(([dateKey, count]) => {
-
-        const displayDate = formatDateLabelFromKey(dateKey);
-
-        const col = document.createElement('div');
-
-        col.className = 'chart-bar-col';
-
-        const heightPct = maxVal > 0 ? (count / maxVal * 100) : 0;
-
-        col.innerHTML = `
-
-          <span class="chart-bar-val">${count}</span>
-
-          <div class="chart-bar" style="height:${Math.max(heightPct, 3)}%" title="${esc(displayDate)}: ${count} calls"></div>
-
-          <span class="chart-bar-label">${esc(displayDate)}</span>
-
-        `;
-
-        container.appendChild(col);
-
+      if (entries.length === 0) { canvas.style.display = 'none'; return; }
+      canvas.style.display = '';
+      canvas.style.height = ''; // Let CSS control height
+      const colors = _getChartColors();
+      const ctx = canvas.getContext('2d');
+      _chartInstances.daily = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: entries.map(e => formatDateLabelFromKey(e[0])),
+          datasets: [{
+            label: 'Calls',
+            data: entries.map(e => e[1]),
+            backgroundColor: '#3b82f6',
+            borderRadius: 5,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 4, right: 40, bottom: 4, left: 4 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: colors.border,
+              titleColor: colors.text,
+              bodyColor: colors.text,
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: function(ctx) { return ' ' + ctx.parsed.x + ' calls'; }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: colors.muted, font: { size: 10, family: 'IBM Plex Mono, monospace' } },
+              grid: { color: colors.grid }
+            },
+            y: {
+              ticks: { color: colors.text, font: { size: 10, family: 'IBM Plex Mono, monospace' }, crossAlign: 'far' },
+              grid: { display: false }
+            }
+          }
+        }
       });
-
     }
+
 
 
 
     /* ── Vehicle Horizontal Bar Chart ─────────────────────────────────── */
 
     function renderVehicleChart(modelCounts) {
-
-      const container = document.getElementById('vehicleChart');
-
-      if (!container) return;
-
-      container.innerHTML = '';
-
-      const panel = container.closest('.data-panel');
-
-      if (panel) {
-
-        const existingActions = panel.querySelector('.hbar-actions');
-
-        if (existingActions) existingActions.remove();
-
-      }
-
-
-
+      window._chartData = window._chartData || {};
+      window._chartData.vehicle = modelCounts;
+      const canvas = document.getElementById('vehicleChart');
+      if (!canvas) return;
+      if (_chartInstances.vehicle) { _chartInstances.vehicle.destroy(); delete _chartInstances.vehicle; }
+      const panel = canvas.closest('.data-panel');
+      const existingActions = panel ? panel.querySelector('.hbar-actions') : null;
+      if (existingActions) existingActions.remove();
       const entries = Object.entries(modelCounts).sort((a, b) => b[1] - a[1]);
-
       if (entries.length === 0) {
-
-        container.innerHTML = '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:2rem 0;">No vehicle model data</div>';
-
+        canvas.style.display = 'none';
+        if (panel) { const te = panel.querySelector('.panel-title'); if (te) te.textContent = 'Vehicle Models'; }
         return;
-
       }
-
-
-
-      const maxVal = entries[0][1];
-
-      const colors = ['blue', 'purple', 'green', 'amber', 'red', 'teal'];
-
-      const totalModelTaggedCalls = entries.reduce((acc, [, count]) => acc + count, 0);
-
+      canvas.style.display = '';
+      canvas.style.height = ''; // Let CSS control height
+      if (panel) {
+        const titleEl = panel.querySelector('.panel-title');
+        if (titleEl) titleEl.textContent = 'Vehicles Contacted (' + entries.length + ' Models)';
+      }
       const TOP_MODELS_LIMIT = 12;
-
       const shouldCollapse = entries.length > TOP_MODELS_LIMIT;
-
-
-
-      const titleEl = panel.querySelector('.panel-title');
-
-      titleEl.textContent = `Vehicles Contacted (${entries.length} Models)`;
-
-      // Re-add the dot
-
-      const dot = document.createElement('span');
-
-      titleEl.prepend(dot);
-
-
-
       const collapsedEntries = shouldCollapse
-
-        ? [
-
-            ...entries.slice(0, TOP_MODELS_LIMIT),
-
-            ['Others', entries.slice(TOP_MODELS_LIMIT).reduce((sum, [, c]) => sum + c, 0)],
-
-          ]
-
+        ? entries.slice(0, TOP_MODELS_LIMIT).concat([['Others', entries.slice(TOP_MODELS_LIMIT).reduce(function(s, e) { return s + e[1]; }, 0)]])
         : entries;
-
-
-
-      const renderRows = (rowsToRender) => {
-
-        container.innerHTML = '';
-
-        rowsToRender.forEach(([model, count], i) => {
-
-          const row = document.createElement('div');
-
-          row.className = 'hbar-row';
-
-          const widthPct = maxVal > 0 ? (count / maxVal * 100) : 0;
-
-          const colorClass = colors[i % colors.length];
-
-          const percentage = totalModelTaggedCalls > 0 ? (count / totalModelTaggedCalls * 100).toFixed(1) : '0.0';
-
-
-
-          const label = document.createElement('span');
-
-          label.className = 'hbar-label';
-
-          label.title = model;
-
-          label.textContent = model;
-
-
-
-          const track = document.createElement('div');
-
-          track.className = 'hbar-track';
-
-          const fill = document.createElement('div');
-
-          fill.className = 'hbar-fill ' + colorClass;
-
-          fill.style.width = widthPct + '%';
-
-          track.appendChild(fill);
-
-
-
-          const value = document.createElement('span');
-
-          value.className = 'hbar-value';
-
-          value.textContent = numberWithCommas(count);
-
-          const pctSpan = document.createElement('span');
-
-          pctSpan.className = 'hbar-pct';
-
-          pctSpan.textContent = percentage + '%';
-
-          value.appendChild(pctSpan);
-
-
-
-          row.appendChild(label);
-
-          row.appendChild(track);
-
-          row.appendChild(value);
-
-          container.appendChild(row);
-
+      var expanded = false;
+      function buildVehicleChart(data) {
+        if (_chartInstances.vehicle) { _chartInstances.vehicle.destroy(); }
+        var colors = _getChartColors();
+        var ctx = canvas.getContext('2d');
+        _chartInstances.vehicle = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map(function(e) { return e[0]; }),
+            datasets: [{
+              data: data.map(function(e) { return e[1]; }),
+              backgroundColor: data.map(function(_, i) { return CHART_PALETTE[i % CHART_PALETTE.length]; }),
+              borderRadius: 5,
+              borderSkipped: false,
+            }]
+          },
+          options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 4, right: 50, bottom: 4, left: 4 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: colors.border,
+              titleColor: colors.text,
+              bodyColor: colors.text,
+              cornerRadius: 8,
+              padding: 10,
+              callbacks: {
+                label: function(ctx) {
+                  var count = ctx.parsed.x;
+                  return ' ' + count + ' calls';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { color: colors.muted, font: { size: 10, family: 'IBM Plex Mono, monospace' } },
+              grid: { color: colors.grid }
+            },
+            y: {
+              ticks: { color: colors.text, font: { size: 10, family: 'IBM Plex Mono, monospace' }, crossAlign: 'far' },
+              grid: { display: false }
+            }
+          }
+        }
         });
-
-      };
-
-
-
-      renderRows(collapsedEntries);
-
-
-
-      if (!shouldCollapse) return;
-
-
-
-      let expanded = false;
-
-      const actionRow = document.createElement('div');
-
-      actionRow.className = 'hbar-actions';
-
-      const toggleBtn = document.createElement('button');
-
+      }
+      buildVehicleChart(collapsedEntries);
+      if (!shouldCollapse || !panel) return;
+      var toggleRow = document.createElement('div');
+      toggleRow.className = 'hbar-actions';
+      var toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
-
       toggleBtn.className = 'hbar-toggle-btn';
-
-      toggleBtn.textContent = `Show all ${entries.length} models`;
-
-      toggleBtn.onclick = () => {
-
+      toggleBtn.textContent = 'Show all ' + entries.length + ' models';
+      toggleBtn.onclick = function() {
         expanded = !expanded;
-
-        renderRows(expanded ? entries : collapsedEntries);
-
-        actionRow.appendChild(toggleBtn);
-
-        toggleBtn.textContent = expanded ? 'Show top models only' : `Show all ${entries.length} models`;
-
+        buildVehicleChart(expanded ? entries : collapsedEntries);
+        toggleBtn.textContent = expanded ? 'Show top models only' : 'Show all ' + entries.length + ' models';
       };
-
-      actionRow.appendChild(toggleBtn);
-
-      panel.appendChild(actionRow);
-
+      toggleRow.appendChild(toggleBtn);
+      panel.appendChild(toggleRow);
     }
+
 
 
 
@@ -5450,7 +5403,7 @@ async function generateDashboard() {
 
           <div class="alert-item">Counted only when Outcome = Not Connected</div>
 
-          <div class="alert-item">Does not include voicemail or other non-connected outcomes</div>
+          <div class="alert-list-item">Does not include voicemail or other non-connected outcomes</div>
 
         </div>
 
@@ -6480,7 +6433,7 @@ async function generateDashboard() {
         if (!themes) themes = { themes: [], total: 0, topTheme: "General", engine: "local" };
         // Helper to get user-edited KPI values from the DOM
         function getAdjustedKpiValue(label, defaultValue) {
-          const cards = document.querySelectorAll('.kpi-card');
+          const cards = document.querySelectorAll('.kpi');
           for (let i = 0; i < cards.length; i++) {
             const lblEl = cards[i].querySelector('.kpi-label');
             if (lblEl && lblEl.textContent.trim().toUpperCase() === label.toUpperCase()) {
@@ -6557,6 +6510,7 @@ async function generateDashboard() {
 
 
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </body>
 
 </html>

@@ -126,7 +126,8 @@
   // unexpected elements.
   window.loadNavSafe = function (containerId) {
     var container = document.getElementById(containerId);
-    if (!container) return;
+    if (!container) { $warn('Nav', 'Container #' + containerId + ' not found'); return; }
+    $log('Nav', 'Fetching nav.html into #' + containerId);
     fetch('../nav.html').then(function (r) {
       if (!r.ok) throw new Error('Nav fetch failed');
       return r.text();
@@ -134,13 +135,13 @@
       var parser = new DOMParser();
       var doc = parser.parseFromString(html, 'text/html');
       var nav = doc.querySelector('nav.header-nav');
-      if (!nav) { console.warn('Nav validation: no nav.header-nav found'); return; }
-      if (doc.querySelector('script') || doc.querySelector('iframe')) {
-        console.warn('Nav validation: blocked script/iframe in nav.html'); return;
+      if (!nav) { $warn('Nav', 'No nav.header-nav found in nav.html'); return; }
+      if (nav.querySelector('script') || nav.querySelector('iframe')) {
+        $warn('Nav', 'Blocked script/iframe in nav.html'); return;
       }
       var forbidden = nav.querySelectorAll('[onclick],[onerror],[onload],[onmouseover]');
       if (forbidden.length > 0) {
-        console.warn('Nav validation: blocked event handler in nav.html'); return;
+        $warn('Nav', 'Blocked event handler in nav.html'); return;
       }
       container.textContent = '';
       container.appendChild(document.importNode(nav, true));
@@ -153,7 +154,8 @@
           a.setAttribute('href', '#');
         }
       });
-    }).catch(function (e) { console.warn('Nav load failed:', e); });
+      $log('Nav', 'Navigation loaded for page: ' + pageName);
+    }).catch(function (e) { $warn('Nav', 'Load failed: ' + e.message); });
   };
 
   // ── FILE SIZE VALIDATION ──────────────────────────────────────────────

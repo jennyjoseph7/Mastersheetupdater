@@ -20,9 +20,12 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('jejo-theme', theme);
   syncBrandLogo(theme);
+  $log('Theme', 'Applied theme: ' + theme);
 }
 
 function toggleTheme() {
   var current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current === 'dark' ? 'light' : 'dark');
+  var next = current === 'dark' ? 'light' : 'dark';
+  $log('Theme', 'Toggling from ' + current + ' to ' + next);
+  applyTheme(next);
 }

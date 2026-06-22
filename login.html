@@ -15,6 +15,7 @@
   <title>Sign In — AutoNage</title>
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
   <link rel="stylesheet" href="assets/styles/login.css" />
+  <script src="assets/js/lib/logger.js"></script>
   <script src="assets/js/lib/theme.js"></script>
   <script src="config.js?v=20260610"></script>
 </head>
@@ -158,6 +159,8 @@ function updateSessionInfo() {
   }
 }
 
+$log('Auth', 'Login page initialized');
+
 function checkSession() {
   var token = sessionStorage.getItem('gryd_token');
   var expiry = sessionStorage.getItem('gryd_expiry');
@@ -202,9 +205,8 @@ function checkSession() {
       window.location.replace('index.html');
       return true;
     }
- 21}
-  }
-  return false;
+   }
+   return false;
 }
 
 async function handleLogin(event) {
@@ -216,9 +218,11 @@ async function handleLogin(event) {
   if (!userId) { showError('Please enter your email or user ID.'); return; }
   if (!password) { showError('Please enter your password.'); return; }
 
+  $log('Auth', 'Login attempt for: ' + $mask(userId, 'email'));
   setLoading(true);
 
   try {
+    $log('API', 'Calling login API: ' + GRYD_ENDPOINT + '/gryd/login');
     var response = await fetch(GRYD_ENDPOINT + '/gryd/login', {
       method: 'POST',
       headers: {
@@ -237,8 +241,10 @@ async function handleLogin(event) {
 
     var data = await response.json();
 
+    $log('API', 'Login response status: ' + response.status);
     if (!response.ok) {
       showError(data.error || data.message || 'Login failed. Check your credentials.');
+      $warn('Auth', 'Login failed: ' + (data.error || data.message || 'unknown'));
       setLoading(false);
       return;
     }
@@ -251,6 +257,7 @@ async function handleLogin(event) {
       return;
     }
 
+    $log('Auth', 'Login successful for: ' + $mask((data.user_id || userId), 'email'));
     sessionStorage.setItem('gryd_token', data.token);
     sessionStorage.setItem('gryd_session_id', data.session_id || '');
     sessionStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
