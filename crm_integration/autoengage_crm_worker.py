@@ -1,10 +1,19 @@
+import sys
+import os
+
+# Ensure autobot_agents root is always on sys.path regardless of
+# which directory the worker binary is launched from.
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from gryd_worker import gryd
 
-from config import AUTOCRM_CONVERSATION_SERVICE_NAME
-from crm_integration.load_crm import load_crm
+from config import AUTOCRM_CRM_UPDATE_SERVICE_NAME
+from crm_integration.crm_integration.load_crm import load_crm
 
 
-gryd.SERVICE=AUTOCRM_CONVERSATION_SERVICE_NAME
+gryd.SERVICE=AUTOCRM_CRM_UPDATE_SERVICE_NAME
 gryd.set_queue_manager()
 
 
@@ -251,7 +260,7 @@ def update_lead_in_sheet(
     """
     logger = logger or print
 
-    logger(f"[UPDATE_SHEET] sheet={sheet_name}, phone={phone_number}, data={kwargs}")
+    
 
     crm = load_crm("googledocs", sheet_name=sheet_name)
 
@@ -260,7 +269,7 @@ def update_lead_in_sheet(
         data=kwargs
     )
 
-    logger(f"[UPDATE_SHEET] Done: {result}")
+    
 
     return result
 

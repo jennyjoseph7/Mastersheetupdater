@@ -5,7 +5,7 @@ from os.path import dirname, abspath, join as joinpath
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel, AUTOCRM_CRM_UPDATE_SERVICE_NAME
 import config
 from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
@@ -199,8 +199,7 @@ def post_session_process(*args, **kwargs):
     mlogger.info(f"Lead id--{lead_id}, campaign_type--{campaign_type}")
     lead_data = {}
     with get_pg_connector() as pg:
-        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
-            
+        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
         sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
@@ -401,7 +400,7 @@ def post_session_process(*args, **kwargs):
             if crm_sheet and crm_phone:
                 gryd.create_async_task(
                     "update_lead_in_sheet",
-                    AUTOCRM_CONVERSATION_SERVICE_NAME,
+                    AUTOCRM_CRM_UPDATE_SERVICE_NAME,
                     args=[],
                     kwargs=crm_update,
                 )
@@ -416,6 +415,49 @@ def post_session_process(*args, **kwargs):
         mlogger.info(f"Updated session history in lead data == {update_session_hist}")
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+
+        # ── Meta CAPI: push conversion event back to Meta (non-fatal) ────────
+        # Triggered only when the lead originally came from Meta Lead Ads.
+        # leadgen_id is retrieved from external_source_data stored at lead creation time.
+        try:
+            lead_source_data = (updated_lead_data or lead_data or {}).get("external_source_data") or {}
+            if lead_source_data.get("source") == "meta":
+                leadgen_id_str = lead_source_data.get("leadgen_id")
+                mlogger.info(
+                    "[CAPI] Meta lead detected — queuing CAPI push: "
+                    "leadgen_id=%s disposition=%s",
+                    leadgen_id_str, new_desposition,
+                )
+                gryd.create_async_task(
+                    "push_capi_lead_event",
+                    AUTOCRM_CRM_UPDATE_SERVICE_NAME,
+                    args=[],
+                    kwargs={
+                        "phone_number":      (
+                            updated_lead_data.get("phone_number")
+                            or lead_data.get("phone_number", "")
+                        ),
+                        "disposition":       new_desposition,
+                        "email":             (
+                            updated_lead_data.get("email")
+                            or lead_data.get("email")
+                        ),
+                        "name":              (
+                            updated_lead_data.get("person_name")
+                            or lead_data.get("person_name")
+                        ),
+                        "facebook_lead_id":  (
+                            int(leadgen_id_str)
+                            if leadgen_id_str and str(leadgen_id_str).isdigit()
+                            else None
+                        ),
+                        "lead_event_source": "DaveAI AutoNgage",
+                    },
+                )
+                mlogger.info("[CAPI] push_capi_lead_event task queued successfully.")
+        except Exception as capi_err:
+            # CAPI push is best-effort — never let it block session post-processing
+            mlogger.warning("[CAPI] Non-fatal: CAPI push failed: %s", capi_err)
 
         if appt_date_time_purpose.get("appointment_date"):
             visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)

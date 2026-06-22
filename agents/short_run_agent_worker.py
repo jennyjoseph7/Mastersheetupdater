@@ -14,3 +14,6 @@ except ImportError:
 THREADS_PER_SESSION = 0.1
 __version__ = "0.0.1"
 from campaign_idea_creator import gryd
+import get_whatsapp_template_agent
+import get_rcs_template_agent
+import get_email_template_agent

@@ -21,14 +21,10 @@ if BASE_DIR not in sys.path:
 from config import (
     AUTOCRM_APP_ENTERPRISE_ID,
     AUTOCRM_COMMUNICATION_SERVICE_NAME,
-    AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME,
     AutocrmModel,
     gryd,
     hp,
 )
-
-gryd.SERVICE = AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME
-gryd.set_queue_manager()
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 
@@ -390,7 +386,16 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
     """
 
     RML_TEMPLATE_URL = "https://apis.rmlconnect.net/wba/template/create"
+    RML_EDIT_TEMPLATE_URL = "https://apis.rmlconnect.net/wba/template/update"
     RML_LOGIN_URL = "https://apis.rmlconnect.net/auth/v1/login/"
+
+    # RML media header types accepted by the createTemplate API (the public
+    # ``header.type`` enum is image/video/document).
+    RML_MEDIA_TYPES = {
+        "image": "image",
+        "video": "video",
+        "document": "document",
+    }
 
     # Support inbox notified when the RML Login API rejects the stored
     # credentials (typically a stale/rotated password). The dealership's
@@ -622,41 +627,98 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
                 f"{notify_exc}"
             )
 
+    def _build_button_elements(self, buttons: list) -> Optional[dict]:
+        """Map stored buttons to an RML ``buttons`` component.
+
+        Returns a ``call_to_action`` component when any URL / phone-number
+        button is present (RML's CTA element schema), otherwise a
+        ``quick_reply`` component. Returns ``None`` when there are no usable
+        buttons.
+
+        CTA element shapes (from the RML createTemplate spec):
+          - URL:   ``{"label": ..., "type": "static"|"dynamic", "website": ...}``
+          - Phone: ``{"contact_no": "+<cc><number>", "label": ...}``
+        Quick-reply elements use ``{"text": ...}`` (the spec shows ``label``
+        for quick replies but the server only accepts ``text``).
+        """
+        cta_elements: List[dict] = []
+        quick_reply_elements: List[dict] = []
+
+        for btn in buttons or []:
+            if not isinstance(btn, dict):
+                continue
+            label = btn.get("buttonText") or btn.get("text") or btn.get("label")
+            url = btn.get("url") or btn.get("website")
+            phone = (
+                btn.get("phoneNumber")
+                or btn.get("phone_number")
+                or btn.get("contact_no")
+            )
+            btn_type = str(btn.get("type") or "").strip().upper()
+
+            if url or btn_type in {"URL", "CALL_TO_ACTION"}:
+                url_type = str(
+                    btn.get("urlType") or btn.get("url_type") or "static"
+                ).strip().lower()
+                element: Dict = {"label": label, "type": url_type}
+                if url:
+                    element["website"] = url
+                cta_elements.append(element)
+            elif phone or btn_type in {"PHONE_NUMBER", "PHONE", "CALL"}:
+                element = {"label": label}
+                if phone:
+                    element["contact_no"] = phone
+                cta_elements.append(element)
+            elif label:
+                quick_reply_elements.append({"text": label})
+
+        if cta_elements:
+            return {"type": "call_to_action", "elements": cta_elements}
+        if quick_reply_elements:
+            return {"type": "quick_reply", "elements": quick_reply_elements}
+        return None
+
     def _build_components(
         self,
         processed_message: str,
         ordered_vars: List[str],
         buttons: list,
+        footer: Optional[str] = None,
+        media_type: Optional[str] = None,
+        media_url: Optional[str] = None,
     ) -> dict:
-        """Build the RML ``components`` object (body + optional buttons)."""
+        """Build the RML ``components`` object.
+
+        Supports text and media templates with an optional footer and
+        quick-reply / call-to-action buttons:
+          - ``body``   – text + ``example`` sample values for ``{{n}}`` vars.
+          - ``header`` – media header for image/video/document templates.
+          - ``footer`` – static footer text.
+          - ``buttons``– quick_reply or call_to_action elements.
+
+        RML never accepts a raw variable placeholder as a media reference, so
+        for media templates the ``media_url`` (image URL / gryd file URL) is
+        passed through as the ``header.example`` *sample* value.
+        """
         body: Dict = {"text": processed_message}
         if ordered_vars:
             body["example"] = self._generate_example_values(ordered_vars)
 
         components: Dict = {"body": body}
 
-        if buttons:
-            # Route Mobile expects `text` (not `label`) on quick_reply button
-            # elements. The Quick Reply example in their OpenAPI doc shows
-            # `label` but the server rejects it with 422 "Unknown field"; the
-            # Carousel/Multi-Product examples in the same spec correctly use
-            # `text`, which is what the API actually accepts.
-            quick_reply_elements = [
-                {
-                    "text": (
-                        btn.get("buttonText")
-                        or btn.get("text")
-                        or btn.get("label")
-                    )
-                }
-                for btn in buttons
-                if (btn.get("buttonText") or btn.get("text") or btn.get("label"))
-            ]
-            if quick_reply_elements:
-                components["buttons"] = {
-                    "type": "quick_reply",
-                    "elements": quick_reply_elements,
-                }
+        if media_url and media_type:
+            rml_media_type = str(media_type).strip().lower()
+            components["header"] = {
+                "example": media_url,
+                "type": self.RML_MEDIA_TYPES.get(rml_media_type, rml_media_type),
+            }
+
+        if footer:
+            components["footer"] = {"text": footer}
+
+        button_component = self._build_button_elements(buttons)
+        if button_component:
+            components["buttons"] = button_component
 
         return components
 
@@ -669,6 +731,9 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
         ordered_vars: List[str],
         lang_code: str,
         category: str,
+        footer: Optional[str] = None,
+        media_type: Optional[str] = None,
+        media_url: Optional[str] = None,
     ) -> str:
 
         payload = {
@@ -677,16 +742,32 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
             "template_type": "template",
             "template_category": self._map_category(category),
             "components": self._build_components(
-                processed_message, ordered_vars, buttons
+                processed_message,
+                ordered_vars,
+                buttons,
+                footer=footer,
+                media_type=media_type,
+                media_url=media_url,
             ),
         }
 
         headers = self._build_headers(credential)
 
+        logger.info(
+            f"RML create-template request | url={self.RML_TEMPLATE_URL} | "
+            f"template_name={template_name!r} | "
+            f"payload={json.dumps(payload, ensure_ascii=False)}"
+        )
+
         resp = requests.post(
             self.RML_TEMPLATE_URL,
             headers=headers,
             json=payload,
+        )
+
+        logger.info(
+            f"RML create-template response for '{template_name}': "
+            f"{resp.status_code} — {resp.text}"
         )
 
         if not resp.ok:
@@ -697,6 +778,49 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
 
         data = resp.json()
         return data.get("id") or data.get("template_id")
+
+    def _edit_on_rml(
+        self,
+        template_name: str,
+        credential: dict,
+        components: dict,
+    ) -> dict:
+        """Edit an existing RML template via the Edit Template API.
+
+        RML's edit endpoint (``PATCH /wba/template/update``) is keyed by
+        ``template_name`` (not an id) and takes the updated ``components``
+        object. Returns the parsed JSON response (best-effort).
+        """
+        payload = {"template_name": template_name, "components": components}
+        headers = self._build_headers(credential)
+
+        logger.info(
+            f"RML edit-template request | url={self.RML_EDIT_TEMPLATE_URL} | "
+            f"template_name={template_name!r} | "
+            f"payload={json.dumps(payload, ensure_ascii=False)}"
+        )
+
+        resp = requests.patch(
+            self.RML_EDIT_TEMPLATE_URL,
+            headers=headers,
+            json=payload,
+        )
+
+        logger.info(
+            f"RML edit-template response for '{template_name}': "
+            f"{resp.status_code} — {resp.text}"
+        )
+
+        if not resp.ok:
+            raise RuntimeError(
+                f"RML edit API error for '{template_name}': "
+                f"{resp.status_code} — {resp.text}"
+            )
+
+        try:
+            return resp.json()
+        except Exception:
+            return {}
 
     def build_migration_record(
         self, template: dict, credential: dict, cred_id: str
