@@ -564,7 +564,7 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         row, missing_reason = process_dealership_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
     else:
         raise ValueError(f"Invalid campaign type: {campaign_type}")
-    row = update_next_schedule_time(row, campaign = models['campaign'].get(campaign_id, {}))
+    row = update_next_schedule_time(row, campaign = models['campaign_model'].get(campaign_id, {}))
     return row, missing_reason
 
 @gryd.is_a_task('update_next_schedule_time', logger_param = 'logger', job_param = 'job')
