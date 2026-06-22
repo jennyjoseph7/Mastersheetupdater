@@ -613,6 +613,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--lead-id", type=str, default="123")
     parser.add_argument("--no-debug", action="store_false", default=True)
+    parser.add_argument("--campaign-id", type=str)
     parser.add_argument("--channel-identifier", type=str, default=None)
     parser.add_argument("--campaign-type", type=str, default="pre-sales")
     parser.add_argument("--disposition", type=str, default="converted")
@@ -620,6 +621,12 @@ if __name__ == "__main__":
     lead_id = args.lead_id
     debug = args.no_debug
     channel_identifier = args.channel_identifier
+    if args.campaign_id and lead_id == "123":
+        lm = AutocrmModel(f"{args.campaign_type.replace('-', '_')}_lead")
+        ls = lm.list(_as_option = True, campaign_id = args.campaign_id, phone_number = f"~{channel_identifier[:-10]}")
+        lead_id = hp.make_single(ls, force = True).get(f"{args.campaign_type.replace('-','_')}_lead_id")
+        if not lead_id:
+            raise hp.GrydError(f"No lead found for {args.campaign_type} campaign: {args.campaign_id} with phone number: {channel_identifier[:-10]}")
     if lead_id == "123":
         channel_identifier = "919108310847"
         DEBUG_STATUS = [
