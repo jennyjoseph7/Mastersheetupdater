@@ -28,3 +28,7 @@ node_modules/
 campaign-generator-ai-spec.md
 CLAUDE-FABLE-5.md
 test-data.csv
+
+# Graphify output
+graphify-out/
+.graphify-out/
