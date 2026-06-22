@@ -600,38 +600,39 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         update_payload.pop("lead_id", None)
         update_payload.pop("dealership_id", None)
-        if update_payload:
-            mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
+
+        # check if the session is live and update the session and lead model..
+        s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":channel,"lead_model":lead_table, "session_live": True, "status~" : "completed"},order="DESC"))
+        if not s_d:
+            mlogger.info(f"No session data found for lead_id: {lead_id} and channel: {channel}, skipping session update.")
+            return None
+        s_d=s_d[0]
+        session_id = s_d.get("session_id")
+        mlogger.info(f"Since the session is live, Updating session disposition and status for lead_id: {lead_id}")
+        _p = {
+                "disposition": incoming_status,
+                "status": incoming_status,
+                **(
+                    {"disposition_detail": data.get("failure_reason")}
+                    if incoming_status == "failed" and data.get("failure_reason")
+                    else {}
+                )
+            }
+        pg.update("session","session_id",session_id,_p)
+        if update_payload and s_d:
+            mlogger.info(f"Since the session is live, updating lead with update_payload {update_payload} for lead_id: {lead_id}")
             pg.update(
                 lead_table,
                 lead_pk,
                 lead_key,
-                update_payload,
+                update_payload
             )
         
-        # also updating session dispositon--
         template_message = data.get("template_message") if data else None
-        if channel in ["whatsapp_chat"]:
+        if channel in ["whatsapp_chat"] and s_d:
             # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
-            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
-            if not s_d:
-                mlogger.info(f"No session found for lead_id: {lead_id}")
-                return
-            s_d=s_d[0]
-            session_id = s_d.get("session_id")
-            mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
-            _p = {
-                    "disposition": incoming_status,
-                    "status": incoming_status,
-                    **(
-                        {"disposition_detail": data.get("failure_reason")}
-                        if incoming_status == "failed" and data.get("failure_reason")
-                        else {}
-                    )
-                }
-            pg.update("session","session_id",session_id,_p)
             if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
-                mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
+                mlogger.info(f"Since the session is live, Updating template_message in history for lead_id: {lead_id} for channel: whatsapp_chat")
                 p={
                     "reply_to": generate_uid(data),
                     "customer_response": "",
@@ -662,7 +663,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         mlogger.info(f"--------[CALL] Calling next campaign workflow task for latest lead disposition -- {latest_lead_disposition} for filters: {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{data.get('skip_workflow', False)}")
         call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,latest_lead_disposition,pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
-
 
 def get_channel_identifier(data):
     
