@@ -187,7 +187,7 @@ def post_session_process(*args, **kwargs):
     mlogger.info("campaign_data == {}".format(campaign_data))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
-    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
     lead_data = {}
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
@@ -369,7 +369,7 @@ def post_session_process(*args, **kwargs):
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
-                visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data)
+                visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data, session_mdl_obj)
                 mlogger.info("visit data == {}".format(visit_data))
                 if not visit_data:
                     return
@@ -1505,13 +1505,13 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     # mlogger.info("disposition prompt response ======= {}".format(resp))
     return hp.json.loads(resp)
 
-def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data):
+def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data, session_mdl_obj):
     mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
-    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
     campaign_data = session_data.get("campaign_data")
     mlogger.info("campaign_data == {}".format(json.dumps(campaign_data)))
     if campaign_data.get("campaign_type") == "pre-sales":
