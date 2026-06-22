@@ -287,6 +287,7 @@ def run_vector_ingestion(tasks_payload: list):
                 VECTOR_SERVICE_URL,
                 headers=headers,
                 json={"kwargs": item.get("kwargs")},
+                
                 timeout=30
             )
             if response.status_code in (200, 201, 202):
