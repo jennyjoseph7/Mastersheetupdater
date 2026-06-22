@@ -113,8 +113,8 @@ CAMPAIGN_WORKFLOW = {
     },
     "failed": {
         "retries": 4,
-        "delay_type": "exponential",
-        "delay": 1200,
+        "delay_type": "linear",
+        "delay": 3600*4,
         "trigger": "switch_to_next_credential"
     },
     "error": {
@@ -123,22 +123,24 @@ CAMPAIGN_WORKFLOW = {
     },
     "attempted": {
         "retries": 4,
-        "delay_type": "exponential",
-        "delay": 1200,
+        "delay_type": "linear",
+        "delay": 3600*6,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
         "retries": 2,
-        "delay": 1200,
+        "delay": 3600*2,
+        "delay_type": "linear",
         "trigger": "switch_to_next_channel"
     },
     "contacted": {
-        "retries": 2,
-        "delay": 3600,
+        "retries": 1,
+        "delay": 3600*4,
+        "delay_type": "linear",
         "trigger": "switch_to_next_channel"
     },
     "engaged": {
-        "retries": 2,
+        "retries": 0,
         "delay": 86400,
         "trigger": "follow_up_contact"
     },
@@ -207,11 +209,12 @@ def get_attempts(statuses: list, status: str):
 def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
     timezone = timezone or "Asia/Kolkata"
     next_delay_type = workflow_stage.get('delay_type', 'linear')
+    next_delay_param = workflow_stage.get('delay_param', 1)
     next_delay = workflow_stage.get('delay', 1) or 1
     if next_delay_type == "exponential":
-        next_delay = next_delay * (2 ** (attempts - 1))
+        next_delay = next_delay * (2 ** (next_delay_param * (attempts + 1)))
     elif next_delay_type == "linear":
-        next_delay = next_delay * attempts
+        next_delay = next_delay * attempts * next_delay_param
     #TODO: Make sure the delay falls in the calling/messaging timeslot according to the timezone
     next_time = hp.now(timezone) + hp.timedelta(seconds=next_delay)
     if next_time.hour < 9:
