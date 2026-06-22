@@ -194,13 +194,13 @@ def post_session_process(*args, **kwargs):
     
     session_data = session_data.get("data",{})
     campaign_data = session_data.get("campaign_data", {})
-    mlogger.info("campaign_data == {}".format(campaign_data))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
-
-    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
+    lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
+    mlogger.info(f"Lead id--{lead_id}, campaign_type--{campaign_type}")
     lead_data = {}
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+            
         sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
