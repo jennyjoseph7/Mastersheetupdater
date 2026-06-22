@@ -165,6 +165,7 @@ class data_attribute_retriever(BaseAgent):
                 'updated',
                 'campaign_name',
                 'vin_number',
+                'phone_number',
             ]
 
         elif self.campaign_type in ["post-sales", "post_sale", "post_sales"]:
@@ -232,6 +233,7 @@ class data_attribute_retriever(BaseAgent):
                 'updated',
                 'campaign_name',
                 'vin_number',
+                'phone_number',
             ]
 
         return [

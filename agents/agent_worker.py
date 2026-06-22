@@ -14,5 +14,9 @@ except ImportError:
 THREADS_PER_SESSION = 0.1
 __version__ = "0.0.1"
 import whatsapp_template_creator_agent
-import get_whatsapp_template_agent
-import get_rcs_template_agent
+import disposition_templates_creator
+import disposition_template_approval_updator
+import get_disposition_template
+import update_template_status_by_id
+import whatsapp_template_agents.bulk_send_for_approval
+import whatsapp_template_agents.edit_template
