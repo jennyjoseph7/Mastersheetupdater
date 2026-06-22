@@ -200,7 +200,7 @@ def post_session_process(*args, **kwargs):
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id")
     lead_data = {}
     with get_pg_connector() as pg:
-        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data")
+        lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
         sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
 
         cur_lead = lead_data.get('disposition', None)
