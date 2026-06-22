@@ -16,6 +16,7 @@ from communication.common_functions import get_communication_credential, generat
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 import time
 from agents.workflows import WorkflowFactory, send_sop_alert
 import autocrm_validator as auto_val
@@ -474,9 +475,9 @@ def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,c
         return
     campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
     def _do_db_work(pg_conn):
-        a=list(pg_conn.list(campaign_model, {"campaign_id": campaign_id, "campaign_status": "Active"}))
-        # TODO:just check the above query in staging and unstable lower active seems not be working..
-        if not a:
+        a=pg_conn.get(campaign_model,"campaign_id",campaign_id)
+        
+        if not a or a.get("campaign_status", "").lower() != "active":
             mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
             return
         # TODO:before calling ananth task check the campaign status and then call.. 
@@ -545,7 +546,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         if not lead:
             mlogger.warning(f"[post_contact_status] No lead found for {lead_key}")
             return
-
+        
+        latest_lead_disposition = lead.get("disposition")
+        
         if campaign_type == "post-sales" and user_id and channel:
             mlogger.info(f"[post_contact_status] Updating lead for post-sales with user_id={user_id} and channel={channel}")
             persons = lead.get("persons_involved") or []
@@ -581,7 +584,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 f"(current={lead.get('disposition')}, incoming={incoming_status})"
             )
             update_payload["disposition"] = incoming_status
-            
+            latest_lead_disposition = incoming_status
             if incoming_status == "failed":
                 update_payload["disposition_detail"] = data.get("failure_reason")
 
@@ -597,40 +600,39 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         update_payload.pop("lead_id", None)
         update_payload.pop("dealership_id", None)
-        if update_payload:
-            mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
+
+        # check if the session is live and update the session and lead model..
+        s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":channel,"lead_model":lead_table, "session_live": True, "status~" : "completed"},order="DESC"))
+        if not s_d:
+            mlogger.info(f"No session data found for lead_id: {lead_id} and channel: {channel}, skipping session update.")
+            return None
+        s_d=s_d[0]
+        session_id = s_d.get("session_id")
+        mlogger.info(f"Since the session is live, Updating session disposition and status for lead_id: {lead_id}")
+        _p = {
+                "disposition": incoming_status,
+                "status": incoming_status,
+                **(
+                    {"disposition_detail": data.get("failure_reason")}
+                    if incoming_status == "failed" and data.get("failure_reason")
+                    else {}
+                )
+            }
+        pg.update("session","session_id",session_id,_p)
+        if update_payload and s_d:
+            mlogger.info(f"Since the session is live, updating lead with update_payload {update_payload} for lead_id: {lead_id}")
             pg.update(
                 lead_table,
                 lead_pk,
                 lead_key,
-                update_payload,
+                update_payload
             )
-        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
-        mlogger.info(f"--------[CALL] Calling next campaign workflow task for -- {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{data.get('channel_identifier')},{lead.get('disposition')},{data.get('skip_workflow', False)}")
-        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),data.get("channel_identifier"),lead.get('disposition'),pg=pg,skip_workflow=data.get("skip_workflow", False))
-        # also updating session dispositon--
+        
         template_message = data.get("template_message") if data else None
-        if channel in ["whatsapp_chat"]:
+        if channel in ["whatsapp_chat"] and s_d:
             # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
-            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
-            if not s_d:
-                mlogger.info(f"No session found for lead_id: {lead_id}")
-                return
-            s_d=s_d[0]
-            session_id = s_d.get("session_id")
-            mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
-            _p = {
-                    "disposition": incoming_status,
-                    "status": incoming_status,
-                    **(
-                        {"disposition_detail": data.get("failure_reason")}
-                        if incoming_status == "failed" and data.get("failure_reason")
-                        else {}
-                    )
-                }
-            pg.update("session","session_id",session_id,_p)
             if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
-                mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
+                mlogger.info(f"Since the session is live, Updating template_message in history for lead_id: {lead_id} for channel: whatsapp_chat")
                 p={
                     "reply_to": generate_uid(data),
                     "customer_response": "",
@@ -654,8 +656,28 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     args=[],
                     kwargs=p
                 )
-            
+        
+        
+        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
+        channel_identifier = get_channel_identifier(data)
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for latest lead disposition -- {latest_lead_disposition} for filters: {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,latest_lead_disposition,pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
+
+def get_channel_identifier(data):
+    
+    identifier_key = CHANNEL_IDENTIFIER_MAP.get(data.get("channel"))
+
+    if not identifier_key:
+        raise ValueError(f"Unsupported channel: {data.get('channel')}")
+
+    channel_ide = data.get(identifier_key)
+
+    if not channel_ide:
+        raise ValueError(
+            f"Missing '{identifier_key}' for channel '{data.get('channel')}'"
+        )
+    return channel_ide
 
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")

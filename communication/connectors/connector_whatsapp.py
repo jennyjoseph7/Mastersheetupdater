@@ -268,7 +268,8 @@ def post_contact_status(*args, **data):
 
     message_id = args[0] if args else None
     incoming_status = (data.get("message_status") or data.get("provider_status","")).lower()
-    phone_number = data.get("phone_number") or data.get("mobile_number")
+    # phone_number = data.get("phone_number") or data.get("mobile_number")
+    phone_number = (p.lstrip("+") if (p := data.get("phone_number") or data.get("mobile_number")) else None)
     mlogger.info(f"[post_contact_status] Processing message_id={message_id} with incoming_status={incoming_status}")
     raw_channel = data.get("channel")
     channel = raw_channel.strip() if isinstance(raw_channel, str) else None
@@ -288,7 +289,7 @@ def post_contact_status(*args, **data):
                     order="DESC",
                 )
             )
-            mlogger.info(f"[post_contact_status] user with phone_number={data.get('phone_number')} has person records: {person_d}")
+            mlogger.info(f"[post_contact_status] user with phone_number={phone_number} has person records: {person_d}")
             if person_d and channel:
                 person = person_d[0]
                 user_id = person.get("user_id")
@@ -308,6 +309,7 @@ def post_contact_status(*args, **data):
             }
             contact_status_id = generate_uid(payload)
             mlogger.info(f"[post_contact_status] No message_id provided. Creating new contact_status with contact_status_id={contact_status_id}")
+            # mlogger.info(f"[post_contact_status] Payload for new contact_status --{json.dumps(payload,indent=4)}")
             pg.update("contact_status", "contact_status_id", contact_status_id, payload)
             # mlogger.info(f"Checking data for lead_disposition- Payload new --{json.dumps(data,indent=4)}")
             
@@ -348,7 +350,13 @@ def post_contact_status(*args, **data):
         existing["updated"] = data.get('updated') or time.time()
 
         if incoming_status == "failed":
-            existing["failure_reason"] = data.get("error").get("message") if data.get("error").get("message") else "Message delivery failed"
+            error = data.get("error", {})
+
+            existing["failure_reason"] = (
+                error.get("details")
+                if data.get("whatsapp_provider") == "rml" and error.get("details")
+                else error.get("message") or "Message delivery failed"
+            )
 
         payload = existing
         contact_status_id = generate_uid(payload)

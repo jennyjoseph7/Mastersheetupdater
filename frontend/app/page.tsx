@@ -53,6 +53,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { VerifyProfileBanner } from "@/components/dealership/verify-profile-banner";
 import { CompleteSetupModal } from "@/components/dealership/complete-setup-modal";
 import { useAuth } from "@/lib/auth-context";
+import { api } from "@/lib/api";
 
 import {
   Plus,
@@ -79,6 +80,11 @@ import {
   MessageSquare,
   MessageCircle,
   Smartphone,
+  Megaphone,
+  Users,
+  PhoneCall,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
 const swrOptions = {
@@ -387,6 +393,81 @@ export default function CampaignDashboard() {
     fetchCampaignSummary,
     swrOptions,
   );
+
+  // Fetch today's dealership summary
+  const { data: dailySummaryRes, isLoading: dailySummaryLoading, mutate: mutateDailySummary } = useSWR(
+    dealershipId
+      ? `/gryd/db/objects/daily_dealership_summary?sort_by=activity_date&sort_reverse=true&dealership_id=${dealershipId}&page_size=1000`
+      : null,
+    (url) => api(url),
+    swrOptions
+  );
+
+  const todayMetrics = useMemo(() => {
+    if (!dailySummaryRes?.data) return null;
+
+    const data = dailySummaryRes.data;
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    const todayIso = `${y}-${m}-${d}`;
+
+    let campaigns = 0;
+    let leads = 0;
+    let connected = 0;
+    let converted = 0;
+    let failed = 0;
+    let pending = 0;
+    let hasDataForToday = false;
+
+    data.forEach((item: any) => {
+      const ms =
+        typeof item.activity_date === "string"
+          ? parseFloat(item.activity_date)
+          : item.activity_date;
+
+      let dateObj = new Date();
+      if (!isNaN(ms)) {
+        try {
+          dateObj = new Date(ms > 1e11 ? ms : ms * 1000);
+          if (isNaN(dateObj.getTime())) {
+            dateObj = new Date();
+          }
+        } catch {
+          dateObj = new Date();
+        }
+      }
+      const isodate = dateObj.toISOString().split("T")[0];
+
+      if (isodate === todayIso) {
+        hasDataForToday = true;
+        campaigns += item.total_campaign_triggered || 0;
+        leads += item.total_leads_triggered || 0;
+        connected += item.total_connected || 0;
+        converted += item.total_converted || 0;
+        failed += item.total_failed || 0;
+        pending += item.total_pending || 0;
+      }
+    });
+
+    const connectRate = leads > 0 ? (connected / leads) * 100 : 0;
+    const conversionRate = connected > 0 ? (converted / connected) * 100 : 0;
+    const overallConversionRate = leads > 0 ? (converted / leads) * 100 : 0;
+
+    return {
+      hasDataForToday,
+      campaigns,
+      leads,
+      connected,
+      converted,
+      failed,
+      pending,
+      connectRate,
+      conversionRate,
+      overallConversionRate,
+    };
+  }, [dailySummaryRes]);
 
   // Refresh setup status when dashboard loads and on route changes
   useEffect(() => {
@@ -881,6 +962,7 @@ export default function CampaignDashboard() {
         mutateCampaigns(),
         mutateCounts(),
         mutateCampaignSummary(),
+        mutateDailySummary(),
       ]);
     } catch (error) {
       console.error("Error refreshing data:", error);
@@ -1008,6 +1090,136 @@ export default function CampaignDashboard() {
                 </p>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Today's Dealership Activity (Dealership Summary) */}
+          <div className="space-y-4 pt-6 border-t border-border/40">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                Today&apos;s Dealership Activity
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Real-time performance metrics updated for today,{" "}
+                {new Date().toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+
+            {dailySummaryLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {[...Array(5)].map((_, i) => (
+                  <Card
+                    key={i}
+                    className="animate-pulse bg-card/30 border-border/40 h-28"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                {/* Campaigns */}
+                <Card className="shadow-sm hover:shadow transition-all duration-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Campaigns
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <Megaphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {todayMetrics?.campaigns.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Today&apos;s campaign runs
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Leads Triggered */}
+                <Card className="shadow-sm hover:shadow transition-all duration-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Leads Triggered
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-violet-500/10">
+                      <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {todayMetrics?.leads.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Today&apos;s customer pipelines
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Connected */}
+                <Card className="shadow-sm hover:shadow transition-all duration-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Connected
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-sky-500/10">
+                      <PhoneCall className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {todayMetrics?.connected.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                      {(todayMetrics?.connectRate || 0).toFixed(1)}% Connect Rate
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Converted */}
+                <Card className="shadow-sm hover:shadow transition-all duration-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Converted
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-emerald-500/10">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {todayMetrics?.converted.toLocaleString() || 0}
+                    </div>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold mt-1">
+                      {(todayMetrics?.overallConversionRate || 0).toFixed(1)}% Sales Rate
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Failed / Pending */}
+                <Card className="shadow-sm hover:shadow transition-all duration-200">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Failed / Pending
+                    </CardTitle>
+                    <div className="p-2 rounded-lg bg-rose-500/10">
+                      <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {((todayMetrics?.failed || 0) + (todayMetrics?.pending || 0)).toLocaleString()}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Failed: {todayMetrics?.failed || 0} | Pending: {todayMetrics?.pending || 0}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           {/* Campaign Table */}

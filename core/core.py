@@ -19,7 +19,9 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     AutocrmModel, \
     EXCHANGE_RATE_HOST_API_KEY, \
     EXCHANGE_RATE_HOST_BASE_URL, \
-    csv
+    csv, \
+    get_cheapest_channel, \
+    get_channel_identifier_from_lead
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 import requests
@@ -307,11 +309,19 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     return row, missing_reason
 
 
+ATTEMPT_TIME_ON_DUE_DATE = {
+    "next_service_due": -7 * 3600 * 24,
+    "warranty_expiry_date": -60 * 3600 * 24,
+    "insurance_expiry_date": -45 * 3600 * 24,
+    "extended_warranty_expiry_date": -60 * 3600 * 24
+}
+
 def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, required_attributes = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
     row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
+    dealership = models['dealership'].get(row.get('dealership_id'))
     if isinstance(required_attributes, list):
         for k in required_attributes:
             if not get_valid_value(row, k):
@@ -323,6 +333,18 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
             row['service_due_timestamp'] = hp.to_epoch(row.get('next_service_due'))
         except Exception as e:
             missing_reason.append(f"Failed to convert next service due date to epoch: {str(e)}")
+    attempt_time_on_due_date = dealership.get('attempt_time_on_due_date', {}) or ATTEMPT_TIME_ON_DUE_DATE
+    for k in ATTEMPT_TIME_ON_DUE_DATE:
+        if is_valid_value(row, k):
+            row["next_schedule_time"] = min(
+                max(
+                    hp.time(), 
+                    hp.to_epoch(row[k]) + (
+                        attempt_time_on_due_date.get(k) or ATTEMPT_TIME_ON_DUE_DATE.get(k)
+                    )
+                ), 
+                row.get('next_schedule_time', hp.time())
+            )
     row, missing_reason = get_vehicle_id(models['vehicle_model'], row, missing_reason, required_attributes = required_attributes, logger = logger)
     row, missing_reason = get_persons_involved(row, models, missing_reason, logger = logger)
     return row, missing_reason
@@ -502,7 +524,7 @@ def get_valid_value(row, key):
         return None
     return value.strip()
 
-def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, logger = None):
+def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, next_schedule_time = None, logger = None):
     logger = logger or mlogger
     logger.info(f"Processing common row: {row}")
     missing_reason = missing_reason or []
@@ -529,6 +551,8 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         if audience_attributes:
             row["audience_attributes"] = audience_attributes
     required_attributes = campaign_objective.get('required_attributes')
+    if next_schedule_time:
+        row['next_schedule_time'] = hp.to_epoch(next_schedule_time)
     if is_valid_value(row, 'customer_score'):
         row['customer_score'] = int(row['customer_score'])
     if campaign_type == 'pre-sales':
@@ -540,7 +564,58 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
         row, missing_reason = process_dealership_lead_row(row, models, missing_reason, rooftop_id, logger = logger)
     else:
         raise ValueError(f"Invalid campaign type: {campaign_type}")
+    row = update_next_schedule_time(row, campaign = models['campaign_model'].get(campaign_id, {}))
     return row, missing_reason
+
+@gryd.is_a_task('update_next_schedule_time', logger_param = 'logger', job_param = 'job')
+def update_next_schedule_time(lead_object, next_schedule_time = None, campaign = None, channels = None, channel_sequence = None, logger = None, job = None):
+    """
+    Update the next schedule time in a lead lead_object, to add the channel, etc.
+    """
+    campaign_type = lead_object.get('campaign_type')
+    lead_id_attr = f"{campaign_type.replace('-', '_')}_lead_id"
+    if not isinstance(campaign, dict):
+        campaign_model = f"{campaign_type.replace('-', '_')}_campaign"
+        cm = AutocrmModel(campaign_model)
+        campaign = campaign or cm.get(lead_object.get('campaign_id'))
+    channels = channels or campaign.get('channels') or ['voice_phone']
+    channel_sequence = channel_sequence or campaign.get('channel_sequence')
+    if next_schedule_time:
+        lead_object['next_schedule_time'] = hp.to_epoch(next_schedule_time)
+    if is_valid_value(lead_object, 'next_schedule_time'):
+        logger.info("Next scheduled time set to %s for lead %s in %s campaign %s", 
+            hp.to_datetime(lead_object.get('next_schedule_time')), 
+            lead_object.get(lead_id_attr),
+            campaign_type,
+            lead_object.get('campaign_id')
+        )
+        lead_object['next_channel'] = get_cheapest_channel(channels, channel_sequence)
+        lead_object['next_channel_identifier'] = get_channel_identifier_from_lead(lead_object['next_channel'], lead_object, logger = logger, job = job)
+        lead_object['next_trigger'] = 'switch_to_next_credential'
+    return lead_object
+
+@gryd.is_a_task("update_next_schedule_time_batch", logger_param = 'logger', job_param = 'job')
+def update_next_schedule_time_batch(campaign_type, next_schedule_time, campaign = None, channels = None, channel_sequence = None, **kwargs):
+    """
+    Filters leads based on kwargs and updates the next_schedule_time for them
+    """
+    if not isinstance(campaign, dict):
+        campaign_model = f"{campaign_type.replace('-', '_')}_campaign"
+        cm = AutocrmModel(campaign_model)
+        campaign = campaign or cm.get(lead_object.get('campaign_id'))
+    channels = channels or campaign.get('channels') or ['voice_phone']
+    channel_sequence = channel_sequence or campaign.get('channel_sequence')
+    kwargs['_sort_by'] = kwargs.get('_sort_by') or 'created'
+    updated_count = 0
+    for lead in lm.filter(**kwargs):
+        lead = update_next_schedule_time(lead, next_schedule_time, campaign = campaign, channels = channels, channel_sequence = channel_sequence, looger = logger, job = job)
+        try:
+            lm.post(lead)
+        except Exception as e:
+            hp.print_error(e)
+        else:
+            updated_count += 1
+    return updated_count
 
 def process_headers(headers, mapping, rooftop_id, campaign_type, logger = None):
     logger = logger or mlogger
@@ -723,7 +798,7 @@ def gryd_task_clone_leads_between_campaigns(
                         logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('lead_id')}")
                         skipped += 1
                         continue
-
+                
                 # --- Data Preparation for Re-Posting ---
                 # Create a fresh dictionary and strip unique database identifiers
                 new_lead_data = dict(lead)
@@ -1612,6 +1687,7 @@ def gryd_task_import_leads_from_csv(
     rooftop_type = "workshop" if workshop_id else "showroom" if showroom_id else "dealership"
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
+    next_schedule_time = kwargs.get("next_schedule_time")
     logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}, audience_name: {audience_name}")
     # Model selection
     models = load_models(campaign_type)
@@ -1649,7 +1725,7 @@ def gryd_task_import_leads_from_csv(
                     missing_reason = [f"Line {i}: "]
                     row = {headers[i]: row.get(k) for i, k in enumerate(row.keys()) if is_valid_value(row, k)}
                     logger.info(f"Row: {row}")
-                    row, missing_reason = process_common_row(campaign_type, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, logger = logger)
+                    row, missing_reason = process_common_row(campaign_type, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, next_schedule_time = next_schedule_time, logger = logger)
                     row_ctx = {
                       "line_num": i,
                       **row
