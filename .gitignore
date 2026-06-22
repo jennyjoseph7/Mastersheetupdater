@@ -23,3 +23,8 @@ node_modules/
 
 # Mimocode
 .mimocode
+
+# Docs & data not meant for tracking
+campaign-generator-ai-spec.md
+CLAUDE-FABLE-5.md
+test-data.csv
