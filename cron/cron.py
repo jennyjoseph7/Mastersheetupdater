@@ -1,5 +1,5 @@
 
-from elevenlabs.conversational_ai.mcp_servers.tool_configs.types import mcp_tool_config_override_create_request_model_input_overrides_value
+# from elevenlabs.conversational_ai.mcp_servers.tool_configs.types import mcp_tool_config_override_create_request_model_input_overrides_value
 import sys, os
 import requests
 import json
@@ -1628,8 +1628,10 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
     #     ORDER BY dict->>'dealership_id'
     # """
     kwargs.update({"dealer_status": "active"})
+    mlogger.info("Dealership filter: %s", kwargs)
     result = list(pg.list("dealership", kwargs))
     # result = list(pg.list("dealership", {}))
+    mlogger.info("Got %s dealers matching with filter %s", len(result), kwargs)
     
     dealerships = []
 
@@ -2112,7 +2114,7 @@ def get_active_crm_campaigns():
                '{campaign_model}' AS campaign_model
         FROM {campaign_model}
         WHERE dict->>'campaign_status'=%s
-        AND (dict->>'last_sync_timestamp')::DOUBLE PRECISION
+        AND (dict->>'last_sync_timestamp'):: NUMERIC
             <= EXTRACT(EPOCH FROM NOW())
         """
 
