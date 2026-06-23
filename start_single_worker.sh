@@ -104,7 +104,7 @@ function setup_log_agent() {
 	    echo $! > $BASE_PATH/$APP_NAME/log_agent.pid
     fi	
 	
-    if [ $status != 0]
+    if [ $status != 0 ];then
 		echo "Starting log agent $LOG_AGENT_TYPE failed."
 	fi
 }
