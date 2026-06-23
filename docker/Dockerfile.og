@@ -2,7 +2,7 @@ FROM asia-south1-docker.pkg.dev/dave-70c8e/autobot-pyreq-baseimage/autobot-pyreq
 
 WORKDIR /root/
 COPY <zipname>.zip /root/
-COPY generate_logio_conf.py /root/
+COPY generate_log_conf.py /root/
 RUN unzip <zipname>.zip -d app/
 WORKDIR /root/app/
 

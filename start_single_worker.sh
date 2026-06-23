@@ -42,19 +42,27 @@ export LOG_FILE=${LOGDIR}/${SERVICE_NAME}_${log_append_text}.log
 export STDOUT_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stdout_${log_append_text}.log
 export STDERR_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stderr_${log_append_text}.log 
 
-export logio_agent_check_start_time=0
-export LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD=${LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD:-300}
+export log_agent_check_start_time=0
+export LOG_AGENT_RESTART_TIME_SECS_THRESHOLD=${LOG_AGENT_RESTART_TIME_SECS_THRESHOLD:-300}
 
 export tnow='date +"%Y-%m-%d %H:%M:%S"'
 export worker_pid=0
 export kill_signal=0
 
-function stop_logio_agent() {
+function stop_log_agent() {
         #kill -0 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
-        pgrep -f "node /usr/local/bin/log.io-file-input" > /dev/null
+        if [ $LOG_AGENT_TYPE == "logio" ];then
+            search_string="log.io-file-input"
+            process_path="node /usr/local/bin/log.io-file-input"
+        elif [ $LOG_AGENT_TYPE == "fluentbit" ];then
+            search_string="fluent-bit"
+            process_path="/opt/fluent-bit/bin/fluent-bit"
+        fi
+
+        pgrep -f "$process_path" > /dev/null
         status=$?
         if [ $status == 0 ];then
-                kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
+                kill -9 $(ps -eaf | grep $search_string | head -n -1 | awk '{print $2}')
         else
                 echo "Nothing to kill."
 		status=0
@@ -62,33 +70,42 @@ function stop_logio_agent() {
 
 }
 
-function setup_logio_agent() {
+function setup_log_agent() {
     track_files=""
-    if [ -f ./logio_track_files.logfile ];then
-        track_files=$(cat ./logio_track_files.logfile)
+    if [ -f ./log_track_files.logfile ];then
+        track_files=$(cat ./log_track_files.logfile)
     else
-        # echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./logio_track_files.logfile
-        echo "$LOG_FILE" > ./logio_track_files.logfile
-        track_files=$(cat ./logio_track_files.logfile)
+        # echo "$LOG_FILE,$STDOUT_LOG_FILE,$STDERR_LOG_FILE" > ./log_track_files.logfile
+        echo "$LOG_FILE" > ./log_track_files.logfile
+        track_files=$(cat ./log_track_files.logfile)
 
     fi
-    python3 /root/generate_logio_conf.py $track_files
-    export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
+
+    python3 /root/generate_log_conf.py $track_files
     status=$?
 	if [ $status != 0 ];then
-		echo "Generating log config failed. Exitting."
-		exit
-	fi	
-	
-	stop_logio_agent
+	    echo "Generating log config failed. Exitting."
+	    return
+	fi
 
-	if [ $status == 0 ];then
-		echo "Start input server"
-		nohup log.io-file-input > "$LOGDIR/logio_agent_$log_append_text.log" 2>&1 &
-		echo $! > $BASE_PATH/$APP_NAME/logio.pid
-                logio_agent_check_start_time=$(eval $tnow)
-	else
-		echo "Starting logger failed."
+	stop_log_agent
+    echo "Start Logs Agent $LOG_AGENT_TYPE"
+    if [ $LOG_AGENT_TYPE == "logio" ];then
+        export LOGIO_FILE_INPUT_CONFIG_PATH=$APP_DIR/logio_conf.json
+	    nohup log.io-file-input > "$LOGDIR/log_agent_$log_append_text.log" 2>&1 &
+        log_agent_check_start_time=$(eval $tnow)
+        status=$?
+	    echo $! > $BASE_PATH/$APP_NAME/log_agent.pid
+    elif [ $LOG_AGENT_TYPE == "fluentbit" ];then
+        export FLUENTBIT_CONFIG_FILE_PATH=$APP_DIR/fluentbit_conf.yaml
+	    nohup /opt/fluent-bit/bin/fluent-bit -c $FLUENTBIT_CONFIG_FILE_PATH 2>&1 > "$LOGDIR/log_agent_$log_append_text.log" 2>&1 &
+        log_agent_check_start_time=$(eval $tnow)
+        status=$?
+	    echo $! > $BASE_PATH/$APP_NAME/log_agent.pid
+    fi	
+	
+    if [ $status != 0]
+		echo "Starting log agent $LOG_AGENT_TYPE failed."
 	fi
 }
 
@@ -175,42 +192,42 @@ function start_workers() {
 	fi
 
     echo $worker_pid > ./worker.pid
-    if [ $SETUP_LOGIO_AGENT == "True" ];then
+    if [ $SETUP_LOG_AGENT == "True" ];then
         sleep 5
-        setup_logio_agent
+        setup_log_agent
     fi
     while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
     echo "Exitting.."
     exit
 }
 
-function restart_logio_agent() {
-    echo "Checking logio agent to restart. Last started time $logio_agent_check_start_time."
+# function restart_log_agent() {
+#     echo "Checking log agent to restart. Last started time $log_agent_check_start_time."
 
-    if [ "$logio_agent_check_start_time" == 0 ];then
-	echo "updating check start time."
-        logio_agent_check_start_time=$(eval $tnow)
-    fi
+#     if [ "$log_agent_check_start_time" == 0 ];then
+# 	echo "updating check start time."
+#         log_agent_check_start_time=$(eval $tnow)
+#     fi
 
-    logio_agent_check_start_time_seconds=$(date -d "$logio_agent_check_start_time" +%s)
-    tnow_secs=$(date -d "$(eval $tnow)" +%s)
-    tdiff=$((tnow_secs - logio_agent_check_start_time_seconds))
+#     log_agent_check_start_time_seconds=$(date -d "$log_agent_check_start_time" +%s)
+#     tnow_secs=$(date -d "$(eval $tnow)" +%s)
+#     tdiff=$((tnow_secs - log_agent_check_start_time_seconds))
 
-    if (( $tdiff > $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD ));then
-        echo "Restarting logio agent. tdiff is $tdiff, which is higher than set threshold $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD."
-        setup_logio_agent
-        return
-    fi
+#     if (( $tdiff > $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD ));then
+#         echo "Restarting log agent. tdiff is $tdiff, which is higher than set threshold $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD."
+#         setup_log_agent
+#         return
+#     fi
 
-    echo "Not restarting logio agent as threshold - $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD seconds not elapsed yet.\n"
-}
+#     echo "Not restarting log agent as threshold - $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD seconds not elapsed yet.\n"
+# }
 
 function docheckup() {
     if [ $kill_signal == 0 ];then
 	    echo "Running Checks."
-        if [ $SETUP_LOGIO_AGENT == "True" ];then
-	        restart_logio_agent
-        fi
+        # if [ $SETUP_LOG_AGENT == "True" ];then
+	    #     restart_log_agent
+        # fi
     else
 	    echo "Kill received, skipping checks."
 	    return 
@@ -256,7 +273,7 @@ function kill_process() {
 
 function stop_single_workers() {
     export kill_signal=1
-    stop_logio_agent
+    stop_log_agent
     shutdown_time=${1:-${TERMINATION_GRACE_PERIOD}}
     pids=()
     is_success=0
@@ -289,9 +306,9 @@ function main() {
 	    app_pid=$!
 		echo $app_pid > app.pid
         echo $app_pid > worker.pid
-        if [ $SETUP_LOGIO_AGENT == "True" ];then
+        if [ $SETUP_LOG_AGENT == "True" ];then
             sleep 5
-            setup_logio_agent
+            setup_log_agent
         fi
         while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
         echo "Exitting..."
@@ -315,9 +332,9 @@ function main() {
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
             echo $w_pid > worker.pid
-            if [ $SETUP_LOGIO_AGENT == "True" ];then
+            if [ $SETUP_LOG_AGENT == "True" ];then
                 sleep 5
-                setup_logio_agent
+                setup_log_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
             echo "Exitting..."
@@ -353,9 +370,9 @@ function main() {
 			echo "PID is $w_pid"
 			echo $w_pid > $a.pid
             echo $w_pid > worker.pid
-            if [ $SETUP_LOGIO_AGENT == "True" ];then
+            if [ $SETUP_LOG_AGENT == "True" ];then
                 sleep 5
-                setup_logio_agent
+                setup_log_agent
             fi
             while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
             echo "Exitting..."
