@@ -323,7 +323,7 @@ def normalize_ts(ts):
 
 @gryd.is_a_task(function_name="manage_active_sessions")
 def manage_active_sessions(*args, **kwargs):
-    
+
     """
     Checks for sessions which require an update to their history or post-process.
 
@@ -342,111 +342,322 @@ def manage_active_sessions(*args, **kwargs):
     :return: None
     :rtype: NoneType
     """
-    
+
     kwargs_dict = dict(kwargs)
+
     only_for_channels = kwargs_dict.get("only_for_channels") or []
-    _post_process_interval_seconds = kwargs_dict.get("post_process_interval_seconds",10)
-    inactivity_timeout_seconds = kwargs_dict.get("inactivity_timeout_seconds", 10)
-    POST_PROCESS_INTERVAL_SECONDS = _post_process_interval_seconds * 60  # by default 10 mins..
-    INACTIVITY_TIMEOUT_SECONDS= inactivity_timeout_seconds * 60  # by default 10 mins..
+
+    POST_PROCESS_INTERVAL_SECONDS = kwargs_dict.get("post_process_interval_seconds", 10) * 60
+
+    INACTIVITY_TIMEOUT_SECONDS = kwargs_dict.get("inactivity_timeout_seconds", 10) * 60
 
     mlogger.info("------------ Managing active sessions ------------")
+
+    query="""
+        SELECT
+        (
+            s.dict::jsonb ||
+            jsonb_build_object(
+                'needs_history_update',
+                    EXISTS (
+                        SELECT 1
+                        FROM message m
+                        WHERE
+                            m.dict->>'session_id' =
+                            s.dict->>'session_id'
+
+                            AND
+                            GREATEST(
+
+                                CASE
+                                    WHEN COALESCE(m.dict->>'created','')
+                                        ~ '^[0-9]+(\.[0-9]+)?$'
+                                    THEN (m.dict->>'created')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (m.dict->>'created')::TIMESTAMPTZ
+                                    )
+                                END,
+
+                                CASE
+                                    WHEN COALESCE(m.dict->>'updated','')
+                                        ~ '^[0-9]+(\.[0-9]+)?$'
+                                    THEN (m.dict->>'updated')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (m.dict->>'updated')::TIMESTAMPTZ
+                                    )
+                                END
+
+                            )
+                            >
+                            COALESCE(
+                                (s.dict->>'history_updated_time')::NUMERIC,
+                                0
+                            )
+                    ),
+
+                'needs_post_process',
+                    CASE
+                        WHEN (
+                            (s.dict->>'last_response_time') IS NOT NULL
+                            AND (
+                                s.dict->>'last_post_process_time' IS NULL
+                                OR (
+                                    EXTRACT(EPOCH FROM NOW())::NUMERIC -
+                                    COALESCE(
+                                        (s.dict->>'last_post_process_time')::NUMERIC,
+                                        0
+                                    )
+                                ) >= %s
+                            )
+                            AND COALESCE(
+                                (s.dict->>'has_unprocessed_history')::BOOLEAN,
+                                FALSE
+                            ) = TRUE
+                        )
+                        THEN TRUE
+                        ELSE FALSE
+                    END,
+
+                'inactive_cutoff_epoch',
+                    CASE
+                        WHEN (s.dict->>'last_response_time') IS NOT NULL
+                        THEN
+                            (
+                                (s.dict->>'last_response_time')::NUMERIC
+                                + %s
+                            )
+                        ELSE NULL
+                    END
+                )
+            ) AS dict
+
+        FROM session s
+
+        WHERE
+            (s.dict->>'session_live')::BOOLEAN = TRUE
+
+            AND COALESCE(
+                s.dict->>'status',
+                ''
+            ) NOT IN ('completed', 'failed', 'busy')
+
+            AND COALESCE(
+                s.dict->>'channel',
+                ''
+            ) != 'voice_phone'
+
+            AND (
+
+                COALESCE(
+                    (s.dict->>'has_unprocessed_history')::BOOLEAN,
+                    FALSE
+                ) = TRUE
+
+                OR
+
+                (
+                    (s.dict->>'last_response_time') IS NOT NULL
+                    AND (
+                        s.dict->>'history_updated_time' IS NULL
+                        OR
+                        (s.dict->>'last_response_time')::NUMERIC >
+                        COALESCE(
+                            (s.dict->>'history_updated_time')::NUMERIC,
+                            0
+                        )
+                    )
+                )
+            )
+
+            AND
+            (
+                (
+                    s.dict->>'campaign_type' = 'pre-sales'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM pre_sales_campaign p
+                        WHERE
+                            p.dict->>'campaign_id' =
+                            s.dict->>'campaign_id'
+                            AND LOWER(
+                                p.dict->>'campaign_status'
+                            ) = 'active'
+                    )
+                )
+
+                OR
+
+                (
+                    s.dict->>'campaign_type' = 'post-sales'
+                    AND EXISTS (
+                        SELECT 1
+                        FROM post_sales_campaign p
+                        WHERE
+                            p.dict->>'campaign_id' =
+                            s.dict->>'campaign_id'
+                            AND LOWER(
+                                p.dict->>'campaign_status'
+                            ) = 'active'
+                    )
+                )
+            )
+
+        LIMIT 500
+    """
     
-    filters = {"session_live": True, "status": "completed~","channel": "voice_phone~","disposition":"failed~"}
-    condition, param = apply_filters(**filters)
-
     with get_pg_connector() as pg:
-        session_list = list(
-            db.GrydPGConnector.list(pg, "session", condition, param)
-        )
 
-        mlogger.info(f"Active sessions count: {len(session_list)}")
+        mlogger.info("------------------------")
+        session_list = pg.fetch_all(query, (
+            POST_PROCESS_INTERVAL_SECONDS,
+            INACTIVITY_TIMEOUT_SECONDS
+        ))
 
+        mlogger.info(f"Eligible active sessions count: {len(session_list)}")
+        
         if not session_list:
-            mlogger.info("No active sessions found. Exiting manage_active_sessions.")
+            mlogger.info("No eligible active sessions found.")
             return
 
-        now_epoch = int(time.time())
-        inactive_cutoff_epoch = None
-        for session in session_list:
-            session_id = session.get("session_id")
-            channel = session.get("channel")
-            mlogger.info(f"Processing session {session_id} for channel {channel}")
-            if only_for_channels and channel not in only_for_channels:
-                mlogger.info(f"Skipping session {session_id} for channel {channel} as it's not in the specified channels list.")
-                continue
 
-            last_response_epoch = (
-                int(session.get("last_response_time"))
-                if session.get("last_response_time")
-                else None
-            )
-            last_history_epoch = (
-                int(session.get("history_updated_time"))
-                if session.get("history_updated_time")
-                else None
-            )
-            last_post_process_epoch = (
-                int(session.get("last_post_process_time"))
-                if session.get("last_post_process_time")
-                else None
-            )
-
-            has_unprocessed_history= session.get("has_unprocessed_history") if session.get("has_unprocessed_history") else False
-            if last_response_epoch:
-                inactive_cutoff_epoch = last_response_epoch + INACTIVITY_TIMEOUT_SECONDS 
+        for row in session_list:
+            session = {}
             
-            
-            last_ts = None
-            existing_history = session.get("history", []) or []
-            # checking and updating history only when the last_response_time is newer than the last updated history_time...
-            # if (last_response_epoch and ( last_history_epoch is None or last_response_epoch > last_history_epoch)):
-            if (last_history_epoch is None or (last_response_epoch and last_response_epoch > last_history_epoch )):
-                mlogger.info(f"Just updating history for session {session_id}")
-                history_rows = list(
-                    # pg.list_order_by("message", {"session_id": session_id},order_by="created",order="ASC")
-                    pg.list("message", {"session_id": session_id})
-                )
-                mlogger.info(f"history_rows: {json.dumps(history_rows,indent=4)}")
-                new_records = []
-                for row in history_rows:
-                    ts = normalize_ts(row.get("created") or row.get("updated"))
-                    # mlogger.info(f"ts: {ts}-->{session_id}")
-                    if ts and (last_history_epoch is None or ts > last_history_epoch):
-                        new_records.append((row, ts))
+            try:
 
-                if new_records:
-                    appended_history = []
+                session = row.get("dict", row)
+                
+                session_id = session.get("session_id")
 
-                    for record,ts in new_records:
-                        last_ts = ts
+                channel = session.get("channel")
 
-                        appended_history.append(
-                            {
-                                "index": record.get("index"),
-                                "role": (
-                                    "user"
-                                    if record.get("reply_to") == ""
-                                    else "agent"
-                                ),
-                                "timestamp": ts,
-                                "message": record.get("message"),
-                            }
+                if only_for_channels and channel not in only_for_channels:
+                    mlogger.info(f"Skipping session {session_id} for channel {channel}")
+                    continue
+
+                mlogger.info(f"Processing session_id={session_id}")
+
+                needs_history_update = session.get("needs_history_update")
+
+                needs_post_process = session.get("needs_post_process")
+
+                inactive_cutoff_epoch = session.get("inactive_cutoff_epoch")
+
+                last_history_epoch = float(session.get("history_updated_time") or 0)
+
+                existing_history = session.get("history", []) or []
+
+                mlogger.info(f"Needs history update: {needs_history_update} and Needs post process: {needs_post_process} for session_id={session_id}")
+                # HISTORY UPDATE
+
+                if needs_history_update:
+
+                    mlogger.info(f"Updating history for session_id={session_id}")
+
+                    message_query = """
+                        SELECT
+                            dict,
+                            GREATEST(
+                                CASE
+                                    WHEN COALESCE(dict->>'created','') ~ '^[0-9]+(\\.[0-9]+)?$'
+                                    THEN (dict->>'created')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (dict->>'created')::TIMESTAMPTZ
+                                    )
+                                END,
+                                CASE
+                                    WHEN COALESCE(dict->>'updated','') ~ '^[0-9]+(\\.[0-9]+)?$'
+                                    THEN (dict->>'updated')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (dict->>'updated')::TIMESTAMPTZ
+                                    )
+                                END
+                            ) AS effective_ts
+                        FROM message
+                        WHERE
+                            dict->>'session_id' = %s
+                            AND GREATEST(
+                                CASE
+                                    WHEN COALESCE(dict->>'created','') ~ '^[0-9]+(\\.[0-9]+)?$'
+                                    THEN (dict->>'created')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (dict->>'created')::TIMESTAMPTZ
+                                    )
+                                END,
+                                CASE
+                                    WHEN COALESCE(dict->>'updated','') ~ '^[0-9]+(\\.[0-9]+)?$'
+                                    THEN (dict->>'updated')::NUMERIC
+                                    ELSE EXTRACT(
+                                        EPOCH FROM
+                                        (dict->>'updated')::TIMESTAMPTZ
+                                    )
+                                END
+                            ) > %s
+                        ORDER BY effective_ts ASC
+                    """
+
+                    history_rows = pg.fetch_all(
+                        message_query,
+                        (
+                            session_id,
+                            last_history_epoch or 0
                         )
-                    start_time = normalize_ts(session.get("start_time"))
-                    session_duration = (
-                        last_ts - start_time if start_time and last_ts else None
                     )
-                    
+
+                    if not history_rows:
+                        mlogger.info(
+                            f"No new messages found for session {session_id}"
+                        )
+                        continue
+
+                    mlogger.info(
+                        f"Found {len(history_rows)} messages for session {session_id}"
+                    )
+
+                    appended_history = []
+                    last_ts = None
+
+                    for row in history_rows:
+                        # mlogger.info(f"Processing message: {row}")
+                        record = row[0]
+                        ts = float(row[1])
+                        # mlogger.info(f"Ts: {ts}")
+                        # mlogger.info(f"Processing message: created={record.get('created')} updated={record.get('updated')} effective_ts={ts} history_updated_time={last_history_epoch}")
+
+                        if not ts:
+                            continue
+
+                        last_ts = float(ts)
+
+                        appended_history.append({
+                            "index": record.get("index"),
+                            "role": ("user" if record.get("reply_to") == "" else "agent"),
+                            "timestamp": ts,
+                            "message": record.get("message"),
+                        })
+
+                    if not appended_history:
+                        mlogger.info(f"No valid messages found for session {session_id}")
+                        continue
+
+                    mlogger.info(f"Appending {len(appended_history)} messages to history for session {session_id}")
+
+                    start_time = normalize_ts(session.get("start_time"))
+
                     update_payload = {
                         "history": existing_history + appended_history,
-                        "history_updated_time": last_ts,
+                        "history_updated_time": float(last_ts),
                         "has_unprocessed_history": True
                     }
 
-                    if session_duration is not None:
-                        update_payload["duration"] = session_duration
-                        
+                    if start_time and last_ts:
+                        update_payload["duration"] = (last_ts - start_time)
+
                     pg.update(
                         "session",
                         "session_id",
@@ -454,22 +665,25 @@ def manage_active_sessions(*args, **kwargs):
                         update_payload
                     )
 
-            # we are calling post_process only when there is a new response (new data to process) or if it's been more than POST_PROCESS_INTERVAL_SECONDS seconds since last post_process_time.
-            # can_call_post_process = (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS)
-            can_call_post_process = (last_response_epoch and (last_post_process_epoch is None or (now_epoch - last_post_process_epoch) >= POST_PROCESS_INTERVAL_SECONDS))
-            mlogger.info("can_call_post_process : {} and has history_updated : {}".format(can_call_post_process, has_unprocessed_history))
-            if can_call_post_process and has_unprocessed_history:
-                handle_session_post_process_or_end(
-                    session_id=session_id,
-                    pg=pg,
-                    history_updated=has_unprocessed_history,
-                    can_call_post_process=can_call_post_process,
-                    inactive_cutoff_epoch=inactive_cutoff_epoch
-                )
+                    mlogger.info(f"Updated history for session_id={session_id} messages_added={len(appended_history)} history_updated_time={last_ts}")
+
+                    # needs_post_process = True
+                
+                # POST PROCESS
+
+                if needs_post_process:
+
+                    mlogger.info(f"Calling post-process for session_id={session_id}")
+
+                    handle_session_post_process_or_end(session_id=session_id, pg=pg, history_updated=True, can_call_post_process=True, inactive_cutoff_epoch=inactive_cutoff_epoch)
+
+            except Exception as e:
+
+                mlogger.exception(f"Error processing session_id={session.get('session_id')}: {str(e)}")
 
         mlogger.info("************************************************")
-        return
-
+   
+   
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
