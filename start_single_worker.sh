@@ -81,7 +81,7 @@ function setup_log_agent() {
 
     fi
 
-    python3 /root/generate_log_conf.py $track_files
+    /root/pyenv/bin/python /root/generate_log_conf.py $track_files
     status=$?
 	if [ $status != 0 ];then
 	    echo "Generating log config failed. Exitting."
