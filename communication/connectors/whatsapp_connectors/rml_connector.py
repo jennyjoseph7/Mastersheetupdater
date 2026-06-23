@@ -177,7 +177,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # logger.info(f"RML create_template template_type: {template_type}, kwargs: {kwargs}")
         if template_type not in RMLWhatsAppMessenger.SUPPORTED_TEMPLATES:
             raise ValueError(f"Unsupported template type: {template_type}")
-
+        
         template_name = (
             kwargs.get("template_id") or 
             kwargs.get("template_name", "")
@@ -199,6 +199,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # ------ Button Resolution ------
         def _make_button(idx, payload):
             if isinstance(payload, str) and payload.startswith("http"):
+                logger.info(f"Creating URL button for index {idx} with payload: {payload}")
                 return {"button_no": str(idx), "url": payload}
             return {"button_no": str(idx), "text": payload}
 
@@ -207,6 +208,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
             for idx, payload in enumerate(button_payloads)
             if payload
         ]
+        logger.info(f"RML buttons: {buttons}")
         payload = {
             # "type": "media",
             "type": template_type,
@@ -218,6 +220,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         # CASE 1: MEDIA TEMPLATE
         # ----------------------
         if template_type == "media_template":
+            logger.info(f"RML media template kwargs: {kwargs}")
             media_type = (kwargs.get("media_type") or "").lower()
             media_url = kwargs.get("media_url", "")
             media_file_name = kwargs.get("media_file_name", "")

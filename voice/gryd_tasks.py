@@ -99,7 +99,7 @@ def trigger_voice_call(*args, **kwargs):
         }
 
     person_model = gryd.base_model.Model("person", config.AUTOCRM_APP_ENTERPRISE_ID)
-    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number")}).get('data',{})
+    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number"),"_sort_by":"updated","_sort_reverse":True}).get('data',{})
     person_obj = person_obj[0] if person_obj else {}
     if not person_obj:
         logger.error(f"No person found with mobile number: {user_data.get('mobile_number')}")
@@ -145,6 +145,7 @@ def trigger_voice_call(*args, **kwargs):
                 "campaign_type": campaign_type,
                 "lead_id": lead_id,
                 "status":"attempted",
+                "origin":"outbound", #added an origin
                 "channel": channel,
                 "person_name": l_person_name or None,
                 "campaign_objective_name": l_campaign_obj_name or None,
@@ -297,7 +298,8 @@ def trigger_voice_call(*args, **kwargs):
                         kwargs={
                             "session_id": session_data["session_id"],
                             "additional_dict":{
-                                "status": "busy"
+                                "status": "completed",
+                                "disposition": "busy"
                             }
                         }
                     )

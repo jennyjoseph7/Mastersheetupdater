@@ -105,14 +105,22 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               add_schedule_to_queue=False
         )
         
-        # cron_worker.add_cron_job(
-        #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-        #       task="set_worker_count",
-        #       service=AUTOCRM_CRON_SERVICE_NAME,
-        #       schedule = "0 21 * * *",
-        #       add_schedule_to_queue=False
-        # )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="scale_down_voice",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "0 15 * * *",  # Voice workers stop at 8:30 p.m. IST
+              add_schedule_to_queue=False
+        )
         
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="scale_up_voice",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "0 3 * * *", #Voice workers start at 8.30 a.m. IST
+              add_schedule_to_queue=False
+        )
+
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_all_dealerships_for_voice",
@@ -135,7 +143,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="mark_inactive_dealerships",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
+              schedule = "15 0 * * *",
               kwargs={"inactive_days": 14},
               add_schedule_to_queue=False
         )

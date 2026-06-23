@@ -19,6 +19,34 @@ from agents.data_attributes_retriever_agent import data_attribute_retriever
 
 import random
 
+# Attribute names that must NEVER be used as template placeholders/variables.
+# Including any of these (e.g. {{phone_number}}) gets the template rejected by
+# Airtel/Meta, so they are stripped from the attribute list before generation.
+_SENSITIVE_ATTRIBUTE_NAMES = frozenset(
+    {
+        "phone", "mobile", "email", "otp", "upi", "cvv", "ssn",
+        "aadhaar", "aadhar", "pan", "card", "password",
+    }
+)
+_SENSITIVE_ATTRIBUTE_TOKENS = (
+    "phone", "mobile", "whatsapp", "telephone", "contact_number",
+    "alternate_number", "email", "otp", "password", "aadhaar", "aadhar",
+    "pan_number", "pan_card", "account_number", "bank_account", "card_number",
+    "credit_card", "debit_card", "cvv", "upi", "ssn", "national_id", "passport",
+)
+
+
+def _is_sensitive_attribute(name) -> bool:
+    """True if an attribute name refers to a phone number or other sensitive
+    identifier that must not appear in a template."""
+    norm = re.sub(r"[^a-z0-9]+", "_", str(name).strip().lower()).strip("_")
+    if not norm:
+        return False
+    if norm in _SENSITIVE_ATTRIBUTE_NAMES:
+        return True
+    return any(token in norm for token in _SENSITIVE_ATTRIBUTE_TOKENS)
+
+
 class WhatsappTemplateCreatorAgent(BaseAgent):
     """
     This agent creates templates for whatsapp business. The input will be like : {
@@ -60,31 +88,59 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
     def __init__(self, source, **kwargs):
         super().__init__(**kwargs)
 
-        print(f"Kwargs are {kwargs}")
-        
+        self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
+        self.logger.debug(f"Kwargs are {kwargs}")
+
         # Validate source
         if not source or not isinstance(source, dict):
             raise ValueError("source must be a non-empty dictionary")
-        
+
         self.source = source
-        print(source)
+        self.logger.debug(f"Source: {source}")
         self.campaign_type = source.get("campaign_type","")
         self.campaign_id = source.get("campaign_id","")
         self.campaign_objective = self._validate_campaign_objective(source.get("campaign_objective"))
-        self.input_data = source.get("data",{})
+        self.input_data = self._scrub_sensitive_data(source.get("data", {}))
         self.dealership_id = source.get("dealership_id", "")
         self.languages = self._validate_languages(source.get("languages", ["english"]))
         self.cta_buttons = source.get("cta_buttons", [])
         self.ai_generation = source.get("ai_generation",True)
-        self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
-        self.model_identifier =   'azure-gpt-4o-mini' #"gcp-gemini-2.5-flash-lite" #"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'
+        self.model_identifier = "databricks-gpt-5.5" #'databricks-gpt-5.4-mini' ##"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'  "gcp-gemini-2.5-flash-lite" #
 
     def _validate_campaign_objective(self, objective):
         """Validate campaign objective."""
         if not objective:
             raise ValueError("campaign_objective is required in source data")
         return objective
+
+    def _scrub_sensitive_data(self, data):
+        """Remove sensitive attributes (phone numbers, emails, OTPs, etc.) from
+        the input data so they can never be emitted as template placeholders."""
+        if not isinstance(data, dict):
+            return data
+
+        cleaned = {}
+        for key, value in data.items():
+            if _is_sensitive_attribute(key):
+                self.logger.warning(
+                    f"Dropping sensitive attribute key '{key}' from template data"
+                )
+                continue
+            if key == "attribute_name" and isinstance(value, list):
+                filtered = []
+                for attr in value:
+                    if isinstance(attr, str) and _is_sensitive_attribute(attr):
+                        self.logger.warning(
+                            f"Excluding sensitive attribute '{attr}' from "
+                            f"template variables"
+                        )
+                        continue
+                    filtered.append(attr)
+                cleaned[key] = filtered
+            else:
+                cleaned[key] = value
+        return cleaned
 
     def _validate_languages(self, languages):
         """Ensure languages is always a list."""
@@ -162,14 +218,18 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             - The language you'll be using to generate template_text must be colloquial {language}
             - template_name: descriptive name related to campaign (use underscores, NO SPACES, must be lowercase).  will start with autobot word, an unique template name each time.
             - template_text: personalized message using ALL attributes with the EXACT format: {{attribute_name}}, You need to use all attributes and nothing more than given, under 400 characters (strict limit for compliance). The message must align with the Campaign Objective and campaign Type also should Disposition and disposition details if exists.
+            - MARKETING TONE: This is a MARKETING template, not a survey. Use confident, action-oriented marketing language that invites the customer to act. Do NOT phrase the call to action as a yes/no question (e.g. avoid "Would you like to book a test drive?"). Instead drive the action directly (e.g. "Book your test drive today and feel the difference!", "Reserve your slot now"). The button/CTA carries the action — keep the body persuasive and benefit-led.
             - suggested_ctas: array of 2-3 CTA buttons.
             - lead_tags: array of 2-3 short, descriptive words (e.g., ["service-due", "new-model"]).
 
         4. ATTRIBUTE HANDLING (CRITICAL):
-            - You MUST use ALL key attributes provided : '{self.input_data}' in the 'Available Customer Data' except 'disposition' and 'disposition_details'. Don't add anything that is not present, but whatever is present, must include.
+            - You need to use relevant attributes provided : '{self.input_data}' in the 'Available Customer Data' except 'disposition' and 'disposition_details'. Don't add anything that is not present, but whatever is present, must include.
             - If 'disposition' is present in the data, **use its value solely to understand the customer's last interaction and tailor the message's tone and context (e.g., if the disposition is "Busy", the template should be apologetic or mention trying again later).**
             - **'disposition' and 'disposition_details' MUST NOT be included as placeholders in the template_message and attributes_used. Use these details for have a understanding of what to write. If disposition and disposition details exists in input it means it is a follow up message template. Just have understanding of what type of followup and write template message**
             - The placeholder format MUST be {{attribute_name}} exactly (e.g., {{person_name}}).
+            - HARD EXCLUSION: NEVER use a phone number, mobile number, contact number, email, OTP, or any sensitive identifier as a placeholder — even if such an attribute (e.g. phone_number, mobile, email) appears in the provided attribute list. Silently skip it; do NOT put it in template_text and do NOT count it as a required attribute.
+            - Do not add any irrelevant attribute that is not provided in the input data. Use only the attributes given and make sure to include all of them (except disposition and disposition_details) in the template text as {{placeholders}}.
+            - Do not use a attribute somewhere it is not relevant. For example : Hi {{phone_number}}, Use relevant ones like : Hi {{person_name}}, Your {{current_car_model}} is due for service, Book your slot now! Here person_name and current_car_model are relevant attributes but phone_number is not relevant and also it is sensitive attribute so it should not be included in template text.
 
         5. CTA HANDLING:
             - If existing CTA buttons are provided: {self.cta_buttons}, use them as suggested_ctas.
@@ -183,14 +243,21 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                     Insurance Renewal Reminder >> [Renew Insurance, Request a Call Back]
                     Extended Warranty Offer >> [Buy Extended Warranty, Request a Call Back]
                     CCP >> [ Buy CCP, Request a Call Back ]
-        6. CONTEXT:
+        6. SENSITIVE INFORMATION (CRITICAL - prevents rejection):
+            - NEVER include any phone number, mobile number, WhatsApp number, helpline, or contact number in template_text or in any CTA/button label — neither as literal digits nor as a {{placeholder}}.
+            - NEVER include other sensitive or personal identifiers such as email addresses, OTPs/passwords, payment card numbers, bank/account numbers, UPI IDs, Aadhaar/PAN/National ID numbers, full postal addresses, or links built from such data.
+            - Do NOT ask the customer to share any of the above sensitive identifiers.
+            - If the customer needs to reach the dealership, rely on a CTA button (e.g. "Request a Call Back") instead of writing a phone number in the message.
+            - Templates containing phone numbers or sensitive identifiers WILL be rejected by Airtel/Meta, so omit them entirely.
+
+        7. CONTEXT:
             - Campaign Objective: {self.campaign_objective}
             - Campaign Type: {self.campaign_type}
             - Available Data Attributes: (Refer to user_prompt for the exact data dictionary structure)
 
-        7. FORMAT & INTEGRITY: Never output null, empty string, or empty list for any field. Ensure the JSON is a single, valid object.
+        8. FORMAT & INTEGRITY: Never output null, empty string, or empty list for any field. Ensure the JSON is a single, valid object.
 
-        If you understand, respond with the single JSON object that follows these rules.
+        If you understand, respond with the single JSON object that follows these rules. Must be a single valid JSON object with the specified keys and constraints, and nothing else.
         """
 
         user_prompt = f"""
@@ -202,6 +269,10 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         Preferred CTA Buttons: {self.cta_buttons}
 
         Create an engaging, personalized template under 400 characters that uses ALL necessary customer attributes and strictly follows the instructions above. Generate relevant 'lead_tags' (2-3 words) based on the template's purpose.
+
+        Do NOT include any phone number, contact number, email, OTP, payment/account number, or other sensitive identifier in the message or CTA labels — such templates are rejected. Never use phone_number/mobile/email-type attributes as {{placeholders}}, even if they are listed in the data.
+
+        Write in a marketing tone: prompt the customer to take the action directly (e.g. "Book your test drive today!") rather than asking a yes/no question like "Would you like to book a test drive?".
 
         Return ONLY the required JSON object.
         """
@@ -229,8 +300,8 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                     else:
                         raise ValueError("No JSON found in response")
             except Exception as e:
-                print(f"Failed to parse AI response: {e}")
-                print(f"Raw response: {text}")
+                self.logger.error(f"Failed to parse AI response: {e}")
+                self.logger.error(f"Raw response: {text}")
                 # Fallback to basic structure
                 return {
                     "template_name": "Auto_Generated_Template",
@@ -286,7 +357,8 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             # Generate template data
             generated_data = ai_service_app.get_llm_response(
                 messages= self._build_prompt(),
-                model_identifier=self.model_identifier
+                model_identifier=self.model_identifier,
+                temperature=1
             )
             generated_data = self._parse_ai_response(generated_data)
             # Assemble final output

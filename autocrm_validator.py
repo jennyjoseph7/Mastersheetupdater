@@ -79,9 +79,13 @@ def plot_lead_session_history_func(ins, lead_attribute, **kwargs):
     history = []
     for s in sessions:
         channel = s.get('channel', 'unknown')
+        origin = s.get('origin')
         disposition = s.get('disposition', 'unknown')
         if channel and disposition:
-            history.append(f"{channel}({disposition})")
+            if origin:
+                history.append(f"{channel}_{origin}({disposition})")
+            else:
+                history.append(f"{channel}({disposition})")
             
     return " -> ".join(history)
 

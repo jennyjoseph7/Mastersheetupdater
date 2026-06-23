@@ -52,4 +52,3 @@ build_and_push() {
 update_repo
 generate_dockerfile
 build_and_push
-

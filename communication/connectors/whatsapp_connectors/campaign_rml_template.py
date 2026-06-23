@@ -104,16 +104,17 @@ class RMLCampaignManager:
 
         def _make_button(idx, payload):
             if isinstance(payload, str) and payload.startswith("http"):
+                logger.info(f"Creating URL button for index {idx} with payload: {payload}")
                 return {"button_no": str(idx), "url": payload}
             return {"button_no": str(idx), "payload": payload}
 
-        
         # Create buttons
         buttons = [
             _make_button(idx, payload)
             for idx, payload in enumerate(button_payloads)
             if payload
         ]
+        
 
         payload = {
             "type": "media_template",
@@ -124,7 +125,6 @@ class RMLCampaignManager:
             payload["button"] = buttons
         if body:
             payload["body"] = body
-            
         logger.info(f"RML TEXT template payload: {payload}")
         return payload
     

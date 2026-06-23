@@ -322,7 +322,7 @@ class BaseCampaignCreater:
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
-                    "provider_status":"queued",
+                    "provider_status": "queued",
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
@@ -330,16 +330,16 @@ class BaseCampaignCreater:
                     "skip_workflow": campaign_details.get("skip_workflow", False)
                 }
             
+            #NOTE: if msg_status is failed then we dont want to call post_contact_status from campaign bcoz at this point we dont get error message.So once we receive the error message from the provider we will call post_contact_status from the webhook handler.
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
                 kwargs=data
             )
-        
-        
-        
-        
+
+
+
         return patch_user_data
         
         
@@ -430,7 +430,7 @@ class BaseCustomCampaignManager:
                 logger.info(f"Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
                 logger.info(f"Sender Number: {campaign_data.get('sender')}")
-                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d)
+                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d,origin="outbound")
                 # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
@@ -937,14 +937,19 @@ def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kw
     logger.info(f"Constructed row for manual registration: {row}")
     # 4. Construct Final Data Payload
     allowed_keys = [
-        "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
-        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email", 
-        "last_contacted_phone_number", "brand_preference", "model_preference", 
-        "variant_preference", "color_preference", "engine_type_preference", 
-        "transmission_preference", "range_preference", "feature_preferences", 
-        "segment_preference", "competitor_brands", "competitor_models", "emotions", 
-        "engagement_events", "previous_interaction_ids", "lead_tags", 
-        "interested_vehicle_competitor_vehicles"
+        "phone_number", "email", "person_name", "campaign_id", "dealership_id",
+        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email",
+        "last_contacted_phone_number", "brand_preference", "model_preference",
+        "variant_preference", "color_preference", "engine_type_preference",
+        "transmission_preference", "range_preference", "feature_preferences",
+        "segment_preference", "competitor_brands", "competitor_models", "emotions",
+        "engagement_events", "previous_interaction_ids", "lead_tags",
+        "interested_vehicle_competitor_vehicles",
+    
+        # Generic nested object for any CRM / ad-platform source metadata.
+        # Meta Lead Ads stores: {"source": "meta", "leadgen_id": "...", "ad_id": "...", ...}
+        # Any future CRM integration can add its own keys here without schema changes.
+        "external_source_data",
     ]
     
     data = {k: row.get(k) for k in allowed_keys if row.get(k) is not None}
@@ -1231,7 +1236,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 template_data= get_template(
                     lead_id=lead_id,
                     campaign_type=campaign_type,
-                    campaign_objective= [campaign_objective_name] or [],
+                    # campaign_objective= [campaign_objective_name] or [],
+                    campaign_objective_id=lead_data.get("campaign_objective_id"),
                     dealership_id=lead_data.get("dealership_id"),
                     lead_info={}
                 )

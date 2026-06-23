@@ -1,3 +1,5 @@
+
+# from elevenlabs.conversational_ai.mcp_servers.tool_configs.types import mcp_tool_config_override_create_request_model_input_overrides_value
 import sys, os
 import requests
 import json
@@ -12,9 +14,10 @@ BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from conversation.lead_post_processing import post_session_process
-from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_CRON_SERVICE_NAME, AUTOCRM_AGENT_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,DEFAULT_CHANNELS, AUTOCRM_COMMUNICATION_SERVICE_NAME,VOICE_BATCH_SIZE,NON_VOICE_BATCH_SIZE,VOICE_CHANNELS,NON_VOICE_CHANNELS,VOICE_START_TIME,VOICE_END_TIME,NON_VOICE_START_TIME,NON_VOICE_END_TIME,VOICE_MAX_QUEUE_LENGTH,NON_VOICE_MAX_QUEUE_LENGTH,gryd, hp,AutocrmModel, OUTBOUND_VOICE_SERVICES, INBOUND_VOICE_SERVICES
 from crm_integration.crm_integration import load_crm
 from crm_integration.crm_integration.load_crm import load_crm
+from conversation.lead_post_processing import post_session_process
 from crm_integration.crm_integration.cron import _trigger_audience_task
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
@@ -520,10 +523,12 @@ def schedule_campaign_trigger(*args, **kwargs):
     :return: None
     """
     epoch_time = int(time.time())
-
+    batch_size= kwargs.get("batch_size", 50)
+    
     where_clause = f"""
     (dict->>'campaign_status') = 'Planned'
     AND (dict->>'start_date')::bigint <= {epoch_time}
+    LIMIT {batch_size}
     """
 
     tables = ["pre_sales_campaign", "post_sales_campaign"]
@@ -537,14 +542,16 @@ def schedule_campaign_trigger(*args, **kwargs):
             
             for campaign in campaigns:
                 mlogger.info(f"Triggering campaign for- campaign_id: {campaign.get('campaign_id')} , campaign_type: {campaign.get('campaign_type')} , delearship_id: {campaign.get('dealership_id')}")
-                
+            
+            #TODO: we need to get the channels, check the queue length and if the queue length is <= max_thresold we proceed and get leads and trigger the campaign, else we skip and wait for the next cron cycle to trigger the campaign.
+            # and at the end change the campaign status to "Active"
+            
             #     pg.update(
             #         table,
             #         "campaign_id",
             #         campaign.get("campaign_id"),
             #         {"campaign_status": "Active"},
             #     )
-                # call trigger task
                 
                 
                 
@@ -1621,8 +1628,10 @@ def get_all_dealerships(pg, channel_filter=None, **kwargs):
     #     ORDER BY dict->>'dealership_id'
     # """
     kwargs.update({"dealer_status": "active"})
+    mlogger.info("Dealership filter: %s", kwargs)
     result = list(pg.list("dealership", kwargs))
     # result = list(pg.list("dealership", {}))
+    mlogger.info("Got %s dealers matching with filter %s", len(result), kwargs)
     
     dealerships = []
 
@@ -1793,8 +1802,8 @@ def fetch_leads(dealership_id, channel, batch_size):
                 WHERE 
                     dict->>'dealership_id' = %s
                     AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             ),
             post AS (
@@ -1803,8 +1812,8 @@ def fetch_leads(dealership_id, channel, batch_size):
                 WHERE 
                     dict->>'dealership_id' = %s
                     AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::DOUBLE PRECISION <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             )
             SELECT *
@@ -1813,7 +1822,7 @@ def fetch_leads(dealership_id, channel, batch_size):
                 UNION ALL
                 SELECT * FROM post
             ) t
-            ORDER BY (dict->>'next_schedule_time')::DOUBLE PRECISION ASC
+            ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
             LIMIT %s
         """
         params = (
@@ -1824,8 +1833,36 @@ def fetch_leads(dealership_id, channel, batch_size):
         _leads=pg.fetch_all(query, params)
         mlogger.info(f"[fetch_leads] TOTAL LEADS for dealership_id={dealership_id} and channel={channel} is {len(_leads)}")
         # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
-        yield _leads
-        # return _leads
+        # yield _leads
+        
+        seen = set()
+        duplicates = []
+        unique_leads = []
+
+        for lead in _leads:
+            data, lead_type = lead
+
+            if lead_type == "pre_sales":
+                lead_model = "pre_sales_lead"
+                lead_id = data.get("pre_sales_lead_id")
+            else:
+                lead_model = "post_sales_lead"
+                lead_id = data.get("post_sales_lead_id")
+
+            unique_key = f"{lead_model}:{lead_id}"
+
+            if unique_key in seen:
+                duplicates.append(unique_key)
+                continue
+
+            seen.add(unique_key)
+            unique_leads.append(lead)
+
+        if duplicates:
+            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
+
+        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
+        return unique_leads
 
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
@@ -1928,7 +1965,7 @@ def process_dealerships_voice(voice_batch_size=None,voice_max_queue_size=None,vo
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, batch_size))
+                        leads = fetch_leads(dealership_id, channel, batch_size)
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
                         # mlogger.info(f"[FETCH] LEAD_DATA-->{json.dumps(leads,indent=4)}")
                         if not leads:
@@ -1982,7 +2019,7 @@ def process_dealerships_non_voice(batch_size=None,non_voice_max_queue_size=None,
                     queue_length = get_queue_length(channel, dealership_id)
                     mlogger.info(f"[CHECK] Dealership={dealership_id}, Channel={channel}, Queue={queue_length}")
                     if queue_length <= max_threshold:
-                        leads = next(fetch_leads(dealership_id, channel, b_z))
+                        leads = fetch_leads(dealership_id, channel, b_z)
                         mlogger.info(f"[FETCH] Fetched {len(leads)} leads for {dealership_id} - {channel}")
                         if not leads:
                             mlogger.info(f"[EMPTY] No leads for {dealership_id} - {channel}")
@@ -2077,7 +2114,7 @@ def get_active_crm_campaigns():
                '{campaign_model}' AS campaign_model
         FROM {campaign_model}
         WHERE dict->>'campaign_status'=%s
-        AND (dict->>'last_sync_timestamp')::DOUBLE PRECISION
+        AND (dict->>'last_sync_timestamp'):: NUMERIC
             <= EXTRACT(EPOCH FROM NOW())
         """
 
@@ -2094,6 +2131,142 @@ def get_active_crm_campaigns():
         campaigns.extend(results)
 
     return campaigns
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SESSION POLL HELPER — called by process_crm_campaigns after triggering a lead
+# ─────────────────────────────────────────────────────────────────────────────
+def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600, poll_interval: int = 5):
+    """
+    After _trigger_audience_task queues a call, poll the DB every `poll_interval`
+    seconds (up to `timeout_secs`) waiting for the voice session to complete.
+    Once a completed session is found for the given lead_id, calls
+    post_session_process with the REAL session_id so that disposition,
+    lead_summary, and CRM sheet are updated correctly.
+    Args:
+        lead_id:       The lead_id returned by _trigger_audience_task.
+        logger:        Logger instance from the cron context.
+        timeout_secs:  How long to wait (default: 10 minutes).
+        poll_interval: How often to poll in seconds (default: 5 s).
+    """
+    # Statuses that mean the call is still in progress — keep polling.
+    PENDING_STATUSES = {
+        "pre-initiated",
+        "initiated",
+        "busy",
+        "attempted",
+        "ringing",
+        "in-progress",
+        None
+    }
+    start = time.time()
+    logger.info(f"[CRON][POLL] Polling for completed session — lead_id={lead_id} (timeout={timeout_secs}s)")
+
+    # ── Fast-fail: check if contact_status table exists before looping ──────────
+    # pg.list() silently swallows UndefinedTable (via `finally: return`).
+    # fetch_all() properly propagates it, so we can detect wrong DB early.
+    try:
+        with get_pg_connector() as _chk_pg:
+            _chk_pg.fetch_all("SELECT * FROM contact_status LIMIT 1")
+    except Exception as _tbl_err:
+        logger.warning(
+            f"print stable error " + str(_tbl_err)
+        )
+        return  # exit cleanly — don't loop 600s on a known-missing table
+    # ────────────────────────────────────────────────────────────────────────────
+
+    while time.time() - start < timeout_secs:
+        try:
+            with get_pg_connector() as pg:
+                cs= list(
+                    pg.list_order_by("contact_status", {"lead_id": lead_id}, order_by="created")
+                )
+                cs=cs[0] if cs and isinstance(cs,list) and len(cs) > 0 else None 
+                if not cs:
+                    logger.info(
+                        f"[CRON][POLL] No contact_status found for lead_id={lead_id}, waiting..."
+                    )
+                    time.sleep(poll_interval)
+                    continue
+                
+                status = cs.get("provider_status")
+                if status == "contacted":
+
+                    session_id = cs.get("message_id")
+
+                    logger.info(
+                        f"[CRON][POLL] Session completed — session_id={session_id}, status={status}"
+                    )
+
+                    # Fetch transcript/messages for this session
+                    messages =  pg.get("session", "session_id", session_id)
+                    messages = messages.get("history", []) if messages else []
+
+                    if not messages:
+                        logger.info(
+                            f"[CRON][POLL] No messages found for session_id={session_id}, waiting..."
+                        )
+                        time.sleep(poll_interval)
+                        continue
+
+                    logger.info(
+                        f"[CRON][POLL] Found {len(messages)} messages for session_id={session_id}"
+                    )
+
+                    # Keep waiting until transcript is actually available
+                    valid_messages = [
+                        m for m in messages
+                        if m.get("message", "").strip()
+                    ]
+
+                    logger.info(
+                        f"[CRON][POLL] Valid transcript messages count={len(valid_messages)}"
+                    )
+
+                    # Minimum conversation validation
+                    if len(valid_messages) < 3:
+                        logger.info(
+                            "[CRON][POLL] Transcript not ready yet, waiting..."
+                        )
+                        time.sleep(poll_interval)
+                        continue
+
+                    logger.info(
+                        f"[CRON][POLL] Transcript ready. Running post_session_process for session_id={session_id}"
+                    )
+
+                    try:
+                        list(post_session_process(**{
+                            "session_id": session_id
+                        }))
+
+                        logger.info(
+                            f"[CRON][POLL] post_session_process done for session_id={session_id}"
+                        )
+
+                    except Exception as psp_err:
+                        logger.error(
+                            f"[CRON][POLL] post_session_process failed: {psp_err}"
+                        )
+
+                    return # done — exit the polling loop
+        except Exception as poll_err:
+            err_msg = str(poll_err).lower()
+            # Permanent error: table doesn't exist (wrong DB / test DB).
+            # Retrying won't help — exit immediately.
+            if "does not exist" in err_msg or "undefinedtable" in err_msg:
+                logger.warning(
+                    f"[CRON][POLL] DB table missing — GCP_SECRET likely points to test DB "
+                    f"which doesn't have contact_status/message tables. "
+                    f"Disposition will be set by server cron. Error: {poll_err}"
+                )
+                return  # permanent error — don't retry
+            logger.error(f"[CRON][POLL] DB poll error for lead_id={lead_id}: {poll_err}")
+        time.sleep(poll_interval)
+    logger.warning(
+        f"[CRON][POLL] Timed out after {timeout_secs}s waiting for session — lead_id={lead_id}"
+    )
+
+
 
 @gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
 def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
@@ -2193,7 +2366,8 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                     try:
                         from crm_integration.crm_integration.cron import _trigger_audience_task
                         
-                        _trigger_audience_task(
+                        # _trigger_audience_task(
+                        task_result = _trigger_audience_task(
                             lead=lead,
                             campaign_id=campaign.get("campaign_id"),
                             campaign_objective_id=campaign.get("campaign_objective_id"),
@@ -2201,19 +2375,27 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                             dealership_id=dealership_id,
                             dealership_name=campaign.get("dealership_name")
                         )
-                        
-                        try:
-                            logger.info("[TEST] Calling post_session_process")
+                        # try:
+                        #     logger.info("[TEST] Calling post_session_process")
 
-                            list(post_session_process(**{"session_id": "6a44571b-ed6f-36dd-b26b-7be37c88b313"}))
+                        #     list(post_session_process(**{"session_id": "6a44571b-ed6f-36dd-b26b-7be37c88b313"}))
 
-                        except Exception as e:
-                            logger.error(f"post_session_process failed: {e}")
-
+                        # except Exception as e:
+                        #     logger.error(f"post_session_process failed: {e}")
+    
                         crm.patch_pre_sales_lead(
                             lead,
                             "QUEUED"
                         )
+
+                        # After triggering the call, poll DB for the real completed
+                        # session and run post-processing to update disposition/lead_summary
+                        lead_id = (task_result or {}).get("lead_id")
+                        if lead_id:
+                            logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")
+                            _poll_and_post_process_session(lead_id, logger)
+                        else:
+                            logger.warning("[CRON] No lead_id in task result, skipping post-process polling")
 
                     except Exception as e:
                         logger.error(
@@ -2237,6 +2419,66 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
             logger.exception(
                 f"Campaign error: {campaign.get('_id')}"
             )
+
+
+def get_c_and_wcrt(c = None, wcontroller = None):
+    if os.environ.get('WORKER_CONTEOLLER') != 'gke':
+        raise hp.GrydError(f"Cannot scale service unless WORKER_CONTEOLLER is 'gke' not {os.environ.get('WORKER_CONTEOLLER')}")
+    c = c or gryd.get_service_connection()
+    wcontroller = wcontroller or cron_worker.wctr.get_controller('gke')
+    return c, wcontroller
+
+@gryd.is_a_task('scale_up_service', logger_param = 'logger', job_param = 'job') 
+def scale_up_service(service_names, environment = None, count = 1, retries = 3, c = None, wcontroller = None, logger = None, job = None):
+    logger = logger or mlogger
+    c, wcontroller = get_c_and_wcrt(c, wcontroller)
+    environment = gryd.get_environment(environment)
+    ret = []
+    if isinstance(service_name, str):
+        service_names = service_names.split(',')
+    if not isinstance(service_name, list):
+        raise ValueError(f"Service names have to be comma separated string or list, not {service_names}")
+    for service_name in service_names:
+        service_name = service_name.strip()
+        try:
+            logger.info("Scaling up service %s (%s) by %s", service_name, environment, count)
+            ret.append(wcontroller.scale_up(service_name, environment = environment, count = count))
+        except Exception as e:
+            if 'Unauthorized' in str(e) and retries > 0:
+                wcontroller = cron_worker.wctr.get_controller('gke')
+                return scale_down_service(service_name, environment, count, retries - 1)
+            raise
+    return hp.make_single(ret)
+
+@gryd.is_a_task('scale_down_service', logger_param = 'logger', job_param = 'job') 
+def scale_down_service(service_names, environment = None, count = 1, retries = 3, logger = None, job = None):
+    return scale_up_service(service_names, environment, - count, retries = retries, logger = logger, job = job)
+
+def is_outbound_voice(service):
+    if 'voice' in service and 'inbound' not in service:
+        return True
+    return False
+
+@gryd.is_a_task('scale_up_voice', logger_param = 'logger', job_param = 'job') 
+def scale_up_voice(environment = None, count = 1, retries = 3, logger = None, job = None):
+    c, wcontroller = get_c_and_wcrt()
+    environment = gryd.get_environment(environment)
+    return list(map(lambda x: scale_up_service(
+            x, environment = environment, count = count,
+            c = c, wcontroller = wcontroller,
+        ), OUTBOUND_VOICE_SERVICES
+    ))
+
+@gryd.is_a_task('scale_down_voice', logger_param = 'logger', job_param = 'job') 
+def scale_up_voice(environment = None, count = 1, retries = 3, logger = None, job = None):
+    c, wcontroller = get_c_and_wcrt()
+    environment = gryd.get_environment(environment)
+    return list(map(lambda x: scale_down_service(
+            x, environment = environment, count = wcontroller.get_worker_count(x, environment),
+            c = c, wcontroller = wcontroller,
+        ), OUTBOUND_VOICE_SERVICES
+    ))
+
 if __name__ == "__main__":
     pass
     # print("[TEST] Running CRM cron...")

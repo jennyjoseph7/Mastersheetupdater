@@ -1,12 +1,14 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, beats as cron_worker
 from ai_service import ai_service_app
 import os, sys, csv, re
+mlogger = hp.get_logger(__name__)
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
 AUTOCRM_ADMIN_PHONE_NUMBER = os.environ.get("AUTOCRM_ADMIN_PHONE_NUMBER", "99980838165")
 AUTOCRM_ADMIN_PASSWORD = os.environ.get("AUTOCRM_ADMIN_PASSWORD", "D@vei2ce")
 AUTOCRM_CRON_SERVICE_NAME = os.environ.get("AUTOCRM_CRON_SERVICE_NAME", "autocrm-cron")
 AUTOCRM_CONVERSATION_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_SERVICE_NAME", "autocrm-conversation")
+AUTOCRM_CRM_UPDATE_SERVICE_NAME = os.environ.get("AUTOCRM_CRM_UPDATE_SERVICE_NAME", "autocrm-crm-update")
 AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME = os.environ.get("AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME", "autocrm-conversation-post-process")
 AUTOCRM_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_AGENT_SERVICE_NAME", "autocrm-agent")
 AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME = os.environ.get("AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME", "autocrm-short-run-agent")
@@ -68,6 +70,32 @@ AUTOCRM_SUPPORTED_LANGUAGES = [
     "tagalog",
     "portuguese"
 ]
+
+CHANNEL_LAST_CONTACTED_MAP = {
+    "whatsapp": "whatsapp_number",
+    "whatsapp_chat": "whatsapp_number",
+    "voice_phone": "phone_number",
+    "voice": "phone_number",
+    "voicebot": "phone_number",
+    "email": "email",
+    "sms": "phone_number",
+    "rcs": "phone_number",
+    "whatsapp_voice_note": "phone_number",
+    "whatsapp_voice_call": "phone_number"
+}
+
+CHANNEL_IDENTIFIER_MAP = {
+    "whatsapp": "phone_number",
+    "whatsapp_chat": "phone_number",
+    "voice_phone": "phone_number",
+    "voice": "phone_number",
+    "voicebot": "phone_number",
+    "email": "email",
+    "sms": "phone_number",
+    "rcs": "phone_number",
+    "whatsapp_voice_note": "phone_number",
+    "whatsapp_voice_call": "phone_number"
+}
 
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
@@ -497,6 +525,100 @@ def get_phone_code_from_dealership(dealership_id, with_plus = True):
         return c.strip('+')
     return c
 
+def get_cheapest_channel(channels: list, channel_sequence = None):
+    channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
+    for c in channel_sequence:
+        if c in channels:
+            return c
+    return channels[0]
+
+def process_phone_number(phone_number, dealership_id = None):
+    phone_code = '91'
+    if dealership_id:
+        phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
+    phone_number = re.sub(r'\D', '', phone_number)
+    if len(phone_number) > 10:
+        return phone_number
+    return f"{phone_code}{phone_number}"
+
+def get_phone_number_identifier_from_lead(channel: str, lead: dict, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
+    rlist = []
+    priority = []
+    ph_list = ["phone_number", "alt_phone_number_2", "alt_phone_number_3", "alt_phone_number_4"]
+    channel_last_contacted_name = CHANNEL_LAST_CONTACTED_MAP.get(channel)
+    for ph in ph_list:
+        d = lead.get(ph)
+        if d:
+            d = process_phone_number(d, lead.get('dealership_id'))
+            if d in rlist:
+                continue
+            logger.info(f"Adding {ph}: {d} to rlist")
+            rlist.append(d)
+    for person in lead.get('persons_involved', []):
+        for ph in ph_list:
+            if person.get(ph):
+                d = process_phone_number(person.get(ph), lead.get('dealership_id'))
+                if d in rlist:
+                    continue
+                logger.info(f"Adding {ph}: {d} to rlist for person {person.get('user_id')}")
+                rlist.append(d)
+        if person.get(channel_last_contacted_name) == ph:
+            logger.info(f"Adding {ph} as last contacted channel from person")
+            priority.append((person.get(f'updated'), person.get(channel_last_contacted_name)))
+    priority.sort(key=lambda x: x[0])
+    for p0, p1 in priority:
+        if p1 in rlist:
+            rlist.remove(p1)
+        rlist.insert(0, p1)
+    logger.info(f"List of phone numbers for lead {lead.get('pre_sales_lead_id') or lead.get('post_sales_lead_id')} is \"{', '.join(rlist)}\"")
+    logger.info(f"Time taken to get phone number identifiers: {hp.time() - st} seconds")
+    return rlist
+
+def get_email_identifier_from_lead(lead: dict, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
+    rlist = []
+    priority = []
+    email_list = ["email", "alt_email_2", "alt_email_3", "alt_email_4"]
+    email_last_contacted_name = "last_contacted_email"
+    for email in email_list:
+        if lead.get(email):
+            if lead.get(email) in rlist:
+                continue
+            rlist.append(lead.get(email))
+    for person in lead.get('persons_involved', []):
+        for email in email_list:
+            if person.get(email):
+                if person.get(email) in rlist:
+                    continue
+                rlist.append(person.get(email))
+                if person.get(email_last_contacted_name) == email:
+                    priority.append((person.get(f'updated'), person.get(email_last_contacted_name)))
+    priority.sort(key=lambda x: x[0])
+    for p0, p1 in priority:
+        if p1 in rlist:
+            rlist.remove(p1)
+        rlist.insert(0, p1)
+    logger.info(f"Time taken to get email identifiers: {hp.time() - st} seconds")
+    return rlist
+
+def get_channel_identifier_from_lead(channel: str, lead: dict, channel_identifier: str = None, logger=None):
+    logger = logger or mlogger
+    st = hp.time()
+    channel_identifier_list = []
+    channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
+    if channel_type == "phone_number":
+        channel_identifier_list = get_phone_number_identifier_from_lead(channel_type, lead, logger=logger)
+    elif channel_type == "email":
+        channel_identifier_list = get_email_identifier_from_lead(lead, logger=logger)
+    else:
+        logger.error(f"Invalid channel: {channel}, doing nothing. channel_type: {channel_type}")
+    if channel_identifier:
+        channel_identifier_list = channel_identifier_list[channel_identifier_list.index(channel_identifier):]
+    logger.info(f"Time taken to get channel identifier: {hp.time() - st} seconds")
+    return channel_identifier_list
 
 AUTOCRM_VOICE_SERVICE_NAME_1 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_1", "autocrm-voice-1")
 AUTOCRM_VOICE_SERVICE_NAME_2 = os.environ.get("AUTOCRM_VOICE_SERVICE_NAME_2", "autocrm-voice-2")
@@ -510,6 +632,9 @@ AUTOCRM_VOICE_INBOUND_SERVICE_NAME_3 = os.environ.get("AUTOCRM_VOICE_INBOUND_SER
 AUTOCRM_VOICE_INBOUND_SERVICE_NAME_4 = os.environ.get("AUTOCRM_VOICE_INBOUND_SERVICE_NAME_4", "autocrm-voice-4-inbound")
 AUTOCRM_VOICE_INBOUND_SERVICE_NAME_5 = os.environ.get("AUTOCRM_VOICE_INBOUND_SERVICE_NAME_5", "autocrm-voice-5-inbound")
 
+OUTBOUND_VOICE_SERVICES = [AUTOCRM_VOICE_SERVICE_NAME, AUTOCRM_VOICE_SERVICE_NAME_1, AUTOCRM_VOICE_SERVICE_NAME_2, AUTOCRM_VOICE_SERVICE_NAME_3, AUTOCRM_VOICE_SERVICE_NAME_4, AUTOCRM_VOICE_SERVICE_NAME_5]
+
+INBOUND_VOICE_SERVICES = [AUTOCRM_VOICE_INBOUND_SERVICE_NAME, AUTOCRM_VOICE_INBOUND_SERVICE_NAME_1, AUTOCRM_VOICE_INBOUND_SERVICE_NAME_2, AUTOCRM_VOICE_INBOUND_SERVICE_NAME_3, AUTOCRM_VOICE_INBOUND_SERVICE_NAME_4, AUTOCRM_VOICE_INBOUND_SERVICE_NAME_5]
 
 def get_websocket_base_url(room=None):
     ssm = AutocrmModel('socket_server')

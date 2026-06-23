@@ -1,10 +1,11 @@
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
-from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel
+from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME, AUTOCRM_CONVERSATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME, AUTOCRM_MESSAGE_DELIVERED_ITEM, AUTOCRM_MESSAGE_DELIVERED_PRICE, AUTOCRM_MESSAGE_DELIVERED_UNITS, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COMMUNICATION_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME, WHATSAPP_PRICING_INR, AutocrmModel, AUTOCRM_CRM_UPDATE_SERVICE_NAME
 import config
 from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 from autocrm_db_helper import get_pg_connector
@@ -15,6 +16,7 @@ from communication.common_functions import get_communication_credential, generat
 from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
+from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 import time
 from agents.workflows import WorkflowFactory, send_sop_alert
 import autocrm_validator as auto_val
@@ -192,11 +194,9 @@ def post_session_process(*args, **kwargs):
     
     session_data = session_data.get("data",{})
     campaign_data = session_data.get("campaign_data", {})
-    mlogger.info("campaign_data == {}".format(campaign_data))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
-
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
-
+    mlogger.info(f"Lead id--{lead_id}, campaign_type--{campaign_type}")
     lead_data = {}
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
@@ -281,6 +281,7 @@ def post_session_process(*args, **kwargs):
     #         else:
     #             prompt_text = f"Conversation:\n{convo_text}"
 
+<<<<<<< HEAD
     #     resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
     #     intent_raw = ''
     #     if isinstance(resp, dict):
@@ -316,6 +317,47 @@ def post_session_process(*args, **kwargs):
     #                 mlogger.exception("Failed to load or trigger workflow based on intent")
     # except Exception:
     #     mlogger.exception("Failed to detect customer intent via prompt")
+=======
+        resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
+        mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
+        if isinstance(resp, dict):
+            raw = resp.get("output") or resp.get("text") or resp.get("result")
+        else:
+            raw = resp
+
+        if isinstance(raw, dict):
+            analysis = raw
+        else:
+            try:
+                analysis = json.loads(raw)
+            except Exception:
+                analysis = {}
+        primary_intent = analysis.get("primary_intent")
+        cust_num = session_mdl_obj.get("phone_number")
+        cust_name = session_mdl_obj.get("person_name")
+
+        updated_lead_data["customer_intent"] = primary_intent
+        analysis.update({"customer_number": cust_num, "customer_name": cust_name, "dealership_name": campaign_data.get("dealership_name", "Unknown"), 'vehicle_category': campaign_data.get("vehicle_category")})
+        session_update_data.update({
+            "customer_intent": primary_intent,
+            "customer_mood": analysis.get("mood"),
+            "customer_sentiment": analysis.get("sentiment"),
+            "customer_priority": analysis.get("priority"),
+            "recommended_action": analysis.get("recommended_action"),
+        })
+    
+        workflow_name = analysis.get("workflow_to_trigger")
+        if workflow_name:
+            campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
+            if campaign_objective_id:
+                try:
+                    wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
+                    wf_obj.handle_workflow(workflow_name, session_id=session_id, session_data=session_data, session_mdl_obj=session_mdl_obj, updated_lead_data=updated_lead_data, sentiment_classification=sentiment_classification, analysis=analysis)
+                except Exception:
+                    mlogger.exception("Failed to load or trigger workflow based on intent")
+    except Exception:
+        mlogger.exception("Failed to detect customer intent via prompt")
+>>>>>>> master
 
     # try:
 
@@ -334,7 +376,13 @@ def post_session_process(*args, **kwargs):
     #             mlogger.exception('Failed to send sop alert via fallback')
     # except Exception as e:
     #     mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
+<<<<<<< HEAD
     appt_date_time_purpose = {}
+=======
+    
+    appt_date_time_purpose = {}
+    
+>>>>>>> master
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
@@ -394,7 +442,7 @@ def post_session_process(*args, **kwargs):
             if crm_sheet and crm_phone:
                 gryd.create_async_task(
                     "update_lead_in_sheet",
-                    AUTOCRM_CONVERSATION_SERVICE_NAME,
+                    AUTOCRM_CRM_UPDATE_SERVICE_NAME,
                     args=[],
                     kwargs=crm_update,
                 )
@@ -404,12 +452,61 @@ def post_session_process(*args, **kwargs):
                 mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
+<<<<<<< HEAD
         
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
         update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
 
+=======
+        session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
+        mlogger.info(f"Updated session history in lead data == {update_session_hist}")
+>>>>>>> master
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
+
+        # ── Meta CAPI: push conversion event back to Meta (non-fatal) ────────
+        # Triggered only when the lead originally came from Meta Lead Ads.
+        # leadgen_id is retrieved from external_source_data stored at lead creation time.
+        try:
+            lead_source_data = (updated_lead_data or lead_data or {}).get("external_source_data") or {}
+            if lead_source_data.get("source") == "meta":
+                leadgen_id_str = lead_source_data.get("leadgen_id")
+                mlogger.info(
+                    "[CAPI] Meta lead detected — queuing CAPI push: "
+                    "leadgen_id=%s disposition=%s",
+                    leadgen_id_str, new_desposition,
+                )
+                gryd.create_async_task(
+                    "push_capi_lead_event",
+                    AUTOCRM_CRM_UPDATE_SERVICE_NAME,
+                    args=[],
+                    kwargs={
+                        "phone_number":      (
+                            updated_lead_data.get("phone_number")
+                            or lead_data.get("phone_number", "")
+                        ),
+                        "disposition":       new_desposition,
+                        "email":             (
+                            updated_lead_data.get("email")
+                            or lead_data.get("email")
+                        ),
+                        "name":              (
+                            updated_lead_data.get("person_name")
+                            or lead_data.get("person_name")
+                        ),
+                        "facebook_lead_id":  (
+                            int(leadgen_id_str)
+                            if leadgen_id_str and str(leadgen_id_str).isdigit()
+                            else None
+                        ),
+                        "lead_event_source": "DaveAI AutoNgage",
+                    },
+                )
+                mlogger.info("[CAPI] push_capi_lead_event task queued successfully.")
+        except Exception as capi_err:
+            # CAPI push is best-effort — never let it block session post-processing
+            mlogger.warning("[CAPI] Non-fatal: CAPI push failed: %s", capi_err)
 
         if appt_date_time_purpose.get("appointment_date"):
             visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data, session_mdl_obj)
@@ -457,6 +554,40 @@ def update_channel_identifier(user_id,**data):
         mlogger.info(f"[update_channel_identifier] Updated channel identifier for user_id={user_id} with payload={person_payload}")
     return 
 
+def call_next_campaign_workflow_task(campaign_id,campaign_type,lead_id,channel,channel_identifier,disposition,pg=None,skip_workflow=False):
+    mlogger.info(f"In the campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+    mlogger.info(f"Skip workflow flag={skip_workflow} for campaign_id: {campaign_id} and lead_id: {lead_id}")
+    if skip_workflow:
+        mlogger.info(f"Skipping workflow for campaign_id:{campaign_id}, lead_id:{lead_id}")
+        return
+
+    if not campaign_id:
+        mlogger.error(f"campaign_id is required for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        return
+    campaign_model= "pre_sales_campaign" if campaign_type == "pre-sales" else "post_sales_campaign"
+    def _do_db_work(pg_conn):
+        a=pg_conn.get(campaign_model,"campaign_id",campaign_id)
+        
+        if not a or a.get("campaign_status", "").lower() != "active":
+            mlogger.info(f"Campaign with campaign_id: {campaign_id} is not active. Not calling next campaign workflow task.")
+            return
+        # TODO:before calling ananth task check the campaign status and then call.. 
+        mlogger.info(f"Calling next campaign workflow task for campaign_type: {campaign_type}, lead_id: {lead_id}, channel: {channel}, channel_identifier: {channel_identifier}, disposition: {disposition}")
+        gryd.create_async_task(
+            "determine_campaign_next_action",
+            AUTOCRM_CAMPAIGN_SERVICE_NAME,
+            args=[campaign_type,lead_id,channel,channel_identifier,disposition],
+            kwargs={"enterprise_id": AUTOCRM_APP_ENTERPRISE_ID},
+        )
+        # determine_campaign_next_action(campaign_type,lead_id,channel,channel_identifier,disposition,pg_conn)
+
+    if pg:
+        _do_db_work(pg)
+    else:
+        with get_pg_connector() as pg_conn:
+            _do_db_work(pg_conn)
+  
+  
 @gryd.is_a_task(function_name="update_lead_disposition_and_post_billing")
 def update_lead_disposition_and_post_billing(incoming_status, user_id=None, should_bill=None, **data):    
     mlogger.info(f"[update_lead_disposition] Attempting to update lead disposition with incoming_status={incoming_status}, user_id={user_id}, data={data}")
@@ -490,7 +621,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
     lead_table = (
         "post_sales_lead"
-        if campaign_type == "post-sales"
+        if campaign_type == "post-sales" 
         else "pre_sales_lead"
     )
     lead_pk = (
@@ -506,7 +637,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
         if not lead:
             mlogger.warning(f"[post_contact_status] No lead found for {lead_key}")
             return
-
+        
+        latest_lead_disposition = lead.get("disposition")
+        
         if campaign_type == "post-sales" and user_id and channel:
             mlogger.info(f"[post_contact_status] Updating lead for post-sales with user_id={user_id} and channel={channel}")
             persons = lead.get("persons_involved") or []
@@ -542,7 +675,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 f"(current={lead.get('disposition')}, incoming={incoming_status})"
             )
             update_payload["disposition"] = incoming_status
-            
+            latest_lead_disposition = incoming_status
             if incoming_status == "failed":
                 update_payload["disposition_detail"] = data.get("failure_reason")
 
@@ -558,38 +691,39 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         update_payload.pop("lead_id", None)
         update_payload.pop("dealership_id", None)
-        if update_payload:
-            mlogger.info(f"update_payload for lead_id={lead_id}: {update_payload}")
+
+        # check if the session is live and update the session and lead model..
+        s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":channel,"lead_model":lead_table, "session_live": True, "status~" : "completed"},order="DESC"))
+        if not s_d:
+            mlogger.info(f"No session data found for lead_id: {lead_id} and channel: {channel}, skipping session update.")
+            return None
+        s_d=s_d[0]
+        session_id = s_d.get("session_id")
+        mlogger.info(f"Since the session is live, Updating session disposition and status for lead_id: {lead_id}")
+        _p = {
+                "disposition": incoming_status,
+                "status": incoming_status,
+                **(
+                    {"disposition_detail": data.get("failure_reason")}
+                    if incoming_status == "failed" and data.get("failure_reason")
+                    else {}
+                )
+            }
+        pg.update("session","session_id",session_id,_p)
+        if update_payload and s_d:
+            mlogger.info(f"Since the session is live, updating lead with update_payload {update_payload} for lead_id: {lead_id}")
             pg.update(
                 lead_table,
                 lead_pk,
                 lead_key,
-                update_payload,
+                update_payload
             )
         
-        # also updating session dispositon--
         template_message = data.get("template_message") if data else None
-        if channel in ["whatsapp_chat"]:
+        if channel in ["whatsapp_chat"] and s_d:
             # s_d=list(pg.list("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table}))
-            s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":"whatsapp_chat","lead_model":lead_table},order="DESC"))
-            if not s_d:
-                mlogger.info(f"No session found for lead_id: {lead_id}")
-                return
-            s_d=s_d[0]
-            session_id = s_d.get("session_id")
-            mlogger.info(f"Updating session disposition for lead_id: {lead_id}")
-            _p = {
-                    "disposition": incoming_status,
-                    "status": incoming_status,
-                    **(
-                        {"disposition_detail": data.get("failure_reason")}
-                        if incoming_status == "failed" and data.get("failure_reason")
-                        else {}
-                    )
-                }
-            pg.update("session","session_id",session_id,_p)
             if post_template_message and template_message and incoming_status in ["delivered", "reached"]:
-                mlogger.info(f"Updating template_message in history for lead_id: {lead_id}")
+                mlogger.info(f"Since the session is live, Updating template_message in history for lead_id: {lead_id} for channel: whatsapp_chat")
                 p={
                     "reply_to": generate_uid(data),
                     "customer_response": "",
@@ -613,8 +747,28 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     args=[],
                     kwargs=p
                 )
-            
+        
+        
+        # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
+        channel_identifier = get_channel_identifier(data)
+        mlogger.info(f"--------[CALL] Calling next campaign workflow task for latest lead disposition -- {latest_lead_disposition} for filters: {lead.get('campaign_id')},{lead.get('campaign_type')},{lead_id},{data.get('channel')},{channel_identifier},{data.get('skip_workflow', False)}")
+        call_next_campaign_workflow_task(lead.get("campaign_id"),lead.get("campaign_type"),lead_id,data.get("channel"),channel_identifier,latest_lead_disposition,pg=pg,skip_workflow=data.get("skip_workflow", False))
         return 
+
+def get_channel_identifier(data):
+    
+    identifier_key = CHANNEL_IDENTIFIER_MAP.get(data.get("channel"))
+
+    if not identifier_key:
+        raise ValueError(f"Unsupported channel: {data.get('channel')}")
+
+    channel_ide = data.get(identifier_key)
+
+    if not channel_ide:
+        raise ValueError(
+            f"Missing '{identifier_key}' for channel '{data.get('channel')}'"
+        )
+    return channel_ide
 
 def post_billing_obj(**message_dict):
     wa_status=message_dict.get("message_status")

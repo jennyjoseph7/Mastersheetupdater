@@ -39,7 +39,7 @@ def start_call_from_inbound(*args, **kwargs):
     agent_number = data.get("call_to_number")
     logger.info(f"[start_call_from_inbound] customer={customer_number}, agent={agent_number}")
 
-    session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True)
+    session_data = handle_session_logic(customer_number, from_number=agent_number, channel = "voice_phone", engaged=True,origin="inbound")
     logger.info(f"Session data after handling session logic: {session_data}")
 
     if "error" in session_data:

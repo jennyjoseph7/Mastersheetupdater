@@ -41,6 +41,11 @@ export LOG_FILE=${LOGDIR}/${SERVICE_NAME}_${log_append_text}.log
 export STDOUT_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stdout_${log_append_text}.log
 export STDERR_LOG_FILE=${LOGDIR}/${SERVICE_NAME}_stderr_${log_append_text}.log 
 
+export logio_agent_check_start_time=0
+export LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD=${LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD:-300}
+
+export tnow='date +"%Y-%m-%d %H:%M:%S"'
+
 function stop_logio_agent() {
 	kill -9 $(ps -eaf | grep log.io- | head -n -1 | awk '{print $2}')
 }
@@ -160,9 +165,33 @@ function start_workers() {
         sleep 5
         setup_logio_agent
     fi
-    while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; echo `jobs -rl`; done
+    while [[ -n `jobs -rl | grep $worker_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
     echo "Exitting.."
     exit
+}
+
+function restart_logio_agent() {
+    echo "Checking logio agent to restart."
+
+    if [ $logio_agent_check_start_time == 0 ];then
+        logio_agent_check_start_time=$(eval $tnow)
+    fi
+
+    logio_agent_check_start_time_seconds=$(date -d "$logio_agent_check_start_time" +%s)
+    tnow_secs=$(date -d "$(eval $tnow)" %s)
+    tdiff=$((tnow_secs - logio_agent_check_start_time_seconds))
+
+    if [ tdiff > $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD ];then
+        echo "Restarting logio agent."
+        setup_logio_agent
+        return
+    fi
+
+    echo "Not restarting logio agent as threshold - $LOGIO_AGENT_RESTART_TIME_SECS_THRESHOLD seconds not elapsed yet."
+}
+
+function docheckup() {
+    restart_logio_agent
 }
 
 function main() {
@@ -189,7 +218,7 @@ function main() {
             sleep 5
             setup_logio_agent
         fi
-        while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 300; echo `jobs -rl`; done
+        while [[ -n `jobs -rl | grep $app_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
         echo "Exitting..."
         exit
     elif [ $SETUP_CRON_SCHEDULER == "True" ];then
@@ -214,7 +243,7 @@ function main() {
                 sleep 5
                 setup_logio_agent
             fi
-            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
             echo "Exitting..."
             exit
 		else
@@ -251,7 +280,7 @@ function main() {
                 sleep 5
                 setup_logio_agent
             fi
-            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; echo `jobs -rl`; done
+            while [[ -n `jobs -rl | grep $w_pid` ]]; do sleep 1; docheckup; echo `jobs -rl`; done
             echo "Exitting..."
             exit
 		else

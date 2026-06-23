@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from os.path import dirname, abspath, join as joinpath
@@ -10,7 +11,6 @@ from config import AutocrmModel, clogger, AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_COM
 from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
 
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
-# Delay importing prompt helpers to function scope to avoid circular imports
 
 module_logger = clogger
 
@@ -61,6 +61,7 @@ class BaseWorkflow(ABC):
                     prompt_text = f"Conversation:\n{convo_text}"
 
             resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"gcp-gemini-3.1-flash-lite-preview", "session_id": session_id})
+            self.logger.info(f"Intent detection prompt response: {resp}")
             intent_raw = ''
             if isinstance(resp, dict):
                 intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
@@ -175,6 +176,7 @@ class BaseWorkflow(ABC):
         key = self._normalize(workflow_name)
         handlers = self.get_handlers()
         handler = handlers.get(key)
+        print(f"Handling workflow '{workflow_name}' with handler key '{key}': found handler={bool(handler)}")
         if callable(handler):
             return handler(*args, **kwargs)
         raise NotImplementedError(f'Workflow handler not implemented: {workflow_name}')
@@ -246,11 +248,139 @@ class PresalesWorkflow(BaseWorkflow):
 
     def get_handlers(self) -> Dict[str, Callable]:
         return {
+            'sop_alert': self.wf_sop_alert,
             'test_drive_booking_l': self.wf_test_drive_booking_l,
             'test_drive_feedback': self.wf_test_drive_feedback,
             'test_drive_remainder': self.wf_test_drive_remainder,
-            'showroom_launch_l': self.wf_showroom_launch_l,
+            'showroom_launch_l': self.wf_showroom_launch_l
         }
+
+    def _workflow_email(self, workflow_name, *args, **kwargs):
+        try:
+            session_id = kwargs.get('session_id')
+            session_data = kwargs.get('session_data') or {}
+            session_mdl_obj = kwargs.get('session_mdl_obj') or {}
+            summary = session_mdl_obj.get('summary', '')
+            history = session_mdl_obj.get('history', [])
+
+            # if not session_id:
+            #     self.logger.info(f'{workflow_name}: missing session_id')
+            #     return {'status': 'missing_session_id'}
+
+            insights = kwargs.get("analysis") or {}
+
+            if not isinstance(insights, dict):
+                try:
+                    insights = json.loads(insights)
+                except Exception:
+                    insights = {}
+            intent = insights.get("customer_intent") or insights.get("primary_intent") or ""
+
+            receiver_emails = [
+                "sahib@iamdave.ai"
+            ]
+
+            subject = (
+                f"CSS Alert — Service SOP Breach | "
+                f"{insights.get('customer_name', 'Unknown')} | "
+                f"{insights.get('dealership_name', 'Unknown Dealership')} | "
+                f"{insights.get('service_date', 'Today')}"
+            )
+
+            html = f"""
+            <p>Dear Service Manager,</p>
+
+            <p>During a recent Customer Satisfaction Survey call, the following SOP breach was identified:</p>
+
+            <table style="border-collapse: collapse; width: 100%; max-width: 600px; font-family: Arial, sans-serif;">
+                <tr style="background-color: #f2f2f2;">
+                    <th style="border: 1px solid #dddddd; text-align: left; padding: 8px; width: 30%;">Field</th>
+                    <th style="border: 1px solid #dddddd; text-align: left; padding: 8px; width: 70%;">Details</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Name</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('customer_name')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Number</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('customer_number')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Vehicle Model</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('vehicle_category')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Dealership</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('dealership_name')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Service Date</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('service_date', "Unknown")}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Customer Mood</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('mood')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Complaint Category</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('complaint_category')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Complaint Raised</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('reason')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Severity Level</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px; text-transform: capitalize;">{insights.get('priority')}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #dddddd; padding: 8px; font-weight: bold;">Corrective Action Required</td>
+                    <td style="border: 1px solid #dddddd; padding: 8px;">{insights.get('recommended_action')}</td>
+                </tr>
+            </table>
+
+            <p>Please ensure the corrective action is completed within the timeline specified in the escalation matrix. This record will be tracked and reviewed during the next dealership performance review.</p>
+
+            <p>Regards,<br>
+            <b>{insights.get('dealership_name')} | Customer Experience Team</b></p>
+            """
+
+            email_payload = {
+                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                "sender": {"name": "AutoCRM Alerts"},
+                "receiver": {"emails": receiver_emails},
+                "html_string": html,
+                "subject": subject,
+            }
+
+            from communication.connectors.email_communication import communication_sender
+
+            communication_sender(**email_payload)
+
+            self.logger.info(
+                f'{workflow_name}: email sent for session {session_id}'
+            )
+
+            return {
+                'status': 'email_sent',
+                'workflow': workflow_name
+            }
+
+        except Exception:
+            self.logger.exception(f'{workflow_name}: failed')
+            return {'status': 'error'}
+
+    def wf_test_drive_booking_l(self, *args, **kwargs):
+        return self._workflow_email('test_drive_booking_l',*args,**kwargs)
+
+    def wf_test_drive_feedback(self, *args, **kwargs):
+        return self._workflow_email('test_drive_feedback',*args,**kwargs)
+
+    def wf_test_drive_remainder(self, *args, **kwargs):
+        return self._workflow_email('test_drive_remainder',*args,**kwargs)
+
+    def wf_showroom_launch_l(self, *args, **kwargs):
+        return self._workflow_email('showroom_launch_l',*args,**kwargs)
 
     def run(self, *args, **kwargs):
         obj = self.load_objective()
@@ -265,21 +395,6 @@ class PresalesWorkflow(BaseWorkflow):
                 self.logger.exception('Failed updating target')
         return {'status': 'ok', 'processed': len(targets)}
 
-    def wf_test_drive_feedback(self, *args, **kwargs):
-        """Handler for 'Test drive feedback' workflow."""
-        # Placeholder: implement feedback collection or status update
-        filters = kwargs.get('filters')
-        targets = self.list_targets(filters)
-        processed = 0
-        for t in targets:
-            try:
-                self.update_target(t.get('id') or t.get('lead_id'), {'test_drive_feedback_requested': True})
-                processed += 1
-            except Exception:
-                self.logger.exception('Failed updating target for test drive feedback')
-        return {'status': 'ok', 'processed': processed}
-
-
 class PostSalesWorkflow(BaseWorkflow):
     def supported_workflows(self) -> List[str]:
         return [
@@ -291,6 +406,7 @@ class PostSalesWorkflow(BaseWorkflow):
 
     def get_handlers(self) -> Dict[str, Callable]:
         return {
+            'sop_alert': self.wf_sop_alert,
             'post_sales_feedback_l': self.wf_post_sales_feedback_l,
             'post_service_feedback_l': self.wf_post_service_feedback_l,
             'service_remainder_l': self.wf_service_remainder_l,
