@@ -281,43 +281,6 @@ def post_session_process(*args, **kwargs):
     #         else:
     #             prompt_text = f"Conversation:\n{convo_text}"
 
-<<<<<<< HEAD
-    #     resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.0, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
-    #     intent_raw = ''
-    #     if isinstance(resp, dict):
-    #         intent_raw = (resp.get('output') or resp.get('text') or resp.get('result') or str(resp))
-    #     else:
-    #         intent_raw = str(resp)
-    #     import re
-    #     m = re.search(r"([a-zA-Z0-9_\- ]+)", intent_raw)
-    #     intent_phrase = m.group(1).strip().lower().replace(' ', '_') if m else intent_raw.strip().lower().replace(' ', '_')
-    #     if intent_phrase:
-    #         updated_lead_data['customer_intent'] = intent_phrase
-    #         session_update_data['customer_intent'] = intent_phrase
-    #         mlogger.info(f"Detected intent for session {session_id}: {intent_phrase}")
-
-    #         campaign_objective_id = (campaign_data.get('campaign_objective_id') or lead_data.get('campaign_objective_id'))
-    #         if campaign_objective_id:
-    #             try:
-    #                 wf_obj = WorkflowFactory.get_workflow(campaign_objective_id, dealership_id=session_mdl_obj.get('dealership_id'))
-    #                 objective_model = AutocrmModel('campaign_objective')
-    #                 obj = objective_model.get(campaign_objective_id) or {}
-    #                 objective_wfs = obj.get('workflows') or []
-    #                 intent_tokens = set(re.split(r"[^a-z0-9]+", intent_phrase.lower()))
-    #                 for w in objective_wfs:
-    #                     wn = w.lower()
-    #                     w_tokens = set(re.split(r"[^a-z0-9]+", wn))
-    #                     if intent_tokens & w_tokens:
-    #                         try:
-    #                             mlogger.info(f"Triggering workflow '{w}' for campaign_objective_id={campaign_objective_id} due to intent={intent_phrase}")
-    #                             wf_obj.handle_workflow(w)
-    #                         except Exception:
-    #                             mlogger.exception(f"Failed to handle workflow {w}")
-    #             except Exception:
-    #                 mlogger.exception("Failed to load or trigger workflow based on intent")
-    # except Exception:
-    #     mlogger.exception("Failed to detect customer intent via prompt")
-=======
         resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
         mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
         if isinstance(resp, dict):
@@ -357,7 +320,6 @@ def post_session_process(*args, **kwargs):
                     mlogger.exception("Failed to load or trigger workflow based on intent")
     except Exception:
         mlogger.exception("Failed to detect customer intent via prompt")
->>>>>>> master
 
     # try:
 
@@ -376,13 +338,9 @@ def post_session_process(*args, **kwargs):
     #             mlogger.exception('Failed to send sop alert via fallback')
     # except Exception as e:
     #     mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
-<<<<<<< HEAD
-    appt_date_time_purpose = {}
-=======
     
     appt_date_time_purpose = {}
     
->>>>>>> master
     if updated_lead_data.get("disposition") == "converted":
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
@@ -452,16 +410,9 @@ def post_session_process(*args, **kwargs):
                 mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
-<<<<<<< HEAD
-        
-        session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
-        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
-
-=======
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
         update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
         mlogger.info(f"Updated session history in lead data == {update_session_hist}")
->>>>>>> master
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
 
