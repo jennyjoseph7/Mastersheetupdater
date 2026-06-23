@@ -322,6 +322,37 @@
             "type": "number"
         },
         {
+            "name": "battery_capacity_kwh",
+            "type": "number"
+        },
+        {
+            "name": "certified_range_km",
+            "type": "number"
+        },
+        {
+            "name": "max_ac_charging_rate_kw",
+            "type": "number"
+        },
+        {
+            "name": "max_dc_charging_rate_kw",
+            "type": "number"
+        },
+        {
+            "name": "battery_chemistry",
+            "type": "text",
+            "options": [
+                "LFP (Lithium Iron Phosphate)",
+                "NMC (Nickel Manganese Cobalt)",
+                "NCA (Nickel Cobalt Aluminum)",
+                "LMFP (Lithium Iron Manganese Phosphate)",
+                "NiMH (Nickel-Metal Hydride)",
+                "LTO (Lithium Titanate)",
+                "Na-Ion (Sodium-Ion)",
+                "SSB (Solid-State Battery)",
+                "Others"
+            ]
+        },
+        {
             "name": "boot_space_litres",
             "type": "number"
         },
