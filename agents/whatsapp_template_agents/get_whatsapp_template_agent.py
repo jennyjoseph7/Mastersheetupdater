@@ -4,11 +4,14 @@ import re
 import random
 
 try:
-    from .base_agent import BaseAgent
+    from agents.base_agent import BaseAgent
 except ImportError:
     from base_agent import BaseAgent
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# agents/whatsapp_template_agents/<this file> → up three levels = project root
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
@@ -16,6 +19,7 @@ from config import AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME, gryd, hp
 gryd.SERVICE = AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
+
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
@@ -38,7 +42,7 @@ def _fetch_campaign_objective(campaign_objective_id):
     return record
 
 
-class get_email_template_agent(BaseAgent):
+class get_whatsapp_template_agent(BaseAgent):
     def __init__(self, source, *args, **kwargs):
         super().__init__(**kwargs)
 
@@ -68,13 +72,13 @@ class get_email_template_agent(BaseAgent):
         records = list(pg.list(
             table_name="communication_credential",
             where={"dealership_id": dealership_id,
-                   'channel': 'email'
+                     'channel': 'whatsapp_chat'
             }
         ))
         communication_credential = records[0]
         communication_credentials_id = communication_credential.get("communication_credentials_id")
+        logger.info(f"communication_credentials_id -{communication_credentials_id}")
         return communication_credentials_id
-
 
     def slugify_disposition_detail(self,detail: str) -> str:
         """'Cannot make decision on servicing' → 'Cannot-make-decision-on-servicing'"""
@@ -87,10 +91,10 @@ class get_email_template_agent(BaseAgent):
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
-                        "channel" : "email",
+                        "channel" : "whatsapp_chat",
                         "status" : "approved",
                         "communication_credentials_id" : communication_credentials_id,
-                        "language" : self.language,
+                        #"language" : self.language,
                         "disposition" : self.disposition,
                         "disposition_details" : self.slugify_disposition_detail(self.disposition_details)
                 }
@@ -100,14 +104,20 @@ class get_email_template_agent(BaseAgent):
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
                        "campaign_objective_name" : self.campaign_objective[0],
-                       "channel" : "email",
+                       "channel" : "whatsapp_chat",
                        "status" : "approved",
                        "communication_credentials_id" : communication_credentials_id,
-                       "language" : self.language
+                       #"language" : self.language
                 }
             ))
 
-        logger.info(f"Retrieved records: {records}")
+        wanted_language = (self.language or "english").strip().lower()
+        records = [
+            r for r in records
+            if (r.get("language") or "").strip().lower() == wanted_language
+        ]
+
+        logger.info(f"records--{records}")
 
         return records or []
     
@@ -116,7 +126,7 @@ class get_email_template_agent(BaseAgent):
         if isinstance(tpl_vars, list):
             return tpl_vars
         
-        logger.info(f"Processing template variables: {tpl_vars}")
+        logger.info(f"tpl_vars --{tpl_vars}")
 
         if isinstance(tpl_vars, str):
             # Postgres array "{a,b,c}"
@@ -131,14 +141,15 @@ class get_email_template_agent(BaseAgent):
 
         return []
     
-    
+
+
     def match_templates_strict(self, templates):
         limit = self.limit
 
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
 
-        logger.info(f"data_attrs_list: {data_attrs_list}")
+        logger.info(f"data_attrs_list--{data_attrs_list}")
 
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
@@ -223,11 +234,11 @@ class get_email_template_agent(BaseAgent):
 
 
 
-@gryd.is_a_task('get_email_template', logger_param='logger', job_param='job')
-def get_email_template(lead_info=None, lead_id=None, campaign_objective_id=None, campaign_type=None, dealership_id=None, is_disposition=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
+@gryd.is_a_task('get_whatsapp_template', logger_param='logger', job_param='job')
+def get_whatsapp_template(lead_info=None, lead_id=None, campaign_objective_id=None, campaign_type=None, dealership_id=None, is_disposition=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
-        logger.info("Getting Email Template...")
+        logger.info("Getting WhatsApp Template...")
         if dealership_id is None:
             dealership_id = 'daveai'
 
@@ -288,7 +299,7 @@ def get_email_template(lead_info=None, lead_id=None, campaign_objective_id=None,
             logger.info(f"Source data : {data}")
 
             # 2. Template Selector Agent
-            template_agent = get_email_template_agent(source=data, logger=logger)
+            template_agent = get_whatsapp_template_agent(source=data, logger=logger)
             result = template_agent.run()
 
             if not result:
