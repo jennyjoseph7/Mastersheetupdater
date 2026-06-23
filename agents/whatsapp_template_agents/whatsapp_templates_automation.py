@@ -15,7 +15,9 @@ from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
 from agents.data_attributes_retriever_agent import data_attribute_retriever
-from agents.whatsapp_template_creator_agent import WhatsappTemplateCreatorAgent
+from agents.whatsapp_template_agents.whatsapp_template_creator_agent import (
+    WhatsappTemplateCreatorAgent,
+)
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 data ={
 "attribute_name" : [],
