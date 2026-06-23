@@ -46,16 +46,14 @@ def generate_fluentbit_conf(host, port, log_files, service_name):
     outputs = []
     for log_file in log_files:
         logf = os.path.abspath(log_file)
-        input_config = {}
-        input_config["inputs"] = {
+        input_config = {
             "name" : "tail",
             "path" : logf,
             "tag" : service_name,
             "db" : f"/tmp/{service_name}.db"
         }
         inputs.append(input_config)
-        output_config = {}
-        output_config["output"] = {
+        output_config = {
             "name" : "loki",
             "match" : service_name,
             "host" : host,
@@ -71,8 +69,8 @@ def generate_fluentbit_conf(host, port, log_files, service_name):
 
 if __name__ == '__main__':
     SERVICE_NAME=f'{os.environ.get("SERVICE_NAME", "UNKNOWN_SERVICE")}-{os.environ.get("ENVIRONMENT", "UNKNOWN_ENVIRONMENT")}'
-    HOST=os.environ.get("LOG_SERVER_TCP_URL", None)
-    PORT=os.environ.get("LOG_SERVER_TCP_PORT", 6689)
+    HOST=os.environ.get("LOG_SERVER_URL", None)
+    PORT=os.environ.get("LOG_SERVER_PORT", 6689)
     LOG_AGENT_TYPE=os.environ.get("LOG_AGENT_TYPE", None)
     APP_DIR=os.environ.get("BASE_DIR", "/root/app")
     log_files_csv= sys.argv[1]
