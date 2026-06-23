@@ -266,20 +266,20 @@ def post_session_process(*args, **kwargs):
     if sentiment_classification:
         session_update_data["sentiment_classification"] = sentiment_classification
 
-    # try:
-    #     summary_text = session_mdl_obj.get('summary') or ''
-    #     convo_msgs = messages[-8:] if isinstance(messages, list) else messages
-    #     convo_text = '\n'.join([m.get('message') or m.get('customer_response') or str(m) for m in convo_msgs])
+    try:
+        summary_text = session_mdl_obj.get('summary') or ''
+        convo_msgs = messages[-8:] if isinstance(messages, list) else messages
+        convo_text = '\n'.join([m.get('message') or m.get('customer_response') or str(m) for m in convo_msgs])
 
-    #     # Prefer shared prompt template loaded via helper
-    #     template = get_prompt_file('detect_intent.txt') or get_prompt_file('detect_intent')
-    #     if template:
-    #         prompt_text = template.format(summary=summary_text or '', conversation=convo_text)
-    #     else:
-    #         if summary_text:
-    #             prompt_text = f"Summary: {summary_text}"
-    #         else:
-    #             prompt_text = f"Conversation:\n{convo_text}"
+        # Prefer shared prompt template loaded via helper
+        template = get_prompt_file('detect_intent.txt') or get_prompt_file('detect_intent')
+        if template:
+            prompt_text = template.format(summary=summary_text or '', conversation=convo_text)
+        else:
+            if summary_text:
+                prompt_text = f"Summary: {summary_text}"
+            else:
+                prompt_text = f"Conversation:\n{convo_text}"
 
         resp = run_prompt_sync(user_query=" ", system_prompt=prompt_text, history=[], audit_params={"session_id": session_id}, temperature=0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite", "session_id": session_id})
         mlogger.info(f"Intent detection prompt response: {hp.json.loads(resp)}")
