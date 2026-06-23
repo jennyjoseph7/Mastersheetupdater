@@ -36,6 +36,7 @@ from gryd_worker import gryd
 
 from config import AUTOCRM_CONVERSATION_SERVICE_NAME
 from crm_integration.crm_integration.load_crm import load_crm
+from campaign.campaign_manager import manual_register_and_trigger_lead
 
 
 gryd.SERVICE = AUTOCRM_CONVERSATION_SERVICE_NAME
@@ -250,105 +251,176 @@ def sync_crm_campaigns(batch_size=100, logger=None, job=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 # autocrm-campaign service constants
-AUTOCRM_BASE_URL  = "https://autobot-webapp-dev-unstable.gryd.in:60133"
-AUTOCRM_SERVICE   = "autocrm-campaign"
-AUTOCRM_TASK_NAME = "manual_register_and_trigger_lead"
+# AUTOCRM_BASE_URL  = "https://autobot-webapp-dev-unstable.gryd.in:60133"
+# AUTOCRM_SERVICE   = "autocrm-campaign"
+# AUTOCRM_TASK_NAME = "manual_register_and_trigger_lead"
 
-# Auth headers — read from env (set by local.sh / setup.sh), fallback to dev values
-AUTOCRM_API_HEADERS = {
-    "Content-Type":          "application/json",
-    "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "gryd"),
-    "X-GRYD-ENTERPRISE-ID":  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm"),
-    "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "b82606f6-c191-3189-8bcc-f2fb009c68ac"),
-    "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "33caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
-    "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "admin"),
-}
+# # Auth headers — read from env (set by local.sh / setup.sh), fallback to dev values
+# AUTOCRM_API_HEADERS = {
+#     "Content-Type":          "application/json",
+#     "X-GRYD-APPLICATION-ID": os.environ.get("AUTOCRM_APP_ID",            "gryd"),
+#     "X-GRYD-ENTERPRISE-ID":  os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm"),
+#     "X-GRYD-TOKEN":          os.environ.get("AUTOCRM_TOKEN",             "b82606f6-c191-3189-8bcc-f2fb009c68ac"),
+#     "X-GRYD-SESSION-ID":     os.environ.get("AUTOCRM_SESSION_ID",        "33caaf4ac-16a6-3787-8b90-ab2f0eee5bde"),
+#     "X-GRYD-ROLE":           os.environ.get("AUTOCRM_ROLE",              "admin"),
+# }
 
 
-def execute_task_with_polling(
-    base_url,
-    service,
-    task_name,
-    payload,
-    on_progress=None,
-    interval_ms=2000,
-    max_retries=60,
-    headers=None,
-):
-    """
-    Executes an asynchronous gryd task, polls for status, retrieves the final result.
-    Gryd task pattern — this is the correct way to call a gryd task (not raw API).
+# def execute_task_with_polling(
+#     base_url,
+#     service,
+#     task_name,
+#     payload,
+#     on_progress=None,
+#     interval_ms=2000,
+#     max_retries=60,
+#     headers=None,
+# ):
+#     """
+#     Executes an asynchronous gryd task, polls for status, retrieves the final result.
+#     Gryd task pattern — this is the correct way to call a gryd task (not raw API).
 
-    Steps:
-      1. POST  /gryd/task/{service}/{task_name}  → get task_id
-      2. POLL  /gryd/status/{task_id}            → wait for success/failure
-      3. GET   /gryd/result/{task_id}            → return final result
-    """
-    headers = headers or {"Content-Type": "application/json"}
+#     Steps:
+#       1. POST  /gryd/task/{service}/{task_name}  → get task_id
+#       2. POLL  /gryd/status/{task_id}            → wait for success/failure
+#       3. GET   /gryd/result/{task_id}            → return final result
+#     """
+#     headers = headers or {"Content-Type": "application/json"}
 
-    def api(endpoint, method="GET", data=None):
-        url = f"{base_url}{endpoint}"
-        if method == "POST":
-            res = _requests.post(url, json=data, headers=headers)
-        else:
-            res = _requests.get(url, headers=headers)
-        res.raise_for_status()
-        return res.json()
+#     def api(endpoint, method="GET", data=None):
+#         url = f"{base_url}{endpoint}"
+#         if method == "POST":
+#             res = _requests.post(url, json=data, headers=headers)
+#         else:
+#             res = _requests.get(url, headers=headers)
+#         res.raise_for_status()
+#         return res.json()
 
-    # 1. Submit the task
-    if on_progress:
-        on_progress("Submitting task to queue...")
+#     # 1. Submit the task
+#     if on_progress:
+#         on_progress("Submitting task to queue...")
 
-    task_res = api(f"/gryd/task/{service}/{task_name}", "POST", payload)
+#     task_res = api(f"/gryd/task/{service}/{task_name}", "POST", payload)
 
-    task_id = (
-        task_res.get("job", {}).get("task_id")
-        or task_res.get("task_id")
-    )
+#     task_id = (
+#         task_res.get("job", {}).get("task_id")
+#         or task_res.get("task_id")
+#     )
 
-    if not task_id:
-        raise Exception(
-            f"Failed to retrieve task_id from response: {task_res}"
-        )
+#     if not task_id:
+#         raise Exception(
+#             f"Failed to retrieve task_id from response: {task_res}"
+#         )
 
-    if on_progress:
-        on_progress(f"Task submitted. task_id={task_id}")
+#     if on_progress:
+#         on_progress(f"Task submitted. task_id={task_id}")
 
-    # 2. Poll status
-    attempts    = 0
-    is_complete = False
+#     # 2. Poll status
+#     attempts    = 0
+#     is_complete = False
 
-    while not is_complete and attempts < max_retries:
-        attempts += 1
-        time.sleep(interval_ms / 1000.0)
+#     while not is_complete and attempts < max_retries:
+#         attempts += 1
+#         time.sleep(interval_ms / 1000.0)
 
-        status_res     = api(f"/gryd/status/{task_id}", "GET")
-        current_status = (status_res.get("status") or "").lower()
+#         status_res     = api(f"/gryd/status/{task_id}", "GET")
+#         current_status = (status_res.get("status") or "").lower()
 
-        if on_progress and (status_res.get("message") or current_status):
-            on_progress(status_res.get("message") or f"Status: {current_status}...")
+#         if on_progress and (status_res.get("message") or current_status):
+#             on_progress(status_res.get("message") or f"Status: {current_status}...")
 
-        if current_status in ["success", "completed"]:
-            is_complete = True
-            if on_progress:
-                on_progress("Task complete. Retrieving results...")
-        elif current_status in ["failed", "error"]:
-            raise Exception(
-                status_res.get("error")
-                or status_res.get("message")
-                or "Task failed on the server."
-            )
+#         if current_status in ["success", "completed"]:
+#             is_complete = True
+#             if on_progress:
+#                 on_progress("Task complete. Retrieving results...")
+#         elif current_status in ["failed", "error"]:
+#             raise Exception(
+#                 status_res.get("error")
+#                 or status_res.get("message")
+#                 or "Task failed on the server."
+#             )
 
-    if not is_complete:
-        raise Exception(f"Task {task_id} timed out after {max_retries} retries.")
+#     if not is_complete:
+#         raise Exception(f"Task {task_id} timed out after {max_retries} retries.")
 
-    # 3. Fetch result
-    result_res = api(f"/gryd/result/{task_id}", "GET")
+#     # 3. Fetch result
+#     result_res = api(f"/gryd/result/{task_id}", "GET")
 
-    if not result_res or "result" not in result_res:
-        raise Exception(f"Failed to retrieve result for task {task_id}: {result_res}")
+#     if not result_res or "result" not in result_res:
+#         raise Exception(f"Failed to retrieve result for task {task_id}: {result_res}")
 
-    return result_res["result"]
+#     return result_res["result"]
+
+
+# def _trigger_audience_task(
+#     lead: dict,
+#     campaign_id: str,
+#     campaign_objective_id: str,
+#     campaign_type: str,
+#     dealership_id: str,
+#     dealership_name: str,
+#     logger=None
+# ):
+#     """
+#     Trigger the autocrm-campaign registration task for a single lead.
+
+#     Uses execute_task_with_polling (gryd task approach) instead of raw HTTP POST.
+#     args[0] = name
+#     args[1] = phone_number
+#     args[2] = email
+#     """
+#     name         = lead.get("person_name", "")
+#     phone_number = lead.get("phone_number", "")
+#     email        = lead.get("email", "")       # not in sheet yet → empty string
+
+#     vehicle_model    = lead.get("vehicle_model", "")
+#     vehicle_category = lead.get("vehicle_category", "Passenger Vehicle") or "Passenger Vehicle"
+#     model_preference = [vehicle_model] if vehicle_model else []
+
+#     payload = {
+#         "args": [name, phone_number, email],
+#         "kwargs": {
+#             "channel":               ["voice_phone"],
+#             "campaign_id":           campaign_id,
+#             "campaign_objective_id": campaign_objective_id,
+#             "campaign_type":         campaign_type,
+#             "dealership_id":         dealership_id,
+#             "dealership_name":       dealership_name or "",
+#             "model_preference":      model_preference,
+#             "brand_preference":      [],
+#             "color_preference":      [],
+#             "feature_preferences":   [],
+#             "vehicle_category":      vehicle_category,
+#         },
+#         "runtime_limit": 30000,
+#         "cancellable":   True,
+#     }
+#     logger = logger or mlogger
+
+#     logger.info(f"[CRON] Triggering {AUTOCRM_TASK_NAME} → phone={phone_number}, name={name}")
+
+#     result = execute_task_with_polling(
+#         base_url=AUTOCRM_BASE_URL,
+#         service=AUTOCRM_SERVICE,
+#         task_name=AUTOCRM_TASK_NAME,
+#         payload=payload,
+#         headers=AUTOCRM_API_HEADERS,
+#         on_progress=lambda msg: logger.info(f"[CRON][AUTOCRM] {msg}"),
+#         interval_ms=3000,   # poll every 3 seconds
+#         max_retries=30,     # max 90 seconds wait per lead
+#     )
+
+#     logger.info(f"[CRON] autocrm-campaign task done for phone={phone_number}: {result}")
+#     logger.info(f"[CRON][DEBUG] Full autocrm-campaign result = {result}")
+
+#     logger.info(
+#         f"[CRON][DEBUG] "
+#         f"campaign_id={campaign_id}, "
+#         f"campaign_objective_id={campaign_objective_id}, "
+#         f"phone={phone_number}"
+#     )
+
+#     return result
 
 
 def _trigger_audience_task(
@@ -360,63 +432,63 @@ def _trigger_audience_task(
     dealership_name: str,
     logger=None
 ):
-    """
-    Trigger the autocrm-campaign registration task for a single lead.
-
-    Uses execute_task_with_polling (gryd task approach) instead of raw HTTP POST.
-    args[0] = name
-    args[1] = phone_number
-    args[2] = email
-    """
-    name         = lead.get("person_name", "")
-    phone_number = lead.get("phone_number", "")
-    email        = lead.get("email", "")       # not in sheet yet → empty string
-
-    vehicle_model    = lead.get("vehicle_model", "")
-    vehicle_category = lead.get("vehicle_category", "Passenger Vehicle") or "Passenger Vehicle"
-    model_preference = [vehicle_model] if vehicle_model else []
-
-    payload = {
-        "args": [name, phone_number, email],
-        "kwargs": {
-            "channel":               ["voice_phone"],
-            "campaign_id":           campaign_id,
-            "campaign_objective_id": campaign_objective_id,
-            "campaign_type":         campaign_type,
-            "dealership_id":         dealership_id,
-            "dealership_name":       dealership_name or "",
-            "model_preference":      model_preference,
-            "brand_preference":      [],
-            "color_preference":      [],
-            "feature_preferences":   [],
-            "vehicle_category":      vehicle_category,
-        },
-        "runtime_limit": 30000,
-        "cancellable":   True,
-    }
     logger = logger or mlogger
 
-    logger.info(f"[CRON] Triggering {AUTOCRM_TASK_NAME} → phone={phone_number}, name={name}")
+    name = lead.get("person_name", "")
+    phone_number = lead.get("phone_number", "")
+    email = lead.get("email", "")
 
-    result = execute_task_with_polling(
-        base_url=AUTOCRM_BASE_URL,
-        service=AUTOCRM_SERVICE,
-        task_name=AUTOCRM_TASK_NAME,
-        payload=payload,
-        headers=AUTOCRM_API_HEADERS,
-        on_progress=lambda msg: logger.info(f"[CRON][AUTOCRM] {msg}"),
-        interval_ms=3000,   # poll every 3 seconds
-        max_retries=30,     # max 90 seconds wait per lead
+    vehicle_model = lead.get("vehicle_model", "")
+    vehicle_category = (
+        lead.get("vehicle_category", "Passenger Vehicle")
+        or "Passenger Vehicle"
     )
 
-    logger.info(f"[CRON] autocrm-campaign task done for phone={phone_number}: {result}")
-    logger.info(f"[CRON][DEBUG] Full autocrm-campaign result = {result}")
+    model_preference = [vehicle_model] if vehicle_model else []
+
+    task_args = (
+        name,
+        phone_number,
+        email
+    )
+
+    task_kwargs = {
+        "channel": ["voice_phone"],
+        "campaign_id": campaign_id,
+        "campaign_objective_id": campaign_objective_id,
+        "campaign_type": campaign_type,
+        "dealership_id": dealership_id,
+        "dealership_name": dealership_name or "",
+        "model_preference": model_preference,
+        "brand_preference": [],
+        "color_preference": [],
+        "feature_preferences": [],
+        "vehicle_category": vehicle_category,
+    }
 
     logger.info(
-        f"[CRON][DEBUG] "
-        f"campaign_id={campaign_id}, "
-        f"campaign_objective_id={campaign_objective_id}, "
-        f"phone={phone_number}"
+        f"[CRON] Queueing manual_register_and_trigger_lead "
+        f"for phone={phone_number}"
     )
 
+    # result = gryd.create_async_task(
+    #     function_name="manual_register_and_trigger_lead",
+    #     service="autocrm-campaign",
+    #     args=task_args,
+    #     kwargs=task_kwargs
+    # )
+#     result = gryd.await_result(
+#  'manual_register_and_trigger_lead',"autocrm-campaign", args= task_args, kwargs=task_kwargs)
+#     logger.info(f"printing result {result}")
+#     logger.info(
+#         f"[CRON] Task queued successfully "
+#         f"for phone={phone_number}"
+#     )
+    result =list(manual_register_and_trigger_lead(*task_args, **task_kwargs))
+    if not result:
+        logger.info(f"[CRON][ERROR] Task failed for phone={phone_number}")
+    result = result[0].get("_result") if isinstance(result, list) else result
+    # lead_id = (result or {}).get("lead_id")    
+    # logger.info(f"[CRON][DEBUG] Queue response: {lead_id}, result={result}")
+ 
     return result

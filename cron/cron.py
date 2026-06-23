@@ -2375,6 +2375,7 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
     start = time.time()
     logger.info(f"[CRON][POLL] Polling for completed session — lead_id={lead_id} (timeout={timeout_secs}s)")
 
+
     # ── Fast-fail: check if contact_status table exists before looping ──────────
     # pg.list() silently swallows UndefinedTable (via `finally: return`).
     # fetch_all() properly propagates it, so we can detect wrong DB early.
@@ -2391,10 +2392,10 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
     while time.time() - start < timeout_secs:
         try:
             with get_pg_connector() as pg:
-                cs= list(
+                cs = list(
                     pg.list_order_by("contact_status", {"lead_id": lead_id}, order_by="created")
                 )
-                cs=cs[0] if cs and isinstance(cs,list) and len(cs) > 0 else None 
+                cs = cs[0] if cs and isinstance(cs, list) and len(cs) > 0 else None
                 if not cs:
                     logger.info(
                         f"[CRON][POLL] No contact_status found for lead_id={lead_id}, waiting..."
@@ -2604,6 +2605,7 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
 
                         # After triggering the call, poll DB for the real completed
                         # session and run post-processing to update disposition/lead_summary
+                        logger.info(f" print task result {task_result}")
                         lead_id = (task_result or {}).get("lead_id")
                         if lead_id:
                             logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")
