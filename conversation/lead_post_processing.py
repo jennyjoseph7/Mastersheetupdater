@@ -222,11 +222,13 @@ def post_session_process(*args, **kwargs):
 
     if messages:
         sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="databricks-gemini-3.1-flash-lite")
-        aa = sentiment_agent.run()
-        mlogger.info("response_from_sentiment_agent == {}".format(aa))
+        senti_output = sentiment_agent.run()
+        data = senti_output.get("raw_response", [])
+        text = data[0].get("text",'').replace('\xa0', ' ')
+        aa = json.loads(text) if text else {}
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
-        mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
+        mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlysis = {emotion_analysis}")
     
     sentiment_classification = get_disposition_classification(query = "", session_id = session_id, session_data_cache = session_data, session_mdl_obj= session_mdl_obj) if messages and len(messages) > 0 else {"disposition"}
        
