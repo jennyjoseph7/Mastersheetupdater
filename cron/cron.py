@@ -2375,7 +2375,6 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
     start = time.time()
     logger.info(f"[CRON][POLL] Polling for completed session — lead_id={lead_id} (timeout={timeout_secs}s)")
 
-
     # ── Fast-fail: check if contact_status table exists before looping ──────────
     # pg.list() silently swallows UndefinedTable (via `finally: return`).
     # fetch_all() properly propagates it, so we can detect wrong DB early.
@@ -2392,10 +2391,10 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
     while time.time() - start < timeout_secs:
         try:
             with get_pg_connector() as pg:
-                cs = list(
+                cs= list(
                     pg.list_order_by("contact_status", {"lead_id": lead_id}, order_by="created")
                 )
-                cs = cs[0] if cs and isinstance(cs, list) and len(cs) > 0 else None
+                cs=cs[0] if cs and isinstance(cs,list) and len(cs) > 0 else None 
                 if not cs:
                     logger.info(
                         f"[CRON][POLL] No contact_status found for lead_id={lead_id}, waiting..."
@@ -2483,6 +2482,8 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
 
 
 
+
+
 @gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
 def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
     # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
@@ -2564,8 +2565,9 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
 
                 
                 crm = load_crm(
-                crm_name=crm_name,
-                sheet_name=sheet_url
+                    crm_name=crm_name,
+                    credentials=crm_details.get("api_key"),   # dict from DB
+                    sheet_url=crm_details.get("sheet_url"),   # full URL from DB
                 )
 
                 leads = crm.list_pre_sales_leads(

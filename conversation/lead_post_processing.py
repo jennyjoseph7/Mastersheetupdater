@@ -396,9 +396,16 @@ def post_session_process(*args, **kwargs):
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
         try:
-            crm_sheet = sales_campaign_data.get("crm_source_details", {}).get('sheet_url', '')
-            crm_phone = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
-            crm_update = {"sheet_name": crm_sheet, "phone_number": crm_phone}
+            crm_source = sales_campaign_data.get("crm_source_details", {}) or {}
+            crm_sheet  = crm_source.get('sheet_url', '')
+            crm_credentials = crm_source.get('api_key')       # dict from DB
+            crm_phone  = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
+            crm_update = {
+                "sheet_url":   crm_sheet,         # full URL → open_by_key
+                "sheet_name":  crm_sheet,         # legacy compat
+                "phone_number": crm_phone,
+                "credentials": crm_credentials,  # api_key dict from DB
+            }
             crm_update.update({k: v for k, v in updated_lead_data.items() if k not in crm_update})
             if crm_sheet and crm_phone:
                 gryd.create_async_task(
