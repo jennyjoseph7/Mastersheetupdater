@@ -48,13 +48,13 @@ gryd.set_queue_manager()
 logger = hp.get_logger(gryd.SERVICE)
 
 try:
-    from agents.disposition_templates_creator import (
+    from agents.whatsapp_template_agents.disposition_templates_creator import (
         DispositionTemplatesCreator,
         _DECISION_TIMEFRAME_TAGS,
         _TRIED_TO_REACH_TAGS,
     )
 except ImportError:
-    from disposition_templates_creator import (  # type: ignore
+    from whatsapp_template_agents.disposition_templates_creator import (  # type: ignore
         DispositionTemplatesCreator,
         _DECISION_TIMEFRAME_TAGS,
         _TRIED_TO_REACH_TAGS,

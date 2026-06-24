@@ -12,17 +12,30 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from config import  AUTOCRM_AGENT_SERVICE_NAME, gryd, hp
-gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
+from config import AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME, gryd, hp
+gryd.SERVICE = AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME
 gryd.set_queue_manager()
-
+logger = gryd.hp.get_logger(gryd.SERVICE)
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
 from agents.data_attributes_retriever_agent import data_attribute_retriever
 
-from pprint import pprint
 
+def _fetch_campaign_objective(campaign_objective_id):
+    """Fetch the campaign_objective record for the given id."""
+    record = pg.get(
+        "campaign_objective",
+        "campaign_objective_id",
+        campaign_objective_id,
+    )
+    if isinstance(record, list):
+        record = record[0] if record else None
+    if not record:
+        raise ValueError(
+            f"campaign_objective not found for id='{campaign_objective_id}'"
+        )
+    return record
 
 
 class get_rcs_template_agent(BaseAgent):
@@ -96,7 +109,7 @@ class get_rcs_template_agent(BaseAgent):
                 }
             ))
 
-        #print("records",records)
+        logger.info(f"Retrieved records: {records}")
 
         return records or []
     
@@ -105,7 +118,7 @@ class get_rcs_template_agent(BaseAgent):
         if isinstance(tpl_vars, list):
             return tpl_vars
         
-        print("tpl_vars",tpl_vars)
+        logger.info(f"Processing template variables: {tpl_vars}")
 
         if isinstance(tpl_vars, str):
             # Postgres array "{a,b,c}"
@@ -127,7 +140,7 @@ class get_rcs_template_agent(BaseAgent):
         # template_variables is a list of lists - process each list
         data_attrs_list = self.template_variables or []
 
-        print("data_attrs_list", data_attrs_list)
+        logger.info(f"data_attrs_list : {data_attrs_list}")
 
         if not isinstance(data_attrs_list, list):
             data_attrs_list = [data_attrs_list]
@@ -213,17 +226,33 @@ class get_rcs_template_agent(BaseAgent):
 
 
 @gryd.is_a_task('get_rcs_template', logger_param='logger', job_param='job')
-def get_rcs_template(lead_info=None, lead_id=None, campaign_type=None, campaign_objective=None, dealership_id=None, is_disposition=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
+def get_rcs_template(lead_info=None, lead_id=None, campaign_objective_id=None, campaign_type=None, dealership_id=None, is_disposition=None, disposition=None, disposition_details=None,language = None, logger=None, job=None, **kwargs):
 
         logger = logger or gryd.hp.get_logger(__name__)
         logger.info("Getting RCS Template...")
         if dealership_id is None:
             dealership_id = 'daveai'
 
+        campaign_objective_id = campaign_objective_id or kwargs.get("campaign_objective_id")
+        if not campaign_objective_id:
+            raise ValueError("campaign_objective_id must be provided")
+
         if is_disposition and (not disposition or not disposition_details):
             raise ValueError("disposition and disposition_details must be provided when is_disposition is True")
 
         try:
+            campaign_objective_record = _fetch_campaign_objective(campaign_objective_id)
+            campaign_objective_name = campaign_objective_record.get("campaign_objective_name", "")
+            if not campaign_objective_name:
+                raise ValueError(
+                    f"campaign_objective '{campaign_objective_id}' has no campaign_objective_name"
+                )
+            campaign_type = campaign_type or campaign_objective_record.get("campaign_type", "")
+            logger.info(
+                f"Resolved campaign objective '{campaign_objective_name}' "
+                f"(campaign_type='{campaign_type}') from id '{campaign_objective_id}'"
+            )
+
             lead_info = lead_info or {}
             lead_info.update({k: v for k, v in kwargs.items() if v is not None})
             updates = {
@@ -250,7 +279,7 @@ def get_rcs_template(lead_info=None, lead_id=None, campaign_type=None, campaign_
             data = {
                 "campaign_type": campaign_type,
                 "template_variables": attribute_list_sets,
-                "campaign_objective" : campaign_objective,
+                "campaign_objective": [campaign_objective_name],
                 "dealership_id" : dealership_id,
                 "is_disposition": is_disposition,
                 "disposition": disposition or "",

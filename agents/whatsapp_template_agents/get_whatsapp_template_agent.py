@@ -4,11 +4,14 @@ import re
 import random
 
 try:
-    from .base_agent import BaseAgent#, gryd
+    from agents.base_agent import BaseAgent
 except ImportError:
-    from base_agent import BaseAgent#, gryd
+    from base_agent import BaseAgent
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# agents/whatsapp_template_agents/<this file> → up three levels = project root
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
@@ -87,7 +90,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0].lower(),
+                       "campaign_objective_name" : self.campaign_objective[0],
                         "channel" : "whatsapp_chat",
                         "status" : "approved",
                         "communication_credentials_id" : communication_credentials_id,
@@ -100,7 +103,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0].lower(),
+                       "campaign_objective_name" : self.campaign_objective[0],
                        "channel" : "whatsapp_chat",
                        "status" : "approved",
                        "communication_credentials_id" : communication_credentials_id,
