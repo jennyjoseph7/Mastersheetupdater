@@ -58,7 +58,9 @@ def generate_fluentbit_conf(host, port, log_files, service_name):
             "match" : service_name,
             "host" : host,
             "port" : port,
-            "uri" : "loki/api/v1/push",
+            "tls" : "on",
+            "tls.verify" : "on",
+            "uri" : "/loki/api/v1/push",
             "labels" : f"service_name={service_name}"
         }
         outputs.append(output_config)
