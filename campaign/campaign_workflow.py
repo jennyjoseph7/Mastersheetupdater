@@ -494,7 +494,7 @@ def determine_campaign_next_action(
         channel = AUTOCRM_CHEAPEST_CHANNELS[0]
     workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
     if not disposition:
-        disposition = "queued"
+        disposition = lead.get("disposition") or "queued"
     disposition = disposition.lower() 
     disposition = DISPOSITION_MAP.get(disposition)
     if not disposition:
@@ -546,7 +546,8 @@ def determine_campaign_next_action(
             "user_id": _values.get('user', {}).get('id'),
             "disposition_tag": disposition,
             "disposition_detail_tag": lead.get('disposition_detail'),
-            "channel_identifier": channel_identifier
+            "channel_identifier": channel_identifier,
+            "preferred_language": lead.get("preferred_language")
         })
         lead_model.update(lead_id, {
             "next_channel": None,
