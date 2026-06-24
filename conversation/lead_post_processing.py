@@ -223,6 +223,7 @@ def post_session_process(*args, **kwargs):
     if messages:
         sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="databricks-gemini-3.1-flash-lite")
         aa = sentiment_agent.run()
+        mlogger.info("response_from_sentiment_agent == {}".format(aa))
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlusis = {emotion_analysis}")
