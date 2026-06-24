@@ -87,7 +87,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0],
+                       "campaign_objective_name" : self.campaign_objective[0].lower(),
                         "channel" : "whatsapp_chat",
                         "status" : "approved",
                         "communication_credentials_id" : communication_credentials_id,
@@ -100,7 +100,7 @@ class get_whatsapp_template_agent(BaseAgent):
             records = list(pg.list(
                 table_name="template",
                 where={"campaign_type": self.campaign_type,
-                       "campaign_objective_name" : self.campaign_objective[0],
+                       "campaign_objective_name" : self.campaign_objective[0].lower(),
                        "channel" : "whatsapp_chat",
                        "status" : "approved",
                        "communication_credentials_id" : communication_credentials_id,

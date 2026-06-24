@@ -657,7 +657,8 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
     const searchParams = new URLSearchParams();
 
     // Default required params
-    searchParams.append("session_live", "True");
+    const sessionLive = params.session_live !== undefined ? params.session_live : false;
+    searchParams.append("session_live", sessionLive ? "True" : "False");
     searchParams.append("dealership_id", dealershipId);
 
     // Apply Pagination
