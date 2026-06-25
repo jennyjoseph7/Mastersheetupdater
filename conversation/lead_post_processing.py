@@ -179,7 +179,21 @@ def post_session_process(*args, **kwargs):
         mlogger.info("session_mdl_obj not found for session_id == {}".format(session_id))
         yield from yield_error("error","session_mdl_obj not found",*args, **kwargs)
         return
-    
+    session_data_clean = session_data.get("data", {}) if session_data else {}
+    campaign_data = session_data_clean.get("campaign_data", {}) if session_data_clean else {}
+    campaign_type_val = campaign_data.get("campaign_type") or session_mdl_obj.get("campaign_type") or ""
+    campaign_type = "pre_sales" if campaign_type_val.lower() == "pre-sales" else "post_sales"
+    lead_id = session_data_clean.get("user_data", {}).get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
+
+    if lead_id:
+        try:
+            with get_pg_connector() as pg:
+                session_hist = auto_val.plot_lead_session_history_func(ins=None, lead_attribute=lead_id)
+                update_session_hist = pg.update(f"{campaign_type}_lead", f"{campaign_type}_lead_id", lead_id, {"lead_timeline": session_hist})
+                mlogger.info(f"Updated session history in lead data (early update) == {update_session_hist}")
+        except Exception as e:
+            mlogger.error(f"Failed to update session history early: {e}")
+
     if session_mdl_obj.get("status") in ["busy",
                                         "no-answer",
                                         "cancelled",
