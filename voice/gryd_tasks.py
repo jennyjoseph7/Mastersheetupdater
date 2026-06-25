@@ -154,6 +154,12 @@ def trigger_voice_call(*args, **kwargs):
                 "phone_number":format_phone_number(user_data.get("mobile_number")),
                 "start_time": hp.epoch()                
             }
+
+            if user_data.get("session_id"):
+                logger.info(f"Session ID provided {user_data.get('session_id')} this is inbound missed call scenario. Origin changed to inbound_outbound")
+                session_obj["session_id"]  = user_data.get("session_id")
+                session_obj["origin"] = "inbound_outbound"
+                
             session_data = session_model.post(session_obj)
 
             #if agent_id passed in task kwargs
