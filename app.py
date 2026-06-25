@@ -271,6 +271,11 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
         raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
     return dealership
 
+@app.route('/blacklist-a-number', methods = ["POST"])
+@gryd_routes.payload_decorator()
+def blacklist_a_number_func(phone_number):
+    pass
+
 
 app.register_blueprint(ai_service_app.ai_service_routes)
 app.register_blueprint(db_routes)
@@ -282,6 +287,8 @@ app.register_blueprint(cohort_bp)
 app.register_blueprint(gryd_orchestration_bp)
 app.register_blueprint(campaign_test_routes)
 
+
+logger.info("Gryd's tasks: %s", gryd.LIST_OF_TASKS.keys())
 
 @app.route('/campaign/workflows', methods=["GET"])
 @app.route('/campaign/workflows/<frmt>', methods=["GET"])
