@@ -683,7 +683,7 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
     if (params.campaign_type)
       searchParams.append("campaign_type", params.campaign_type);
 
-    // Apply Date Range - Sending as a comma-separated string: created=min,max
+    // Apply Date Range - Sending as a comma-separated string: updated=min,max
     if (params.start_date || params.end_date) {
       let startEpoch = 0; // Default minimum epoch if no start date is selected
       let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
@@ -701,7 +701,7 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
       }
 
       // Append the single parameter with the comma-separated format
-      searchParams.append("created", `${startEpoch},${endEpoch}`);
+      searchParams.append("updated", `${startEpoch},${endEpoch}`);
     }
 
     const url = `${APP_BASE_URL}/gryd/db/objects/session?${searchParams.toString()}`;

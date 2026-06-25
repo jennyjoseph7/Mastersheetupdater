@@ -180,7 +180,7 @@ export default function LiveStatusPage() {
   // Pagination & Sorting (Server-Side)
   const [p, setP] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState("created");
+  const [sortBy, setSortBy] = useState("updated");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -379,7 +379,7 @@ export default function LiveStatusPage() {
       "Email",
       "Status",
       "Campaign Type",
-      "Created Date",
+      "Updated Date",
       "Recording Link",
     ];
     const csvRows = [headers.join(",")];
@@ -394,7 +394,7 @@ export default function LiveStatusPage() {
         `"${session.email || "-"}"`,
         `"${session.status}"`,
         `"${formatCampaignType(session.campaign_type)}"`,
-        `"${formatTimestamp(session.created)}"`,
+        `"${formatTimestamp(session.updated)}"`,
         `"${session.call_recording || "No Recording"}"`,
       ];
       csvRows.push(row.join(","));
@@ -709,7 +709,7 @@ export default function LiveStatusPage() {
                         <SortableHeader title="Status" column="status" />
                         <SortableHeader title="Type" column="campaign_type" />
                         <TableHead>Recording</TableHead>
-                        <SortableHeader title="Created" column="created" />
+                        <SortableHeader title="Updated" column="updated" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -775,10 +775,10 @@ export default function LiveStatusPage() {
                           <TableCell>
                             <div
                               className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap cursor-help"
-                              title={formatTimestamp(session.created)}
+                              title={formatTimestamp(session.updated)}
                             >
                               <Clock className="h-3 w-3" />
-                              {getTimeAgo(session.created)}
+                              {getTimeAgo(session.updated)}
                             </div>
                           </TableCell>
                         </TableRow>
