@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import {
   LineChart,
   Line,
@@ -58,7 +67,7 @@ interface DailySummaryItem {
 }
 
 const COLORS = [
-  "#8b5cf6",
+  "var(--primary)",
   "#3b82f6",
   "#10b981",
   "#f59e0b",
@@ -99,6 +108,16 @@ function DealershipSummaryContent() {
   const initialRange = useMemo(() => getWeekRange(), []);
 
   const [dealershipId, setDealershipId] = useState(dealershipIdParam);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("dealership_id");
+      if (saved) {
+        setDealershipId(saved);
+      }
+    }
+  }, []);
+
   const [data, setData] = useState<DailySummaryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,20 +134,22 @@ function DealershipSummaryContent() {
       setLoading(true);
       setError(null);
 
-      let url = `/gryd/db/objects/daily_dealership_summary?sort_by=updated&sort_reverse=true&dealership_id=${dealershipId}&page_size=1000`;
+      let url = `/gryd/db/objects/daily_dealership_summary?sort_by=activity_date&sort_reverse=true&dealership_id=${dealershipId}&page_size=1000`;
 
       if (startDate && endDate) {
-        // Parse startDate to local midnight (local timezone seconds)
-        const startD = new Date(startDate);
-        startD.setHours(0, 0, 0, 0);
-        const startSec = Math.floor(startD.getTime() / 1000);
+        const parseDateToUtcMs = (dateStr: string, isEnd: boolean) => {
+          const [year, month, day] = dateStr.split("-").map(Number);
+          if (isEnd) {
+            return Date.UTC(year, month - 1, day, 23, 59, 59, 999);
+          } else {
+            return Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+          }
+        };
 
-        // Parse endDate to local 23:59:59.999 (local timezone seconds with ms)
-        const endD = new Date(endDate);
-        endD.setHours(23, 59, 59, 999);
-        const endSec = endD.getTime() / 1000;
+        const startMs = parseDateToUtcMs(startDate, false);
+        const endMs = parseDateToUtcMs(endDate, true);
 
-        url += `&activity_date=${startSec},${endSec}`;
+        url += `&activity_date=${startMs},${endMs}`;
       }
 
       const res = await api(url);
@@ -153,9 +174,19 @@ function DealershipSummaryContent() {
           typeof item.activity_date === "string"
             ? parseFloat(item.activity_date)
             : item.activity_date;
-        const dateObj = !isNaN(ms)
-          ? new Date(ms > 1e11 ? ms : ms * 1000)
-          : new Date();
+
+        let dateObj = new Date();
+        if (!isNaN(ms)) {
+          try {
+            dateObj = new Date(ms > 1e11 ? ms : ms * 1000);
+            if (isNaN(dateObj.getTime())) {
+              dateObj = new Date();
+            }
+          } catch {
+            dateObj = new Date();
+          }
+        }
+
         const formattedDate = dateObj.toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -203,9 +234,16 @@ function DealershipSummaryContent() {
       ) {
         return false;
       }
+      // Date filter
+      if (startDate && item.isodate < startDate) {
+        return false;
+      }
+      if (endDate && item.isodate > endDate) {
+        return false;
+      }
       return true;
     });
-  }, [parsedData, selectedChannels, searchQuery]);
+  }, [parsedData, selectedChannels, searchQuery, startDate, endDate]);
 
   // Compute KPI totals
   const metrics = useMemo(() => {
@@ -382,63 +420,51 @@ function DealershipSummaryContent() {
 
   return (
     <div className="flex flex-col space-y-6 pb-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-blue-500 to-emerald-400 bg-clip-text text-transparent">
-            Dealership Performance Summary
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Real-time metric plots and channel analysis for{" "}
-            <strong>{dealershipId}</strong>
-          </p>
-        </div>
+      <PageHeader
+        title="Dealership Performance Summary"
+        description={`Real-time metric plots and channel analysis for ${dealershipId}`}
+        actions={
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border rounded-lg text-xs font-semibold text-muted-foreground h-9">
+              <span>Dealership:</span>
+              <span className="text-foreground font-bold">{dealershipId}</span>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center space-x-2 bg-card border border-border/50 rounded-lg px-3 py-1.5 shadow-sm">
-            <span className="text-xs text-muted-foreground font-semibold">
-              Dealership:
-            </span>
-            <input
-              type="text"
-              value={dealershipId}
-              onChange={(e) => setDealershipId(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm font-bold text-primary w-36 focus:ring-0"
-              placeholder="Dealership ID"
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchData}
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              Sync
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleExportCSV}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              CSV Export
+            </Button>
           </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchData}
-            disabled={loading}
-            className="gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Sync
-          </Button>
-
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleExportCSV}
-            className="gap-2 bg-violet-600 hover:bg-violet-700"
-          >
-            <Download className="h-4 w-4" />
-            CSV Export
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* FILTER PANEL */}
-      <Card className="border-border/50 bg-card/40 backdrop-blur-md">
-        <CardHeader className="py-3 px-6 flex flex-row items-center space-x-2">
-          <Filter className="h-4 w-4 text-violet-500" />
-          <CardTitle className="text-sm font-bold">
-            Interactive Dashboard Filters
+      <Card>
+        <CardHeader className="flex flex-row items-center space-x-2 pb-2">
+          <Filter className="h-4 w-4 text-primary" />
+          <CardTitle className="text-sm font-medium">
+            Dashboard Filters
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-6 pb-4 pt-1 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Channel Filters */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground">
@@ -451,11 +477,7 @@ function DealershipSummaryContent() {
                   <Badge
                     key={ch}
                     variant={active ? "default" : "outline"}
-                    className={`cursor-pointer capitalize text-xs transition-all ${
-                      active
-                        ? "bg-violet-600 hover:bg-violet-700 text-white"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
+                    className="cursor-pointer capitalize text-xs transition-all"
                     onClick={() => toggleChannelSelection(ch)}
                   >
                     {ch.replace(/_/g, " ")}
@@ -471,18 +493,18 @@ function DealershipSummaryContent() {
               Activity Date Range
             </label>
             <div className="flex items-center space-x-2">
-              <input
+              <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="bg-background border border-border/50 rounded px-2.5 py-1 text-xs outline-none text-primary focus:border-violet-500 w-full"
+                className="bg-transparent text-xs"
               />
               <span className="text-muted-foreground text-xs">to</span>
-              <input
+              <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="bg-background border border-border/50 rounded px-2.5 py-1 text-xs outline-none text-primary focus:border-violet-500 w-full"
+                className="bg-transparent text-xs"
               />
             </div>
           </div>
@@ -492,14 +514,14 @@ function DealershipSummaryContent() {
             <label className="text-xs font-semibold text-muted-foreground">
               Search Channels
             </label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
-              <input
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search channel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-background border border-border/50 rounded pl-9 pr-3 py-1 text-xs outline-none text-primary focus:border-violet-500 w-full"
+                className="pl-9 text-xs bg-transparent"
               />
             </div>
           </div>
@@ -526,16 +548,14 @@ function DealershipSummaryContent() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="border-border/50 bg-card/60 backdrop-blur-md relative overflow-hidden group hover:shadow-md transition-all">
+          <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
-            <CardHeader className="py-4 pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                Campaigns
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Campaigns</CardTitle>
               <Megaphone className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold">
                 {metrics.campaigns.toLocaleString()}
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -544,16 +564,16 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/60 backdrop-blur-md relative overflow-hidden group hover:shadow-md transition-all">
+          <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-violet-500" />
-            <CardHeader className="py-4 pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
                 Leads Triggered
               </CardTitle>
               <Users className="h-4 w-4 text-violet-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold">
                 {metrics.leads.toLocaleString()}
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -562,52 +582,48 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/60 backdrop-blur-md relative overflow-hidden group hover:shadow-md transition-all">
+          <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-sky-500" />
-            <CardHeader className="py-4 pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                Connected
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Connected</CardTitle>
               <PhoneCall className="h-4 w-4 text-sky-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold">
                 {metrics.connected.toLocaleString()}
               </div>
-              <p className="text-[10px] text-emerald-400 font-semibold mt-1">
+              <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold mt-1">
                 {metrics.connectRate.toFixed(1)}% Connect Rate
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/60 backdrop-blur-md relative overflow-hidden group hover:shadow-md transition-all">
+          <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
-            <CardHeader className="py-4 pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                Converted
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Converted</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold">
                 {metrics.converted.toLocaleString()}
               </div>
-              <p className="text-[10px] text-emerald-400 font-semibold mt-1">
+              <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold mt-1">
                 {metrics.overallConversionRate.toFixed(1)}% Sales Rate
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 bg-card/60 backdrop-blur-md relative overflow-hidden group hover:shadow-md transition-all">
+          <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-rose-500" />
-            <CardHeader className="py-4 pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
                 Failed / Pending
               </CardTitle>
               <AlertTriangle className="h-4 w-4 text-rose-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">
+              <div className="text-2xl font-bold">
                 {(metrics.failed + metrics.pending).toLocaleString()}
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
@@ -624,10 +640,10 @@ function DealershipSummaryContent() {
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Trend Chart */}
-            <Card className="border-border/50 bg-card/45 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-violet-500" />
+                  <TrendingUp className="h-4 w-4 text-primary" />
                   Performance Trends Over Time
                 </CardTitle>
                 <CardDescription>
@@ -641,41 +657,53 @@ function DealershipSummaryContent() {
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
-                        stroke="rgba(255,255,255,0.05)"
+                        stroke="var(--border)"
                       />
                       <XAxis
                         dataKey="date"
                         tick={{
-                          fill: "hsl(var(--muted-foreground))",
+                          fill: "var(--muted-foreground)",
                           fontSize: 10,
                         }}
-                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        axisLine={{ stroke: "var(--border)" }}
+                        tickLine={{ stroke: "var(--border)" }}
                       />
                       <YAxis
                         tick={{
-                          fill: "hsl(var(--muted-foreground))",
+                          fill: "var(--muted-foreground)",
                           fontSize: 10,
                         }}
-                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        axisLine={{ stroke: "var(--border)" }}
+                        tickLine={{ stroke: "var(--border)" }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(24, 24, 27, 0.95)",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.5)",
+                          backgroundColor: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
+                          color: "var(--foreground)",
+                        }}
+                        itemStyle={{
+                          color: "var(--foreground)",
+                        }}
+                        labelStyle={{
+                          color: "var(--muted-foreground)",
+                          fontWeight: "bold",
                         }}
                       />
                       <Legend
                         verticalAlign="top"
                         height={36}
-                        wrapperStyle={{ fontSize: 12 }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          color: "var(--foreground)",
+                        }}
                       />
                       <Line
                         type="monotone"
                         dataKey="leads"
                         name="Leads Triggered"
-                        stroke="#8b5cf6"
+                        stroke="var(--primary)"
                         strokeWidth={2.5}
                         activeDot={{ r: 6 }}
                       />
@@ -701,10 +729,10 @@ function DealershipSummaryContent() {
             </Card>
 
             {/* Funnel Dropoff Chart */}
-            <Card className="border-border/50 bg-card/45 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <BarChart className="h-4 w-4 text-blue-500" />
+                  <BarChart className="h-4 w-4 text-primary" />
                   Conversion Funnel
                 </CardTitle>
                 <CardDescription>
@@ -723,18 +751,18 @@ function DealershipSummaryContent() {
                           <span className="text-muted-foreground">
                             {stage.value.toLocaleString()}
                           </span>
-                          <span className="font-bold text-violet-400">
+                          <span className="font-bold text-primary">
                             ({stage.percentage}%)
                           </span>
                         </div>
                       </div>
                       <div className="w-full bg-secondary/30 h-6 rounded-full overflow-hidden border border-border/20">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-600 transition-all duration-1000 flex items-center justify-end pr-3"
+                          className="h-full rounded-full bg-primary transition-all duration-1000 flex items-center justify-end pr-3"
                           style={{ width: `${stage.percentage}%` }}
                         >
                           {stage.percentage > 10 && (
-                            <span className="text-[10px] font-bold text-white">
+                            <span className="text-[10px] font-bold text-primary-foreground">
                               {stage.percentage}%
                             </span>
                           )}
@@ -749,7 +777,7 @@ function DealershipSummaryContent() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Donut Chart: Channel Share */}
-            <Card className="border-border/50 bg-card/45 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold">
                   Lead Share by Channel
@@ -780,15 +808,26 @@ function DealershipSummaryContent() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(24, 24, 27, 0.95)",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "8px",
+                          backgroundColor: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
+                          color: "var(--foreground)",
+                        }}
+                        itemStyle={{
+                          color: "var(--foreground)",
+                        }}
+                        labelStyle={{
+                          color: "var(--muted-foreground)",
+                          fontWeight: "bold",
                         }}
                       />
                       <Legend
                         verticalAlign="bottom"
                         iconType="circle"
-                        wrapperStyle={{ fontSize: 11 }}
+                        wrapperStyle={{
+                          fontSize: 11,
+                          color: "var(--foreground)",
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -797,7 +836,7 @@ function DealershipSummaryContent() {
             </Card>
 
             {/* Bar Chart: Channel efficiency */}
-            <Card className="border-border/50 bg-card/45 backdrop-blur-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base font-bold">
                   Channel Connect & Sales Efficiency
@@ -813,35 +852,48 @@ function DealershipSummaryContent() {
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
-                        stroke="rgba(255,255,255,0.05)"
+                        stroke="var(--border)"
                       />
                       <XAxis
                         dataKey="name"
                         tick={{
-                          fill: "hsl(var(--muted-foreground))",
+                          fill: "var(--muted-foreground)",
                           fontSize: 10,
                         }}
-                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        axisLine={{ stroke: "var(--border)" }}
+                        tickLine={{ stroke: "var(--border)" }}
                       />
                       <YAxis
                         tick={{
-                          fill: "hsl(var(--muted-foreground))",
+                          fill: "var(--muted-foreground)",
                           fontSize: 10,
                         }}
-                        axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                        axisLine={{ stroke: "var(--border)" }}
+                        tickLine={{ stroke: "var(--border)" }}
                         unit="%"
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(24, 24, 27, 0.95)",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "8px",
+                          backgroundColor: "var(--card)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
+                          color: "var(--foreground)",
+                        }}
+                        itemStyle={{
+                          color: "var(--foreground)",
+                        }}
+                        labelStyle={{
+                          color: "var(--muted-foreground)",
+                          fontWeight: "bold",
                         }}
                       />
                       <Legend
                         verticalAlign="top"
                         height={36}
-                        wrapperStyle={{ fontSize: 12 }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          color: "var(--foreground)",
+                        }}
                       />
                       <Bar
                         dataKey="Connect Rate (%)"
@@ -861,7 +913,7 @@ function DealershipSummaryContent() {
           </div>
 
           {/* DATA EXPLORER TABLE */}
-          <Card className="border-border/50 bg-card/45 backdrop-blur-sm">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base font-bold">
                 Daily Analytics Breakdown Explorer
@@ -873,82 +925,79 @@ function DealershipSummaryContent() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto border border-border/30 rounded-lg">
-                <table className="w-full text-sm text-left text-muted-foreground border-collapse">
-                  <thead className="text-xs uppercase bg-muted/65 text-muted-foreground border-b border-border/30">
-                    <tr>
-                      <th className="px-6 py-3 font-semibold text-primary">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="px-6 font-semibold">
                         Activity Date
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold">
                         Channel
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Campaigns
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Leads
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Connected
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Converted
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Failed
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-primary text-right">
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Pending
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filteredData
                       .slice()
                       .reverse()
                       .map((row, i) => (
-                        <tr
-                          key={row.daily_dealership_summary_id || i}
-                          className="border-b border-border/25 hover:bg-muted/15 transition-colors"
-                        >
-                          <td className="px-6 py-3 font-medium text-primary">
+                        <TableRow key={row.daily_dealership_summary_id || i}>
+                          <TableCell className="px-6 font-medium text-foreground">
                             {row.formattedDate}
-                          </td>
-                          <td className="px-6 py-3 capitalize">
+                          </TableCell>
+                          <TableCell className="px-6 capitalize">
                             {row.channel.replace(/_/g, " ")}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_campaign_triggered.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_leads_triggered.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_connected.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_converted.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_failed.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_pending.toLocaleString()}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
                     {filteredData.length === 0 && (
-                      <tr>
-                        <td
+                      <TableRow>
+                        <TableCell
                           colSpan={8}
                           className="px-6 py-8 text-center text-muted-foreground"
                         >
                           No matching records found for active filters.
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </CardContent>
           </Card>
