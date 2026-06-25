@@ -155,10 +155,9 @@ def trigger_voice_call(*args, **kwargs):
                 "start_time": hp.epoch()                
             }
 
-            if user_data.get("session_id"):
+            if user_data.get("from_inbound", False):
                 logger.info(f"Session ID provided {user_data.get('session_id')} this is inbound missed call scenario. Origin changed to inbound_outbound")
-                session_obj["session_id"]  = user_data.get("session_id")
-                session_obj["origin"] = "inbound_outbound"
+                session_obj["origin"] = "inbound"
                 
             session_data = session_model.post(session_obj)
 
