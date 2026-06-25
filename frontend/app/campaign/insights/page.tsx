@@ -25,6 +25,8 @@ import {
   Clock,
   RefreshCw,
   X,
+  PhoneOutgoing,
+  PhoneIncoming,
 } from "lucide-react";
 import {
   BarChart,
@@ -109,6 +111,31 @@ const PIE_COLORS = [
   "#3B82F6",
   "#F43F5E",
 ];
+
+function parseTimelineCounts(timeline?: string) {
+  let outboundCalls = 0;
+  let inboundCalls = 0;
+  let whatsapp = 0;
+
+  if (!timeline) return { outboundCalls, inboundCalls, whatsapp };
+
+  const steps = timeline.split("->").map(step => step.trim().toLowerCase());
+  for (const step of steps) {
+    const actionPart = step.split("(")[0].trim();
+    
+    if (actionPart.includes("whatsapp")) {
+      whatsapp++;
+    } else if (actionPart.includes("voice") || actionPart.includes("phone")) {
+      if (actionPart.includes("inbound")) {
+        inboundCalls++;
+      } else {
+        outboundCalls++;
+      }
+    }
+  }
+
+  return { outboundCalls, inboundCalls, whatsapp };
+}
 
 // --- TypeScript Interfaces ---
 
@@ -597,6 +624,9 @@ function CampaignInsightsContent() {
   // --- Sessions Table, Filters & Pagination State ---
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionStatus, setSessionStatus] = useState("all");
+  const [sessionOrigin, setSessionOrigin] = useState("all");
+  const [sessionLiveFilter, setSessionLiveFilter] = useState("all");
+  const [sessionDisposition, setSessionDisposition] = useState("all");
   const [sessionStartDate, setSessionStartDate] = useState("");
   const [sessionEndDate, setSessionEndDate] = useState("");
   const [sessionSortConfig, setSessionSortConfig] = useState<{
@@ -780,12 +810,15 @@ function CampaignInsightsContent() {
         sessionPageSize === -1 ? sessionsCount || 10 : sessionPageSize,
         sessionSortConfig.key,
         sessionSortConfig.direction,
-        "all",
+        sessionStatus,
         sessionStartDate,
         sessionEndDate,
+        sessionOrigin,
+        sessionLiveFilter,
+        sessionDisposition,
       ]
       : null,
-    ([_, id, page, size, sortKey, sortDir, status, startDate, endDate]) =>
+    ([_, id, page, size, sortKey, sortDir, status, startDate, endDate, origin, liveFilter, disposition]) =>
       fetchCampaignSessions({
         campaignId: id as string,
         page_number: page as number,
@@ -794,6 +827,10 @@ function CampaignInsightsContent() {
         sort_reverse: sortDir === "desc" ? "true" : "false",
         start_date: startDate as string,
         end_date: endDate as string,
+        status: status === "all" ? undefined : (status as string),
+        origin: origin === "all" ? undefined : (origin as string),
+        session_live: liveFilter === "all" ? undefined : (liveFilter === "true" ? "True" : "False"),
+        disposition: disposition === "all" ? undefined : (disposition as string),
       }),
 
     SWR_OPTIONS,
@@ -1618,6 +1655,21 @@ function CampaignInsightsContent() {
                                 Email {getSortIcon("email")}
                               </div>
                             </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="Outbound Calls">
+                              <div className="flex justify-center">
+                                <PhoneOutgoing className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="Inbound Calls">
+                              <div className="flex justify-center">
+                                <PhoneIncoming className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="WhatsApp Messages">
+                              <div className="flex justify-center">
+                                <MessageSquare className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              </div>
+                            </TableHead>
                             <TableHead
                               className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("disposition")}
@@ -1659,6 +1711,8 @@ function CampaignInsightsContent() {
                               lead.lead_id ||
                               `lead-${index}`;
 
+                            const { outboundCalls, inboundCalls, whatsapp } = parseTimelineCounts(lead.lead_timeline);
+
                             return (
                               <TableRow
                                 key={leadId}
@@ -1674,6 +1728,33 @@ function CampaignInsightsContent() {
                                 </TableCell>
                                 <TableCell className="text-slate-500 text-xs">
                                   {lead.email || "-"}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {outboundCalls > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800">
+                                      {outboundCalls}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {inboundCalls > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">
+                                      {inboundCalls}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {whatsapp > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-green-700 bg-green-50 border border-green-200 rounded-full dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                                      {whatsapp}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Badge
@@ -1839,6 +1920,65 @@ function CampaignInsightsContent() {
                     />
                   </div>
 
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionOrigin}
+                    onChange={(e) => {
+                      setSessionOrigin(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Origin: All</option>
+                    <option value="outbound">Outbound</option>
+                    <option value="inbound">Inbound</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionLiveFilter}
+                    onChange={(e) => {
+                      setSessionLiveFilter(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Live: All</option>
+                    <option value="true">Live</option>
+                    <option value="false">Ended</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionStatus}
+                    onChange={(e) => {
+                      setSessionStatus(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Status: All</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="busy">Busy</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionDisposition}
+                    onChange={(e) => {
+                      setSessionDisposition(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Disposition: All</option>
+                    <option value="converted">Converted</option>
+                    <option value="busy">Busy</option>
+                    <option value="reached">Reached</option>
+                    <option value="engaged">Engaged</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="queued">Queued</option>
+                    <option value="failed">Failed</option>
+                  </select>
+
                   {/* SERVER Page Size */}
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
@@ -1938,14 +2078,24 @@ function CampaignInsightsContent() {
                                 Phone {getSessionSortIcon("phone_number")}
                               </div>
                             </TableHead>
-                            <TableHead className="font-semibold text-slate-600">
+                             <TableHead className="font-semibold text-slate-600">
                               Channel
                             </TableHead>
-                            <TableHead className="font-semibold text-slate-600">
-                              Origin
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group"
+                              onClick={() => handleSessionSort("origin")}
+                            >
+                              <div className="flex items-center">
+                                Origin {getSessionSortIcon("origin")}
+                              </div>
                             </TableHead>
-                            <TableHead className="font-semibold text-slate-600 text-center">
-                              Live
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
+                              onClick={() => handleSessionSort("session_live")}
+                            >
+                              <div className="flex items-center justify-center">
+                                Live {getSessionSortIcon("session_live")}
+                              </div>
                             </TableHead>
                             <TableHead
                               className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
@@ -1955,8 +2105,13 @@ function CampaignInsightsContent() {
                                 Status {getSessionSortIcon("status")}
                               </div>
                             </TableHead>
-                            <TableHead className="font-semibold text-slate-600 text-center">
-                              Disposition
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
+                              onClick={() => handleSessionSort("disposition")}
+                            >
+                              <div className="flex items-center justify-center">
+                                Disposition {getSessionSortIcon("disposition")}
+                              </div>
                             </TableHead>
                             <TableHead className="font-semibold text-slate-600">
                               Intent

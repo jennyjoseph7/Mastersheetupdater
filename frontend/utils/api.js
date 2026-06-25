@@ -524,6 +524,9 @@ export async function fetchCampaignSessions({
   disposition = "",
   start_date = "",
   end_date = "",
+  status = "",
+  origin = "",
+  session_live = "",
 } = {}) {
   if (!campaignId || !dealershipId) {
     return { items: [], total_number: 0 };
@@ -542,6 +545,12 @@ export async function fetchCampaignSessions({
     if (search) params.append("search", search);
     if (disposition && disposition !== "all")
       params.append("disposition", disposition);
+    if (status && status !== "all")
+      params.append("status", status);
+    if (origin && origin !== "all")
+      params.append("origin", origin);
+    if (session_live && session_live !== "all")
+      params.append("session_live", session_live);
 
     // Apply Date Range - Sending as a comma-separated string: created=min,max
     if (start_date || end_date) {
