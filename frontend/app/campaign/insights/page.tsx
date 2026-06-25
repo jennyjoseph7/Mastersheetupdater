@@ -176,6 +176,9 @@ interface CampaignSession {
   emotion_analysis?: any;
   duration?: number;
   call_recording?: string;
+  origin?: string;
+  disposition?: string;
+  session_live?: boolean;
   [key: string]: any;
 }
 
@@ -1616,7 +1619,12 @@ function CampaignInsightsContent() {
                             <TableHead className="font-semibold text-slate-600">
                               Channel
                             </TableHead>
-
+                            <TableHead className="font-semibold text-slate-600">
+                              Origin
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600 text-center">
+                              Live
+                            </TableHead>
                             <TableHead
                               className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
                               onClick={() => handleSessionSort("status")}
@@ -1624,6 +1632,9 @@ function CampaignInsightsContent() {
                               <div className="flex items-center justify-center">
                                 Status {getSessionSortIcon("status")}
                               </div>
+                            </TableHead>
+                            <TableHead className="font-semibold text-slate-600 text-center">
+                              Disposition
                             </TableHead>
                             <TableHead className="font-semibold text-slate-600">
                               Intent
@@ -1675,7 +1686,20 @@ function CampaignInsightsContent() {
                               <TableCell className="text-slate-500 capitalize text-xs">
                                 {session.channel?.replace("_", " ") || "-"}
                               </TableCell>
-
+                              <TableCell className="text-slate-500 capitalize text-xs">
+                                {session.origin || "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {session.session_live ? (
+                                  <Badge className="bg-red-500 hover:bg-red-600 text-white animate-pulse border-none text-[10px] px-1.5 py-0 h-5">
+                                    LIVE
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-slate-400 border-slate-200 text-[10px] px-1.5 py-0 h-5">
+                                    Ended
+                                  </Badge>
+                                )}
+                              </TableCell>
                               <TableCell className="text-center">
                                 <Badge
                                   variant="outline"
@@ -1691,13 +1715,25 @@ function CampaignInsightsContent() {
                                   {session.status}
                                 </Badge>
                               </TableCell>
+                              <TableCell className="text-center">
+                                <Badge
+                                  variant="outline"
+                                  className={`capitalize font-normal border ${session.disposition === "converted"
+                                      ? "border-emerald-200 text-emerald-700 bg-emerald-50"
+                                      : session.disposition === "busy"
+                                        ? "border-amber-200 text-amber-700 bg-amber-50"
+                                        : "border-slate-200 text-slate-500"
+                                    }`}
+                                >
+                                  {session.disposition || "-"}
+                                </Badge>
+                              </TableCell>
                               <TableCell
                                 className="text-slate-600 text-xs truncate max-w-[150px]"
                                 title={session.disposition_detail}
                               >
                                 {session.disposition_detail || "-"}
                               </TableCell>
-                              {/* ... after the Intent Cell */}
                               <TableCell className="max-w-[220px]">
                                 {session.summary ? (
                                   <Popover>
