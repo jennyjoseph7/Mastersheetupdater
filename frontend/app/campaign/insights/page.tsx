@@ -748,6 +748,57 @@ function CampaignInsightsContent() {
               </Alert>
             ) : (
               <>
+                {/* KPI Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Total Leads</p>
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                          <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {totalRecords.toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Total Sessions</p>
+                        <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                          <Activity className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {totalSessionRecords.toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Retrigger Count</p>
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
+                          <RefreshCw className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {Math.max(0, totalSessionRecords - totalRecords).toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {performanceData.engagement_stats?.length > 0 && (
                   <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
