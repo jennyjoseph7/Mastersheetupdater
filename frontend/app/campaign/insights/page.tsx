@@ -295,6 +295,276 @@ function formatDuration(seconds?: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+function OverallReportTab({ leads, sessions, loading }: { leads: any[]; sessions: any[]; loading: boolean }) {
+  const totalLeads = leads.length;
+  const totalSessions = sessions.length;
+  
+  const states = Array.from(new Set(leads.map(l => l.subdivision_name).filter(Boolean)));
+  const cities = Array.from(new Set(leads.map(l => l.city).filter(Boolean)));
+  
+  const vehicleCount: Record<string, number> = {};
+  leads.forEach(l => {
+    const v = l.interested_vehicle_name || l.vehicle_category;
+    if (v) vehicleCount[v] = (vehicleCount[v] || 0) + 1;
+  });
+  
+  const brandCount: Record<string, number> = {};
+  leads.forEach(l => {
+    const b = l.interested_vehicle_brand_name;
+    if (b) brandCount[b] = (brandCount[b] || 0) + 1;
+  });
+
+  const financeRequired = leads.filter(l => l.finance_required === true).length;
+  
+  const dispositions: Record<string, number> = {};
+  leads.forEach(l => {
+    const d = l.disposition || "Unknown";
+    dispositions[d] = (dispositions[d] || 0) + 1;
+  });
+
+  const channels: Record<string, number> = {};
+  sessions.forEach(s => {
+    const ch = s.channel || "Unknown";
+    channels[ch] = (channels[ch] || 0) + 1;
+  });
+
+  const sentiments: Record<string, number> = {};
+  sessions.forEach(s => {
+    const sent = s.sentiment_classification || s.customer_sentiment || "Neutral";
+    sentiments[sent] = (sentiments[sent] || 0) + 1;
+  });
+
+  const averageDuration = sessions.length > 0 
+    ? Math.round(sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / sessions.length) 
+    : 0;
+
+  const failureReasons = Array.from(new Set(leads.map(l => l.disposition_detail).filter(Boolean)));
+  const recommendedActions = Array.from(new Set(sessions.map(s => s.recommended_action).filter(Boolean)));
+  const ctas = Array.from(new Set(leads.flatMap(l => l.ctas || []).filter(Boolean)));
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[200px] w-full rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overview stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Leads Mapped</div>
+            <div className="text-3xl font-bold mt-1 text-indigo-600 dark:text-indigo-400">{totalLeads}</div>
+            <div className="text-xs text-slate-400 mt-2">Active in this campaign</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Communication Sessions</div>
+            <div className="text-3xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{totalSessions}</div>
+            <div className="text-xs text-slate-400 mt-2">Average duration: {averageDuration} seconds</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Financing Inquiries</div>
+            <div className="text-3xl font-bold mt-1 text-blue-600 dark:text-blue-400">
+              {financeRequired} <span className="text-xs font-normal text-slate-400">leads ({totalLeads > 0 ? Math.round((financeRequired / totalLeads) * 100) : 0}%)</span>
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Require loan assistance</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Customer Sentiment</div>
+            <div className="text-3xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+              {sentiments.positive || 0} <span className="text-xs font-normal text-slate-400">Positive sessions</span>
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Negative: {sentiments.negative || 0} | Neutral: {sentiments.neutral || sentiments.Neutral || 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Geographic & Product Breakdown */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <CardTitle className="text-base font-bold">Audience & Product Profile</CardTitle>
+            <CardDescription>Geographic distribution and product interests</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Target Region</h4>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                    States: <span className="font-bold text-slate-900 dark:text-slate-100">{states.length > 0 ? states.join(", ") : "N/A"}</span>
+                  </p>
+                  <p className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                    Cities: <span className="font-bold text-slate-900 dark:text-slate-100">{cities.length > 0 ? cities.join(", ") : "N/A"}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Interested Models</h4>
+                <div className="mt-2 space-y-1">
+                  {Object.entries(vehicleCount).length > 0 ? (
+                    Object.entries(vehicleCount).map(([vehicle, count]) => (
+                      <p key={vehicle} className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                        {vehicle}: <span className="font-bold text-slate-900 dark:text-slate-100">{count} lead(s)</span>
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-400">None specified</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Requested Call-to-Actions (CTAs)</h4>
+              <div className="flex flex-wrap gap-2">
+                {ctas.length > 0 ? (
+                  ctas.map(cta => (
+                    <Badge key={cta} variant="secondary" className="capitalize text-xs">
+                      {cta}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No CTA markers recorded</span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Lead Disposition Share</h4>
+              <div className="space-y-2">
+                {Object.entries(dispositions).map(([disp, count]) => (
+                  <div key={disp} className="flex justify-between items-center text-sm">
+                    <span className="capitalize text-slate-600 dark:text-slate-400">{disp}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{count}</span>
+                      <span className="text-xs text-slate-400">({totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Communication & Failure Profile */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <CardTitle className="text-base font-bold">AI Call Outcomes & Quality</CardTitle>
+            <CardDescription>Outcome patterns and sentiment classification</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Channel Performance</h4>
+              <div className="space-y-2">
+                {Object.entries(channels).map(([ch, count]) => (
+                  <div key={ch} className="flex justify-between items-center text-sm">
+                    <span className="capitalize text-slate-600 dark:text-slate-400">{ch.replace(/_/g, " ")}</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">{count} session(s)</span>
+                  </div>
+                ))}
+                {Object.entries(channels).length === 0 && (
+                  <p className="text-sm text-slate-400">No session recordings found</p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Detailed Call Disposition Statuses</h4>
+              <div className="flex flex-wrap gap-2">
+                {failureReasons.length > 0 ? (
+                  failureReasons.map(r => (
+                    <Badge key={r} variant="outline" className="text-red-700 bg-red-50/50 border-red-200 text-xs">
+                      {r}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No failure states logged</span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Recommended Next Actions</h4>
+              <div className="space-y-2">
+                {recommendedActions.length > 0 ? (
+                  recommendedActions.slice(0, 3).map((act, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0" />
+                      <span>{act}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No specific follow-up actions recommended yet</span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Detailed Lead Breakdown Log */}
+      {leads.length > 0 && (
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-base font-bold">Consolidated Lead Summary List</CardTitle>
+            <CardDescription>Quick insight and timelines compiled for this campaign</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0 px-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow>
+                    <TableHead className="pl-6 font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">City</TableHead>
+                    <TableHead className="font-semibold">Lead Summary</TableHead>
+                    <TableHead className="font-semibold">Timeline</TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">Brand / Vehicle</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leads.map((l, i) => (
+                    <TableRow key={l.pre_sales_lead_id || l.post_sales_lead_id || i}>
+                      <TableCell className="pl-6 font-semibold text-slate-900 dark:text-slate-100">{l.person_name || "Unknown"}</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{l.city || "-"}</TableCell>
+                      <TableCell className="text-xs text-slate-500 max-w-[300px] truncate" title={l.lead_summary || ""}>
+                        {l.lead_summary || "No summary compiled"}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400 max-w-[200px] truncate" title={l.lead_timeline || ""}>
+                        {l.lead_timeline || "-"}
+                      </TableCell>
+                      <TableCell className="pr-6 text-right text-xs">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{l.interested_vehicle_brand_name || ""}</span> {l.interested_vehicle_name || l.vehicle_category || ""}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // --- Inner Component ---
 
 function CampaignInsightsContent() {
@@ -722,6 +992,7 @@ function CampaignInsightsContent() {
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
             <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="report">Overall Report</TabsTrigger>
           </TabsList>
 
           {/* STATISTICS TAB CONTENT */}
@@ -1938,6 +2209,14 @@ function CampaignInsightsContent() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="report" className="space-y-6 mt-6">
+            <OverallReportTab
+              leads={serverLeads}
+              sessions={serverSessions}
+              loading={leadsLoading || sessionsLoading}
+            />
           </TabsContent>
         </Tabs>
       </div>
