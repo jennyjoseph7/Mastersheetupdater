@@ -101,7 +101,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="daily_dealership_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-             schedule = "0 0 * * *",
+            schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
         
