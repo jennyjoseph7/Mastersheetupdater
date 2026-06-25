@@ -2084,6 +2084,31 @@ def fetch_leads(dealership_id, channel, batch_size):
         mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
         return unique_leads
 
+        for lead in _leads:
+            data, lead_type = lead
+
+            if lead_type == "pre_sales":
+                lead_model = "pre_sales_lead"
+                lead_id = data.get("pre_sales_lead_id")
+            else:
+                lead_model = "post_sales_lead"
+                lead_id = data.get("post_sales_lead_id")
+
+            unique_key = f"{lead_model}:{lead_id}"
+
+            if unique_key in seen:
+                duplicates.append(unique_key)
+                continue
+
+            seen.add(unique_key)
+            unique_leads.append(lead)
+
+        if duplicates:
+            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
+
+        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
+        return unique_leads
+
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
 #     dealership_id = kwargs.get("dealership_id")
