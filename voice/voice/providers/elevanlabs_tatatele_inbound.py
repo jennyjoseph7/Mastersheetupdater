@@ -32,7 +32,8 @@ def get_service_name(agent_number):
         import gryd_tasks
     
     outbound_service_name = config.AUTOCRM_VOICE_SERVICE_NAME
-    def _func(agent_number):    
+    def _func(agent_number):  
+        outbound_service_name = config.AUTOCRM_VOICE_SERVICE_NAME
         with gryd_tasks.get_pg_connector() as pg:
             cc = list(pg.list(
                 "communication_credential",

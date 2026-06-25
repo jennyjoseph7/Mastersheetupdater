@@ -225,8 +225,15 @@ def post_session_process(*args, **kwargs):
         senti_output = sentiment_agent.run()
         mlogger.info(f"Sentiment Analysis Output: {senti_output}")
         data = senti_output.get("raw_response", [])
-        text = data[0].get("text",'').replace('\xa0', ' ')
-        aa = json.loads(text) if text else {}
+        if data:
+            text = data[0].get("text",'').replace('\xa0', ' ')
+            aa = json.loads(text) if text else {}
+        elif isinstance(senti_output, dict):
+            aa = senti_output
+        elif isinstance(senti_output, str):
+            aa = json.loads(senti_output)
+        else:
+            aa = {}
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlysis = {emotion_analysis}")
