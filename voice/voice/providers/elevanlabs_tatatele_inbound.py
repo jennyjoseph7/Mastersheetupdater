@@ -95,7 +95,7 @@ def inbound_call(*args, **kwargs):
 
             if session_data:
                 with gryd_tasks.get_pg_connector() as pg:
-                    pg.update("session", "session_id", session_data["session_id"], {"status": "busy", "disposition": "busy", "end_time": hp.epoch(), "session_live":False, "disposition_detail":"No available threads to handle the call. Call has been hung up."})
+                    pg.update("session", "session_id", session_data["session_id"], {"status": "completed", "disposition": "busy", "end_time": hp.epoch(), "session_live":False, "disposition_detail":"No available threads to handle the call. Call has been hung up."})
                 session_data["mobile_number"] = session_data["phone_number"]
                 session_data["from_inbound"] = True
                 gryd.create_async_task("trigger_voice_call", outbound_service_name, args=[], kwargs={"user_data": session_data}, delay = 60)
