@@ -32,7 +32,8 @@ def get_service_name(agent_number):
         import gryd_tasks
     
     outbound_service_name = config.AUTOCRM_VOICE_SERVICE_NAME
-    def _func(agent_number):    
+    def _func(agent_number):  
+        outbound_service_name = config.AUTOCRM_VOICE_SERVICE_NAME
         with gryd_tasks.get_pg_connector() as pg:
             cc = list(pg.list(
                 "communication_credential",
@@ -79,6 +80,7 @@ def inbound_call(*args, **kwargs):
     logger.info(f"Received inbound call data: {json.dumps(data, indent=4)}")
   
     if data.get("call_type", "").lower() in ["inbound"]:
+        import gryd_tasks
         caller_id = data.get("caller_id_number", "")
         if caller_id and not str(caller_id).startswith("91"):
             caller_id = "91" + str(caller_id)
@@ -92,7 +94,10 @@ def inbound_call(*args, **kwargs):
             session_data = handle_session_logic(data.get('caller_id_number'), from_number=data.get("call_to_number", ""), channel = "voice_phone", engaged=True, origin="inbound")
 
             if session_data:
+                with gryd_tasks.get_pg_connector() as pg:
+                    pg.update("session", "session_id", session_data["session_id"], {"status": "completed", "disposition": "busy", "end_time": hp.epoch(), "session_live":False, "disposition_detail":"No available threads to handle the call. Call has been hung up."})
                 session_data["mobile_number"] = session_data["phone_number"]
+                session_data["from_inbound"] = True
                 gryd.create_async_task("trigger_voice_call", outbound_service_name, args=[], kwargs={"user_data": session_data}, delay = 60)
                 logger.info(f"Created async task to trigger outbound call for session {session_data.get('session_id')} after hanging up inbound call.")
             return jsonify({"status": "error", "message": "No available threads to handle the call. Call has been hung up."})
