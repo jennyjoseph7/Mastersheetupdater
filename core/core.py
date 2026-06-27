@@ -321,7 +321,7 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
     logger.info(f"Processing post-sales lead row: {row}")
     missing_reason = missing_reason or []
     row, missing_reason = get_rooftop(row, models, 'workshop', missing_reason, rooftop_id, logger)
-    dealership = models['dealership'].get(row.get('dealership_id'))
+    dealership = AutocrmModel('dealership').get(row.get('dealership_id'))
     if isinstance(required_attributes, list):
         for k in required_attributes:
             if not get_valid_value(row, k):
@@ -1765,7 +1765,7 @@ def gryd_task_import_leads_from_csv(
             else:
                 yield {"_result": {'total': total, 'error': error, 'processed': processed, 'unique': unique_rows}}
     except Exception as e:
-        raise ValueError(f"Failed to create temporary files: {str(e)}") from e
+        raise ValueError(f"Failed to create upload the file due to following error: {str(e)}") from e
     finally:
         wind_up(csv_path, error_csv_path)
     return
