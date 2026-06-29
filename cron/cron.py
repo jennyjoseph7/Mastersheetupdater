@@ -812,14 +812,14 @@ def end_campaigns(**kwargs):
                     f"Ending campaign_id={campaign_id} in {table}"
                 )
 
-                # pg.update(
-                #     table,
-                #     "campaign_id",
-                #     campaign_id,
-                #     {
-                #         "campaign_status": "Completed"
-                #     }
-                # )
+                pg.update(
+                    table,
+                    "campaign_id",
+                    campaign_id,
+                    {
+                        "campaign_status": "Completed"
+                    }
+                )
 
             mlogger.info(f"Completed processing for {table}")
             
