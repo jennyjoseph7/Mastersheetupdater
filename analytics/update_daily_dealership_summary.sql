@@ -20,7 +20,10 @@ CREATE TABLE IF NOT EXISTS daily_dealership_summary (
 CREATE OR REPLACE PROCEDURE update_daily_dealership_summary()
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    cutoff_epoch_sec BIGINT;
 BEGIN
+    cutoff_epoch_sec := (EXTRACT(EPOCH FROM (NOW() - INTERVAL '3 days')))::BIGINT;
     INSERT INTO daily_dealership_summary (
         daily_dealership_summary_id,
         dict,
@@ -41,6 +44,7 @@ BEGIN
           AND dict->>'dealership_id' <> ''
           AND (dict->>'created')::NUMERIC::BIGINT IS NOT NULL
           AND (dict->>'created')::NUMERIC::BIGINT <> 0
+          AND (dict->>'created')::NUMERIC >= cutoff_epoch_sec
           AND LOWER(dict->>'campaign_status') IN ('active', 'continuous')
     ),
     campaign_data AS (
@@ -87,6 +91,7 @@ BEGIN
         WHERE l.dict->>'dealership_id' IS NOT NULL 
           AND l.dict->>'dealership_id' <> ''
           AND (l.dict->>'created')::NUMERIC::BIGINT IS NOT NULL
+          AND (l.dict->>'created')::NUMERIC >= cutoff_epoch_sec
     ),
     lead_data_triggered AS (
         SELECT 
@@ -137,6 +142,7 @@ BEGIN
         WHERE l.dict->>'dealership_id' IS NOT NULL 
           AND l.dict->>'dealership_id' <> ''
           AND (l.dict->>'created')::NUMERIC::BIGINT IS NOT NULL
+          AND COALESCE((l.dict->>'updated')::NUMERIC, (l.dict->>'created')::NUMERIC) >= cutoff_epoch_sec
     ),
     lead_data_dispositions AS (
         SELECT 
@@ -184,6 +190,7 @@ BEGIN
         WHERE s.dict->>'dealership_id' IS NOT NULL 
           AND s.dict->>'dealership_id' <> ''
           AND (s.dict->>'created')::NUMERIC::BIGINT IS NOT NULL
+          AND (s.dict->>'created')::NUMERIC >= cutoff_epoch_sec
     ),
     session_data AS (
         SELECT 
