@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://autobot-webapp-dev.gryd.in https://autongagetools.jennyjoseph-k.workers.dev http://localhost:3456; form-action 'self'; base-uri 'self'; object-src 'none';" />
+  <script>
+    (function() {
+      var t = localStorage.getItem('jejo-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <title>Sign In — AutoNage</title>
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="assets/styles/login.css" />
+  <script src="assets/js/lib/logger.js"></script>
+  <script src="assets/js/lib/theme.js"></script>
+  <script src="config.js?v=20260610"></script>
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+    <svg class="icon-moon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+    <svg class="icon-sun" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+  </button>
+
+  <div class="login-container">
+    <div class="login-card">
+      <a class="brand-mark" href="index.html" aria-label="Home">
+        <img src="assets/images/AN Dark.png" data-light-logo="assets/images/AN.png" data-dark-logo="assets/images/AN Dark.png" alt="AutoNage" />
+      </a>
+
+      <!-- Login form -->
+      <div id="loginForm">
+        <div class="login-title">Welcome back</div>
+        <div class="login-subtitle">Sign in with your autoNgage account</div>
+
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="warning-msg" id="warningMsg"></div>
+
+        <form id="loginFormElement" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="userId">Email or User ID</label>
+            <input class="form-input" id="userId" type="text" placeholder="dealership@iamdave.ai" autocomplete="username" spellcheck="false" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <div class="password-wrapper">
+              <input class="form-input" id="password" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" />
+              <button class="password-toggle" type="button" onclick="togglePassword()" aria-label="Toggle password">
+                <svg id="eyeIcon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="btn-login" id="btnLogin" type="submit">
+            <span class="spinner"></span>
+            <span id="btnText">Sign In</span>
+          </button>
+        </form>
+
+        <div class="session-info" id="sessionInfo"></div>
+      </div>
+
+    </div>
+</div>
+
+<script>
+var CONFIG = window.JEJO_CONFIG || {};
+var GRYD_ENDPOINT = CONFIG.grydEndpoint || 'https://autobot-webapp-dev.gryd.in';
+var GRYD_SIGNUP_TOKEN = CONFIG.grydSignupToken || '';
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str || ''));
+  return div.innerHTML;
+}
+
+function togglePassword() {
+  var pwd = document.getElementById('password');
+  var icon = document.getElementById('eyeIcon');
+  if (pwd.type === 'password') {
+    pwd.type = 'text';
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><path stroke-linecap="round" stroke-linejoin="round" d="M1 1l22 22"/>';
+  } else {
+    pwd.type = 'password';
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  }
+}
+
+function showError(msg) {
+  var el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, 5000);
+}
+
+function showWarning(msg) {
+  var el = document.getElementById('warningMsg');
+  if (msg) {
+    el.innerHTML = msg;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+function setLoading(loading) {
+  var btn = document.getElementById('btnLogin');
+  var txt = document.getElementById('btnText');
+  if (!btn || !txt) return;
+  if (loading) {
+    btn.classList.add('loading');
+    btn.disabled = true;
+    txt.textContent = 'Signing in\u2026';
+  } else {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    txt.textContent = 'Sign In';
+  }
+}
+
+function parseExpiry(expiryVal) {
+  if (!expiryVal) return 0;
+  var num = Number(expiryVal);
+  if (!isNaN(num)) {
+    if (num > 30000000000) {
+      return Math.floor(num / 1000); // convert milliseconds to seconds
+    }
+    if (num < 31536000) {
+      return Math.floor(Date.now() / 1000) + num; // duration to absolute epoch
+    }
+    return num; // absolute epoch seconds
+  }
+  var parsedDate = Date.parse(expiryVal);
+  if (!isNaN(parsedDate)) {
+    return Math.floor(parsedDate / 1000); // date string to absolute epoch seconds
+  }
+  return 0;
+}
+
+function updateSessionInfo() {
+  var expiry = sessionStorage.getItem('gryd_expiry');
+  var el = document.getElementById('sessionInfo');
+  if (expiry) {
+    var now = Math.floor(Date.now() / 1000);
+    var remaining = parseInt(expiry) - now;
+    if (remaining > 0) {
+      var hours = Math.floor(remaining / 3600);
+      var mins = Math.floor((remaining % 3600) / 60);
+      el.innerHTML = 'Session expires in <span class="valid">' + hours + 'h ' + mins + 'm</span>';
+    } else {
+      el.innerHTML = 'Session expired. <span class="invalid">Sign in again.</span>';
+    }
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+$log('Auth', 'Login page initialized');
+
+function checkSession() {
+  var token = sessionStorage.getItem('gryd_token');
+  var expiry = sessionStorage.getItem('gryd_expiry');
+  
+  // Sync from localStorage if sessionStorage is empty (e.g. new tab)
+  if (!token && localStorage.getItem('gryd_token')) {
+    var localToken = localStorage.getItem('gryd_token');
+    var localExpiry = localStorage.getItem('gryd_expiry');
+    var localExpiryVal = parseInt(localExpiry);
+    var localNow = Math.floor(Date.now() / 1000);
+    if (localToken && !isNaN(localExpiryVal) && localExpiryVal > localNow) {
+      token = localToken;
+      expiry = localExpiry;
+      sessionStorage.setItem('gryd_token', token);
+      sessionStorage.setItem('gryd_expiry', expiry);
+      sessionStorage.setItem('gryd_session_id', localStorage.getItem('gryd_session_id') || '');
+      sessionStorage.setItem('gryd_enterprise_id', localStorage.getItem('gryd_enterprise_id') || 'autocrm');
+      sessionStorage.setItem('gryd_user_id', localStorage.getItem('gryd_user_id') || '');
+    }
+  }
+  
+  if (token && expiry) {
+    var expiryVal = parseInt(expiry);
+    var now = Math.floor(Date.now() / 1000);
+    if (!isNaN(expiryVal) && expiryVal > now) {
+      // Break redirect loop if we came back here from index.html or another app page in under 3 seconds
+      var ref = document.referrer || '';
+      var lastRedirectTime = parseInt(sessionStorage.getItem('last_login_redirect_time') || '0');
+      var nowMs = Date.now();
+      var isRapidRedirect = (nowMs - lastRedirectTime < 3000);
+      
+      if (ref && (ref.indexOf('index.html') !== -1 || ref.indexOf('/pages/') !== -1) && isRapidRedirect) {
+        console.warn('Redirect loop detected from referrer:', ref, '- clearing session and staying on login page.');
+        sessionStorage.removeItem('gryd_token');
+        sessionStorage.removeItem('gryd_expiry');
+        localStorage.removeItem('gryd_token');
+        localStorage.removeItem('gryd_expiry');
+        showWarning('⚠️ <strong>Authentication redirect loop detected.</strong> Your browser is isolating session storage between pages. Ensure you are accessing the site via a local web server (http:// or https://) rather than opening the files directly.');
+        return false;
+      }
+      sessionStorage.setItem('last_login_redirect_time', String(Date.now()));
+      window.location.replace('index.html');
+      return true;
+    }
+   }
+   return false;
+}
+
+async function handleLogin(event) {
+  if (event) event.preventDefault();
+
+  var userId = document.getElementById('userId').value.trim();
+  var password = document.getElementById('password').value;
+
+  if (!userId) { showError('Please enter your email or user ID.'); return; }
+  if (!password) { showError('Please enter your password.'); return; }
+
+  $log('Auth', 'Login attempt for: ' + $mask(userId, 'email'));
+  setLoading(true);
+
+  try {
+    $log('API', 'Calling login API: ' + GRYD_ENDPOINT + '/gryd/login');
+    var response = await fetch(GRYD_ENDPOINT + '/gryd/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GRYD-ENTERPRISE-ID': 'autocrm',
+        'X-GRYD-SIGNUP-TOKEN': GRYD_SIGNUP_TOKEN
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        password: password,
+        role: 'human_agent',
+        attribute: 'email',
+        application_id: 'autocrm'
+      })
+    });
+
+    var data = await response.json();
+
+    $log('API', 'Login response status: ' + response.status);
+    if (!response.ok) {
+      showError(data.error || data.message || 'Login failed. Check your credentials.');
+      $warn('Auth', 'Login failed: ' + (data.error || data.message || 'unknown'));
+      setLoading(false);
+      return;
+    }
+
+    // Validate response before persisting
+    var absoluteExpiry = parseExpiry(data.expiry);
+    if (!data.token || !absoluteExpiry || absoluteExpiry <= Math.floor(Date.now() / 1000)) {
+      showError('Invalid server response: missing token or expired session.');
+      setLoading(false);
+      return;
+    }
+
+    $log('Auth', 'Login successful for: ' + $mask((data.user_id || userId), 'email'));
+    sessionStorage.setItem('gryd_token', data.token);
+    sessionStorage.setItem('gryd_session_id', data.session_id || '');
+    sessionStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
+    sessionStorage.setItem('gryd_user_id', data.user_id || userId);
+    sessionStorage.setItem('gryd_expiry', String(absoluteExpiry));
+
+    // Also write to localStorage for multi-tab sync and durability
+    localStorage.setItem('gryd_token', data.token);
+    localStorage.setItem('gryd_session_id', data.session_id || '');
+    localStorage.setItem('gryd_enterprise_id', data.enterprise_id || 'autocrm');
+    localStorage.setItem('gryd_user_id', data.user_id || userId);
+    localStorage.setItem('gryd_expiry', String(absoluteExpiry));
+
+    // Show flash and redirect after a moment
+    var loginForm = document.getElementById('loginForm');
+    var btn = document.getElementById('btnLogin');
+    if (btn) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+
+    // Replace form with a brief success flash
+    loginForm.innerHTML = '<div class="flash-success"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Signed in as ' + escapeHtml(data.user_id || userId) + ' — redirecting&hellip;</div>';
+
+    setTimeout(function() {
+      sessionStorage.setItem('last_login_redirect_time', String(Date.now()));
+      window.location.replace('index.html');
+    }, 1200);
+  } catch (err) {
+    showError('Network error: ' + err.message);
+  }
+
+  setLoading(false);
+}
+
+applyTheme(localStorage.getItem('jejo-theme') || 'dark');
+if (window.location.protocol === 'file:') {
+  showWarning('⚠️ <strong>Running via file:// protocol.</strong> Modern browsers isolate session storage for local files, which prevents login state from sharing between pages. Please use a local web server (e.g. VS Code Live Server, python http.server, or npm serve).');
+}
+
+if (!checkSession()) { updateSessionInfo(); }
+</script>
+</body>
+</html>
