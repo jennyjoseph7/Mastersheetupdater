@@ -41,7 +41,7 @@ HEADER_MAPPING = {
     "Mobile Number":    "phone_number",
     "Status":           "status",
 
-    # ── Written back by Sahib's post-processing task ──────────────────────────
+    # ── Written back by post-processing task ──────────────────────────
     "Disposition":      "disposition",
     "Sentiment":        "sentiment",
     "Call Duration":    "call_duration",
