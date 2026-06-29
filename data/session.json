@@ -66,24 +66,24 @@
             "auto_updater": true
         },
         {
-          "name": "channel",
-          "type": "text",
-          "options": [
-            "rcs",
-            "email",
-            "web_chat",
-            "web_chat_voice",
-            "fb_chat",
-            "insta_chat",
-            "twitter_chat",
-            "voice_phone",
-            "whatsapp_chat",
-            "whatsapp_voice_note",
-            "whatsapp_voice_call",
-            "zoom_bot",
-            "ms_teams"
-          ],
-          "indexed": true
+            "name": "channel",
+            "type": "text",
+            "options": [
+                "rcs",
+                "email",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "voice_phone",
+                "whatsapp_chat",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "zoom_bot",
+                "ms_teams"
+            ],
+            "indexed": true
         },
         {
             "name": "campaign_id",
@@ -93,12 +93,17 @@
             "required": true
         },
         {
-          "name": "campaign_type",
-          "type": "text",
-          "options": ["inbound", "pre-sales", "post-sales", "dealer"],
-          "default": "inbound",
-          "required": true,
-          "indexed": true
+            "name": "campaign_type",
+            "type": "text",
+            "options": [
+                "inbound",
+                "pre-sales",
+                "post-sales",
+                "dealer"
+            ],
+            "default": "inbound",
+            "required": true,
+            "indexed": true
         },
         {
             "name": "campaign_model",
@@ -274,7 +279,7 @@
             "name": "history_updated_time",
             "type": "number",
             "required": false,
-            "indexed":true
+            "indexed": true
         },
         {
             "name": "last_post_process_time",
@@ -292,7 +297,7 @@
             "type": "bool",
             "required": false,
             "default": false,
-            "indexed":true
+            "indexed": true
         },
         {
             "name": "disposition",
@@ -336,6 +341,7 @@
                 "Has sold/given away the car",
                 "Has moved to another location",
                 "Cannot make decision on servicing",
+                "Has poor past experience with workshop",
                 "Will call workshop themselves",
                 "Requested Callback",
                 "Looking for a discount",

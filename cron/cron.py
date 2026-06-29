@@ -344,7 +344,7 @@ def manage_active_sessions(*args, **kwargs):
     """
 
     kwargs_dict = dict(kwargs)
-
+    limit=kwargs_dict.get("limit") or 500
     only_for_channels = kwargs_dict.get("only_for_channels") or []
 
     POST_PROCESS_INTERVAL_SECONDS = kwargs_dict.get("post_process_interval_seconds", 10) * 60
@@ -353,48 +353,51 @@ def manage_active_sessions(*args, **kwargs):
 
     mlogger.info("------------ Managing active sessions ------------")
 
-    query="""
+    query = r"""
+    WITH message_updates AS (
+        SELECT
+            m.dict->>'session_id' AS session_id,
+            MAX(
+                GREATEST(
+                    CASE
+                        WHEN COALESCE(m.dict->>'created','')
+                            ~ '^[0-9]+(\.[0-9]+)?$'
+                        THEN (m.dict->>'created')::NUMERIC
+                        ELSE EXTRACT(
+                            EPOCH FROM
+                            (m.dict->>'created')::TIMESTAMPTZ
+                        )
+                    END,
+                    CASE
+                        WHEN COALESCE(m.dict->>'updated','')
+                            ~ '^[0-9]+(\.[0-9]+)?$'
+                        THEN (m.dict->>'updated')::NUMERIC
+                        ELSE EXTRACT(
+                            EPOCH FROM
+                            (m.dict->>'updated')::TIMESTAMPTZ
+                        )
+                    END
+                )
+            ) AS latest_message_time
+        FROM message m
+        GROUP BY m.dict->>'session_id'
+    )
+
+    SELECT *
+    FROM (
         SELECT
         (
             s.dict::jsonb ||
             jsonb_build_object(
+
                 'needs_history_update',
-                    EXISTS (
-                        SELECT 1
-                        FROM message m
-                        WHERE
-                            m.dict->>'session_id' =
-                            s.dict->>'session_id'
-
-                            AND
-                            GREATEST(
-
-                                CASE
-                                    WHEN COALESCE(m.dict->>'created','')
-                                        ~ '^[0-9]+(\.[0-9]+)?$'
-                                    THEN (m.dict->>'created')::NUMERIC
-                                    ELSE EXTRACT(
-                                        EPOCH FROM
-                                        (m.dict->>'created')::TIMESTAMPTZ
-                                    )
-                                END,
-
-                                CASE
-                                    WHEN COALESCE(m.dict->>'updated','')
-                                        ~ '^[0-9]+(\.[0-9]+)?$'
-                                    THEN (m.dict->>'updated')::NUMERIC
-                                    ELSE EXTRACT(
-                                        EPOCH FROM
-                                        (m.dict->>'updated')::TIMESTAMPTZ
-                                    )
-                                END
-
-                            )
-                            >
-                            COALESCE(
-                                (s.dict->>'history_updated_time')::NUMERIC,
-                                0
-                            )
+                    COALESCE(
+                        mu.latest_message_time,
+                        0
+                    ) >
+                    COALESCE(
+                        (s.dict->>'history_updated_time')::NUMERIC,
+                        0
                     ),
 
                 'needs_post_process',
@@ -430,10 +433,13 @@ def manage_active_sessions(*args, **kwargs):
                             )
                         ELSE NULL
                     END
-                )
-            ) AS dict
+            )
+        ) AS dict
 
         FROM session s
+
+        LEFT JOIN message_updates mu
+            ON mu.session_id = s.dict->>'session_id'
 
         WHERE
             (s.dict->>'session_live')::BOOLEAN = TRUE
@@ -449,30 +455,6 @@ def manage_active_sessions(*args, **kwargs):
             ) != 'voice_phone'
 
             AND (
-
-                COALESCE(
-                    (s.dict->>'has_unprocessed_history')::BOOLEAN,
-                    FALSE
-                ) = TRUE
-
-                OR
-
-                (
-                    (s.dict->>'last_response_time') IS NOT NULL
-                    AND (
-                        s.dict->>'history_updated_time' IS NULL
-                        OR
-                        (s.dict->>'last_response_time')::NUMERIC >
-                        COALESCE(
-                            (s.dict->>'history_updated_time')::NUMERIC,
-                            0
-                        )
-                    )
-                )
-            )
-
-            AND
-            (
                 (
                     s.dict->>'campaign_type' = 'pre-sales'
                     AND EXISTS (
@@ -486,9 +468,7 @@ def manage_active_sessions(*args, **kwargs):
                             ) = 'active'
                     )
                 )
-
                 OR
-
                 (
                     s.dict->>'campaign_type' = 'post-sales'
                     AND EXISTS (
@@ -503,16 +483,30 @@ def manage_active_sessions(*args, **kwargs):
                     )
                 )
             )
+    ) q
 
-        LIMIT 500
+    WHERE
+        COALESCE(
+            (q.dict->>'needs_history_update')::BOOLEAN,
+            FALSE
+        )
+        OR
+        COALESCE(
+            (q.dict->>'needs_post_process')::BOOLEAN,
+            FALSE
+        )
+        
+    LIMIT %s
     """
+    
     
     with get_pg_connector() as pg:
 
         mlogger.info("------------------------")
         session_list = pg.fetch_all(query, (
             POST_PROCESS_INTERVAL_SECONDS,
-            INACTIVITY_TIMEOUT_SECONDS
+            INACTIVITY_TIMEOUT_SECONDS,
+            limit
         ))
 
         mlogger.info(f"Eligible active sessions count: {len(session_list)}")
@@ -771,49 +765,62 @@ def schedule_campaign_trigger(*args, **kwargs):
                 
 
 @gryd.is_a_task(function_name="end_campaigns")     
-def end_campaigns():
+def end_campaigns(**kwargs):
     """
     Ends campaigns whose end_date is less than current epoch time.
     """
-    current_epoch = int(time.time())
+    
+    months_ago = kwargs.get("months_ago", 0)
+    limit = kwargs.get("limit", 500)
+    cutoff_epoch = None
+    if months_ago:
+        cutoff_epoch = (
+            int(time.time())
+            - (months_ago * 30 * 24 * 60 * 60)
+        )
+    else:
+        cutoff_epoch = int(time.time())
 
     tables = ["pre_sales_campaign","post_sales_campaign"]
-
+    mlogger.info(f"Cutoff epoch: {cutoff_epoch}, months ago: {months_ago}")
     with get_pg_connector() as pg:
 
         for table in tables:
 
             query = f"""
-            SELECT *
-            FROM {table}
-            WHERE (dict->>'end_date')::BIGINT < %s
-            AND (dict->>'campaign_status') = 'Active'
+                SELECT *
+                FROM {table}
+                WHERE (dict->>'end_date')::BIGINT < %s
+                AND (dict->>'campaign_status') = 'Active'
+                ORDER BY (dict->>'end_date')::BIGINT ASC
+                LIMIT {limit}
             """
 
+            
             campaigns = list(
-                pg.fetch_all(query, [current_epoch])
+                pg.fetch_all(query, [cutoff_epoch])
             )
 
             mlogger.info(
                 f"Found {len(campaigns)} campaigns to end in {table}"
             )
 
-            # for campaign in campaigns:
+            for campaign in campaigns:
 
-            #     campaign_id = campaign[0]
+                campaign_id = campaign[0]
 
-            #     mlogger.info(
-            #         f"Ending campaign_id={campaign_id} in {table}"
-            #     )
+                mlogger.info(
+                    f"Ending campaign_id={campaign_id} in {table}"
+                )
 
-            #     pg.update(
-            #         table,
-            #         "campaign_id",
-            #         campaign_id,
-            #         {
-            #             "campaign_status": "Completed"
-            #         }
-            #     )
+                # pg.update(
+                #     table,
+                #     "campaign_id",
+                #     campaign_id,
+                #     {
+                #         "campaign_status": "Completed"
+                #     }
+                # )
 
             mlogger.info(f"Completed processing for {table}")
             
@@ -2078,6 +2085,31 @@ def fetch_leads(dealership_id, channel, batch_size):
         mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
         return unique_leads
 
+        for lead in _leads:
+            data, lead_type = lead
+
+            if lead_type == "pre_sales":
+                lead_model = "pre_sales_lead"
+                lead_id = data.get("pre_sales_lead_id")
+            else:
+                lead_model = "post_sales_lead"
+                lead_id = data.get("post_sales_lead_id")
+
+            unique_key = f"{lead_model}:{lead_id}"
+
+            if unique_key in seen:
+                duplicates.append(unique_key)
+                continue
+
+            seen.add(unique_key)
+            unique_leads.append(lead)
+
+        if duplicates:
+            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
+
+        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
+        return unique_leads
+
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
 #     dealership_id = kwargs.get("dealership_id")
@@ -2482,6 +2514,8 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
 
 
 
+
+
 @gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
 def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
     # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
@@ -2563,8 +2597,9 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
 
                 
                 crm = load_crm(
-                crm_name=crm_name,
-                sheet_name=sheet_url
+                    crm_name=crm_name,
+                    credentials=crm_details.get("api_key"),   # dict from DB
+                    sheet_url=crm_details.get("sheet_url"),   # full URL from DB
                 )
 
                 leads = crm.list_pre_sales_leads(
@@ -2604,6 +2639,7 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
 
                         # After triggering the call, poll DB for the real completed
                         # session and run post-processing to update disposition/lead_summary
+                        logger.info(f" print task result {task_result}")
                         lead_id = (task_result or {}).get("lead_id")
                         if lead_id:
                             logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")

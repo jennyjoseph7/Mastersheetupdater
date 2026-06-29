@@ -331,6 +331,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 logger.info(f"Workflow stage for disposition: {disposition} is {workflow_stage}")
                 attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
                 logger.info(f"Attempts: {attempts}")
+                return None, None, 0, None  # In current production if contacted we will not follow-up
                 if disposition in ["engaged", "converted"]:
                     attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
                     logger.info(f"Attempts per contact: {attempts}")
@@ -493,7 +494,7 @@ def determine_campaign_next_action(
         channel = AUTOCRM_CHEAPEST_CHANNELS[0]
     workflow_model = gryd.base_model.Model('campaign_workflow', enterprise_id)
     if not disposition:
-        disposition = "queued"
+        disposition = lead.get("disposition") or "queued"
     disposition = disposition.lower() 
     disposition = DISPOSITION_MAP.get(disposition)
     if not disposition:
@@ -545,7 +546,8 @@ def determine_campaign_next_action(
             "user_id": _values.get('user', {}).get('id'),
             "disposition_tag": disposition,
             "disposition_detail_tag": lead.get('disposition_detail'),
-            "channel_identifier": channel_identifier
+            "channel_identifier": channel_identifier,
+            "preferred_language": lead.get("preferred_language")
         })
         lead_model.update(lead_id, {
             "next_channel": None,

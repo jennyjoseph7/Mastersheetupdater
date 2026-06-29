@@ -25,6 +25,8 @@ import {
   Clock,
   RefreshCw,
   X,
+  PhoneOutgoing,
+  PhoneIncoming,
 } from "lucide-react";
 import {
   BarChart,
@@ -110,6 +112,31 @@ const PIE_COLORS = [
   "#F43F5E",
 ];
 
+function parseTimelineCounts(timeline?: string) {
+  let outboundCalls = 0;
+  let inboundCalls = 0;
+  let whatsapp = 0;
+
+  if (!timeline) return { outboundCalls, inboundCalls, whatsapp };
+
+  const steps = timeline.split("->").map(step => step.trim().toLowerCase());
+  for (const step of steps) {
+    const actionPart = step.split("(")[0].trim();
+    
+    if (actionPart.includes("whatsapp")) {
+      whatsapp++;
+    } else if (actionPart.includes("voice") || actionPart.includes("phone")) {
+      if (actionPart.includes("inbound")) {
+        inboundCalls++;
+      } else {
+        outboundCalls++;
+      }
+    }
+  }
+
+  return { outboundCalls, inboundCalls, whatsapp };
+}
+
 // --- TypeScript Interfaces ---
 
 interface EngagementStat {
@@ -176,6 +203,9 @@ interface CampaignSession {
   emotion_analysis?: any;
   duration?: number;
   call_recording?: string;
+  origin?: string;
+  disposition?: string;
+  session_live?: boolean;
   [key: string]: any;
 }
 
@@ -292,6 +322,276 @@ function formatDuration(seconds?: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+function OverallReportTab({ leads, sessions, loading }: { leads: any[]; sessions: any[]; loading: boolean }) {
+  const totalLeads = leads.length;
+  const totalSessions = sessions.length;
+  
+  const states = Array.from(new Set(leads.map(l => l.subdivision_name).filter(Boolean)));
+  const cities = Array.from(new Set(leads.map(l => l.city).filter(Boolean)));
+  
+  const vehicleCount: Record<string, number> = {};
+  leads.forEach(l => {
+    const v = l.interested_vehicle_name || l.vehicle_category;
+    if (v) vehicleCount[v] = (vehicleCount[v] || 0) + 1;
+  });
+  
+  const brandCount: Record<string, number> = {};
+  leads.forEach(l => {
+    const b = l.interested_vehicle_brand_name;
+    if (b) brandCount[b] = (brandCount[b] || 0) + 1;
+  });
+
+  const financeRequired = leads.filter(l => l.finance_required === true).length;
+  
+  const dispositions: Record<string, number> = {};
+  leads.forEach(l => {
+    const d = l.disposition || "Unknown";
+    dispositions[d] = (dispositions[d] || 0) + 1;
+  });
+
+  const channels: Record<string, number> = {};
+  sessions.forEach(s => {
+    const ch = s.channel || "Unknown";
+    channels[ch] = (channels[ch] || 0) + 1;
+  });
+
+  const sentiments: Record<string, number> = {};
+  sessions.forEach(s => {
+    const sent = s.sentiment_classification || s.customer_sentiment || "Neutral";
+    sentiments[sent] = (sentiments[sent] || 0) + 1;
+  });
+
+  const averageDuration = sessions.length > 0 
+    ? Math.round(sessions.reduce((acc, s) => acc + (s.duration || 0), 0) / sessions.length) 
+    : 0;
+
+  const failureReasons = Array.from(new Set(leads.map(l => l.disposition_detail).filter(Boolean)));
+  const recommendedActions = Array.from(new Set(sessions.map(s => s.recommended_action).filter(Boolean)));
+  const ctas = Array.from(new Set(leads.flatMap(l => l.ctas || []).filter(Boolean)));
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-[200px] w-full rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overview stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Leads Mapped</div>
+            <div className="text-3xl font-bold mt-1 text-indigo-600 dark:text-indigo-400">{totalLeads}</div>
+            <div className="text-xs text-slate-400 mt-2">Active in this campaign</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Communication Sessions</div>
+            <div className="text-3xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{totalSessions}</div>
+            <div className="text-xs text-slate-400 mt-2">Average duration: {averageDuration} seconds</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Financing Inquiries</div>
+            <div className="text-3xl font-bold mt-1 text-blue-600 dark:text-blue-400">
+              {financeRequired} <span className="text-xs font-normal text-slate-400">leads ({totalLeads > 0 ? Math.round((financeRequired / totalLeads) * 100) : 0}%)</span>
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Require loan assistance</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardContent className="p-5">
+            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Customer Sentiment</div>
+            <div className="text-3xl font-bold mt-1 text-amber-600 dark:text-amber-400">
+              {sentiments.positive || 0} <span className="text-xs font-normal text-slate-400">Positive sessions</span>
+            </div>
+            <div className="text-xs text-slate-400 mt-2">Negative: {sentiments.negative || 0} | Neutral: {sentiments.neutral || sentiments.Neutral || 0}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Geographic & Product Breakdown */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <CardTitle className="text-base font-bold">Audience & Product Profile</CardTitle>
+            <CardDescription>Geographic distribution and product interests</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Target Region</h4>
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                    States: <span className="font-bold text-slate-900 dark:text-slate-100">{states.length > 0 ? states.join(", ") : "N/A"}</span>
+                  </p>
+                  <p className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                    Cities: <span className="font-bold text-slate-900 dark:text-slate-100">{cities.length > 0 ? cities.join(", ") : "N/A"}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Interested Models</h4>
+                <div className="mt-2 space-y-1">
+                  {Object.entries(vehicleCount).length > 0 ? (
+                    Object.entries(vehicleCount).map(([vehicle, count]) => (
+                      <p key={vehicle} className="text-sm font-medium text-slate-850 dark:text-slate-200">
+                        {vehicle}: <span className="font-bold text-slate-900 dark:text-slate-100">{count} lead(s)</span>
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-400">None specified</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Requested Call-to-Actions (CTAs)</h4>
+              <div className="flex flex-wrap gap-2">
+                {ctas.length > 0 ? (
+                  ctas.map(cta => (
+                    <Badge key={cta} variant="secondary" className="capitalize text-xs">
+                      {cta}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No CTA markers recorded</span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Lead Disposition Share</h4>
+              <div className="space-y-2">
+                {Object.entries(dispositions).map(([disp, count]) => (
+                  <div key={disp} className="flex justify-between items-center text-sm">
+                    <span className="capitalize text-slate-600 dark:text-slate-400">{disp}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 dark:text-slate-100">{count}</span>
+                      <span className="text-xs text-slate-400">({totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Communication & Failure Profile */}
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <CardTitle className="text-base font-bold">AI Call Outcomes & Quality</CardTitle>
+            <CardDescription>Outcome patterns and sentiment classification</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Channel Performance</h4>
+              <div className="space-y-2">
+                {Object.entries(channels).map(([ch, count]) => (
+                  <div key={ch} className="flex justify-between items-center text-sm">
+                    <span className="capitalize text-slate-600 dark:text-slate-400">{ch.replace(/_/g, " ")}</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">{count} session(s)</span>
+                  </div>
+                ))}
+                {Object.entries(channels).length === 0 && (
+                  <p className="text-sm text-slate-400">No session recordings found</p>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Detailed Call Disposition Statuses</h4>
+              <div className="flex flex-wrap gap-2">
+                {failureReasons.length > 0 ? (
+                  failureReasons.map(r => (
+                    <Badge key={r} variant="outline" className="text-red-700 bg-red-50/50 border-red-200 text-xs">
+                      {r}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No failure states logged</span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+              <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Recommended Next Actions</h4>
+              <div className="space-y-2">
+                {recommendedActions.length > 0 ? (
+                  recommendedActions.slice(0, 3).map((act, i) => (
+                    <div key={i} className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0" />
+                      <span>{act}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-400">No specific follow-up actions recommended yet</span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Detailed Lead Breakdown Log */}
+      {leads.length > 0 && (
+        <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
+            <CardTitle className="text-base font-bold">Consolidated Lead Summary List</CardTitle>
+            <CardDescription>Quick insight and timelines compiled for this campaign</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0 px-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow>
+                    <TableHead className="pl-6 font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">City</TableHead>
+                    <TableHead className="font-semibold">Lead Summary</TableHead>
+                    <TableHead className="font-semibold">Timeline</TableHead>
+                    <TableHead className="pr-6 text-right font-semibold">Brand / Vehicle</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leads.map((l, i) => (
+                    <TableRow key={l.pre_sales_lead_id || l.post_sales_lead_id || i}>
+                      <TableCell className="pl-6 font-semibold text-slate-900 dark:text-slate-100">{l.person_name || "Unknown"}</TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">{l.city || "-"}</TableCell>
+                      <TableCell className="text-xs text-slate-500 max-w-[300px] truncate" title={l.lead_summary || ""}>
+                        {l.lead_summary || "No summary compiled"}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-slate-600 dark:text-slate-400 max-w-[200px] truncate" title={l.lead_timeline || ""}>
+                        {l.lead_timeline || "-"}
+                      </TableCell>
+                      <TableCell className="pr-6 text-right text-xs">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{l.interested_vehicle_brand_name || ""}</span> {l.interested_vehicle_name || l.vehicle_category || ""}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // --- Inner Component ---
 
 function CampaignInsightsContent() {
@@ -324,6 +624,9 @@ function CampaignInsightsContent() {
   // --- Sessions Table, Filters & Pagination State ---
   const [sessionSearch, setSessionSearch] = useState("");
   const [sessionStatus, setSessionStatus] = useState("all");
+  const [sessionOrigin, setSessionOrigin] = useState("all");
+  const [sessionLiveFilter, setSessionLiveFilter] = useState("all");
+  const [sessionDisposition, setSessionDisposition] = useState("all");
   const [sessionStartDate, setSessionStartDate] = useState("");
   const [sessionEndDate, setSessionEndDate] = useState("");
   const [sessionSortConfig, setSessionSortConfig] = useState<{
@@ -507,12 +810,15 @@ function CampaignInsightsContent() {
         sessionPageSize === -1 ? sessionsCount || 10 : sessionPageSize,
         sessionSortConfig.key,
         sessionSortConfig.direction,
-        "all",
+        sessionStatus,
         sessionStartDate,
         sessionEndDate,
+        sessionOrigin,
+        sessionLiveFilter,
+        sessionDisposition,
       ]
       : null,
-    ([_, id, page, size, sortKey, sortDir, status, startDate, endDate]) =>
+    ([_, id, page, size, sortKey, sortDir, status, startDate, endDate, origin, liveFilter, disposition]) =>
       fetchCampaignSessions({
         campaignId: id as string,
         page_number: page as number,
@@ -521,6 +827,10 @@ function CampaignInsightsContent() {
         sort_reverse: sortDir === "desc" ? "true" : "false",
         start_date: startDate as string,
         end_date: endDate as string,
+        status: status === "all" ? undefined : (status as string),
+        origin: origin === "all" ? undefined : (origin as string),
+        session_live: liveFilter === "all" ? undefined : (liveFilter === "true" ? "True" : "False"),
+        disposition: disposition === "all" ? undefined : (disposition as string),
       }),
 
     SWR_OPTIONS,
@@ -719,6 +1029,7 @@ function CampaignInsightsContent() {
             <TabsTrigger value="statistics">Statistics</TabsTrigger>
             <TabsTrigger value="audience">Audience / Leads</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="report">Overall Report</TabsTrigger>
           </TabsList>
 
           {/* STATISTICS TAB CONTENT */}
@@ -745,6 +1056,57 @@ function CampaignInsightsContent() {
               </Alert>
             ) : (
               <>
+                {/* KPI Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Total Leads</p>
+                        <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                          <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {totalRecords.toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Total Sessions</p>
+                        <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                          <Activity className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {totalSessionRecords.toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500">Retrigger Count</p>
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
+                          <RefreshCw className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                          {Math.max(0, totalSessionRecords - totalRecords).toLocaleString()}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {performanceData.engagement_stats?.length > 0 && (
                   <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -1293,6 +1655,21 @@ function CampaignInsightsContent() {
                                 Email {getSortIcon("email")}
                               </div>
                             </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="Outbound Calls">
+                              <div className="flex justify-center">
+                                <PhoneOutgoing className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="Inbound Calls">
+                              <div className="flex justify-center">
+                                <PhoneIncoming className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            </TableHead>
+                            <TableHead className="text-center font-semibold text-slate-600 w-[70px]" title="WhatsApp Messages">
+                              <div className="flex justify-center">
+                                <MessageSquare className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              </div>
+                            </TableHead>
                             <TableHead
                               className="text-center font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group transition-colors"
                               onClick={() => handleSort("disposition")}
@@ -1334,6 +1711,8 @@ function CampaignInsightsContent() {
                               lead.lead_id ||
                               `lead-${index}`;
 
+                            const { outboundCalls, inboundCalls, whatsapp } = parseTimelineCounts(lead.lead_timeline);
+
                             return (
                               <TableRow
                                 key={leadId}
@@ -1349,6 +1728,33 @@ function CampaignInsightsContent() {
                                 </TableCell>
                                 <TableCell className="text-slate-500 text-xs">
                                   {lead.email || "-"}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {outboundCalls > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800">
+                                      {outboundCalls}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {inboundCalls > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800">
+                                      {inboundCalls}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {whatsapp > 0 ? (
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-semibold leading-none text-green-700 bg-green-50 border border-green-200 rounded-full dark:bg-green-950/30 dark:text-green-400 dark:border-green-800">
+                                      {whatsapp}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Badge
@@ -1514,6 +1920,65 @@ function CampaignInsightsContent() {
                     />
                   </div>
 
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionOrigin}
+                    onChange={(e) => {
+                      setSessionOrigin(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Origin: All</option>
+                    <option value="outbound">Outbound</option>
+                    <option value="inbound">Inbound</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionLiveFilter}
+                    onChange={(e) => {
+                      setSessionLiveFilter(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Live: All</option>
+                    <option value="true">Live</option>
+                    <option value="false">Ended</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionStatus}
+                    onChange={(e) => {
+                      setSessionStatus(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Status: All</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="busy">Busy</option>
+                  </select>
+
+                  <select
+                    className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
+                    value={sessionDisposition}
+                    onChange={(e) => {
+                      setSessionDisposition(e.target.value);
+                      setSessionCurrentPage(1);
+                    }}
+                  >
+                    <option value="all">Disposition: All</option>
+                    <option value="converted">Converted</option>
+                    <option value="busy">Busy</option>
+                    <option value="reached">Reached</option>
+                    <option value="engaged">Engaged</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="queued">Queued</option>
+                    <option value="failed">Failed</option>
+                  </select>
+
                   {/* SERVER Page Size */}
                   <select
                     className="h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400 w-full sm:w-auto cursor-pointer"
@@ -1613,16 +2078,39 @@ function CampaignInsightsContent() {
                                 Phone {getSessionSortIcon("phone_number")}
                               </div>
                             </TableHead>
-                            <TableHead className="font-semibold text-slate-600">
+                             <TableHead className="font-semibold text-slate-600">
                               Channel
                             </TableHead>
-
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group"
+                              onClick={() => handleSessionSort("origin")}
+                            >
+                              <div className="flex items-center">
+                                Origin {getSessionSortIcon("origin")}
+                              </div>
+                            </TableHead>
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
+                              onClick={() => handleSessionSort("session_live")}
+                            >
+                              <div className="flex items-center justify-center">
+                                Live {getSessionSortIcon("session_live")}
+                              </div>
+                            </TableHead>
                             <TableHead
                               className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
                               onClick={() => handleSessionSort("status")}
                             >
                               <div className="flex items-center justify-center">
                                 Status {getSessionSortIcon("status")}
+                              </div>
+                            </TableHead>
+                            <TableHead
+                              className="font-semibold text-slate-600 cursor-pointer hover:bg-slate-100 group text-center"
+                              onClick={() => handleSessionSort("disposition")}
+                            >
+                              <div className="flex items-center justify-center">
+                                Disposition {getSessionSortIcon("disposition")}
                               </div>
                             </TableHead>
                             <TableHead className="font-semibold text-slate-600">
@@ -1675,7 +2163,20 @@ function CampaignInsightsContent() {
                               <TableCell className="text-slate-500 capitalize text-xs">
                                 {session.channel?.replace("_", " ") || "-"}
                               </TableCell>
-
+                              <TableCell className="text-slate-500 capitalize text-xs">
+                                {session.origin || "-"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {session.session_live ? (
+                                  <Badge className="bg-red-500 hover:bg-red-600 text-white animate-pulse border-none text-[10px] px-1.5 py-0 h-5">
+                                    LIVE
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-slate-400 border-slate-200 text-[10px] px-1.5 py-0 h-5">
+                                    Ended
+                                  </Badge>
+                                )}
+                              </TableCell>
                               <TableCell className="text-center">
                                 <Badge
                                   variant="outline"
@@ -1691,13 +2192,25 @@ function CampaignInsightsContent() {
                                   {session.status}
                                 </Badge>
                               </TableCell>
+                              <TableCell className="text-center">
+                                <Badge
+                                  variant="outline"
+                                  className={`capitalize font-normal border ${session.disposition === "converted"
+                                      ? "border-emerald-200 text-emerald-700 bg-emerald-50"
+                                      : session.disposition === "busy"
+                                        ? "border-amber-200 text-amber-700 bg-amber-50"
+                                        : "border-slate-200 text-slate-500"
+                                    }`}
+                                >
+                                  {session.disposition || "-"}
+                                </Badge>
+                              </TableCell>
                               <TableCell
                                 className="text-slate-600 text-xs truncate max-w-[150px]"
                                 title={session.disposition_detail}
                               >
                                 {session.disposition_detail || "-"}
                               </TableCell>
-                              {/* ... after the Intent Cell */}
                               <TableCell className="max-w-[220px]">
                                 {session.summary ? (
                                   <Popover>
@@ -1851,6 +2364,14 @@ function CampaignInsightsContent() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="report" className="space-y-6 mt-6">
+            <OverallReportTab
+              leads={serverLeads}
+              sessions={serverSessions}
+              loading={leadsLoading || sessionsLoading}
+            />
           </TabsContent>
         </Tabs>
       </div>

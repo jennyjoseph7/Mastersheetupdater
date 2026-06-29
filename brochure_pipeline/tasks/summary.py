@@ -278,7 +278,7 @@ def run_vector_ingestion(tasks_payload: list):
 
     successful, failed = 0, 0
     logger.info(f"🚀 Starting ingestion of {len(tasks_payload)} items...")
-
+    logger.info(f"check creds {VECTOR_SERVICE_URL}, {VECTOR_ENTERPRISE_ID}, {VECTOR_SESSION_ID}, {VECTOR_TOKEN}")
     for item in tasks_payload:
         try:
             logger.info( f"this is testing: {(item)}")

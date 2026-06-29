@@ -3,18 +3,33 @@
         {
             "read_access": true,
             "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "data_admin"
         }
     ],
     "post_workshop": [
         {
             "read_access": true,
             "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "data_admin"
         }
     ],
     "post_showroom": [
         {
             "read_access": true,
             "role": "human_agent"
+        },
+        {
+            "read_access": true,
+            "write_access": true,
+            "role": "data_admin"
         }
     ],
     "autosphere_template": [
@@ -125,7 +140,8 @@
         },
         {
             "read_access": true,
-            "role": "data_admin"
+            "role": "data_admin",
+            "write_access": true
         }
     ],
     "showroom": [
@@ -137,7 +153,8 @@
         },
         {
             "read_access": true,
-            "role": "data_admin"
+            "role": "data_admin",
+            "write_access": true
         }
     ],
     "buyback_center": [
@@ -149,7 +166,8 @@
         },
         {
             "read_access": true,
-            "role": "data_admin"
+            "role": "data_admin",
+            "write_access": true
         }
     ],
     "post_sales_campaign": [

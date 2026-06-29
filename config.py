@@ -32,7 +32,7 @@ AUTOCRM_ALLOWED_CHANNELS = [
     "whatsapp_voice_call",
     "sms",
     "voice",
-    "voicebot"
+    "voicebot",
     "web_chat",
     "web_chat_voice",
     "fb_chat",
@@ -508,14 +508,10 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
-def get_phone_code_from_dealership(dealership_id, with_plus = True):
-    dm = AutocrmModel('dealership')
-    d = dm.get(dealership_id)
+def get_phone_code_from_region(region_id, with_plus = True):
     addp = '+' if with_plus else ''
-    if not d.get('region_id'):
-        return f'{addp}91'
     rm = AutocrmModel('region')
-    r = rm.get(d.get('region_id'))
+    r = rm.get(region_id)
     c = r.get('country_phone_code')
     if not c:
         return f'{addp}91'
@@ -525,6 +521,13 @@ def get_phone_code_from_dealership(dealership_id, with_plus = True):
         return c.strip('+')
     return c
 
+def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    dm = AutocrmModel('dealership')
+    d = dm.get(dealership_id)
+    if not d.get('region_id'):
+        return f'{addp}91'
+    return get_phone_code_from_region(d.get('region_id'), with_plus = with_plus)
+
 def get_cheapest_channel(channels: list, channel_sequence = None):
     channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
     for c in channel_sequence:
@@ -532,9 +535,78 @@ def get_cheapest_channel(channels: list, channel_sequence = None):
             return c
     return channels[0]
 
-def process_phone_number(phone_number, dealership_id = None):
+def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, channel = None):
+    blm = AutocrmModel('blacklisted_number')
+    phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
+    bll = blm.get(phone_number = phone_number)
+    if not bll:
+        return False
+    if channel and channel not in bll.get('channels'):
+        return False
+    dealership_ids = bll.get('dealership_ids') or []
+    if not dealership_ids:
+        return True
+    if dealership_id and dealership_id in dealership_ids:
+        return True
+    return False
+
+def blacklist_a_number(phone_number, dealership_id = None, region_id = None, channel = None):
+    blm = AutocrmModel('blacklisted_number')
+    phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
+    bll = blm.get(phone_number = phone_number)
+    if not bll:
+        return blm.post({
+            'phone_number': phone_number, 
+            "region_id": region_id, 
+            "dealership_ids": hp.make_list(dealership_id) if dealership_id else None, 
+            "channels": hp.make_list(channel) if channel else None
+        })
+    cdealerships = bll.get('dealership_ids') or []
+    to_update = {}
+    if dealership_id and dealership_id not in cdealerships:
+        #blm.iadd(phone_number, 'dealership_ids', [dealership_id])
+        to_update["dealership_ids"] = cdealerships.append(dealership_id)
+    cchannels = bll.get('channels') or []
+    if channel and channel not in cchannels:
+        #blm.iadd(phone_number, 'channels', [channel])
+        to_update["channels"] = cchannels.append(channel)
+    if to_update:
+        return blm.update(phone_number, to_update)
+    return bll
+    
+
+def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id = None, channel = None):
+    blm = AutocrmModel('blacklisted_number')
+    phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
+    bll = blm.get(phone_number = phone_number)
+    if not bll:
+        return None
+    cdealerships = bll.get('dealership_ids') or []
+    to_update = {}
+    cchannels = bll.get('channels') or []
+    if channel and isinstance(channel, str):
+        if channel in cchannels:
+            #blm.iadd(phone_number, 'channels', [channel])
+            to_update["channels"] = cchannels.pop(channel)
+        elif channel.lower() == "__all__":
+            to_update["channels"] = []
+    if dealership_id and isinstance(dealerhsip_id, str):
+        if dealership_id not in cdealerships:
+            #blm.iadd(phone_number, 'dealership_ids', [dealership_id])
+            to_update["dealership_ids"] = cdealerships.pop(dealership_id)
+        elif dealership_id.lower() == "__all__":
+            to_update["dealership_ids"] = cdealerships.pop(dealership_id)
+    if to_update:
+        return blm.update(phone_number, to_update)
+    return bll
+
+
+
+def process_phone_number(phone_number, dealership_id = None, region_id = None):
     phone_code = '91'
-    if dealership_id:
+    if region_id:
+        phone_code = get_phone_code_from_region(region_id, with_plus = False)
+    elif dealership_id:
         phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
     phone_number = re.sub(r'\D', '', phone_number)
     if len(phone_number) > 10:
