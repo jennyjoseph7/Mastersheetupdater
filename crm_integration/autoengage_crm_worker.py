@@ -21,12 +21,7 @@ gryd.set_queue_manager()
  logger_param="logger",
  job_param="job"
 )
-def post_pre_sales_lead(
-   crm_name,
-   data,
-   logger=None,
-   job=None
-):
+def post_pre_sales_lead(crm_name,data,logger=None,job=None):
 
     crm=load_crm(crm_name)
 

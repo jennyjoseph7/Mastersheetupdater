@@ -19,6 +19,7 @@ class BaseCRMClass(ABC):
 
     # shared logic 2
     def validate_payload(self,data):
+        
         if not isinstance(data,dict):
             raise ValueError("Payload must be dictionary")
 

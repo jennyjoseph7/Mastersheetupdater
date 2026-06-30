@@ -97,8 +97,6 @@ class GoogleDocsCRM(BaseCRMClass):
 
   
     # CORE UTIL METHODS
-    
-
     def get_sheet_headers(self):
         return self.sheet.row_values(1)
 
