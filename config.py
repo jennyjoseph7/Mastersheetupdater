@@ -522,6 +522,7 @@ def get_phone_code_from_region(region_id, with_plus = True):
     return c
 
 def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    addp = '+' if with_plus else ''
     dm = AutocrmModel('dealership')
     d = dm.get(dealership_id)
     if not d.get('region_id'):
@@ -538,7 +539,8 @@ def get_cheapest_channel(channels: list, channel_sequence = None):
 def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    mlogger.info("Checking if phone number %s is blacklisted", phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return False
     if channel and channel not in bll.get('channels'):
@@ -553,7 +555,7 @@ def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, 
 def blacklist_a_number(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return blm.post({
             'phone_number': phone_number, 

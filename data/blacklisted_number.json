@@ -19,7 +19,7 @@
                     "region_id": "{region_id}"
                 }
             },
-            "required": true
+            "id": true
         },
         {
             "name": "dealership_ids",
