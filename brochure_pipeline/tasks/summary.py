@@ -27,7 +27,7 @@ VECTOR_TOKEN = os.getenv("VECTOR_TOKEN")
 
 def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
     gryd_tasks = []
-    
+    logger.info(f"THis is the llm generated data: {llm_data}")  
     def create_payload(entry, level, suffix):
         return {
             "service": "vector_document",
@@ -38,6 +38,7 @@ def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
                 "conversation_id": "autocrm_ingestion",
                 "metadata": {
                     "document_id": f"{doc_id_prefix}_{suffix}",
+
                     "level": level,
                     "information": entry.get('toon_text', '') 
                 },
