@@ -382,10 +382,10 @@ def create_rooftop_image(
     brand_model = AutocrmModel('brand')
     post_idea_model = AutocrmModel('post_idea')
     template_model = AutocrmModel('autosphere_template')
-    idea_params = {'brand_id': rooftop.get('supported_brands'), '_as_option': True}
+    idea_params = {'brand_id': rooftop.get('supported_brands'), '_as_option': True, 'image_url~': None}
     post_ideas = post_idea_model.list(**idea_params)
     if not post_ideas:
-        raise ValueError(f"No ideas found for supported brands: {rooftop.get('supported_brands')}")
+        raise ValueError(f"No ideas with a base image found for supported brands: {rooftop.get('supported_brands')}")
     post_idea = hp.random.choice(post_ideas)
     brand_id = post_idea.get('brand_id')
     brand = brand_model.get(brand_id)
@@ -455,7 +455,7 @@ def create_rooftop_images_batch(post_idea_id: str, debug: bool = False, job: dic
         any_rooftops += 1
         rooftop_id = rooftop.get(f'{rooftop_type}_id')
         dealership = dealership_model.get(rooftop.get('dealership_id'))
-        cdn_url = do_the_merge(rooftop_type, base_png, template, brand, rooftop=rooftop, dealership=dealership, debug=debug, logger=logger)
+        cdn_url = do_the_merge(rooftop_type, base_png, template, brand, rooftop=rooftop, dealership=dealership, offer=offer, campaign_details=campaign_details, debug=debug, logger=logger)
         yield {
             "rooftop_type": rooftop_type,
             "post_idea_id": post_idea_id,
