@@ -194,6 +194,8 @@ def post_session_process(*args, **kwargs):
     
     session_data = session_data.get("data",{})
     campaign_data = session_data.get("campaign_data", {})
+    campaign_obj = session_data.get("ctas", [])
+    mlogger.info("post_session_process_campaign_obj == {}".format(campaign_obj))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
     mlogger.info(f"Lead id--{lead_id}, campaign_type--{campaign_type}")
@@ -234,7 +236,7 @@ def post_session_process(*args, **kwargs):
        
     updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if messages and len(messages) > 0 else {"disposition"}
         
-    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
+    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail"), "campaign_objective_name": campaign_obj}
     if updated_lead_data.get("disposition_detail").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
