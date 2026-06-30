@@ -205,7 +205,7 @@ def trigger_voice_call(*args, **kwargs):
                 }
 
                 logger.info(f"Updating session status to 'queued' for session_id: {session_data.get('session_id')}")
-                config.flag_error_to_session(session_data.get('session_id'), f"Error in generating prompt: {x.get('message')}", status = "queued")
+                config.flag_error_to_session(session_data.get('session_id'), f"Error in generating prompt: {x.get('message')}", status = "queued", disposition = "queued")
 
                 with get_pg_connector() as pg:
                     pg.update(
