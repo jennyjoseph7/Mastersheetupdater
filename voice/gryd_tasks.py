@@ -154,6 +154,11 @@ def trigger_voice_call(*args, **kwargs):
                 "phone_number":format_phone_number(user_data.get("mobile_number")),
                 "start_time": hp.epoch()                
             }
+
+            if user_data.get("from_inbound", False):
+                logger.info(f"Session ID provided {user_data.get('session_id')} this is inbound missed call scenario. Origin changed to inbound_outbound")
+                session_obj["origin"] = "inbound"
+                
             session_data = session_model.post(session_obj)
 
             #if agent_id passed in task kwargs
@@ -200,10 +205,8 @@ def trigger_voice_call(*args, **kwargs):
                 }
 
                 logger.info(f"Updating session status to 'queued' for session_id: {session_data.get('session_id')}")
-                session_model.patch(
-                    session_data.get("session_id"),
-                    {"status": "queued"}
-                )
+                config.flag_error_to_session(session_data.get('session_id'), f"Error in generating prompt: {x.get('message')}", status = "queued")
+
                 with get_pg_connector() as pg:
                     pg.update(
                         config_data["table"],
@@ -266,7 +269,7 @@ def trigger_voice_call(*args, **kwargs):
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
-    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 30))  # 0.5 minutes
+    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 32))  # 0.7 minutes
 
     while time.time() < timeout:
         time.sleep(5)
@@ -290,19 +293,24 @@ def trigger_voice_call(*args, **kwargs):
             if latest["provider_status"] in ["attempted"]:
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
-                    post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
-                    gryd.create_async_task(
-                        "end_session_and_post_process",
-                        config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
-                        args  = [],
-                        kwargs={
-                            "session_id": session_data["session_id"],
-                            "additional_dict":{
-                                "status": "completed",
-                                "disposition": "busy"
+                    sn = session_model.get(session_data["session_id"])
+                    if sn and sn.get("session_live", True):
+                        post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
+                        gryd.create_async_task(
+                            "end_session_and_post_process",
+                            config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                            args  = [],
+                            kwargs={
+                                "session_id": session_data["session_id"],
+                                "additional_dict":{
+                                    "status": "completed",
+                                    "disposition": "busy"
+                                }
                             }
-                        }
-                    )
+                        )
+                    else:
+                        post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "failed"})
+
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue
@@ -389,6 +397,9 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     if not session_data and session_id:
         session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
         session_data = session_model.get(session_id)
+        if not session_data.get("session_live", True):
+            logger.info(f"Session {session_id} is not live, skipping posting contact status")
+            return
 
     if additiona_params:
         session_data.update(additiona_params)

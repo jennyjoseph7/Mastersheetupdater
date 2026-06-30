@@ -17,6 +17,7 @@ from datetime import datetime
 from agents.sentiment_agent import SentimentAnalysisAgent
 from conversation import converse
 from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
+import autocrm_validator as auto_val
 import time
 from agents.workflows import WorkflowFactory, send_sop_alert
 import autocrm_validator as auto_val
@@ -178,7 +179,21 @@ def post_session_process(*args, **kwargs):
         mlogger.info("session_mdl_obj not found for session_id == {}".format(session_id))
         yield from yield_error("error","session_mdl_obj not found",*args, **kwargs)
         return
-    
+    session_data_clean = session_data.get("data", {}) if session_data else {}
+    campaign_data = session_data_clean.get("campaign_data", {}) if session_data_clean else {}
+    campaign_type_val = campaign_data.get("campaign_type") or session_mdl_obj.get("campaign_type") or ""
+    campaign_type = "pre_sales" if campaign_type_val.lower() == "pre-sales" else "post_sales"
+    lead_id = session_data_clean.get("user_data", {}).get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
+
+    if lead_id:
+        try:
+            with get_pg_connector() as pg:
+                session_hist = auto_val.plot_lead_session_history_func(ins=None, lead_attribute=lead_id)
+                update_session_hist = pg.update(f"{campaign_type}_lead", f"{campaign_type}_lead_id", lead_id, {"lead_timeline": session_hist})
+                mlogger.info(f"Updated session history in lead data (early update) == {update_session_hist}")
+        except Exception as e:
+            mlogger.error(f"Failed to update session history early: {e}")
+
     if session_mdl_obj.get("status") in ["busy",
                                         "no-answer",
                                         "cancelled",
@@ -197,6 +212,7 @@ def post_session_process(*args, **kwargs):
     campaign_obj = session_data.get("ctas", [])
     mlogger.info("post_session_process_campaign_obj == {}".format(campaign_obj))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
+    mlogger.info("campaign_data == {}".format(campaign_data))
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
     mlogger.info(f"Lead id--{lead_id}, campaign_type--{campaign_type}")
     lead_data = {}
@@ -225,9 +241,17 @@ def post_session_process(*args, **kwargs):
     if messages:
         sentiment_agent = SentimentAnalysisAgent(source = messages, model_identifier="databricks-gemini-3.1-flash-lite")
         senti_output = sentiment_agent.run()
+        mlogger.info(f"Sentiment Analysis Output: {senti_output}")
         data = senti_output.get("raw_response", [])
-        text = data[0].get("text",'').replace('\xa0', ' ')
-        aa = json.loads(text) if text else {}
+        if data:
+            text = data[0].get("text",'').replace('\xa0', ' ')
+            aa = json.loads(text) if text else {}
+        elif isinstance(senti_output, dict):
+            aa = senti_output
+        elif isinstance(senti_output, str):
+            aa = json.loads(senti_output)
+        else:
+            aa = {}
         sentiment_score = aa.get("conversation_analytics",{}).get("overall_sentiment_score",-1)
         emotion_analysis = aa.get("conversation_analytics",{}).get("emotion_analysis",{})
         mlogger.info(f"sentiment data gave me score = {sentiment_score} and ananlysis = {emotion_analysis}")
@@ -398,9 +422,16 @@ def post_session_process(*args, **kwargs):
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
         try:
-            crm_sheet = sales_campaign_data.get("crm_source_details", {}).get('sheet_url', '')
-            crm_phone = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
-            crm_update = {"sheet_name": crm_sheet, "phone_number": crm_phone}
+            crm_source = sales_campaign_data.get("crm_source_details", {}) or {}
+            crm_sheet  = crm_source.get('sheet_url', '')
+            crm_credentials = crm_source.get('api_key')       # dict from DB
+            crm_phone  = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
+            crm_update = {
+                "sheet_url":   crm_sheet,         # full URL → open_by_key
+                "sheet_name":  crm_sheet,         # legacy compat
+                "phone_number": crm_phone,
+                "credentials": crm_credentials,  # api_key dict from DB
+            }
             crm_update.update({k: v for k, v in updated_lead_data.items() if k not in crm_update})
             if crm_sheet and crm_phone:
                 gryd.create_async_task(
@@ -417,63 +448,18 @@ def post_session_process(*args, **kwargs):
             mlogger.exception(f"Failed to enter CRM update: {e}")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
         update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
-        mlogger.info(f"Updated session history in lead data == {update_session_hist}")
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
-
-        # ── Meta CAPI: push conversion event back to Meta (non-fatal) ────────
-        # Triggered only when the lead originally came from Meta Lead Ads.
-        # leadgen_id is retrieved from external_source_data stored at lead creation time.
-        try:
-            lead_source_data = (updated_lead_data or lead_data or {}).get("external_source_data") or {}
-            if lead_source_data.get("source") == "meta":
-                leadgen_id_str = lead_source_data.get("leadgen_id")
-                mlogger.info(
-                    "[CAPI] Meta lead detected — queuing CAPI push: "
-                    "leadgen_id=%s disposition=%s",
-                    leadgen_id_str, new_desposition,
-                )
-                gryd.create_async_task(
-                    "push_capi_lead_event",
-                    AUTOCRM_CRM_UPDATE_SERVICE_NAME,
-                    args=[],
-                    kwargs={
-                        "phone_number":      (
-                            updated_lead_data.get("phone_number")
-                            or lead_data.get("phone_number", "")
-                        ),
-                        "disposition":       new_desposition,
-                        "email":             (
-                            updated_lead_data.get("email")
-                            or lead_data.get("email")
-                        ),
-                        "name":              (
-                            updated_lead_data.get("person_name")
-                            or lead_data.get("person_name")
-                        ),
-                        "facebook_lead_id":  (
-                            int(leadgen_id_str)
-                            if leadgen_id_str and str(leadgen_id_str).isdigit()
-                            else None
-                        ),
-                        "lead_event_source": "DaveAI AutoNgage",
-                    },
-                )
-                mlogger.info("[CAPI] push_capi_lead_event task queued successfully.")
-        except Exception as capi_err:
-            # CAPI push is best-effort — never let it block session post-processing
-            mlogger.warning("[CAPI] Non-fatal: CAPI push failed: %s", capi_err)
-
-        if appt_date_time_purpose.get("appointment_date"):
-            visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data, session_mdl_obj)
-            mlogger.info("visit data == {}".format(visit_data))
-            if not visit_data:
-                return
-            visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
-            m = AutocrmModel(visit_model)
-            mlogger.info("visit_model == {}".format(visit_model))
-            posted = m.post(visit_data)
-            mlogger.info("visit posted == {}".format(posted))
+            if appt_date_time_purpose.get("appointment_date"):
+                visit_data = get_visit_data(session_id,session_data, appt_date_time_purpose,updated_lead_data, session_mdl_obj)
+                mlogger.info("visit data == {}".format(visit_data))
+                if not visit_data:
+                    return
+                visit_model = "showroom_visit" if campaign_data.get("campaign_type") == "pre-sales" else "service_visit"
+                m = AutocrmModel(visit_model)
+                mlogger.info("visit_model == {}".format(visit_model))
+                posted = m.post(visit_data)
+                mlogger.info("visit posted == {}".format(posted))
     
 @gryd.is_a_task(function_name="update_channel_identifier")
 def update_channel_identifier(user_id,**data):
@@ -647,7 +633,6 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
 
         update_payload.pop("lead_id", None)
         update_payload.pop("dealership_id", None)
-
         # check if the session is live and update the session and lead model..
         s_d=list(pg.list_order_by("session",{"lead_id":lead_id,"channel":channel,"lead_model":lead_table, "session_live": True, "status~" : "completed"},order="DESC"))
         if not s_d:
@@ -666,8 +651,9 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 )
             }
         pg.update("session","session_id",session_id,_p)
+        # mlogger.info(f"[post_contact_status] update_payload for lead_id={lead_id}: {update_payload}")
         if update_payload and s_d:
-            mlogger.info(f"Since the session is live, updating lead with update_payload {update_payload} for lead_id: {lead_id}")
+            mlogger.info(f"Since the session is live, Updating lead with update_payload for lead_id={lead_id}: {update_payload}")
             pg.update(
                 lead_table,
                 lead_pk,
@@ -1571,12 +1557,14 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     return hp.json.loads(resp)
 
 def get_visit_data(session_id,session_data_cache,appt_date_time_purpose,lead_data, session_mdl_obj):
+    mlogger.info("get_visit_data called with session_data_cache == {}".format(json.dumps(session_data_cache)))
     session_data = session_data_cache
     campaign_data = session_data.get("campaign_data",{})
     campaign_type = "pre_sales" if campaign_data.get("campaign_type") == "pre-sales" else "post_sales"
 
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
 
+    mlogger.info("campaign_data == {}".format(json.dumps(campaign_data)))
     if campaign_data.get("campaign_type") == "pre-sales":
         if not lead_data.get("showroom_id"):
             mlogger.info("showroom_id not found in lead_data")

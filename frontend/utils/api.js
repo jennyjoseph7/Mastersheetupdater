@@ -524,6 +524,9 @@ export async function fetchCampaignSessions({
   disposition = "",
   start_date = "",
   end_date = "",
+  status = "",
+  origin = "",
+  session_live = "",
 } = {}) {
   if (!campaignId || !dealershipId) {
     return { items: [], total_number: 0 };
@@ -542,6 +545,12 @@ export async function fetchCampaignSessions({
     if (search) params.append("search", search);
     if (disposition && disposition !== "all")
       params.append("disposition", disposition);
+    if (status && status !== "all")
+      params.append("status", status);
+    if (origin && origin !== "all")
+      params.append("origin", origin);
+    if (session_live && session_live !== "all")
+      params.append("session_live", session_live);
 
     // Apply Date Range - Sending as a comma-separated string: created=min,max
     if (start_date || end_date) {
@@ -683,7 +692,7 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
     if (params.campaign_type)
       searchParams.append("campaign_type", params.campaign_type);
 
-    // Apply Date Range - Sending as a comma-separated string: created=min,max
+    // Apply Date Range - Sending as a comma-separated string: updated=min,max
     if (params.start_date || params.end_date) {
       let startEpoch = 0; // Default minimum epoch if no start date is selected
       let endEpoch = Math.floor(Date.now() / 1000); // Default maximum epoch (current time)
@@ -701,7 +710,7 @@ export async function fetchActiveSessions(dealershipId, params = {}) {
       }
 
       // Append the single parameter with the comma-separated format
-      searchParams.append("created", `${startEpoch},${endEpoch}`);
+      searchParams.append("updated", `${startEpoch},${endEpoch}`);
     }
 
     const url = `${APP_BASE_URL}/gryd/db/objects/session?${searchParams.toString()}`;

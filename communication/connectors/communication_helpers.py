@@ -630,7 +630,7 @@ Returns:
             campaigns = list(pg.list(
                 campaign_model,
                 {
-                    "campaign_objective_name": "Inbound Lead Handling",
+                    "campaign_objective_name": "inbound lead handling",
                     "dealership_id": dealership_id,
                     "campaign_type": campaign_type                
                 }
@@ -679,7 +679,7 @@ Returns:
             "updated": now,
             "start_time": now,
         }
-
+        data["created"] = now
         # Generate session_id
         session_id = generate_uid(data)
 

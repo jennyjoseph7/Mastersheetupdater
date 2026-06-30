@@ -10,6 +10,7 @@ from gryd_worker import gryd, gryd_helpers as hp
 from config import (
     AUTOCRM_APP_ENTERPRISE_ID, 
     AutocrmModel,
+    process_phone_number
 )
 
 def calulate_total_billing_func(ins, model, attribute, action, **kwargs):
@@ -135,4 +136,12 @@ val.make_function(
     given_args="instance",
     is_idempotent=False, 
     help_string = "Get transaction id from payment gateway"
+)
+
+val.make_function(
+    lambda inst, v, **a: process_phone_number(v, dealership_id = inst.get(a.get('dealership_id')), region_id = inst.get(a.get('region_id'))),
+    "auto_format_phone_number",
+    given_args= ["instance", "value"],
+    is_idempotent=False,
+    help_string="Format the phone number with the region id or dealership id"
 )

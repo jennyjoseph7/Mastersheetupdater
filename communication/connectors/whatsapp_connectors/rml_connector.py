@@ -173,7 +173,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
         Unified template creation for text, media and carousel templates.
         Uses kwargs for flexible inputs.
         """
-        logger.info(f"***************** In create template {template_type}")
+        logger.info(f"***************** In create_template - template_type: {template_type} *****************")
         # logger.info(f"RML create_template template_type: {template_type}, kwargs: {kwargs}")
         if template_type not in RMLWhatsAppMessenger.SUPPORTED_TEMPLATES:
             raise ValueError(f"Unsupported template type: {template_type}")
@@ -287,7 +287,7 @@ class RMLWhatsAppMessenger(BaseWhatsappMessenger):
 
             payload["carousel"] = carousel
             
-            logger.info(f"RML Create Template payload: {payload}")
+            logger.info(f"RML create template payload: {payload}")
             return payload
 
     

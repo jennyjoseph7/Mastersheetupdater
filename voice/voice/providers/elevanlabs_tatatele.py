@@ -27,7 +27,6 @@ from elevenlabs import ElevenLabs
 from typing import Dict, Any, Optional
 import audioop  # Native C extension - fast audio processing
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp
-import utils
 
 # Use uvloop for faster event loop (Linux/macOS only)
 try:
@@ -400,6 +399,7 @@ class CallSession:
                     self.stop_event.set()
                 except Exception as e:
                     logger.error(f"[{self.call_id}] Failed to send to ElevenLabs %s", e)
+                    config.flag_error_to_session(self.call_id, f"Failed to send to ElevenLabs: {e}")
                     self.dave_ws = None
             elif not self.stop_event.is_set():
                 self.media_buffer.append(converted_audio)
@@ -791,6 +791,7 @@ class CallSession:
                     except Exception as e:
                         logger.info(f"[{self.call_id}] Tatatele reader error: %s", e)
                         self.stop_event.set()
+                        config.flag_error_to_session(self.call_id, f"Tatatele reader error: {e}")
                         break
 
 
@@ -800,7 +801,7 @@ class CallSession:
                     try:
                         message = await asyncio.wait_for(self.dave_ws.recv(), timeout=timeout)
                         await handle_dave_message(message)
-                    except (asyncio.TimeoutError, TimeoutError):
+                    except (asyncio.TimeoutError, TimeoutError) as e:
                         logger.error(f"[{self.call_id}] Dave reader timed out waiting for message")
                         self.stop_event.set()
                         break
@@ -811,6 +812,7 @@ class CallSession:
                     except Exception as e:
                         logger.error(f"[{self.call_id}] Dave reader error: %s", e)
                         self.stop_event.set()
+                        config.flag_error_to_session(self.call_id, f"Dave reader error: {e}")
                         break
                   
             # Run both readers - cancel the other when one exits
@@ -848,6 +850,7 @@ class CallSession:
         except Exception as e:
             bridge_error = repr(e)
             logger.exception(f"[{self.call_id}] Main error: %s", e)
+            config.flag_error_to_session(self.call_id, f"Main error: {e}")
         finally:
             self.processed_agent_responses.clear()
             # Hang up the TataTele phone call so the user isn't left on a dead line
@@ -873,7 +876,7 @@ class CallSession:
             # Cleanup session
             terminate_session(self.call_id)
 
-    async def connect_external_websocket(self, url: str, timeout = 29):
+    async def connect_external_websocket(self, url: str, timeout = 32):
         """Connect to external websocket for this call session."""
         self._bridge_loop = asyncio.get_running_loop()
         t = time()
@@ -885,12 +888,13 @@ class CallSession:
                 logger.info(f"[{self.call_id}] Time taken to connect to external WebSocket: {time() - t:.2f} seconds")
             except Exception as conn_error:
                 logger.error(f"[{self.call_id}] Failed to establish WebSocket connection to {url}: {conn_error}")
+                config.flag_error_to_session(self.call_id, f"Failed to establish WebSocket connection to {url}: {conn_error}")
                 raise
 
             while not self.stop_event.is_set():
                 try:
                     message = await asyncio.wait_for(self.external_ws.recv(), timeout=timeout)
-                    logger.info(f"[{self.call_id}] received: {message}")
+                    logger.info(f"[{self.call_id}] First message from tatatele received: {message}")
                     await self.outbound_media_stream(self.external_ws)
                 except (asyncio.TimeoutError, TimeoutError):
                     #make it as failed for timeout
@@ -898,11 +902,13 @@ class CallSession:
                 except Exception as e:
                     #set it as busy for recv error.
                     logger.error(f"[{self.call_id}] recv error: %s", e)
+                    config.flag_error_to_session(self.call_id, f"Recv error: {e}")
                 finally:
                     self.stop_event.set()
                     break
         except Exception as e:
             logger.exception(f"[{self.call_id}] connection failed: %s", e)
+            config.flag_error_to_session(self.call_id, f"Connection failed: {e}")
         finally:
             #Socket cleanup - ensure all websockets are closed
             sockets_to_close = []
@@ -1163,6 +1169,7 @@ def make_call_tatatele(session_data, *args, **kwargs):
         return response
     except Exception as exc:
         logger.exception("Tatatele call initiation failed")
+        config.flag_error_to_session(session_id, f"Connection failed: {exc}")
         return {"error": str(exc)}
 
 

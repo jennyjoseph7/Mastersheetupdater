@@ -41,7 +41,7 @@ HEADER_MAPPING = {
     "Mobile Number":    "phone_number",
     "Status":           "status",
 
-    # ── Written back by Sahib's post-processing task ──────────────────────────
+    # ── Written back by post-processing task ──────────────────────────
     "Disposition":      "disposition",
     "Sentiment":        "sentiment",
     "Call Duration":    "call_duration",
@@ -51,33 +51,52 @@ HEADER_MAPPING = {
 
 class GoogleDocsCRM(BaseCRMClass):
 
-    def __init__(self, sheet_name):
-
+    def __init__(self, sheet_name=None, credentials=None, sheet_url=None):
+        """
+        Args:
+            credentials (dict): Service account credentials dict (from DB crm_source_details.api_key).
+                                 If None, falls back to reading credentials.json from disk.
+            sheet_url (str):    Full Google Sheet URL or just the spreadsheet ID.
+                                 Takes priority over sheet_name.
+            sheet_name (str):   Sheet title (legacy fallback — used only when sheet_url is not given).
+        """
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
 
-        import os
-
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-        cred_path = os.path.join(BASE_DIR, "credentials.json")
-
-        creds = Credentials.from_service_account_file(
-            cred_path,
-            scopes=scope
-        )
+        # ── Build credentials ─────────────────────────────────────────────────
+        if credentials and isinstance(credentials, dict):
+            # NEW: credentials passed directly as dict from DB
+            creds = Credentials.from_service_account_info(credentials, scopes=scope)
+        else:
+            # LEGACY fallback: read from credentials.json file on disk
+            import os
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            cred_path = os.path.join(BASE_DIR, "credentials.json")
+            creds = Credentials.from_service_account_file(cred_path, scopes=scope)
 
         client = gspread.authorize(creds)
 
-        self.sheet = client.open(sheet_name).sheet1
+        # ── Open the sheet ────────────────────────────────────────────────────
+        if sheet_url:
+            # Extract spreadsheet ID from full URL if needed
+            # URL format: https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit...
+            if "/spreadsheets/d/" in sheet_url:
+                spreadsheet_id = sheet_url.split("/spreadsheets/d/")[1].split("/")[0]
+            else:
+                # Assume it's already just the spreadsheet ID
+                spreadsheet_id = sheet_url
+            self.sheet = client.open_by_key(spreadsheet_id).sheet1
+        elif sheet_name:
+            # Legacy: open by sheet title
+            self.sheet = client.open(sheet_name).sheet1
+        else:
+            raise ValueError("Either sheet_url or sheet_name must be provided to GoogleDocsCRM")
 
 
   
     # CORE UTIL METHODS
-    
-
     def get_sheet_headers(self):
         return self.sheet.row_values(1)
 

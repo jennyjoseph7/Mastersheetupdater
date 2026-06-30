@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import PageHeader from "@/components/page-header";
 import {
@@ -48,6 +48,7 @@ import {
   RefreshCw,
   Search,
   Filter,
+  Activity,
 } from "lucide-react";
 
 // Types
@@ -64,6 +65,8 @@ interface DailySummaryItem {
   total_leads_triggered: number;
   total_campaign_triggered: number;
   daily_dealership_summary_id: string;
+  total_sessions?: number;
+  retrigger_count?: number;
 }
 
 const COLORS = [
@@ -77,6 +80,7 @@ const COLORS = [
 ];
 
 function DealershipSummaryContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dealershipIdParam =
     searchParams.get("dealership_id") || "dave-ai-india";
@@ -253,6 +257,8 @@ function DealershipSummaryContent() {
     let converted = 0;
     let failed = 0;
     let pending = 0;
+    let totalSessions = 0;
+    let retriggerCount = 0;
 
     filteredData.forEach((d) => {
       campaigns += d.total_campaign_triggered || 0;
@@ -261,6 +267,8 @@ function DealershipSummaryContent() {
       converted += d.total_converted || 0;
       failed += d.total_failed || 0;
       pending += d.total_pending || 0;
+      totalSessions += d.total_sessions || 0;
+      retriggerCount += d.retrigger_count || 0;
     });
 
     const connectRate = leads > 0 ? (connected / leads) * 100 : 0;
@@ -274,6 +282,8 @@ function DealershipSummaryContent() {
       converted,
       failed,
       pending,
+      totalSessions,
+      retriggerCount,
       connectRate,
       conversionRate,
       overallConversionRate,
@@ -377,6 +387,8 @@ function DealershipSummaryContent() {
       "Channel",
       "Campaigns Triggered",
       "Leads Triggered",
+      "Sessions Happened",
+      "Retrigger Count",
       "Connected",
       "Converted",
       "Failed",
@@ -388,6 +400,8 @@ function DealershipSummaryContent() {
       d.channel,
       d.total_campaign_triggered,
       d.total_leads_triggered,
+      d.total_sessions || 0,
+      d.retrigger_count || 0,
       d.total_connected,
       d.total_converted,
       d.total_failed,
@@ -530,8 +544,8 @@ function DealershipSummaryContent() {
 
       {/* KPI GRID */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+          {[...Array(7)].map((_, i) => (
             <Card
               key={i}
               className="animate-pulse bg-card/30 border-border/40 h-28"
@@ -547,7 +561,7 @@ function DealershipSummaryContent() {
           <p className="text-sm mt-2">{error}</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4">
           <Card>
             <div className="absolute top-0 left-0 w-full h-[3px] bg-blue-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -564,7 +578,10 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=leads&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
             <div className="absolute top-0 left-0 w-full h-[3px] bg-violet-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
@@ -582,7 +599,10 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=connected&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
             <div className="absolute top-0 left-0 w-full h-[3px] bg-sky-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Connected</CardTitle>
@@ -598,7 +618,10 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=converted&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
             <div className="absolute top-0 left-0 w-full h-[3px] bg-emerald-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Converted</CardTitle>
@@ -614,7 +637,50 @@ function DealershipSummaryContent() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=sessions&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-amber-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+              <Activity className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {metrics.totalSessions.toLocaleString()}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Completed loops
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=retriggers&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
+            <div className="absolute top-0 left-0 w-full h-[3px] bg-indigo-500" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">
+                Retrigger Count
+              </CardTitle>
+              <RefreshCw className="h-4 w-4 text-indigo-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {metrics.retriggerCount.toLocaleString()}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Repeated call/chat
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer hover:bg-muted/35 transition-colors"
+            onClick={() => router.push(`/dealership_summary/leads?type=failed&dealership_id=${dealershipId}&start_date=${startDate}&end_date=${endDate}`)}
+          >
             <div className="absolute top-0 left-0 w-full h-[3px] bg-rose-500" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">
@@ -941,6 +1007,12 @@ function DealershipSummaryContent() {
                         Leads
                       </TableHead>
                       <TableHead className="px-6 font-semibold text-right">
+                        Sessions
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
+                        Retriggers
+                      </TableHead>
+                      <TableHead className="px-6 font-semibold text-right">
                         Connected
                       </TableHead>
                       <TableHead className="px-6 font-semibold text-right">
@@ -973,6 +1045,12 @@ function DealershipSummaryContent() {
                             {row.total_leads_triggered.toLocaleString()}
                           </TableCell>
                           <TableCell className="px-6 text-right">
+                            {(row.total_sessions || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
+                            {(row.retrigger_count || 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="px-6 text-right">
                             {row.total_connected.toLocaleString()}
                           </TableCell>
                           <TableCell className="px-6 text-right">
@@ -989,7 +1067,7 @@ function DealershipSummaryContent() {
                     {filteredData.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={8}
+                          colSpan={10}
                           className="px-6 py-8 text-center text-muted-foreground"
                         >
                           No matching records found for active filters.

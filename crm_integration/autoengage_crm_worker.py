@@ -21,12 +21,7 @@ gryd.set_queue_manager()
  logger_param="logger",
  job_param="job"
 )
-def post_pre_sales_lead(
-   crm_name,
-   data,
-   logger=None,
-   job=None
-):
+def post_pre_sales_lead(crm_name,data,logger=None,job=None):
 
     crm=load_crm(crm_name)
 
@@ -220,6 +215,8 @@ def update_lead_in_crm(
 def update_lead_in_sheet(
     sheet_name,
     phone_number,
+    sheet_url=None,      # full Google Sheet URL (preferred over sheet_name)
+    credentials=None,    # api_key dict from DB crm_source_details
     logger=None,
     job=None,
     **kwargs
@@ -262,7 +259,12 @@ def update_lead_in_sheet(
 
     
 
-    crm = load_crm("googledocs", sheet_name=sheet_name)
+    crm = load_crm(
+        "googledocs",
+        credentials=credentials,   # dict from DB — takes priority
+        sheet_url=sheet_url,       # full URL → open_by_key
+        sheet_name=sheet_name,     # fallback legacy title
+    )
 
     result = crm.update_row_by_phone(
         phone_number=str(phone_number).strip(),

@@ -3,11 +3,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -yy
 RUN apt install build-essential software-properties-common zip unzip python3-pip python3.12-venv python3-dev curl libpq-dev jq -yy
 RUN apt-get install ffmpeg -yy
-RUN apt-get update && apt-get install portaudio19-dev nodejs npm -yy
-RUN npm install -g log.io-file-input
-#ADD https://astral.sh/uv/install.sh /uv-installer.sh
-#RUN sh /uv-installer.sh && rm /uv-installer.sh
-#ENV PATH="/root/.local/bin/:$PATH"
+RUN apt-get update && apt-get install portaudio19-dev -yy
+
+RUN curl https://packages.fluentbit.io/fluentbit.key | gpg --dearmor > /usr/share/keyrings/fluentbit-keyring.gpg && \
+	codename=$(grep -oP '(?<=VERSION_CODENAME=).*' /etc/os-release 2>/dev/null || lsb_release -cs 2>/dev/null) && \
+	echo "deb [signed-by=/usr/share/keyrings/fluentbit-keyring.gpg] https://packages.fluentbit.io/ubuntu/$codename $codename main" | tee /etc/apt/sources.list.d/fluent-bit.list
+RUN apt-get update
+RUN apt install -y fluent-bit
 
 WORKDIR /root/
 RUN python3 -m venv pyenv
