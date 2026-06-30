@@ -2015,25 +2015,44 @@ def process_lead(pg,lead, channel):
 
 def fetch_leads(dealership_id, channel, batch_size):
     with get_pg_connector() as pg:
+        
         query = """
             WITH pre AS (
-                SELECT dict, 'pre_sales' AS lead_type
-                FROM pre_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'pre_sales' AS lead_type
+                FROM pre_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM pre_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             ),
             post AS (
-                SELECT dict, 'post_sales' AS lead_type
-                FROM post_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'post_sales' AS lead_type
+                FROM post_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM post_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             )
             SELECT *
@@ -2043,8 +2062,9 @@ def fetch_leads(dealership_id, channel, batch_size):
                 SELECT * FROM post
             ) t
             ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
-            LIMIT %s
+            LIMIT %s;
         """
+        
         params = (
             dealership_id, channel, batch_size,
             dealership_id, channel, batch_size,
@@ -2084,31 +2104,7 @@ def fetch_leads(dealership_id, channel, batch_size):
         mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
         return unique_leads
 
-        for lead in _leads:
-            data, lead_type = lead
-
-            if lead_type == "pre_sales":
-                lead_model = "pre_sales_lead"
-                lead_id = data.get("pre_sales_lead_id")
-            else:
-                lead_model = "post_sales_lead"
-                lead_id = data.get("post_sales_lead_id")
-
-            unique_key = f"{lead_model}:{lead_id}"
-
-            if unique_key in seen:
-                duplicates.append(unique_key)
-                continue
-
-            seen.add(unique_key)
-            unique_leads.append(lead)
-
-        if duplicates:
-            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
-
-        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
-        return unique_leads
-
+        
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
 #     dealership_id = kwargs.get("dealership_id")
