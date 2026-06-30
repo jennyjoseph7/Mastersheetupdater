@@ -647,8 +647,9 @@ def get_websocket_base_url(room=None):
         "_page_size": 1,
         "last_uptime_ping": (required_uptime_ping,None),
         "_filter_attributes": ["socket_server_url", "rooms"],
-        "rooms": room
     }
+    if room:
+        kwargs['rooms'] = room
     base_socket_urls = ssm.list(**kwargs)
     if room and not base_socket_urls:
         kwargs.pop("rooms", None)
@@ -663,6 +664,33 @@ def get_websocket_base_url(room=None):
         rng = hp.random.Random(int(room) if room is not None else None)
         return rng.choice(base_ws_url)
     return hp.make_single(base_socket_urls).get('socket_server_url')
+
+def list_websocket_urls():
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - 120
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "_as_option": True,
+        "environment": environment,
+        "_sort_by": "active_connections",
+        "_filter_attributes": ["socket_server_url"],
+    }
+    base_socket_urls = ssm.list(**kwargs)
+    print(" ".join(list(map(lambda x: x.get('socket_server_url'), base_socket_urls))))
+
+def delete_old_websocket_urls(older_than = 24*3600): 
+    """
+    Delete websocket URLs where the uptime ping is older than 1 day
+    """
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - older_than
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "environment": environment,
+        "last_uptime_ping": (None, required_uptime_ping),
+    }
+    ssm.delete_many(filters = kwargs)
+    return list_websocket_urls()
 
 
 if __name__ == "__main__":
