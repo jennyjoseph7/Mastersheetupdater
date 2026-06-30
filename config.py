@@ -543,10 +543,13 @@ def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, 
     bll = blm.get(phone_number)
     if not bll:
         return False
-    if channel and channel not in bll.get('channels'):
+    channels = bll.get('channels')
+    if not isinstance(channels, list):
+        return True
+    if channel and channel not in channels:
         return False
-    dealership_ids = bll.get('dealership_ids') or []
-    if not dealership_ids:
+    dealership_ids = bll.get('dealership_ids')
+    if not isinstance(dealership_ids, list):
         return True
     if dealership_id and dealership_id in dealership_ids:
         return True
@@ -580,7 +583,7 @@ def blacklist_a_number(phone_number, dealership_id = None, region_id = None, cha
 def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return None
     cdealerships = bll.get('dealership_ids') or []
@@ -591,13 +594,13 @@ def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id
             #blm.iadd(phone_number, 'channels', [channel])
             to_update["channels"] = cchannels.pop(channel)
         elif channel.lower() == "__all__":
-            to_update["channels"] = []
+            return blm.delete(phone_number)
     if dealership_id and isinstance(dealerhsip_id, str):
         if dealership_id not in cdealerships:
             #blm.iadd(phone_number, 'dealership_ids', [dealership_id])
             to_update["dealership_ids"] = cdealerships.pop(dealership_id)
         elif dealership_id.lower() == "__all__":
-            to_update["dealership_ids"] = cdealerships.pop(dealership_id)
+            return blm.delete(phone_number)
     if to_update:
         return blm.update(phone_number, to_update)
     return bll
