@@ -195,7 +195,7 @@ def do_the_merge(
             DEFAULT_OUTPUT_PATH, f"{rooftop_type}_{hp.uuid.uuid4()}.png"
         )
 
-        logger.info(f"__svg_args: {svg_args}")
+
         merge_layers(
             base_png, png_args, svg_args, output_path=output_path, logger=logger
         )
@@ -578,7 +578,6 @@ def create_rooftop_images_batch(
     template_model = AutocrmModel("autosphere_template")
     dealership_model = AutocrmModel("dealership")
     post_idea = post_idea_model.get(post_idea_id)
-    logger.info(f"__post_idea: {post_idea}")
     if not post_idea:
         raise ValueError(f"")
     rooftop_type = {
