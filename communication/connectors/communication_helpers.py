@@ -679,9 +679,7 @@ Returns:
             "updated": now,
             "start_time": now,
         }
-
-        data["created"]=now
-        
+        data["created"] = now
         # Generate session_id
         session_id = generate_uid(data)
 
