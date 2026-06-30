@@ -766,6 +766,17 @@ def delete_old_websocket_urls(older_than = 24*3600):
     ssm.delete_many(filters = kwargs)
     return list_websocket_urls()
 
+def flag_error_to_session(session_id, error_message = "Error in session.", disposition = "failed", status = "completed", logger = None):
+    logger = logger or clogger
+    sm = AutocrmModel('session')
+    session = sm.get(session_id)
+    if not session:
+        logger.error(f"Session {session_id} not found to flag error: {error_message}")
+        return None
+    sm.update(session_id, {'disposition': disposition, "status": status, "disposition_detail": error_message, "session_live":False, "end_time": hp.epoch()})
+    logger.info(f"Flagged error to session {session_id}: {error_message}")
+    return True
+
 
 if __name__ == "__main__":
     
