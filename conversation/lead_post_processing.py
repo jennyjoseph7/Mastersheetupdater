@@ -260,8 +260,8 @@ def post_session_process(*args, **kwargs):
        
     updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if messages and len(messages) > 0 else {"disposition"}
         
-    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail"), "campaign_objective_name": campaign_obj}
-    if updated_lead_data.get("disposition_detail").lower() == "requested callback":
+    session_update_data = {"disposition": updated_lead_data.get("disposition", "").upper(), "disposition_detail":updated_lead_data.get("disposition_detail", "").upper(), "campaign_objective_name": campaign_obj}
+    if updated_lead_data.get("disposition_detail", "").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_date" in follow_up:
@@ -271,7 +271,7 @@ def post_session_process(*args, **kwargs):
                     updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
                 except KeyError as e:
                     mlogger.info("KeyError == {}".format(e))
-    if updated_lead_data.get("disposition_detail").lower() =="language barrier":
+    if updated_lead_data.get("disposition_detail","").lower() =="language barrier":
         follow_up = get_preffered_language(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_language" in follow_up:
