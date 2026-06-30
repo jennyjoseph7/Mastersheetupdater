@@ -271,10 +271,21 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
         raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
     return dealership
 
-@app.route('/blacklist-a-number', methods = ["POST"])
+@app.route('/blacklist-number/<phone_number>', methods = ["GET", "POST", "DELETE"])
 @gryd_routes.payload_decorator()
-def blacklist_a_number_func(phone_number):
-    pass
+def blacklist_a_number_func(phone_number, **kwargs):
+    logger.info("Kwargs: %s", kwargs)
+    params = {}
+    for k in ('dealership_id', 'region_id', 'channel'):
+        if kwargs.get(k):
+            params[k] = kwargs.get(k)
+    if request.method.upper() == 'POST':
+        return blacklist_a_number(phone_number = phone_number, **params)
+    elif request.method.upper() == 'DELETE':
+        return remove_a_number_from_blacklist(phone_number = phone_number, **params)
+    return is_blacklisted_number(phone_number, **params)
+
+
 
 
 app.register_blueprint(ai_service_app.ai_service_routes)

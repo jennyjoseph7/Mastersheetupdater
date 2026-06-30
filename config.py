@@ -522,6 +522,7 @@ def get_phone_code_from_region(region_id, with_plus = True):
     return c
 
 def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    addp = '+' if with_plus else ''
     dm = AutocrmModel('dealership')
     d = dm.get(dealership_id)
     if not d.get('region_id'):
@@ -538,13 +539,17 @@ def get_cheapest_channel(channels: list, channel_sequence = None):
 def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    mlogger.info("Checking if phone number %s is blacklisted", phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return False
-    if channel and channel not in bll.get('channels'):
+    channels = bll.get('channels')
+    if not isinstance(channels, list):
+        return True
+    if channel and channel not in channels:
         return False
-    dealership_ids = bll.get('dealership_ids') or []
-    if not dealership_ids:
+    dealership_ids = bll.get('dealership_ids')
+    if not isinstance(dealership_ids, list):
         return True
     if dealership_id and dealership_id in dealership_ids:
         return True
@@ -553,7 +558,7 @@ def is_blacklisted_number(phone_number, dealership_id = None, region_id = None, 
 def blacklist_a_number(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return blm.post({
             'phone_number': phone_number, 
@@ -578,7 +583,7 @@ def blacklist_a_number(phone_number, dealership_id = None, region_id = None, cha
 def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id = None, channel = None):
     blm = AutocrmModel('blacklisted_number')
     phone_number = process_phone_number(phone_number, dealership_id = dealership_id, region_id = region_id)
-    bll = blm.get(phone_number = phone_number)
+    bll = blm.get(phone_number)
     if not bll:
         return None
     cdealerships = bll.get('dealership_ids') or []
@@ -589,13 +594,13 @@ def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id
             #blm.iadd(phone_number, 'channels', [channel])
             to_update["channels"] = cchannels.pop(channel)
         elif channel.lower() == "__all__":
-            to_update["channels"] = []
+            return blm.delete(phone_number)
     if dealership_id and isinstance(dealerhsip_id, str):
         if dealership_id not in cdealerships:
             #blm.iadd(phone_number, 'dealership_ids', [dealership_id])
             to_update["dealership_ids"] = cdealerships.pop(dealership_id)
         elif dealership_id.lower() == "__all__":
-            to_update["dealership_ids"] = cdealerships.pop(dealership_id)
+            return blm.delete(phone_number)
     if to_update:
         return blm.update(phone_number, to_update)
     return bll
@@ -719,8 +724,9 @@ def get_websocket_base_url(room=None):
         "_page_size": 1,
         "last_uptime_ping": (required_uptime_ping,None),
         "_filter_attributes": ["socket_server_url", "rooms"],
-        "rooms": room
     }
+    if room:
+        kwargs['rooms'] = room
     base_socket_urls = ssm.list(**kwargs)
     if room and not base_socket_urls:
         kwargs.pop("rooms", None)
@@ -735,6 +741,44 @@ def get_websocket_base_url(room=None):
         rng = hp.random.Random(int(room) if room is not None else None)
         return rng.choice(base_ws_url)
     return hp.make_single(base_socket_urls).get('socket_server_url')
+
+def list_websocket_urls():
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - 120
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "_as_option": True,
+        "environment": environment,
+        "_sort_by": "active_connections",
+        "_filter_attributes": ["socket_server_url"],
+    }
+    base_socket_urls = ssm.list(**kwargs)
+    print(" ".join(list(map(lambda x: x.get('socket_server_url'), base_socket_urls))))
+
+def delete_old_websocket_urls(older_than = 24*3600): 
+    """
+    Delete websocket URLs where the uptime ping is older than 1 day
+    """
+    ssm = AutocrmModel('socket_server')
+    required_uptime_ping = hp.epoch() - older_than
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    kwargs = {
+        "environment": environment,
+        "last_uptime_ping": (None, required_uptime_ping),
+    }
+    ssm.delete_many(filters = kwargs)
+    return list_websocket_urls()
+
+def flag_error_to_session(session_id, error_message = "Error in session.", disposition = "failed", status = "completed", logger = None):
+    logger = logger or clogger
+    sm = AutocrmModel('session')
+    session = sm.get(session_id)
+    if not session:
+        logger.error(f"Session {session_id} not found to flag error: {error_message}")
+        return None
+    sm.update(session_id, {'disposition': disposition, "status": status, "disposition_detail": error_message, "session_live":False, "end_time": hp.epoch()})
+    logger.info(f"Flagged error to session {session_id}: {error_message}")
+    return True
 
 
 if __name__ == "__main__":
