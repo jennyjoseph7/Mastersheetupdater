@@ -808,6 +808,12 @@ def gryd_task_clone_leads_between_campaigns(
                 # Update context to the new campaign
                 new_lead_data['campaign_id'] = new_campaign_id
                 
+                # Reset contact history and disposition details for the new campaign clone
+                new_lead_data["disposition"] = "queued"
+                new_lead_data["lead_timeline"] = ""
+                new_lead_data["customer_intent"] = ""
+                new_lead_data["disposition_detail"] = ""
+                
                 # Merge existing tags with any new tags provided in kwargs
                 existing_tags = new_lead_data.get('lead_tags') or []
                 if isinstance(existing_tags, str):
