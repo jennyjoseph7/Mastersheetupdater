@@ -17,6 +17,7 @@ import {
   Coins,
   Menu,
   Target,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,9 +67,10 @@ export default function TopNavigation() {
 
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/dealership_summary", label: "Dealership Summary", icon: LayoutDashboard },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/template", label: "Template", icon: FileText },
-    { href: "/connection", label: "Connection", icon: LinkIcon },
+    // { href: "/connection", label: "Connection", icon: LinkIcon },
     { href: "/conversions", label: "Conversions", icon: Target },
     { href: "/insights", label: "Live Status", icon: TrendingUp },
   ];

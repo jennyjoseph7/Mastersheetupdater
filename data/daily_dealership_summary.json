@@ -52,6 +52,14 @@
       "type": "number"
     },
     {
+      "name": "total_sessions",
+      "type": "number"
+    },
+    {
+      "name": "retrigger_count",
+      "type": "number"
+    },
+    {
       "name": "channel",
       "type": "text"
     },

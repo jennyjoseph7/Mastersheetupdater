@@ -26,7 +26,10 @@ import {
   Smile,
   FileText,
   Copy,
-  Check
+  Check,
+  Phone,
+  Mail,
+  ArrowRight
 } from "lucide-react";
 import { fetchUserSessions, epochToIST } from "@/utils/api";
 import { cn } from "@/lib/utils";
@@ -61,12 +64,129 @@ interface Session {
   history: Message[];
 }
 
+function getActionLabel(action: string): string {
+  const normalized = action.toLowerCase();
+  const labelMap: Record<string, string> = {
+    voice_phone: "Voice Call",
+    voice: "Voice Call",
+    voice_phone_outbound: "Outbound Call",
+    voice_phone_inbound: "Inbound Call",
+    whatsapp: "WhatsApp",
+    whatsapp_chat: "WhatsApp Chat",
+    whatsapp_chat_outbound: "Outbound WhatsApp",
+    whatsapp_chat_inbound: "Inbound WhatsApp",
+    email: "Email",
+    email_outbound: "Outbound Email",
+    email_inbound: "Inbound Email",
+    sms: "SMS",
+    sms_outbound: "Outbound SMS",
+    sms_inbound: "Inbound SMS",
+    rcs: "RCS",
+    rcs_outbound: "Outbound RCS",
+    rcs_inbound: "Inbound RCS",
+  };
+  return labelMap[normalized] || action.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+function getActionIcon(action: string) {
+  const normalized = action.toLowerCase();
+  if (normalized.includes("voice") || normalized.includes("phone")) {
+    return <Phone className="h-4 w-4" />;
+  }
+  if (normalized.includes("whatsapp") || normalized.includes("chat") || normalized.includes("sms") || normalized.includes("rcs") || normalized.includes("message")) {
+    return <MessageSquare className="h-4 w-4" />;
+  }
+  if (normalized.includes("email") || normalized.includes("mail")) {
+    return <Mail className="h-4 w-4" />;
+  }
+  return <Clock className="h-4 w-4" />;
+}
+
+function getStatusStyles(status: string) {
+  const normalized = status.toLowerCase();
+  switch (normalized) {
+    case "engaged":
+    case "contacted":
+    case "converted":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800";
+    case "reached":
+      return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800";
+    case "queued":
+    case "active":
+      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800";
+    case "failed":
+    case "busy":
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800";
+    case "unknown":
+    default:
+      return "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-800";
+  }
+}
+
+export function LeadTimelineVisual({ timeline }: { timeline: string }) {
+  if (!timeline) return null;
+
+  const steps = timeline.split("->").map(step => {
+    const trimmed = step.trim();
+    const match = trimmed.match(/^([^(]+)(?:\(([^)]+)\))?$/);
+    if (match) {
+      return {
+        action: match[1].trim(),
+        status: match[2] ? match[2].trim() : "",
+      };
+    }
+    return {
+      action: trimmed,
+      status: "",
+    };
+  });
+
+  return (
+    <div className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-slate-900/10 border border-slate-200/60 dark:border-slate-800/60 rounded-xl">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <Clock className="h-3.5 w-3.5" />
+        Lead Journey Timeline
+      </div>
+      <div className="flex flex-wrap items-center gap-2.5">
+        {steps.map((step, idx) => {
+          const actionLabel = getActionLabel(step.action);
+          const statusStyles = getStatusStyles(step.status);
+          
+          return (
+            <div key={idx} className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 shadow-sm rounded-lg px-3.5 py-2 transition-all hover:border-slate-200 hover:shadow">
+                <div className="text-indigo-600 dark:text-indigo-400 shrink-0 bg-indigo-50 dark:bg-indigo-950/30 p-1.5 rounded-md">
+                  {getActionIcon(step.action)}
+                </div>
+                <div className="flex flex-col leading-none">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {actionLabel}
+                  </span>
+                  {step.status && (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium mt-1 uppercase tracking-wider ${statusStyles}`}>
+                      {step.status}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {idx < steps.length - 1 && (
+                <ArrowRight className="h-4 w-4 text-slate-300 dark:text-slate-700 shrink-0 animate-pulse" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface EngagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
   campaignId: string;
   personName?: string;
+  leadTimeline?: string;
 }
 
 const SWR_OPTIONS = {
@@ -83,6 +203,7 @@ export function EngagementModal({
   userId,
   campaignId,
   personName,
+  leadTimeline,
 }: EngagementModalProps) {
   const [copied, setCopied] = useState(false);
   const [showPlayer, setShowPlayer] = useState(false); // Controls the inline player
@@ -212,7 +333,13 @@ export function EngagementModal({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 flex overflow-hidden h-[calc(90vh-70px)]">
+        {leadTimeline && (
+          <div className="px-6 py-3 border-b bg-slate-50/50 dark:bg-slate-900/10 shrink-0">
+            <LeadTimelineVisual timeline={leadTimeline} />
+          </div>
+        )}
+
+        <div className="flex-1 flex overflow-hidden min-h-0">
           {isLoading ? (
             <div className="flex-1 p-6 space-y-4">
               <Skeleton className="h-12 w-full" />

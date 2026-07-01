@@ -99,7 +99,7 @@ def trigger_voice_call(*args, **kwargs):
         }
 
     person_model = gryd.base_model.Model("person", config.AUTOCRM_APP_ENTERPRISE_ID)
-    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number")}).get('data',{})
+    person_obj = person_model.list(**{"phone_number":user_data.get("mobile_number"),"_sort_by":"updated","_sort_reverse":True}).get('data',{})
     person_obj = person_obj[0] if person_obj else {}
     if not person_obj:
         logger.error(f"No person found with mobile number: {user_data.get('mobile_number')}")
@@ -145,6 +145,7 @@ def trigger_voice_call(*args, **kwargs):
                 "campaign_type": campaign_type,
                 "lead_id": lead_id,
                 "status":"attempted",
+                "origin":"outbound", #added an origin
                 "channel": channel,
                 "person_name": l_person_name or None,
                 "campaign_objective_name": l_campaign_obj_name or None,
@@ -153,6 +154,11 @@ def trigger_voice_call(*args, **kwargs):
                 "phone_number":format_phone_number(user_data.get("mobile_number")),
                 "start_time": hp.epoch()                
             }
+
+            if user_data.get("from_inbound", False):
+                logger.info(f"Session ID provided {user_data.get('session_id')} this is inbound missed call scenario. Origin changed to inbound_outbound")
+                session_obj["origin"] = "inbound"
+                
             session_data = session_model.post(session_obj)
 
             #if agent_id passed in task kwargs
@@ -265,7 +271,7 @@ def trigger_voice_call(*args, **kwargs):
 
     timeout = time.time() + float(user_data.get("call_timeout", 600))  # 10 minutes
 
-    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 30))  # 0.5 minutes
+    attempted_timeout = time.time() + float(user_data.get("attempted_status_timeout", 32))  # 0.7 minutes
 
     while time.time() < timeout:
         time.sleep(5)
@@ -388,6 +394,9 @@ def post_contact_status_voice(session_data = None, session_id = None, message_id
     if not session_data and session_id:
         session_model = gryd.base_model.Model(config.SESSION_MODEL_NAME, config.AUTOCRM_APP_ENTERPRISE_ID)
         session_data = session_model.get(session_id)
+        if not session_data.get("session_live", True):
+            logger.info(f"Session {session_id} is not live, skipping posting contact status")
+            return
 
     if additiona_params:
         session_data.update(additiona_params)

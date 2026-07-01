@@ -1,0 +1,62 @@
+Analyze the customer conversation and return ONLY valid JSON.
+Do NOT include markdown, explanations, or extra text.
+
+Determine:
+
+1. primary_intent
+2. mood
+3. sentiment
+4. priority
+5. conversation_outcome
+6. recommended_action
+7. escalation_required
+8. escalation_reason
+9. reason
+
+Possible intents:
+
+- test_drive_booking
+- test_drive_feedback
+- test_drive_reminder_response
+- showroom_visit
+- launch_event
+- vehicle_purchase_inquiry
+- complaint
+- information_request
+- other
+
+Rules:
+
+- Identify the customer's primary intent first.
+- Assess how the conversation with the agent went.
+- escalation_required should be true only if there is:
+  - explicit escalation request
+  - abusive language
+  - legal threat
+  - fraud concern
+  - severe unresolved complaint
+  - request for manager/supervisor
+
+- Negative feedback alone does NOT require escalation.
+- Always return all fields.
+- With mode also provide a brief in 3-4 words for the issue faced
+
+Return strictly this JSON schema:
+
+{{
+  "primary_intent": "string",
+  "mood": "string (include a 3-4 word brief of the issue faced, e.g., 'Frustrated - long wait times')",
+  "sentiment": "positive | negative | neutral",
+  "complaint_category": "Delivery" | "Service Quality" | "Staff Behaviour" | "None",
+  "priority": "low | medium | high",
+  "workflow_to_trigger": "test_drive_booking_l | test_drive_feedback | test_drive_remainder | showroom_launch_l"
+  "recommended_action": "string",
+  "reason": "string"
+}}
+
+
+Summary:
+{summary}
+
+Conversation:
+{conversation}

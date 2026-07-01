@@ -51,7 +51,7 @@ class RMLCampaignManager:
         media_url = message_data.get("media_url", "")
         media_file_name = message_data.get("media_file_name", "")
         template_variables = message_data.get("template_variables", [])
-        button_payloads = message_data.get("template_buttons_payload", [])
+        button_payloads = message_data.get("template_button_payloads", [])
 
         # Resolve body variables
         resolved_variables = [
@@ -93,21 +93,28 @@ class RMLCampaignManager:
         """
         # logger.info(f"RML text template message_data: {message_data}, params_data: {params_data}")
         template_id =message_data.get("template_name") or message_data.get("template_id", "")
-        lang_code = message_data.get("template_language_code", "eng")
+        lang_code = message_data.get("template_language_code", "en")
         template_variables = message_data.get("template_variables", [])
-        button_payloads = message_data.get("template_buttons_payload", [])
+        button_payloads = message_data.get("template_button_payloads", [])
         
-        # logger.info(f"RML TEXT template message_data: {message_data}, params_data: {params_data}")
-        
+        logger.info(f"RML TEXT template params_data: {params_data}")
         
         # Resolve body variables
         body = [{"text": params_data.get(var, "")} for var in template_variables]
 
+        def _make_button(idx, payload):
+            if isinstance(payload, str) and payload.startswith("http"):
+                logger.info(f"Creating URL button for index {idx} with payload: {payload}")
+                return {"button_no": str(idx), "url": payload}
+            return {"button_no": str(idx), "payload": payload}
+
         # Create buttons
         buttons = [
-            {"button_no": idx, "url": payload}
+            _make_button(idx, payload)
             for idx, payload in enumerate(button_payloads)
+            if payload
         ]
+        
 
         payload = {
             "type": "media_template",
@@ -118,7 +125,7 @@ class RMLCampaignManager:
             payload["button"] = buttons
         if body:
             payload["body"] = body
-        # logger.info(f"RML TEXT template payload: {payload}")
+        logger.info(f"RML TEXT template payload: {payload}")
         return payload
     
     def _create_carousel_template(self, message_data, params_data):

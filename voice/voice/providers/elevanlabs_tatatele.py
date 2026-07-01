@@ -873,7 +873,7 @@ class CallSession:
             # Cleanup session
             terminate_session(self.call_id)
 
-    async def connect_external_websocket(self, url: str, timeout = 29):
+    async def connect_external_websocket(self, url: str, timeout = 32):
         """Connect to external websocket for this call session."""
         self._bridge_loop = asyncio.get_running_loop()
         t = time()
@@ -890,7 +890,7 @@ class CallSession:
             while not self.stop_event.is_set():
                 try:
                     message = await asyncio.wait_for(self.external_ws.recv(), timeout=timeout)
-                    logger.info(f"[{self.call_id}] received: {message}")
+                    logger.info(f"[{self.call_id}] First message from tatatele received: {message}")
                     await self.outbound_media_stream(self.external_ws)
                 except (asyncio.TimeoutError, TimeoutError):
                     #make it as failed for timeout

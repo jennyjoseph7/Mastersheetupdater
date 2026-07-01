@@ -8,6 +8,7 @@ _root = dirname(dirname(abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 from connectors.communication_helpers import *
+from gryd_worker import gryd_helpers as hp
 logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
 # from . import default_connector
 for _, module_name, _ in pkgutil.iter_modules(__path__):

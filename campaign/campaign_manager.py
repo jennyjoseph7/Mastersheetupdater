@@ -322,7 +322,7 @@ class BaseCampaignCreater:
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
-                    "provider_status":msg_status,
+                    "provider_status": "queued",
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
@@ -330,16 +330,16 @@ class BaseCampaignCreater:
                     "skip_workflow": campaign_details.get("skip_workflow", False)
                 }
             
+            #NOTE: if msg_status is failed then we dont want to call post_contact_status from campaign bcoz at this point we dont get error message.So once we receive the error message from the provider we will call post_contact_status from the webhook handler.
             logger.info(f"Calling post_contact_status with data from campaign: {data}")
             gryd.create_async_task(
                 "post_contact_status", 
                 AUTOCRM_COMMUNICATION_SERVICE_NAME, 
                 kwargs=data
             )
-        
-        
-        
-        
+
+
+
         return patch_user_data
         
         
@@ -427,10 +427,10 @@ class BaseCustomCampaignManager:
             if channel.upper() in ["WHATSAPP_CHAT","RCS"]:
                 logger.info(f"[{count}] Sent {channel} message for {mobile_number}")
                 
-                logger.info("Checking and creating a session for channel: {channel} and user: {mobile_number}")
+                logger.info(f"Checking and creating a session for channel: {channel} and user: {mobile_number}")
                 campaign_d={**campaign_data,**user}
                 logger.info(f"Sender Number: {campaign_data.get('sender')}")
-                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d)
+                session_data=handle_session_logic(mobile_number,campaign_data.get("sender"),channel.lower(),False,campaign_d,origin="outbound")
                 # logger.info(f"Session logic result in campaign : {json.dumps(session_data,indent=4)}")
                 if not session_data:
                     logger.error(f"Failed to create session for channel: {channel} and user: {mobile_number}")
@@ -724,45 +724,34 @@ def trigger_campaign(*args, **kwargs):
     lead_table_id="pre_sales_lead_id" if campaign_type == "pre-sales" else "post_sales_lead_id"
     filters = {k: v for k, v in kwargs.items() if v is not None}
     logger.info(f"Filters: {filters}")
-    with get_pg_connector() as pg:
-        leads = list(pg.list(lead_table, filters))
-    lm = AutocrmModel(lead_table)
-    logger.info(f"Total leads fetched: {len(leads)}")
-    valid_leads = []
-
+    lead_model = AutocrmModel(lead_table)
+    total_leads = lead_model.count(**filters)
+    logger.info(f"Total leads fetched: {total_leads}")
+    valid_leads = 0
     # if the lead_data doesnt have a phone number(pre sales) or persons_involved (post sales), skip it
-    for lead in leads:
-
+    for lead in lead_model.filter(_as_option = True, _sort_by = 'created', **filters):
+        lead_id = lead.get(lead_table_id)
         if campaign_type == "post-sales":
-            persons = []
             for _ in range(2):
                 persons = lead.get("persons_involved") or []
                 if persons:
                     break
-                lead = lm.update(lead.get('post_sales_lead_id'), {})
-                    
+                logger.info("Persons involved is absent, retrying")
+                lead = lead_model.update(lead_id, {})
             if not persons:
-                logger.info(f"Skipping post-sales lead (no persons involved): {lead.get('post_sales_lead_id')}")
+                logger.info(f"Skipping post-sales lead (no persons involved): {lead_id}")
                 continue
-
         else:  
             if not lead.get("phone_number"):
                 logger.info(f"Skipping pre-sales lead (no phone number): {lead.get('pre_sales_lead_id')}")
                 continue
-
-        valid_leads.append(lead)
-
-    logger.info(f"Valid leads to process: {len(valid_leads)}")
-
-    for lead in valid_leads:
-        
+        valid_leads += 1
+        logger.info(f"Valid leads processed: {valid_leads}")
         logger.info(f"Queueing task for lead_id={lead.get(lead_table_id)}")
-        # list(process_single_lead(None, lead, campaign_type, campaign_id))
         person = get_or_create_person(lead.get("phone_number"),lead.get("dealership_id"))
-        pg.update(lead_table, lead_table_id,lead.get(lead_table_id), {"user_id": person.get("user_id")})
+        lead_model.update(lead_id, {"user_id": person.get("user_id")})
         list(determine_campaign_next_action(campaign_type,lead.get(lead_table_id),call_process_single_lead=kwargs.get('trigger_now', True)))
-        
-    logger.info("All valid leads queued successfully.")
+    logger.info("All %s valid leads queued successfully.", valid_leads)
 
 @gryd.is_a_task(function_name="trigger_queued_campaigns")
 def trigger_queued_campaigns(*args, **kwargs):
@@ -948,14 +937,19 @@ def manual_register_and_trigger_lead(name, phone_number, email=None, *args, **kw
     logger.info(f"Constructed row for manual registration: {row}")
     # 4. Construct Final Data Payload
     allowed_keys = [
-        "phone_number", "email", "person_name", "campaign_id", "dealership_id", 
-        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email", 
-        "last_contacted_phone_number", "brand_preference", "model_preference", 
-        "variant_preference", "color_preference", "engine_type_preference", 
-        "transmission_preference", "range_preference", "feature_preferences", 
-        "segment_preference", "competitor_brands", "competitor_models", "emotions", 
-        "engagement_events", "previous_interaction_ids", "lead_tags", 
-        "interested_vehicle_competitor_vehicles"
+        "phone_number", "email", "person_name", "campaign_id", "dealership_id",
+        "campaign_objective_id", "last_contacted_whatsapp_number", "last_contacted_email",
+        "last_contacted_phone_number", "brand_preference", "model_preference",
+        "variant_preference", "color_preference", "engine_type_preference",
+        "transmission_preference", "range_preference", "feature_preferences",
+        "segment_preference", "competitor_brands", "competitor_models", "emotions",
+        "engagement_events", "previous_interaction_ids", "lead_tags",
+        "interested_vehicle_competitor_vehicles",
+    
+        # Generic nested object for any CRM / ad-platform source metadata.
+        # Meta Lead Ads stores: {"source": "meta", "leadgen_id": "...", "ad_id": "...", ...}
+        # Any future CRM integration can add its own keys here without schema changes.
+        "external_source_data",
     ]
     
     data = {k: row.get(k) for k in allowed_keys if row.get(k) is not None}
@@ -1192,6 +1186,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 dealership_id=lead_data.get("dealership_id"),
                 lead_info={}
             )
+            # template_data=testing_whatsapp_template()
         except Exception as e:
             logger.error(f"Error in get_template for channel email: {str(e)}")
             update_error_to_models(
@@ -1241,7 +1236,8 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
                 template_data= get_template(
                     lead_id=lead_id,
                     campaign_type=campaign_type,
-                    campaign_objective= [campaign_objective_name] or [],
+                    # campaign_objective= [campaign_objective_name] or [],
+                    campaign_objective_id=lead_data.get("campaign_objective_id"),
                     dealership_id=lead_data.get("dealership_id"),
                     lead_info={}
                 )
@@ -1328,7 +1324,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
     if template_data:
         template_vars = custom_template_variables if custom_template_variables else template_data.get("template_variables", [])
         render_data = {v: variable_mapping.get(v, "") for v in template_vars}
-        template_data["media_url"]= image_url or None
+        template_data["media_url"]= image_url or template_data.get("media_url")
         
         if channel in ("whatsapp_chat", "sms"):
             buttons = template_data.get("buttons")
@@ -1512,50 +1508,50 @@ def format_email_payload(campaign_data,campaign_user,mobile_number):
 
 def testing_whatsapp_template():
     
-    # return [
-    #     {
-    #         "sender": "917795030599",
-    #         "status": "approved",
-    #         "buttons": [
-    #             {
-    #                 "text": "Book Test Drive",
-    #                 "type": "QUICK_REPLY"
-    #             },
-    #             {
-    #                 "text": "Explore Aircross",
-    #                 "type": "QUICK_REPLY"
-    #             },
-    #             {
-    #                 "text": "Request a Call Back",
-    #                 "type": "QUICK_REPLY"
-    #             }
-    #         ],
-    #         "channel": "whatsapp_chat",
-    #         "created": 1776770802.5813954,
-    #         "updated": 1776771015.0534973,
-    #         "language": "english",
-    #         "dealer_name": "Dave AI",
-    #         "region_name": "India",
-    #         "search_term": "aircross_confirm_test_drives_for_value_advantage text english pre-sales hi person_name thank you for showing interest in the citroën aircross 🙏 we have a special offer for you ✅ running cost from just ₹0.40 km ✅ additional benefits worth ₹1.15 lakh ⏳ limited stock valid till 30th april only 🚗 book a test drive and experience the aircross for yourself — nothing beats a real drive",
-    #         "template_id": "950110724542119",
-    #         "campaign_type": "pre-sales",
-    #         "dealership_id": "dave-ai-india",
-    #         "provider_name": "Rml",
-    #         "template_name": "aircross_confirm_test_drives_for_value_advantage",
-    #         "template_type": "text",
-    #         "template_message": "Hi {{person_name}},\n\nThank you for showing interest in the Citroën Aircross! 🙏\n\nWe have a special offer for you:\n\n✅ Running cost from just ₹0.40/km* \n✅ Additional benefits worth ₹1.15 Lakh ⏳ Limited stock | Valid till 30th April only\n\n🚗 Book a test drive and experience the Aircross for yourself — nothing beats a real drive!\n",
-    #         "template_variables": [
-    #             "person_name"
-    #         ],
-    #         "campaign_objective_name": "Aircross- Confirm Test Drive for Value Advantage- WhatsApp",
-    #         "template_button_payloads": [
-    #             "aircross_confirm_test_drives_for_value_advantage-book_test_drive",
-    #             "aircross_confirm_test_drives_for_value_advantage-explore_aircross",
-    #             "aircross_confirm_test_drives_for_value_advantage-request_a_call_back"
-    #         ],
-    #         "communication_credentials_id": "rml-whatsapp_chat-917795030599"
-    #     }
-    # ]
+    return [
+        {
+            "sender": "919187210943",
+            "status": "approved",
+            "buttons": [
+                {
+                    "text": "Book Test Drive",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Explore Aircross",
+                    "type": "QUICK_REPLY"
+                },
+                {
+                    "text": "Request a Call Back",
+                    "type": "QUICK_REPLY"
+                }
+            ],
+            "channel": "whatsapp_chat",
+            "created": 1776943306.747671,
+            "updated": 1776943306.7487023,
+            "language": "english",
+            "dealer_name": "Stellantis",
+            "region_name": "South India",
+            "search_term": "citroen_tech_and_safety_aircross text english pre-sales hi person_name thank you for showing your interest in the citroën aircross 😊 built for family powered by smart tech ✨✨ 🔹 seamless connectivity infotainment 🔹 6 airbags strong safety package comfort outside confidence inside. shall i book a test drive for you 🙂",
+            "template_id": "01kpwxjwz3g7ep0sgvny1gmmxh",
+            "campaign_type": "pre-sales",
+            "dealership_id": "stellantis-india",
+            "provider_name": "Airtel",
+            "template_name": "citroen_tech_and_safety_aircross",
+            "template_type": "text",
+            "template_message": "Hi {{person_name}}!\n\nThank you for showing your interest in the Citroën Aircross! 😊\n \nBuilt for family, powered by smart tech ✨✨\n \n🔹 Seamless connectivity & infotainment\n🔹 6 airbags + strong safety package\n \nComfort outside, confidence inside.\n \nShall I book a test drive for you? 🙂\n",
+            "template_variables": [
+                "person_name"
+            ],
+            "campaign_objective_name": "Aircross- Confirm Test Drive for Smart Cabin Tech- WhatsApp",
+            "template_button_payloads": [
+                "citroen_tech_and_safety_aircross-book_test_drive",
+                "citroen_tech_and_safety_aircross-explore_aircross",
+                "citroen_tech_and_safety_aircross-request_a_call_back"
+            ],
+            "communication_credentials_id": "airtel-whatsapp_chat-919187210943"
+        }
+    ]
     
     return "No Template Found"
 

@@ -9,12 +9,16 @@ import pydeck as pdk
 from streamlit_chat import message
 
 logger = get_logger(__name__)
-gryd.SERVICE = GRYD_SERVICE
-gryd.set_queue_manager(config=GRYD_CONFIG)
-environment = os.getenv("ENVIRONMENT", "-local")
-if not environment.startswith("-"):
-    environment = f"-{environment}"
-gryd.ENVIRONMENT = environment
+def environment(environment: str = "-local"):
+    gryd.SERVICE = GRYD_SERVICE
+    gryd.set_queue_manager(config = GRYD_CONFIG)
+    if not environment.startswith("-"):
+        environment = f"-{environment}"
+    gryd.ENVIRONMENT = environment
+    message = {"message": f"Environment set to '{environment}'"}
+    logger.info(message)
+    return message
+environment(environment = GRYD_ENVIRONMENT)
 st.set_page_config(page_title="Mahindra Agentic CX Demo", layout="wide")
 st.markdown("## 🤖 **Mahindra Agentic CX Demo**")
 st.write("This demo shows how DaveAI's platform converts a cold visitor into a potential customer.")

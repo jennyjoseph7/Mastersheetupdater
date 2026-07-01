@@ -77,7 +77,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="template_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
+              schedule = "0 */2 * * *",
               add_schedule_to_queue=False
         )
         
@@ -101,23 +101,32 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="daily_dealership_summary",
               service=AUTOCRM_CRON_SERVICE_NAME,
-             schedule = "*/10 * * * *",
+            schedule = "*/30 * * * *",
               add_schedule_to_queue=False
         )
         
-        # cron_worker.add_cron_job(
-        #     enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
-        #       task="set_worker_count",
-        #       service=AUTOCRM_CRON_SERVICE_NAME,
-        #       schedule = "0 21 * * *",
-        #       add_schedule_to_queue=False
-        # )
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="scale_down_voice",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "0 15 * * *",  # Voice workers stop at 8:30 p.m. IST
+              add_schedule_to_queue=False
+        )
         
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="scale_up_voice",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule = "0 3 * * *", #Voice workers start at 8.30 a.m. IST
+              add_schedule_to_queue=False
+        )
+
         cron_worker.add_cron_job(
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
+            kwargs={"dealership_id":['ambal-auto-india']},
             add_schedule_to_queue=False
         )
         
@@ -125,7 +134,8 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
-            schedule = "*/20 2-15 * * *", #till 9pm it runs..
+            schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
+            kwargs={"dealership_id":['ambal-auto-india']},
             add_schedule_to_queue=False
         )
         
@@ -133,7 +143,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="mark_inactive_dealerships",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "*/10 * * * *",
+              schedule = "15 0 * * *",
               kwargs={"inactive_days": 14},
               add_schedule_to_queue=False
         )
@@ -271,6 +281,40 @@ app.register_blueprint(elevanlab_routes)
 app.register_blueprint(cohort_bp)
 app.register_blueprint(gryd_orchestration_bp)
 app.register_blueprint(campaign_test_routes)
+
+
+@app.route('/campaign/workflows', methods=["GET"])
+@app.route('/campaign/workflows/<frmt>', methods=["GET"])
+def get_campaign_workflows(frmt=None):
+    try:
+        # Load campaign objectives from server model
+        m = AutocrmModel('campaign_objective')
+        items = m.list() or []
+
+        from tabulate import tabulate
+        headers = ["Campaign Objective Name", "Campaign Type", "Campaign Sub Type", "Workflows"]
+        table = []
+        for it in items:
+            name = it.get('campaign_objective_name') or it.get('campaign_objective_id') or ''
+            ctype = it.get('campaign_type') or ''
+            csub = it.get('campaign_sub_type') or ''
+            wfs = it.get('workflows') or []
+            if isinstance(wfs, (list, tuple)):
+                wfs_val = ', '.join(wfs)
+            else:
+                wfs_val = str(wfs)
+            table.append((name, ctype, csub, wfs_val))
+
+        if not frmt:
+            user_agent = request.headers.get('User-Agent', '').lower()
+            frmt = 'html' if any(b in user_agent for b in ('mozilla', 'chrome', 'safari', 'firefox', 'edge')) else 'github'
+
+        if str(frmt).lower() == 'json':
+            return gryd_routes.jsonify({"status": "ok", "headers": headers, "rows": [list(r) for r in table]}), 200, {"Access-Control-Allow-Origin": "*"}
+        return tabulate(table, headers = headers, tablefmt=frmt), 200, {"Access-Control-Allow-Origin": "*"}
+    except Exception:
+        logger.exception("Failed to load campaign workflows")
+        return gryd_routes.jsonify({"status": "error", "message": "internal error"}), 500, {"Access-Control-Allow-Origin": "*"}
 
 
 def verify_webhook_signature(payload_body: bytes, signature: str, secret: str) -> bool:

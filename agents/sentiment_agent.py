@@ -1,7 +1,15 @@
+import os
+import sys
+from os.path import dirname, abspath, join as joinpath
+BASE_DIR = dirname(dirname(abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 import json
 import re
 from ai_service import ai_service_app
 from agents.base_agent import BaseAgent
+from gryd_worker import gryd, gryd_helpers as hp, gryd_audit_helper
+mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 class SentimentAnalysisAgent(BaseAgent):
     def __init__(self, source, model_identifier='azure-gpt-4o'):
@@ -100,7 +108,7 @@ class SentimentAnalysisAgent(BaseAgent):
             messages=self.messages(),
             model_identifier=self.model_identifier
         )
-        print(f"Sentiment Analysis Response: {response}")
+        mlogger.info(f"Sentiment Analysis Response: {response}")
         try:
             parsed_json = self.extract_json_from_llm_response(response)
             return parsed_json

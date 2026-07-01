@@ -18,15 +18,16 @@ from collections import defaultdict
 
 logger = get_logger(__name__)
 
-def setup_gryd():
+def environment(environment: str = "-local"):
     gryd.SERVICE = GRYD_SERVICE
-    gryd.set_queue_manager(config=GRYD_CONFIG)
-    environment = os.getenv("ENVIRONMENT", "-local")
+    gryd.set_queue_manager(config = GRYD_CONFIG)
     if not environment.startswith("-"):
         environment = f"-{environment}"
     gryd.ENVIRONMENT = environment
-
-setup_gryd()
+    message = {"message": f"Environment set to '{environment}'"}
+    logger.info(message)
+    return message
+environment(environment = GRYD_ENVIRONMENT)
 
 def setup_header():
     st.set_page_config(page_title="Agentic CX: Campaign Funnel & Lead Nurturing", layout="wide")

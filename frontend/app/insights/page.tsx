@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Search,
   MessageSquare,
@@ -173,11 +175,12 @@ export default function LiveStatusPage() {
   const [statusFilter, setStatusFilter] = useState<string>("All Status");
   const [campaignTypeFilter, setCampaignTypeFilter] =
     useState<string>("All Types");
+  const [sessionLive, setSessionLive] = useState<boolean>(false);
 
   // Pagination & Sorting (Server-Side)
   const [p, setP] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState("created");
+  const [sortBy, setSortBy] = useState("updated");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -190,6 +193,7 @@ export default function LiveStatusPage() {
     const savedChannel = localStorage.getItem("live_channelFilter");
     const savedStatus = localStorage.getItem("live_statusFilter");
     const savedType = localStorage.getItem("live_campaignTypeFilter");
+    const savedSessionLive = localStorage.getItem("live_sessionLive");
     const savedPage = localStorage.getItem("live_page");
     const savedPageSize = localStorage.getItem("live_pageSize");
 
@@ -199,6 +203,7 @@ export default function LiveStatusPage() {
     if (savedChannel) setChannelFilter(savedChannel);
     if (savedStatus) setStatusFilter(savedStatus);
     if (savedType) setCampaignTypeFilter(savedType);
+    if (savedSessionLive) setSessionLive(savedSessionLive === "true");
     if (savedPage) setP(parseInt(savedPage));
     if (savedPageSize) setPageSize(parseInt(savedPageSize));
 
@@ -213,6 +218,7 @@ export default function LiveStatusPage() {
     localStorage.setItem("live_channelFilter", channelFilter);
     localStorage.setItem("live_statusFilter", statusFilter);
     localStorage.setItem("live_campaignTypeFilter", campaignTypeFilter);
+    localStorage.setItem("live_sessionLive", sessionLive.toString());
     localStorage.setItem("live_page", p.toString());
     localStorage.setItem("live_pageSize", pageSize.toString());
   }, [
@@ -222,6 +228,7 @@ export default function LiveStatusPage() {
     channelFilter,
     statusFilter,
     campaignTypeFilter,
+    sessionLive,
     p,
     pageSize,
     isLoaded,
@@ -292,6 +299,7 @@ export default function LiveStatusPage() {
       sort_order: sortOrder,
       start_date: startDate || undefined,
       end_date: endDate || undefined,
+      session_live: sessionLive,
     };
   }, [
     p,
@@ -303,6 +311,7 @@ export default function LiveStatusPage() {
     sortOrder,
     startDate,
     endDate,
+    sessionLive,
   ]);
 
   // Main Session API Call
@@ -370,7 +379,7 @@ export default function LiveStatusPage() {
       "Email",
       "Status",
       "Campaign Type",
-      "Created Date",
+      "Updated Date",
       "Recording Link",
     ];
     const csvRows = [headers.join(",")];
@@ -385,7 +394,7 @@ export default function LiveStatusPage() {
         `"${session.email || "-"}"`,
         `"${session.status}"`,
         `"${formatCampaignType(session.campaign_type)}"`,
-        `"${formatTimestamp(session.created)}"`,
+        `"${formatTimestamp(session.updated)}"`,
         `"${session.call_recording || "No Recording"}"`,
       ];
       csvRows.push(row.join(","));
@@ -640,6 +649,21 @@ export default function LiveStatusPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Session Live Switch */}
+                <div className="flex items-center space-x-2 border rounded-md px-3 h-10 bg-background">
+                  <Switch
+                    id="session-live-mode"
+                    checked={sessionLive}
+                    onCheckedChange={(checked) => {
+                      setSessionLive(checked);
+                      setP(1);
+                    }}
+                  />
+                  <Label htmlFor="session-live-mode" className="text-sm font-medium cursor-pointer select-none">
+                    Live Only
+                  </Label>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -685,7 +709,7 @@ export default function LiveStatusPage() {
                         <SortableHeader title="Status" column="status" />
                         <SortableHeader title="Type" column="campaign_type" />
                         <TableHead>Recording</TableHead>
-                        <SortableHeader title="Created" column="created" />
+                        <SortableHeader title="Updated" column="updated" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -751,10 +775,10 @@ export default function LiveStatusPage() {
                           <TableCell>
                             <div
                               className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap cursor-help"
-                              title={formatTimestamp(session.created)}
+                              title={formatTimestamp(session.updated)}
                             >
                               <Clock className="h-3 w-3" />
-                              {getTimeAgo(session.created)}
+                              {getTimeAgo(session.updated)}
                             </div>
                           </TableCell>
                         </TableRow>

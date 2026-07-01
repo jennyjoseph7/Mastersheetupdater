@@ -118,7 +118,8 @@ class PropensityAgent(BaseAgent):
             showlegend=False,
             title="Feature Propensity Radar Chart"
         )
-        img_bytes = fig.to_image(format=format, scale=scale)
+        # img_bytes = fig.to_image(format=format, scale=scale)
+        img_bytes = None
         return fig, img_bytes
     
     def run(self):

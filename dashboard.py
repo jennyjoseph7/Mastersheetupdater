@@ -8,12 +8,16 @@ import os, sys, traceback
 import pydeck as pdk
 
 logger = get_logger(__name__)
-gryd.SERVICE = GRYD_SERVICE
-gryd.set_queue_manager(config=GRYD_CONFIG)
-environment = os.getenv("ENVIRONMENT", "-local")
-if not environment.startswith("-"):
-    environment = f"-{environment}"
-gryd.ENVIRONMENT = environment
+def environment(environment: str = "-local"):
+    gryd.SERVICE = GRYD_SERVICE
+    gryd.set_queue_manager(config = GRYD_CONFIG)
+    if not environment.startswith("-"):
+        environment = f"-{environment}"
+    gryd.ENVIRONMENT = environment
+    message = {"message": f"Environment set to '{environment}'"}
+    logger.info(message)
+    return message
+environment(environment = GRYD_ENVIRONMENT)
 st.set_page_config(page_title="AutoBot Agents", layout="wide")
 st.markdown("## 🤖 **AutoBot Agents**")
 st.sidebar.image(
@@ -169,18 +173,18 @@ with tab2:
         if reasoning:
             st.markdown("#### <Agent Reasoning>")
             response = st.write_stream(response_generator(response = reasoning))
-        # propensity_chart_json = propensity_result.get("propensity_chart_json")
-        # fig = pio.from_json(propensity_chart_json)
+        propensity_chart_json = propensity_result.get("propensity_chart_json")
+        fig = pio.from_json(propensity_chart_json)
         st.success("✅ Propensity Scores Computed Successfully")
         st.write("Propensity Scores:")
         st.json(scores)
-        # if fig:
-        #     st.markdown("### 📷 Propensity Chart")
-        #     st.plotly_chart(fig, use_container_width=True)
+        if fig:
+            st.markdown("### 📷 Propensity Chart")
+            st.plotly_chart(fig, use_container_width=True)
             # st.image(propensity_img_url, width=1000,) # caption=" ### 📷 Propensity Score Radar Plot"
-        if propensity_img_url:
-            st.write("Propensity Chart:")
-            st.image(propensity_img_url, width=1000,)
+        # if propensity_img_url:
+        #     st.write("Propensity Chart:")
+        #     st.image(propensity_img_url, width=1000,)
     else:
         st.info("ℹ️ Run the agent to see results.")
 
