@@ -2084,7 +2084,6 @@ def fetch_leads(dealership_id, channel, batch_size):
         mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
         return unique_leads
 
-
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
 #     dealership_id = kwargs.get("dealership_id")

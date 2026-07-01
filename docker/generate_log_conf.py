@@ -50,7 +50,8 @@ def generate_fluentbit_conf(host, port, log_files, service_name):
             "name" : "tail",
             "path" : logf,
             "tag" : service_name,
-            "db" : f"/tmp/{service_name}.db"
+            "db" : f"/tmp/{service_name}.db",
+            "buffer_max_size" : "1MB"
         }
         inputs.append(input_config)
         output_config = {

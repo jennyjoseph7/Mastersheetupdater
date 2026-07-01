@@ -438,7 +438,7 @@ def post_session_process(*args, **kwargs):
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
-        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary_english": summary_updated})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
