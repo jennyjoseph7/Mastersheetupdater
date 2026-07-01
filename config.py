@@ -97,6 +97,13 @@ CHANNEL_IDENTIFIER_MAP = {
     "whatsapp_voice_call": "phone_number"
 }
 
+DUE_DATE_ATTRIBUTES = {
+    "next_service_due": -7 * 3600 * 24,
+    "warranty_expiry_date": -60 * 3600 * 24,
+    "insurance_expiry_date": -45 * 3600 * 24,
+    "extended_warranty_expiry_date": -60 * 3600 * 24
+}
+
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
 AUTOCRM_CALL_CONNECTED_UNITS = "count"
