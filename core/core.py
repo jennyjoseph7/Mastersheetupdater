@@ -21,7 +21,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_CORE_SERVICE_NAME, \
     EXCHANGE_RATE_HOST_BASE_URL, \
     csv, \
     get_cheapest_channel, \
-    get_channel_identifier_from_lead
+    get_channel_identifier_from_lead, \
+    DUE_DATE_ATTRIBUTES
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 import requests
@@ -309,12 +310,6 @@ def get_rooftop(row, models, model_name, missing_reason = None, rooftop_id = Non
     return row, missing_reason
 
 
-ATTEMPT_TIME_ON_DUE_DATE = {
-    "next_service_due": -7 * 3600 * 24,
-    "warranty_expiry_date": -60 * 3600 * 24,
-    "insurance_expiry_date": -45 * 3600 * 24,
-    "extended_warranty_expiry_date": -60 * 3600 * 24
-}
 
 def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id = None, required_attributes = None, logger = None):
     logger = logger or mlogger
@@ -333,14 +328,14 @@ def process_post_sales_lead_row(row, models, missing_reason = None, rooftop_id =
             row['service_due_timestamp'] = hp.to_epoch(row.get('next_service_due'))
         except Exception as e:
             missing_reason.append(f"Failed to convert next service due date to epoch: {str(e)}")
-    attempt_time_on_due_date = dealership.get('attempt_time_on_due_date', {}) or ATTEMPT_TIME_ON_DUE_DATE
-    for k in ATTEMPT_TIME_ON_DUE_DATE:
+    attempt_time_on_due_date = dealership.get('attempt_time_on_due_date', {}) or DUE_DATE_ATTRIBUTES
+    for k in DUE_DATE_ATTRIBUTES:
         if is_valid_value(row, k):
             row["next_schedule_time"] = min(
                 max(
                     hp.time(), 
                     hp.to_epoch(row[k]) + (
-                        attempt_time_on_due_date.get(k) or ATTEMPT_TIME_ON_DUE_DATE.get(k)
+                        attempt_time_on_due_date.get(k) or DUE_DATE_ATTRIBUTES.get(k)
                     )
                 ), 
                 row.get('next_schedule_time', hp.time())
