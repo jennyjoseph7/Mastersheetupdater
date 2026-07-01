@@ -2,7 +2,7 @@
 Meta CAPI — CRM Lead Mapper
 ============================
 Translates the internal lead dictionary (as returned by
-GoogleDocsCRM.list_pre_sales_leads() or the `update_lead_in_sheet` kwargs)
+GoogleDocsCRM.read_leads_from_sheet() or the `update_lead_in_sheet` kwargs)
 into the keyword arguments accepted by `build_lead_event_payload()`.
 
 Internal lead dict shape (from GoogleDocsCRM / autoengage_crm_worker):

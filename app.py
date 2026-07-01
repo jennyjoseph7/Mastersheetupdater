@@ -126,7 +126,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={"dealership_id":['ambal-auto-india']},
+            kwargs={"voice_batch_size": 30},
             add_schedule_to_queue=False
         )
         
@@ -135,7 +135,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={"dealership_id":['ambal-auto-india']},
+            kwargs={},
             add_schedule_to_queue=False
         )
         
@@ -145,6 +145,15 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "15 0 * * *",
               kwargs={"inactive_days": 14},
+              add_schedule_to_queue=False
+        )
+        
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="end_campaigns",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule="30 13 * * *", 
+              kwargs={},
               add_schedule_to_queue=False
         )
 

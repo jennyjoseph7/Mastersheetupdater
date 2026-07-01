@@ -2335,9 +2335,10 @@ def get_active_crm_campaigns():
                '{campaign_model}' AS campaign_model
         FROM {campaign_model}
         WHERE dict->>'campaign_status'=%s
-        AND (dict->>'last_sync_timestamp'):: NUMERIC
-            <= EXTRACT(EPOCH FROM NOW())
+        
         """
+        # AND (dict->>'last_sync_timestamp'):: NUMERIC
+        #     <= EXTRACT(EPOCH FROM NOW())
 
         results = pg.fetch_all(
             query,
@@ -2572,8 +2573,9 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                     credentials=crm_details.get("api_key"),   # dict from DB
                     sheet_url=crm_details.get("sheet_url"),   # full URL from DB
                 )
+                
 
-                leads = crm.list_pre_sales_leads(
+                leads = crm.read_leads_from_sheet(
                     batch_size=leads_to_fetch
                 )
 
@@ -2594,11 +2596,12 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                             dealership_name=campaign.get("dealership_name")
                         )
                         
+                        # mlogger.info(f"Lead: {json.dumps(lead,indent=4)} ")
                         #as soon as the call is triggered, update the lead status back to the sheet for that specific lead.
-                        crm.patch_pre_sales_lead(lead,"queued")
+                        crm.update_status_for_matching_rows(lead,"queued")
                         
                         # After triggering the call, poll DB for the real completed
-                        logger.info(f"print task result {task_result}")
+                        logger.info(f"[process_crm_campaigns] Task result: {task_result}")
                         lead_id = (task_result or {}).get("lead_id")
                         if lead_id:
                             # logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")

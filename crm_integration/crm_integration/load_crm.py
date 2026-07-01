@@ -10,22 +10,21 @@ from crm_integration.crm_integration.connectors.salesforce_crm import Salesforce
 # from crm_integration.connectors.autounify_crm import AutoUnifyCRM
 # from crm_integration.connectors.leadsquare_crm import LeadSquaredCRM
 
-
 def load_crm(crm_name, credentials=None, sheet_name=None, sheet_url=None):
 
     crm_map={
 
       "googledocs":
-         lambda: GoogleDocsCRM(
-             credentials=credentials,       # dict from DB crm_source_details.api_key
-             sheet_url=sheet_url,           # full URL from DB crm_source_details.sheet_url
-             sheet_name=sheet_name,         # legacy fallback (title-based)
+        lambda: GoogleDocsCRM(
+            #  credentials=credentials,       
+            sheet_url=sheet_url,           
+            sheet_name=sheet_name      
          ),
 
       "salesforce":
-         lambda: SalesforceCRM(
-             credentials=credentials or {}
-         ),
+        lambda: SalesforceCRM(
+            credentials=credentials or {}
+        )
 
       # "leadsquared":
       #    lambda: LeadSquaredCRM(),

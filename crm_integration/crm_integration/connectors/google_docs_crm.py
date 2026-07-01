@@ -1,10 +1,12 @@
 try:
     import gspread
+    import google.auth
 except ImportError:
     gspread = None
 from google.oauth2.service_account import Credentials
 from crm_integration.crm_integration.base_crm import BaseCRMClass
-
+from gryd_worker import gryd, gryd_helpers as hp
+logger=hp.get_logger(__name__,level=hp.logging.DEBUG)
 
 STANDARD_FIELDS = [
     "workshop_city",
@@ -30,7 +32,7 @@ STANDARD_FIELDS = [
 
 
 HEADER_MAPPING = {
-    # ── Sheet columns → internal field names ──────────────────────────────────
+    # Sheet columns → internal field names
     "Location":         "workshop_city",
     "Dealer Code":      "dealership_id",
     "VIN":              "VIN",
@@ -41,7 +43,7 @@ HEADER_MAPPING = {
     "Mobile Number":    "phone_number",
     "Status":           "status",
 
-    # ── Written back by post-processing task ──────────────────────────
+    # Written back by post-processing task 
     "Disposition":      "disposition",
     "Sentiment":        "sentiment",
     "Call Duration":    "call_duration",
@@ -51,55 +53,34 @@ HEADER_MAPPING = {
 
 class GoogleDocsCRM(BaseCRMClass):
 
-    def __init__(self, sheet_name=None, credentials=None, sheet_url=None):
-        """
-        Args:
-            credentials (dict): Service account credentials dict (from DB crm_source_details.api_key).
-                                 If None, falls back to reading credentials.json from disk.
-            sheet_url (str):    Full Google Sheet URL or just the spreadsheet ID.
-                                 Takes priority over sheet_name.
-            sheet_name (str):   Sheet title (legacy fallback — used only when sheet_url is not given).
-        """
+    def __init__(self, sheet_name=None, sheet_url=None):
+                
+        
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
 
-        # ── Build credentials ─────────────────────────────────────────────────
-        if credentials and isinstance(credentials, dict):
-            # NEW: credentials passed directly as dict from DB
-            creds = Credentials.from_service_account_info(credentials, scopes=scope)
-        else:
-            # LEGACY fallback: read from credentials.json file on disk
-            import os
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            cred_path = os.path.join(BASE_DIR, "credentials.json")
-            creds = Credentials.from_service_account_file(cred_path, scopes=scope)
-
+        creds, _ = google.auth.default(scopes=scope)
         client = gspread.authorize(creds)
-
-        # ── Open the sheet ────────────────────────────────────────────────────
+        # logger.info(f"client opened:{client}")
+        # logger.info(f"creds: {creds}")
         if sheet_url:
-            # Extract spreadsheet ID from full URL if needed
-            # URL format: https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit...
             if "/spreadsheets/d/" in sheet_url:
                 spreadsheet_id = sheet_url.split("/spreadsheets/d/")[1].split("/")[0]
             else:
-                # Assume it's already just the spreadsheet ID
                 spreadsheet_id = sheet_url
             self.sheet = client.open_by_key(spreadsheet_id).sheet1
+            []
         elif sheet_name:
-            # Legacy: open by sheet title
             self.sheet = client.open(sheet_name).sheet1
         else:
             raise ValueError("Either sheet_url or sheet_name must be provided to GoogleDocsCRM")
 
 
-  
     # CORE UTIL METHODS
     def get_sheet_headers(self):
         return self.sheet.row_values(1)
-
 
     def normalize_row(self, row_dict):
         normalized = {}
@@ -126,20 +107,16 @@ class GoogleDocsCRM(BaseCRMClass):
     def get_column_index(self, column_name):
         headers = self.get_sheet_headers()
         return headers.index(column_name)    
-
-
-    
-    # PRE SALES
     
 
-    def post_pre_sales_lead(self, data):
+    # def post_pre_sales_lead(self, data):
 
-        self.append_dynamic_row(data)
+    #     self.append_dynamic_row(data)
 
-        return {"status": "success"}
+    #     return {"status": "success"}
 
 
-    def list_pre_sales_leads(self, batch_size=None, last_updated=None, status_filter=None, **kwargs):
+    def read_leads_from_sheet(self, batch_size=None, last_updated=None, status_filter=None, **kwargs):
         """
         Read leads from the Google Sheet.
 
@@ -164,7 +141,7 @@ class GoogleDocsCRM(BaseCRMClass):
             normalized = self.normalize_row(row_dict)
             results.append(normalized)
 
-        # ── Status filtering ──────────────────────────────────────────────────
+        # Status filtering
         if status_filter is not None:
             # Explicit override — caller wants a specific status
             results = [
@@ -184,16 +161,15 @@ class GoogleDocsCRM(BaseCRMClass):
                 if r.get("status", "").strip().lower() not in DONE_STATUSES
             ]
 
-        # ── Batch size limit ──────────────────────────────────────────────────
         if batch_size:
             results = results[:batch_size]
 
         return results
 
 
-    def get_pre_sales_lead(self, search_data):
+    def find_lead_by_phone_number(self, search_data):
 
-        records = self.list_pre_sales_leads()
+        records = self.read_leads_from_sheet()
 
         for row in records:
 
@@ -201,7 +177,8 @@ class GoogleDocsCRM(BaseCRMClass):
                 return row
 
         return {"error": "Not found"}
-    def update_row_by_phone(self, phone_number: str, data: dict) -> dict:
+    
+    def update_row_by_phone_number(self, phone_number: str, data: dict) -> dict:
         """
         Find row(s) where 'Mobile Number' == phone_number and write all
         non-empty key-value pairs from `data` back to the sheet.
@@ -220,7 +197,7 @@ class GoogleDocsCRM(BaseCRMClass):
         Returns:
             dict: {"updated": bool, "rows_updated": int, "columns_added": list}
         """
-        # ── Drop empty values up front ─────────────────────────────────────────
+        # Drop empty values up front 
         # If value is None, empty string, or the literal string "None" → skip it
         data = {
             k: v for k, v in data.items()
@@ -242,7 +219,7 @@ class GoogleDocsCRM(BaseCRMClass):
         if phone_idx is None:
             return {"updated": False, "error": "Mobile Number column not found in sheet"}
 
-        # ── Ensure every key in data has a column in the sheet ────────────────
+        # Ensure every key in data has a column in the sheet
         # If a key doesn't match any existing header → create it at the end
         columns_added  = []
         key_to_col_idx = {}   # key → 0-based column index
@@ -263,7 +240,7 @@ class GoogleDocsCRM(BaseCRMClass):
                 key_to_col_idx[key] = new_col_idx
                 columns_added.append(key)
 
-        # ── Find matching rows and update each cell ────────────────────────────
+        # Find matching rows and update each cell
         updated_count = 0
         for row_idx, row in enumerate(all_rows):
             if row_idx == 0:
@@ -284,11 +261,9 @@ class GoogleDocsCRM(BaseCRMClass):
 
 
 
-    def patch_pre_sales_lead(self, search_data, updated_status):
-        """
-        Update status for all rows matching VIN or phone that are not already CONTACTED.
-        Iterates ALL rows (not just first match) to handle duplicate entries.
-        """
+    def update_status_for_matching_rows(self, search_data, updated_status):
+        
+        print(f"update_status_for_matching_rows({search_data}, {updated_status})")
         headers = self.get_sheet_headers()
         rows = self.sheet.get_all_values()
 
@@ -315,76 +290,4 @@ class GoogleDocsCRM(BaseCRMClass):
 
         return {"updated": updated_count > 0, "rows_updated": updated_count}
     
-    # POST SALES
     
-    def post_post_sales_lead(self, data):
-
-        headers = self.get_sheet_headers()
-        row = []
-
-        for header in headers:
-
-            internal_key = HEADER_MAPPING.get(header, header.lower())
-
-            value = data.get(internal_key, "")
-
-            row.append(value)
-
-        self.sheet.append_row(row)
-
-        return {
-                "status": "success",
-                "inserted": data
-        }
-
-    def list_post_sales_leads(self):
-        return self.list_pre_sales_leads()
-
-
-   
-    # CUSTOMER
-    
-
-    def list_customers(self):
-        return self.list_pre_sales_leads()
-    
-   
-
-
-   #logger
-    def get_post_sales_lead(self, id):
-        return {"message": "Not implemented yet"}
-
-
-    def patch_post_sales_lead(self, search_data, data):
-
-        headers = self.get_sheet_headers()
-        rows = self.sheet.get_all_values()
-
-        phone_idx = headers.index("Mobile Number")
-        status_idx = headers.index("Status")
-
-        for i, row in enumerate(rows):
-
-            if i == 0:
-                continue
-
-            if row[phone_idx] == search_data.get("phone_number"):
-
-                self.sheet.update_cell(i+1, status_idx+1, data.get("status"))
-
-                return {"updated": True}
-
-        return {"updated": False}
-
-
-    def get_customer(self, id):
-        return {"message": "Not implemented yet"}
-
-
-    def post_customer(self, data):
-        return {"message": "Not implemented yet"}
-
-
-    def patch_customer(self, id, data):
-        return {"message": "Not implemented yet"}

@@ -595,7 +595,7 @@ def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id
             to_update["channels"] = cchannels.pop(channel)
         elif channel.lower() == "__all__":
             return blm.delete(phone_number)
-    if dealership_id and isinstance(dealerhsip_id, str):
+    if dealership_id and isinstance(dealership_id, str):
         if dealership_id not in cdealerships:
             #blm.iadd(phone_number, 'dealership_ids', [dealership_id])
             to_update["dealership_ids"] = cdealerships.pop(dealership_id)
