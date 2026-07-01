@@ -435,8 +435,35 @@ const [launchStep, setLaunchStep] = useState(0);
     return duration.start > localToday;
   }, [duration.start]);
 
+  const [hasWhatsappTemplates, setHasWhatsappTemplates] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkWhatsappTemplates = async () => {
+      const objectiveName = selectedObjectiveData?.campaign_objective_name || selectedObjectiveData?.title || selectedObjective;
+      if (!objectiveName || objectiveName === "custom") {
+        setHasWhatsappTemplates(true);
+        return;
+      }
+      try {
+        const dealershipId = getDealershipId() || "";
+        const endpoint = `/gryd/db/objects/template?campaign_objective_name=${encodeURIComponent(objectiveName)}&dealership_id=${encodeURIComponent(dealershipId)}`;
+        const res = await api(endpoint, "GET");
+        const templates = res.data || [];
+        const hasTemplates = templates.length > 0;
+        setHasWhatsappTemplates(hasTemplates);
+        if (!hasTemplates) {
+          setSelectedChannels(prev => prev.filter(c => c !== "whatsapp"));
+        }
+      } catch (error) {
+        console.error("Failed to check templates for objective", error);
+        setHasWhatsappTemplates(true);
+      }
+    };
+    checkWhatsappTemplates();
+  }, [selectedObjective, selectedObjectiveData]);
+
   // --- Initialization ---
- useEffect(() => {
+  useEffect(() => {
     const dealershipId = getDealershipId();
     if (dealershipId === "stellantis-india" && selectedChannels.includes("voice")) {
       setVoiceAgentId(STELLANTIS_AGENT_MAP[voiceStartLanguage] || "");
@@ -1679,7 +1706,9 @@ const handleProceed = async () => {
                           </CardHeader>
                           <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {channels.map((ch) => (
+                              {channels
+                                .filter((ch) => ch.id !== "whatsapp" || hasWhatsappTemplates)
+                                .map((ch) => (
                                 <Card
                                   key={ch.id}
                                   className={cn(
