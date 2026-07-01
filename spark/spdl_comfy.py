@@ -9,6 +9,7 @@ import vertexai
 import tempfile
 from openai import OpenAI
 import sys
+
 print(f"system path:{sys.path}")
 from vertexai.preview.vision_models import Image, ImageGenerationModel
 import google.genai as genai
@@ -17,18 +18,24 @@ from google.genai.local_tokenizer import LocalTokenizer
 from gryd_worker import gryd
 from prompt_formatter import convert_prompt as _convert_prompt
 from spark_helpers import func_gryd_file_system
+from check_distortion import pad_and_resize_image
 
 # -------------------- BASE DIR --------------------
 from os.path import dirname, abspath, join as joinpath
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from config import AUTOCRM_SPARK_COMFY_SERVICE_NAME, GEMINI_IMAGE_ASPECT_RATIO, GEMINI_IMAGE_MODEL
+from config import (
+    AUTOCRM_SPARK_COMFY_SERVICE_NAME,
+    GEMINI_IMAGE_ASPECT_RATIO,
+    GEMINI_IMAGE_MODEL,
+)
+
 # -------------------- LOGGING --------------------
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 mlogger = logging.getLogger("spdl_comfy")
 
@@ -51,12 +58,14 @@ mlogger.info(f"PROJECT_ID: {PROJECT_ID}")
 mlogger.info(f"LOCATION: {LOCATION}")
 
 # -------------------- WORKFLOW --------------------
-WORKFLOW_PATH = os.path.join(BASE_DIR,"spark", "comfy_workflows", "Flex.json")
+WORKFLOW_PATH = os.path.join(BASE_DIR, "spark", "comfy_workflows", "Flex.json")
 mlogger.info(f"WORKFLOW_PATH: {WORKFLOW_PATH}")
 SERVICE = AUTOCRM_SPARK_COMFY_SERVICE_NAME
 gryd.SERVICE = SERVICE
 THREADS_PER_SESSION = 0.3
 gryd.set_queue_manager()
+GRYD_UPLOAD_DIMENSIONS = [1080, 1350]
+
 
 # -------------------- HELPERS --------------------
 def _normalize_workflow(workflow):
@@ -72,6 +81,7 @@ def _normalize_workflow(workflow):
         return {str(k): v for k, v in workflow.items()}
     raise ValueError(f"Unsupported workflow format: {type(workflow)}")
 
+
 def load_workflow():
     mlogger.info(f"Loading workflow from: {WORKFLOW_PATH}")
     with open(WORKFLOW_PATH, "r", encoding="utf-8") as f:
@@ -80,11 +90,13 @@ def load_workflow():
     mlogger.info(f"Workflow loaded successfully with {len(workflow)} nodes")
     return workflow
 
+
 def get_workflow_node(workflow, node_id):
     node_id = str(node_id)
     if node_id not in workflow:
         raise KeyError(f"Workflow node {node_id} not found")
     return workflow[node_id]
+
 
 def download_image(url, save_path):
     start = time.time()
@@ -96,6 +108,7 @@ def download_image(url, save_path):
         f.write(r.content)
     mlogger.info(f"Download completed in {time.time() - start:.2f} sec")
     mlogger.info(f"File exists after download: {os.path.exists(save_path)}")
+
 
 def upload_to_gryd(file_path):
     start = time.time()
@@ -109,14 +122,18 @@ def upload_to_gryd(file_path):
         mlogger.info(f"GRYD Response: {response_json}")
         return response_json.get("cdn_url")
 
+
 def queue_prompt(workflow):
     start = time.time()
     mlogger.info("Sending prompt to ComfyUI...")
     r = requests.post(f"{COMFY_HOST}/prompt", json={"prompt": workflow}, timeout=30)
     r.raise_for_status()
     prompt_id = r.json().get("prompt_id")
-    mlogger.info(f"Prompt queued | prompt_id={prompt_id} | time={time.time() - start:.2f} sec")
+    mlogger.info(
+        f"Prompt queued | prompt_id={prompt_id} | time={time.time() - start:.2f} sec"
+    )
     return prompt_id
+
 
 def wait_for_completion(prompt_id, timeout=300):
     start = time.time()
@@ -132,6 +149,7 @@ def wait_for_completion(prompt_id, timeout=300):
         if time.time() - start > timeout:
             raise TimeoutError("ComfyUI execution timed out")
         time.sleep(1)
+
 
 def extract_saveimage_outputs(history, save_node_id="36"):
     mlogger.info(f"Extracting images from node_id={save_node_id}")
@@ -152,7 +170,11 @@ def extract_saveimage_outputs(history, save_node_id="36"):
 
     outputs = history.get("outputs", {}) or {}
     if not outputs:
-        outputs = history.get("result", {}).get("outputs", {}) or history.get("history", {}).get("outputs", {}) or outputs
+        outputs = (
+            history.get("result", {}).get("outputs", {})
+            or history.get("history", {}).get("outputs", {})
+            or outputs
+        )
 
     node_key = str(save_node_id)
     if node_key in outputs and isinstance(outputs[node_key], dict):
@@ -165,16 +187,16 @@ def extract_saveimage_outputs(history, save_node_id="36"):
     mlogger.debug(f"Extracted image data: {images}")
     return images
 
+
 # -------------------- TASK --------------------
 def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **kwargs):
-    logger = kwargs.pop('logger', None) or mlogger
+    logger = kwargs.pop("logger", None) or mlogger
 
     total_start_time = time.time()
     logger.info("===== Comfy Image Generation Task Started =====")
     logger.info(f"Prompt: {prompt}")
     logger.info(f"Requested number_of_images: {number_of_images}")
 
-   
     number_of_images = 1
 
     try:
@@ -221,17 +243,26 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
 
             for img in images:
                 if isinstance(img, dict):
-                    filename = img.get("filename") or img.get("path") or img.get("file") or img.get("name")
+                    filename = (
+                        img.get("filename")
+                        or img.get("path")
+                        or img.get("file")
+                        or img.get("name")
+                    )
                     subfolder = img.get("subfolder", "")
                 elif isinstance(img, str):
                     filename = img
                     subfolder = ""
                 else:
-                    logger.warning(f"Unsupported image output format: {type(img)} {img}")
+                    logger.warning(
+                        f"Unsupported image output format: {type(img)} {img}"
+                    )
                     continue
 
                 if not filename:
-                    logger.warning(f"Skipping image output with no filename/path: {img}")
+                    logger.warning(
+                        f"Skipping image output with no filename/path: {img}"
+                    )
                     continue
 
                 output_path = filename
@@ -246,19 +277,38 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
                     continue
 
                 width, height = imagesize.get(output_path)
-                logger.info(f"Output image dimensions: width={width}, height={height} ({output_path})")
+                logger.info(
+                    f"Output image dimensions: width={width}, height={height} ({output_path})"
+                )
 
-                ext = os.path.splitext(output_path)[1].lower().lstrip('.')
-                media_type = "image" if ext in ("png", "jpg", "jpeg", "webp", "gif") else "document"
+                pad_and_resize_image(output_path, list(GRYD_UPLOAD_DIMENSIONS), logger=logger)
+                upload_width, upload_height = imagesize.get(output_path)
+                logger.info(
+                    f"Resized for Gryd upload: width={upload_width}, height={upload_height} ({output_path})"
+                )
 
-                url = func_gryd_file_system(output_path, media_type=media_type, logger=logger)
+                ext = os.path.splitext(output_path)[1].lower().lstrip(".")
+                media_type = (
+                    "image"
+                    if ext in ("png", "jpg", "jpeg", "webp", "gif")
+                    else "document"
+                )
+
+                url = func_gryd_file_system(
+                    output_path, media_type=media_type, logger=logger
+                )
                 if url:
                     image_urls.append(url)
                     logger.info(f"Uploaded to GRYD, URL: {url}")
+                    logger.info(
+                        f"Gryd upload dimensions: width={upload_width}, height={upload_height}"
+                    )
                 else:
                     logger.warning(f"Upload failed for: {output_path}")
 
-            logger.info(f"Image {i + 1} completed in {time.time() - iteration_start:.2f} sec")
+            logger.info(
+                f"Image {i + 1} completed in {time.time() - iteration_start:.2f} sec"
+            )
 
         # Cleanup input file
         if os.path.exists(input_path):
@@ -269,7 +319,9 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         if len(image_urls) > 1:
             image_urls = [image_urls[0]]
 
-        logger.info(f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec =====")
+        logger.info(
+            f"===== Total Task Completed in {time.time() - total_start_time:.2f} sec ====="
+        )
         logger.info(f"Estimated cost: {total_cost:.4f} USD")
 
         return {
@@ -283,9 +335,10 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
         logger.exception("Comfy task failed")
         return {"error": str(e)}
 
+
 def gemini_media_resolution_from_size(size):
-    if 'x' in size:
-        width, height = size.split('x')
+    if "x" in size:
+        width, height = size.split("x")
         max_size = max(int(width), int(height))
         if max_size <= 1024:
             return genai_types.MediaResolution.MEDIA_RESOLUTION_LOW
@@ -302,24 +355,20 @@ def aspect_ratio_from_size(size):
     # Options: 1:1, 4:3, 16:9, 9:16,
     options = {
         "1:1": 1.0,
-        "4:3": 4.0/3.0,
-        "16:9": 16.0/9.0,
-        "9:16": 9.0/16.0,
+        "4:3": 4.0 / 3.0,
+        "16:9": 16.0 / 9.0,
+        "9:16": 9.0 / 16.0,
     }
-    if 'x' in size:
-        width, height = size.split('x')
+    if "x" in size:
+        width, height = size.split("x")
         aspect_ratio = int(width) / int(height)
         return min(options.items(), key=lambda x: abs(x[1] - aspect_ratio))[0]
     return None
 
+
 # nano banana
 def gemini_image_generation_task(
-    input_image_url,
-    prompt,
-    number_of_images=1,
-    temperature=0.2,
-    top_p=0.95,
-    **kwargs
+    input_image_url, prompt, number_of_images=1, temperature=0.2, top_p=0.95, **kwargs
 ):
     logger = kwargs.pop("logger", None) or mlogger
 
@@ -336,14 +385,9 @@ def gemini_image_generation_task(
 
     try:
         # -------------------- CLIENT --------------------
-        client = genai.Client(
-            vertexai=True,
-            project=PROJECT_ID,
-            location=LOCATION
-        )
+        client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
 
-        model = kwargs.get('model_name', GEMINI_IMAGE_MODEL)
-
+        model = kwargs.get("model_name", GEMINI_IMAGE_MODEL)
 
         task_dir = tempfile.mkdtemp(prefix="gemini_")
         image_urls = []
@@ -355,63 +399,86 @@ def gemini_image_generation_task(
         GEMINI_OUTPUT_TOKEN_PRICE = 120 / 1_000_000
 
         for i in range(number_of_images):
-
             iteration_start = time.time()
-            logger.info(f"----- Generating image ({i+1}/{number_of_images}) -----")
+            logger.info(f"----- Generating image ({i + 1}/{number_of_images}) -----")
 
             image_part = genai_types.Part.from_uri(
-                file_uri=input_image_url,
-                mime_type="image/jpeg"
+                file_uri=input_image_url, mime_type="image/jpeg"
             )
 
             text_part = genai_types.Part.from_text(text=prompt)
 
-            contents = [
-                genai_types.Content(
-                    role="user",
-                    parts=[image_part, text_part]
-                )
-            ]
+            contents = [genai_types.Content(role="user", parts=[image_part, text_part])]
 
             config = genai_types.GenerateContentConfig(
                 temperature=temperature,
                 top_p=top_p,
                 max_output_tokens=32768,
                 response_modalities=["TEXT", "IMAGE"],
-                media_resolution=gemini_media_resolution_from_size(kwargs.get('size', '')),
-                image_config = genai_types.ImageConfig(
-                    aspect_ratio=aspect_ratio_from_size(kwargs.get('size', ''), default = GEMINI_IMAGE_ASPECT_RATIO),
+                media_resolution=gemini_media_resolution_from_size(
+                    kwargs.get("size", "")
+                ),
+                image_config=genai_types.ImageConfig(
+                    aspect_ratio=aspect_ratio_from_size(
+                        kwargs.get("size", ""), default=GEMINI_IMAGE_ASPECT_RATIO
+                    ),
                 ),
                 safety_settings=[
-                    genai_types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HATE", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_HARASSMENT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
-                    genai_types.SafetySetting(category="HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT", threshold="BLOCK_MEDIUM_AND_ABOVE"),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_HATE_SPEECH",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_HARASSMENT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_IMAGE_HATE",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_IMAGE_HARASSMENT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
+                    genai_types.SafetySetting(
+                        category="HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT",
+                        threshold="BLOCK_MEDIUM_AND_ABOVE",
+                    ),
                 ],
             )
 
             response = client.models.generate_content(
-                model=model,
-                contents=contents,
-                config=config
+                model=model, contents=contents, config=config
             )
 
             for candidate in response.candidates:
                 for part in candidate.content.parts:
-
                     if getattr(part, "inline_data", None):
-
                         file_name = f"gemini_{uuid.uuid4().hex}.png"
                         output_path = os.path.join(task_dir, file_name)
 
                         with open(output_path, "wb") as f:
                             f.write(part.inline_data.data)
 
-                        url = func_gryd_file_system(output_path,media_type='image')
+                        width, height = imagesize.get(output_path)
+                        logger.info(f"Output image dimensions: width={width}, height={height} ({output_path})")
+                        pad_and_resize_image(output_path, list(OUTPUT_DIMENSIONS), logger=logger)
+                        r_width, r_height = imagesize.get(output_path)
+                        logger.info(f"Resized to {OUTPUT_DIMENSIONS}: width={r_width}, height={r_height} ({output_path})")
+
+                        url = func_gryd_file_system(output_path, media_type="image")
 
                         if url:
                             image_urls.append(url)
@@ -434,7 +501,7 @@ def gemini_image_generation_task(
                 )
 
             logger.info(
-                f"Image {i+1} completed in {time.time() - iteration_start:.2f} sec"
+                f"Image {i + 1} completed in {time.time() - iteration_start:.2f} sec"
             )
 
         # -------------------- COST CALCULATION --------------------
@@ -443,11 +510,7 @@ def gemini_image_generation_task(
         input_cost = GEMINI_INPUT_TOKEN_PRICE * total_prompt_tokens
         output_cost = GEMINI_OUTPUT_TOKEN_PRICE * total_output_tokens
 
-        total_cost = (
-            input_cost +
-            output_cost +
-            total_time * gryd.EXECUTION_COST
-        )
+        total_cost = input_cost + output_cost + total_time * gryd.EXECUTION_COST
 
         logger.info("===== Gemini Task Completed =====")
         logger.info(f"Total Time: {total_time:.2f} sec")
@@ -458,17 +521,14 @@ def gemini_image_generation_task(
         # -------------------- RETURN --------------------
         return {
             "image_urls": image_urls,
-
             "input_token_count": total_prompt_tokens,
             "output_token_count": total_output_tokens,
             "total_token_count": total_prompt_tokens + total_output_tokens,
-
             "input_cost": input_cost,
             "output_cost": output_cost,
             "total_cost": total_cost,
-
             "total_time": total_time,
-            "currency": "USD"
+            "currency": "USD",
         }
 
     except Exception as e:
@@ -476,16 +536,15 @@ def gemini_image_generation_task(
         return {"error": str(e)}
 
 
-@gryd.is_a_task(function_name = "comfy_image_generation", job_param = 'job', logger_param = 'logger')
+@gryd.is_a_task(
+    function_name="comfy_image_generation", job_param="job", logger_param="logger"
+)
 def comfy_image_generation(
-    input_image_url,
-    prompt,
-    number_of_images=1,
-    job = None,
-    logger = None,
-    **kwargs):
+    input_image_url, prompt, number_of_images=1, job=None, logger=None, **kwargs
+):
     logger = logger or mlogger
-    if kwargs.get('optimise_prompt',True):
+    if kwargs.get("optimise_prompt", True):
         prompt, elapsed = _convert_prompt(prompt)
-    return comfy_image_generation_task(input_image_url, prompt, number_of_images, logger = logger, **kwargs)
-
+    return comfy_image_generation_task(
+        input_image_url, prompt, number_of_images, logger=logger, **kwargs
+    )

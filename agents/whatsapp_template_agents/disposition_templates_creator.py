@@ -18,6 +18,18 @@ PROJECT_ROOT = os.path.dirname(
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from conversation.disposition_details_options import (
+    DISPOSITION_TAGS_EXCLUDED_FROM_TEMPLATES,
+    PRE_SALES_DISPOSITION_TAGS,
+    POST_SALES_DISPOSITION_TAGS,
+    build_disposition_scenarios,
+    build_pre_sales_disposition_scenarios,
+    build_post_sales_disposition_scenarios,
+    build_standard_disposition_scenarios,
+    disposition_scenarios_as_tuples,
+    get_disposition_detail_explanation,
+)
+
 from config import AUTOCRM_AGENT_SERVICE_NAME
 
 gryd.SERVICE = AUTOCRM_AGENT_SERVICE_NAME
@@ -53,8 +65,10 @@ def _slugify(text: str) -> str:
 
 # Purpose prefixes shared across grouped "engaged" disposition cases. Each prefix
 # tells the WhatsApp template generator how to frame the follow-up message.
+# Tag lists mirror conversation/lead_post_processing.py and disposition.txt
+# (same taxonomy for pre-sales and post-sales).
 
-# Type 1 — a simple follow-up reminder (another variation of the standard nudge).
+# Type 1 — explicit follow-up requested; customer showed interest but did not convert.
 _FOLLOW_UP_REQUIRED_PURPOSE = (
     "Follow-up reminder WhatsApp template: the customer was engaged in a previous "
     "conversation and an explicit follow-up was requested. Write a fresh variation of "
@@ -63,20 +77,20 @@ _FOLLOW_UP_REQUIRED_PURPOSE = (
     "warm and concise — this is a reminder, not a first-time outreach."
 )
 
-# Type 2 — we attempted a call but could not complete it (audio/connection issues,
-# they asked to be called back, wanted a human, or said they'd visit on their own).
+# Type 2 — we attempted contact but could not complete the conversation.
 _TRIED_TO_REACH_PURPOSE = (
-    "Missed-contact WhatsApp template: we recently tried to reach the customer on a "
-    "call but could not complete the conversation (for example audio/connection "
-    "problems, they asked to be called back, wanted to talk to a human, or said they "
-    "would visit the showroom themselves). Write a polite message acknowledging that we "
-    "tried to call but could not connect to take this forward, and invite them to "
-    "continue over WhatsApp or take the next step towards the campaign objective, using "
-    "ONLY the placeholders provided. Do not blame the customer for the missed call."
+    "Missed-contact WhatsApp template: we recently tried to reach the customer but "
+    "could not complete the conversation (for example audio problems, call dropped, "
+    "voicemail, they asked to be called back, wanted to talk to a human, or said they "
+    "would contact the showroom or workshop themselves). Write a polite message "
+    "acknowledging that we tried to connect but could not take this forward, and invite "
+    "them to continue over WhatsApp or take the next step towards the campaign "
+    "objective, using ONLY the placeholders provided. Do not blame the customer for "
+    "the missed contact."
 )
 
-# Type 3 — the customer asked for time to decide; some time has now passed and we are
-# checking back in. Must NOT name the campaign objective explicitly in the message.
+# Type 3 — customer asked for time to decide; we are checking back in.
+# Must NOT name the campaign objective explicitly in the message.
 _DECISION_TIMEFRAME_PURPOSE = (
     "Decision follow-up WhatsApp template: the customer was engaged earlier and asked "
     "for time to decide, and that time has now passed since our last contact. Write a "
@@ -88,26 +102,89 @@ _DECISION_TIMEFRAME_PURPOSE = (
     "ONLY the placeholders provided."
 )
 
-# disposition_details values that all map to the "we tried to reach you" framing.
+# Type 4 — customer enquired about specific information but did not convert.
+_ENQUIRY_FOLLOW_UP_PURPOSE = (
+    "Enquiry follow-up WhatsApp template: the customer showed interest by asking about "
+    "specific information (pricing, specifications, brochure, dealership details, test "
+    "drive, showroom visit, etc.) but did not complete the campaign objective. Write a "
+    "helpful follow-up that acknowledges their enquiry and nudges them toward completing "
+    "the campaign objective, using ONLY the placeholders provided."
+)
+
+# Type 5 — visit or test-drive intent already established or completed.
+_VISIT_PLANNED_PURPOSE = (
+    "Visit confirmation follow-up WhatsApp template: the customer has agreed to, "
+    "scheduled, or already completed a showroom visit or test drive. Write a warm "
+    "follow-up that confirms or builds on their visit intent and guides them toward "
+    "the campaign objective, using ONLY the placeholders provided."
+)
+
+# Type 6 — early-stage interest, still exploring or comparing options.
+_EXPLORATION_PURPOSE = (
+    "Exploration nurture WhatsApp template: the customer is still exploring options, "
+    "comparing brands, or showing early-stage interest without firm commitment. Write "
+    "a patient, benefit-led message that keeps them engaged and gently nudges toward "
+    "the campaign objective without pressure, using ONLY the placeholders provided."
+)
+
+# Type 7 — low or negative intent; courteous re-engagement attempt.
+_RE_ENGAGEMENT_PURPOSE = (
+    "Re-engagement WhatsApp template: the customer's last interaction ended with low "
+    "or negative intent (not interested, no buying intent, purchase postponed, etc.) "
+    "but we are attempting a courteous follow-up. Write a respectful, non-pushy message "
+    "that offers value and leaves the door open toward the campaign objective, using "
+    "ONLY the placeholders provided."
+)
+
+# Same disposition_detail labels for pre-sales and post-sales; explanations differ
+# by campaign_type (see conversation/disposition_details_options.py).
+_POSITIVE_DISPOSITION_TAGS = PRE_SALES_DISPOSITION_TAGS["positive"]
+_NEUTRAL_DISPOSITION_TAGS = PRE_SALES_DISPOSITION_TAGS["neutral"]
+_NEGATIVE_DISPOSITION_TAGS = PRE_SALES_DISPOSITION_TAGS["negative"]
+
 _TRIED_TO_REACH_TAGS = [
-    "Audio Issue",
-    "Call Quality Issue",
-    "Connection Issue",
-    "Will call showroom themselves",
-    "Requested Callback",
-    "Talk to Human",
+    "AUDIO ISSUE",
+    "CALL DISCONNECTED",
+    "VOICEMAIL",
+    "REQUESTED CALLBACK",
+    "TALK TO HUMAN",
+    "WILL CALL SHOWROOM/WORKSHOP THEMSELVES",
 ]
 
-# disposition_details values that all map to the "decide later" framing.
 _DECISION_TIMEFRAME_TAGS = [
-    "Will decide tomorrow",
-    "Will decide within 1 to 3 days",
-    "Will decide within 4 to 7 days",
-    "Will decide within 8 to 14 days",
-    "Will decide within 15 to 30 days",
-    "Will decide within 31 to 60 days",
-    "Will decide within 61 to 90 days",
-    "Will decide after 90 days",
+    "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS",
+    "WILL DECIDE LATER, WILL PURCHASE WITHIN 1 TO 3 MONTHS",
+    "WILL DECIDE LATER, EXPLORING OPTIONS",
+    "PURCHASE POSTPONED",
+]
+
+_ENQUIRY_FOLLOW_UP_TAGS = [
+    "ENQUIRED FOR TEST DRIVE",
+    "ENQUIRED FOR PRICING",
+    "ENQUIRED FOR SPECIFICATIONS",
+    "ENQUIRED FOR SHOWROOM VISIT",
+    "ENQUIRED FOR BROCHURE",
+    "ENQUIRED FOR DEALERSHIP DETAILS",
+    "ENQUIRED FOR OTHERS",
+    "GENERAL INQUIRY",
+]
+
+_VISIT_PLANNED_TAGS = [
+    "SHOWROOM VISIT PLANNED",
+    "TEST DRIVE COMPLETED",
+]
+
+_EXPLORATION_TAGS = [
+    "INTERESTED IN ANOTHER CAR SAME DEALERSHIP",
+    "JUST EXPLORING",
+    "COMPARING WITH ANOTHER BRAND",
+]
+
+_RE_ENGAGEMENT_TAGS = [
+    "NOT INTERESTED",
+    "NO BUYING INTENT",
+    "PURCHASED ELSEWHERE",
+    "LOST TO COMPETITION",
 ]
 
 # Known disposition cases with specialized handling. Anything not listed here is
@@ -149,6 +226,10 @@ def _register_engaged_cases(tags: List[str], purpose_prefix: str) -> None:
 
 _register_engaged_cases(_TRIED_TO_REACH_TAGS, _TRIED_TO_REACH_PURPOSE)
 _register_engaged_cases(_DECISION_TIMEFRAME_TAGS, _DECISION_TIMEFRAME_PURPOSE)
+_register_engaged_cases(_ENQUIRY_FOLLOW_UP_TAGS, _ENQUIRY_FOLLOW_UP_PURPOSE)
+_register_engaged_cases(_VISIT_PLANNED_TAGS, _VISIT_PLANNED_PURPOSE)
+_register_engaged_cases(_EXPLORATION_TAGS, _EXPLORATION_PURPOSE)
+_register_engaged_cases(_RE_ENGAGEMENT_TAGS, _RE_ENGAGEMENT_PURPOSE)
 
 PROVIDER_MIGRATORS = {
     "airtel": WhatsAppTemplateMigrator,
@@ -195,8 +276,9 @@ class DispositionTemplatesCreator(BaseAgent):
     Creates WhatsApp disposition templates, submits them for provider approval
     (Airtel or RML), and posts to the template model.
 
-    The disposition and disposition_details are taken from the input and stored
-    as-is on each posted template record, so any disposition case can be handled:
+    The disposition and disposition_details label are stored on each posted
+    template record. The lead_post_processing explanation for that label is
+    included in the LLM prompt only (never persisted on the template).
 
     - Language barrier: fetches all approved base campaign templates (any language),
       translates each to every target language in ``languages``, then approves and posts.
@@ -204,10 +286,15 @@ class DispositionTemplatesCreator(BaseAgent):
     - Converted: for each language, creates 6 templates (one per variable set):
         pincode | dealership_name+address | date | date+time |
         dealership_name+address+date | dealership_name+address+date+time
+      Confirmation-only — no CTA buttons (stripped before approval even if LLM adds them).
 
-    - Any other disposition (e.g. "not interested - price concern"): for each
-      language, generates a follow-up template tailored to the input disposition
-      details using the campaign objective's attributes.
+    - Follow up required: for every approved base template, generates a follow-up
+      version using that template's own variables.
+
+    - Any other disposition from lead_post_processing / disposition.txt (e.g.
+      "ENQUIRED FOR PRICING", "WILL DECIDE LATER, WILL PURCHASE WITHIN 15 DAYS"):
+      for each language, generates a follow-up template tailored to the input
+      disposition details using the campaign objective's attributes.
 
     Input source:
         - campaign_objective_id (required)
@@ -237,6 +324,8 @@ class DispositionTemplatesCreator(BaseAgent):
         self.disposition_tag, self.disposition_description = self._parse_disposition_details(
             raw_details
         )
+        self.disposition_explanation = ""
+        self._campaign_type = (source.get("campaign_type") or "").strip()
 
         self.disposition = (source.get("disposition") or "").strip().lower()
         if not self.disposition:
@@ -257,6 +346,18 @@ class DispositionTemplatesCreator(BaseAgent):
         self.logger = kwargs.get("logger") or gryd.hp.get_logger(__name__)
 
         self._validate_supported_disposition()
+
+    def _resolve_disposition_explanation(self, campaign_objective: dict) -> str:
+        """LLM-only explanation; varies by pre-sales vs post-sales."""
+        campaign_type = campaign_objective.get("campaign_type") or self._campaign_type
+        looked_up = get_disposition_detail_explanation(
+            self.disposition_tag, campaign_type
+        )
+        if looked_up:
+            return looked_up
+        if self.disposition_description and self.disposition_description != self.disposition_tag:
+            return self.disposition_description
+        return ""
 
     @staticmethod
     def _normalize_lead_attributes(value) -> List[str]:
@@ -337,20 +438,10 @@ class DispositionTemplatesCreator(BaseAgent):
             )
 
     def _get_disposition_record_fields(self) -> Dict[str, Any]:
-        """Disposition values (from input) stored on each posted template record.
-
-        disposition is stored lowercased and disposition_details is stored
-        slugified (e.g. "will-call-themself") so retrieval/matching
-        (get_disposition_template_agent and the other get_*_template agents,
-        which all query with a slugified disposition_details) lines up.
-        """
+        """Only disposition + slugified disposition_details are stored on templates."""
         return {
             "disposition": self.disposition,
-            "disposition_details": self._slugify(self.disposition_description),
-            "disposition_tags": [
-                self.disposition,
-                self._slugify(self.disposition_tag),
-            ],
+            "disposition_details": self._slugify(self.disposition_tag),
         }
 
     @staticmethod
@@ -683,18 +774,65 @@ Rules:
         return ["person_name"]
 
     @staticmethod
-    def _format_ctas(ctas: list) -> list:
+    def _normalize_ctas_list(ctas: Any) -> List[str]:
+        """Parse ``ctas`` from campaign_objective (list, PG array string, or JSON)."""
         if not ctas:
+            return []
+        if isinstance(ctas, str):
+            raw = ctas.strip()
+            if raw.startswith("{") and raw.endswith("}"):
+                inner = raw.strip("{}")
+                return [p.strip().strip('"') for p in inner.split(",") if p.strip()]
+            try:
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    return [str(c).strip() for c in parsed if str(c).strip()]
+            except json.JSONDecodeError:
+                pass
+            return [raw] if raw else []
+        if isinstance(ctas, (list, tuple)):
+            return [str(c).strip() for c in ctas if str(c).strip()]
+        return []
+
+    @staticmethod
+    def _format_ctas(ctas: list) -> list:
+        """Turn campaign_objective ctas slugs (e.g. book-test-drive) into button labels."""
+        normalized = DispositionTemplatesCreator._normalize_ctas_list(ctas)
+        if not normalized:
             return ["Request a Call Back"]
         formatted = []
-        for cta in ctas:
-            if not cta:
-                continue
+        for cta in normalized:
             label = str(cta).replace("-", " ").replace("_", " ").strip()
             formatted.append(label.title())
         if not any("call back" in c.lower() for c in formatted):
             formatted.append("Request a Call Back")
         return formatted[:3]
+
+    def _get_campaign_ctas(self, campaign_objective: dict) -> List[str]:
+        """Raw ``ctas`` list from the campaign_objective model record."""
+        return self._normalize_ctas_list(campaign_objective.get("ctas"))
+
+    def _resolve_cta_buttons(self, campaign_objective: dict) -> List[str]:
+        """Formatted CTA labels from campaign_objective.ctas; empty for converted."""
+        if self._is_converted_disposition():
+            return []
+        raw = self._get_campaign_ctas(campaign_objective)
+        formatted = self._format_ctas(raw)
+        self.logger.info(
+            f"Resolved CTAs from campaign_objective | raw={raw} | formatted={formatted}"
+        )
+        return formatted
+
+    def _is_converted_disposition(self) -> bool:
+        return self._slugify(self.disposition_tag) == "converted"
+
+    @staticmethod
+    def _strip_cta_buttons(template: dict) -> dict:
+        """Remove all CTA buttons — used for post-conversion confirmation templates."""
+        cleaned = dict(template)
+        cleaned["buttons"] = []
+        cleaned["template_button_payloads"] = []
+        return cleaned
 
     def _build_objective_context(self, campaign_objective: dict) -> List[str]:
         purpose_steps = campaign_objective.get("purpose_steps") or []
@@ -703,7 +841,6 @@ Rules:
         parts = [
             f"Campaign objective: {campaign_objective.get('campaign_objective_name', '')}.",
             f"Description: {campaign_objective.get('campaign_objective_description', '')}.",
-            f"Purpose: {campaign_objective.get('purpose', '')}.",
         ]
         if steps_text:
             parts.append(f"Purpose steps (already completed by customer):\n{steps_text}")
@@ -732,13 +869,40 @@ Rules:
             if case
             else (
                 f"Disposition follow-up WhatsApp template: the customer's last "
-                f"interaction ended with disposition '{self.disposition}' "
-                f"({self.disposition_description}). Write a follow-up message that "
-                f"directly addresses this outcome and nudges the customer towards "
-                f"the campaign objective, using ONLY the placeholders provided."
+                f"interaction ended with disposition '{self.disposition}' and "
+                f"disposition_details '{self.disposition_tag}'. "
+                f"Write a follow-up message that directly addresses this outcome "
+                f"and nudges the customer towards the campaign objective, using "
+                f"ONLY the placeholders provided."
             )
         )
+        if not case and self.disposition_explanation:
+            purpose_prefix = (
+                f"{purpose_prefix} Context: {self.disposition_explanation}"
+            )
         context_parts = [purpose_prefix, *self._build_objective_context(campaign_objective)]
+
+        cta_buttons = self._resolve_cta_buttons(campaign_objective)
+        campaign_ctas = self._get_campaign_ctas(campaign_objective)
+
+        if key == "converted":
+            context_parts.append(
+                "This is a post-conversion confirmation message only — no CTA buttons. "
+                "The body text alone should thank the customer, confirm what was completed, "
+                "and share practical next-step details."
+            )
+        elif cta_buttons or campaign_ctas:
+            cta_parts = []
+            if campaign_ctas:
+                cta_parts.append(
+                    f"Campaign CTAs from objective model (raw slugs): {campaign_ctas}."
+                )
+            if cta_buttons:
+                cta_parts.append(
+                    f"Use these CTA button labels in suggested_ctas and to guide what "
+                    f"action to nudge in template_text: {', '.join(cta_buttons)}."
+                )
+            context_parts.append(" ".join(cta_parts))
 
         if key == "converted":
             context_parts.append(
@@ -760,32 +924,42 @@ Rules:
 
         context_parts.append(
             f"Write the entire template_text in colloquial {language} only. "
-            f"Disposition: '{self.disposition_tag}' — {self.disposition_description}."
+            f"Disposition: '{self.disposition}'. "
+            f"Disposition details: '{self.disposition_tag}'."
         )
+        if self.disposition_explanation:
+            context_parts.append(
+                f"Disposition details explanation (context only — do NOT repeat "
+                f"verbatim in the message): {self.disposition_explanation}"
+            )
         return " ".join(context_parts)
 
     def _build_whatsapp_agent_source(
         self, campaign_objective: dict, attribute_names: list, language: str
     ) -> dict:
+        cta_buttons = self._resolve_cta_buttons(campaign_objective)
+        campaign_ctas = self._get_campaign_ctas(campaign_objective)
         return {
             "campaign_type": campaign_objective.get("campaign_type", ""),
             "campaign_objective": campaign_objective.get("campaign_objective_name", ""),
             "dealership_id": self.dealership_id,
             "languages": [language],
-            "cta_buttons": self._format_ctas(campaign_objective.get("ctas") or []),
+            "cta_buttons": cta_buttons,
+            "include_cta_buttons": not self._is_converted_disposition(),
             "data": {
                 "purpose": self._build_template_purpose(
                     campaign_objective, language, attribute_names
                 ),
                 "attribute_name": attribute_names,
                 "disposition": self.disposition,
-                "disposition_tag": self.disposition_tag,
-                "disposition_details": self.disposition_description,
+                "disposition_details": self.disposition_tag,
+                "disposition_details_explanation": self.disposition_explanation,
+                "cta_buttons": cta_buttons,
+                "campaign_ctas": campaign_ctas,
                 "campaign_objective_description": campaign_objective.get(
                     "campaign_objective_description", ""
                 ),
                 "purpose_steps": campaign_objective.get("purpose_steps", []),
-                "campaign_purpose": campaign_objective.get("purpose", ""),
             },
         }
 
@@ -798,6 +972,15 @@ Rules:
             }
             for btn in (template_data.get("buttons") or [])
         ]
+
+    @staticmethod
+    def _skip_if_unsupported_language(logger, language: str) -> bool:
+        """Return True when the language is not supported by WhatsApp templates."""
+        _, error = WhatsAppTemplateMigrator.resolve_language_code(language)
+        if error:
+            logger.warning(error)
+            return True
+        return False
 
     def _submit_airtel_for_approval(
         self,
@@ -814,8 +997,11 @@ Rules:
         )
         buttons = self._standard_buttons(template_data)
 
-        lang_raw = (template_data.get("language") or "").strip().capitalize()
-        lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+        lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+            template_data.get("language") or "english"
+        )
+        if lang_error:
+            return {"success": False, "error": lang_error}
 
         template_id = migrator._submit_for_approval(
             template_name,
@@ -850,8 +1036,11 @@ Rules:
         # RML body.example must be real sample strings, not placeholder names.
         migrator._generate_example_values = lambda ovs: self._generate_rml_example_values(ovs)
 
-        lang_raw = (template_data.get("language") or "").strip().capitalize()
-        lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+        lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+            template_data.get("language") or "english"
+        )
+        if lang_error:
+            return {"success": False, "error": lang_error}
 
         normalized_name = migrator._normalize_template_name(template_data["template_name"])
         self.logger.info(
@@ -978,6 +1167,12 @@ Rules:
         )
         template = agent.run()
 
+        if self._is_converted_disposition():
+            template = self._strip_cta_buttons(template)
+            self.logger.info(
+                "Stripped CTA buttons from converted disposition template before approval"
+            )
+
         provider = self._resolve_provider(credential)
         template["template_name"] = self._build_template_name(
             provider,
@@ -1032,6 +1227,8 @@ Rules:
     ) -> List[dict]:
         results = []
         for language in self.languages:
+            if self._skip_if_unsupported_language(self.logger, language):
+                continue
             for attribute_names in self._get_variable_sets(campaign_objective):
                 var_slug = self._variable_set_slug(attribute_names)
                 self.logger.info(
@@ -1068,6 +1265,8 @@ Rules:
 
         results = []
         for target_language in self.languages:
+            if self._skip_if_unsupported_language(self.logger, target_language):
+                continue
             for source_template in source_templates:
                 language = (source_template.get("language") or "english").strip().lower()
                 if target_language.lower() == language:
@@ -1118,6 +1317,8 @@ Rules:
         name_slug = self._slugify(self.disposition_description)
         results = []
         for language in self.languages:
+            if self._skip_if_unsupported_language(self.logger, language):
+                continue
             for index, source_template in enumerate(source_templates):
                 attribute_names = self._constrain_to_lead(
                     self._normalize_template_variables(
@@ -1145,6 +1346,10 @@ Rules:
 
     def create_disposition_templates(self) -> List[dict]:
         campaign_objective = self.fetch_campaign_objective()
+        self._campaign_type = campaign_objective.get("campaign_type", "pre-sales")
+        self.disposition_explanation = self._resolve_disposition_explanation(
+            campaign_objective
+        )
         credential = self.fetch_communication_credential()
         self.communication_credential_id = credential.get("communication_credentials_id", "")
 

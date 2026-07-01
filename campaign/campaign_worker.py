@@ -14,7 +14,7 @@ _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 from autocrm_db_helper import get_pg_connector
-# from agents.get_whatsapp_template_agent import get_whatsapp_template
+# from agents.whatsapp_template_agents.get_whatsapp_template_agent import get_whatsapp_template
 # from campaign.campaign_manager import BaseCustomCampaignManager
 from config import AUTOCRM_CAMPAIGN_SERVICE_NAME,VOICE_PROVIDER_NAME
 

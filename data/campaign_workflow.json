@@ -9,6 +9,7 @@
             "options": [
                 "pre-sales",
                 "post-sales",
+                "buyback",
                 "dealership"
             ]
         },
@@ -18,6 +19,7 @@
             "options": [
                 "pre_sales_campaign",
                 "post_sales_campaign",
+                "buyback_campaign",
                 "dealership_campaign"
             ],
             "auto_updater": true,
@@ -71,7 +73,7 @@
                     "campaign_objective",
                     "campaign_objective_id",
                     "dealership_id",
-                    "dave"
+                    "dave-ai-india"
                 ]
             }
         },
@@ -128,134 +130,6 @@
             "option_others": true
         },
         {
-            "name": "campaign_workflow_id",
-            "id": true,
-            "type": "uid",
-            "default": {
-                "function": "make_uuid3",
-                "args": [
-                    "campaign_type",
-                    "channel",
-                    "campaign_objective_id",
-                    "campaign_workflow_stage"
-                ]
-            }
-        },
-        {
-            "name": "campaign_workflow_name",
-            "type": "text",
-            "force_update": [
-                "channel",
-                "campaign_objective",
-                "campaign_workflow_stage"
-            ],
-            "default": {
-                "function": "name_to_id",
-                "args": [
-                    "campaign_type",
-                    "channel",
-                    "campaign_objective_name",
-                    "campaign_workflow_stage",
-                    "dealership_name"
-                ],
-                "kwargs": {
-                    "attribute_join": " ",
-                    "is_unique": true,
-                    "separator": " ",
-                    "skip_empty": true,
-                    "case": "title"
-                }
-            }
-        },
-        {
-            "name": "communication_credentials",
-            "type": "text",
-            "default": {
-                "function": "search_in_model",
-                "args": [
-                    "communication_credential"
-                ],
-                "kwargs": {
-                    "channel": "{channel}",
-                    "dealership_id": "{dealership_id}"
-                }
-            }
-        },
-        {
-            "name": "language",
-            "type": "text",
-            "default": "english",
-            "option_other": true,
-            "options": [
-                "english",
-                "hindi",
-                "kannada",
-                "telugu",
-                "tamil",
-                "malayalam",
-                "odia",
-                "bengali",
-                "marathi",
-                "gujarati",
-                "bengali",
-                "assamese",
-                "punjabi",
-                "spanish",
-                "arabic"
-            ],
-            "ui_element": "select"
-        },
-        {
-            "name": "template_id",
-            "type": "text"
-        },
-        {
-            "name": "template_type",
-            "type": "text",
-            "options": [
-                "text",
-                "media",
-                "carousel",
-                "form"
-            ],
-            "ui_element": "select"
-        },
-        {
-            "name": "template_text",
-            "type": "text",
-            "ui_element": "textarea"
-        },
-        {
-            "name": "template_variables",
-            "type": "string_list",
-            "list_type": "text",
-            "ui_element": "tags"
-        },
-        {
-            "name": "template_buttons_payload",
-            "type": "list"
-        },
-        {
-            "name": "template_media_id",
-            "type": "text"
-        },
-        {
-            "name": "media_file_name",
-            "type": "text"
-        },
-        {
-            "name": "template_media_type",
-            "type": "text"
-        },
-        {
-            "name": "template_media_url",
-            "type": "text"
-        },
-        {
-            "name": "template_payload",
-            "type": "text"
-        },
-        {
             "name": "retries",
             "type": "number",
             "default": 0
@@ -270,14 +144,15 @@
             "type": "text",
             "default": "constant",
             "options": [
-                "constant",
+                "v_function",
                 "linear",
-                "exponential"
+                "exponential",
+                "constant"
             ],
             "ui_element": "select"
         },
         {
-            "name": "trigger_id",
+            "name": "trigger",
             "type": "uid",
             "option_others": true,
             "options": [
@@ -288,14 +163,24 @@
             ]
         },
         {
-            "name": "trigger",
-            "type": "nested_object",
-            "dict_keys": [
-                "task",
-                "service",
-                "kwargs",
-                "args"
-            ]
-        }    
+            "name": "delay_param",
+            "type": "number",
+            "default": 1
+        },
+        {
+            "name": "minimum_delay",
+            "type": "number",
+            "default": 7200
+        },
+        {
+            "name": "maximum_delay",
+            "type": "number",
+            "default": 432000
+        },
+        {
+            "name": "stop_period",
+            "type": "number",
+            "default": 2592000
+        }
     ]
 }

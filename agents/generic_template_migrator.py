@@ -267,14 +267,68 @@ class WhatsAppTemplateMigrator(TemplateMigratorAgent):
         "whatsapp-content-manager/v1/template"
     )
 
+    # Meta WhatsApp Business API / Airtel templateContent.language valid codes.
+    # https://developers.facebook.com/docs/whatsapp/business-management-api/message-templates/supported-languages
+    WHATSAPP_SUPPORTED_LANG_CODES = frozenset({
+        "af", "sq", "ar", "az", "bn", "bg", "ca", "zh_CN", "zh_HK", "zh_TW",
+        "hr", "cs", "da", "nl", "en", "en_GB", "en_US", "et", "fil", "fi", "fr",
+        "ka", "de", "el", "gu", "ha", "he", "hi", "hu", "id", "ga", "it", "ja",
+        "kn", "kk", "rw_RW", "ko", "ky_KG", "lo", "lv", "lt", "mk", "ms", "ml",
+        "mr", "nb", "fa", "pl", "pt_BR", "pt_PT", "pa", "ro", "ru", "sr", "sk",
+        "sl", "es", "es_AR", "es_MX", "es_ES", "sw", "sv", "ta", "te", "th", "tr",
+        "uk", "ur", "uz", "vi", "zu",
+    })
+
     LANG_TO_CODE = {
-        "English": "en", "Hindi": "hi", "Assamese": "as", "Bengali": "bn",
-        "Gujarati": "gu", "Kannada": "kn", "Kashmiri": "ks", "Malayalam": "ml",
-        "Marathi": "mr", "Nepali": "ne", "Odia": "or", "Punjabi": "pa",
-        "Sanskrit": "sa", "Sindhi": "sd", "Tamil": "ta", "Telugu": "te",
-        "Urdu": "ur", "Konkani": "kok", "Manipuri": "mni", "Maithili": "mai",
-        "Santali": "sat", "Dogri": "doi", "Bodo": "bdo",
+        "English": "en",
+        "Hindi": "hi",
+        "Bengali": "bn",
+        "Gujarati": "gu",
+        "Kannada": "kn",
+        "Malayalam": "ml",
+        "Assamese": "bn",
+        "Marathi": "mr",
+        "Punjabi": "pa",
+        "Tamil": "ta",
+        "Telugu": "te",
+        "Urdu": "ur",
+        "Arabic": "ar",
+        "Spanish": "es",
+        "French": "fr",
+        "bahasa_indonesia": "id",
+        "tagalog": "fil",
     }
+
+    # Indian regional languages not supported by the WhatsApp template API.
+    LANG_UNSUPPORTED = frozenset({
+         "Kashmiri", "Nepali", "Odia", "Sanskrit", "Sindhi",
+        "Konkani", "Manipuri", "Maithili", "Santali", "Dogri", "Bodo",
+    })
+
+    @classmethod
+    def resolve_language_code(cls, language: str) -> tuple[Optional[str], Optional[str]]:
+        """Map a display language name to a WhatsApp lang code.
+
+        Returns ``(code, error)``. ``error`` is set when the language is not
+        supported by the WhatsApp / Airtel template API.
+        """
+        raw = (language or "").strip()
+        if not raw:
+            return "en", None
+
+        key = raw.lower()
+        for name in cls.LANG_UNSUPPORTED:
+            if name.lower() == key:
+                return None, f"Unsupported language '{language}' for WhatsApp templates"
+
+        for name, code in cls.LANG_TO_CODE.items():
+            if name.lower() == key:
+                return code, None
+
+        if raw in cls.WHATSAPP_SUPPORTED_LANG_CODES:
+            return raw, None
+
+        return None, f"Unsupported language '{language}' for WhatsApp templates"
 
     @property
     def channel(self) -> str:
@@ -343,8 +397,11 @@ class WhatsAppTemplateMigrator(TemplateMigratorAgent):
             template_message, ordered_vars
         )
 
-        lang_raw = (template.get("language") or "english").strip().capitalize()
-        lang_code = self.LANG_TO_CODE.get(lang_raw, "en")
+        lang_code, lang_error = self.resolve_language_code(
+            template.get("language") or "english"
+        )
+        if lang_error:
+            raise RuntimeError(lang_error)
 
         new_template_id = self._submit_for_approval(
             template_name, credential, processed_message,
@@ -834,8 +891,11 @@ class RouteMobileTemplateMigrator(TemplateMigratorAgent):
             template_message, ordered_vars
         )
 
-        lang_raw = (template.get("language") or "english").strip().capitalize()
-        lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+        lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+            template.get("language") or "english"
+        )
+        if lang_error:
+            raise RuntimeError(lang_error)
 
         buttons = template.get("buttons") or []
 
