@@ -32,7 +32,7 @@ AUTOCRM_ALLOWED_CHANNELS = [
     "whatsapp_voice_call",
     "sms",
     "voice",
-    "voicebot"
+    "voicebot",
     "web_chat",
     "web_chat_voice",
     "fb_chat",
@@ -95,6 +95,13 @@ CHANNEL_IDENTIFIER_MAP = {
     "rcs": "phone_number",
     "whatsapp_voice_note": "phone_number",
     "whatsapp_voice_call": "phone_number"
+}
+
+DUE_DATE_ATTRIBUTES = {
+    "next_service_due": -7 * 3600 * 24,
+    "warranty_expiry_date": -60 * 3600 * 24,
+    "insurance_expiry_date": -45 * 3600 * 24,
+    "extended_warranty_expiry_date": -60 * 3600 * 24
 }
 
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
@@ -508,14 +515,10 @@ def post_autocrm_data(data_name, logger = None, reseed = False, start_from = 0, 
         logger.error(f"File: {filename_csv} or {filename_json} not found")
         raise FileNotFoundError(f"Seed file for : {data_name} not found")
 
-def get_phone_code_from_dealership(dealership_id, with_plus = True):
-    dm = AutocrmModel('dealership')
-    d = dm.get(dealership_id)
+def get_phone_code_from_region(region_id, with_plus = True):
     addp = '+' if with_plus else ''
-    if not d.get('region_id'):
-        return f'{addp}91'
     rm = AutocrmModel('region')
-    r = rm.get(d.get('region_id'))
+    r = rm.get(region_id)
     c = r.get('country_phone_code')
     if not c:
         return f'{addp}91'
@@ -524,6 +527,14 @@ def get_phone_code_from_dealership(dealership_id, with_plus = True):
     if not with_plus and c.startswith('+'):
         return c.strip('+')
     return c
+
+def get_phone_code_from_dealership(dealership_id, with_plus = True):
+    addp = '+' if with_plus else ''
+    dm = AutocrmModel('dealership')
+    d = dm.get(dealership_id)
+    if not d.get('region_id'):
+        return f'{addp}91'
+    return get_phone_code_from_region(d.get('region_id'), with_plus = with_plus)
 
 def get_cheapest_channel(channels: list, channel_sequence = None):
     channel_sequence = channel_sequence or AUTOCRM_CHEAPEST_CHANNELS
@@ -605,7 +616,9 @@ def remove_a_number_from_blacklist(phone_number, dealership_id = None, region_id
 
 def process_phone_number(phone_number, dealership_id = None, region_id = None):
     phone_code = '91'
-    if dealership_id:
+    if region_id:
+        phone_code = get_phone_code_from_region(region_id, with_plus = False)
+    elif dealership_id:
         phone_code = get_phone_code_from_dealership(dealership_id, with_plus = False)
     phone_number = re.sub(r'\D', '', phone_number)
     if len(phone_number) > 10:

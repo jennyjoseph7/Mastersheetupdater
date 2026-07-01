@@ -6,28 +6,10 @@ the creator for the full, fixed set of standard disposition scenarios — so a
 single call generates, submits for provider approval, and posts the complete
 disposition template suite for a campaign objective.
 
-There is no per-scenario input: the scenarios are hard-coded below and mirror
-the ``KNOWN_DISPOSITION_CASES`` registered in
-``disposition_templates_creator``. Only the inputs the creator itself needs
-(which campaign objective / dealership / languages to build for) are accepted.
-
-Scenarios covered (disposition_details):
-  - Language barrier        → translate existing approved templates into the
-                              requested languages.
-  - Converted               → post-conversion templates (one per variable set —
-                              pincode | dealership_name+address | date |
-                              date+time | dealership_name+address+date |
-                              dealership_name+address+date+time — handled
-                              internally by the creator's CONVERTED_VARIABLE_SETS).
-  - Follow Up Required      → a fresh follow-up variation of every base template.
-  - "We tried to reach you" → Audio Issue, Call Quality Issue, Connection Issue,
-                              Will call showroom themselves, Requested Callback,
-                              Talk to Human.
-  - "Decide later"          → Will decide tomorrow / within 1-3 / 4-7 / 8-14 /
-                              15-30 / 31-60 / 61-90 days / after 90 days. The
-                              message references that we connected a while ago and
-                              nudges them to proceed WITHOUT naming the campaign
-                              objective directly.
+Scenarios mirror ``conversation/lead_post_processing.py`` for pre-sales and
+post-sales (same labels in both blocks today). The set is chosen from the
+campaign objective's ``campaign_type``. Excludes ``NO RESPONSE`` and
+``INVALID LEAD`` from template creation.
 """
 
 import os
@@ -47,45 +29,40 @@ gryd.SERVICE = AUTOCRM_SHORT_RUN_AGENT_SERVICE_NAME
 gryd.set_queue_manager()
 logger = hp.get_logger(gryd.SERVICE)
 
+from autocrm_db_helper.PGConnector import AutoCRMPGConnector
+
+pg = AutoCRMPGConnector(enterprise_id="autocrm")
+
 try:
     from agents.whatsapp_template_agents.disposition_templates_creator import (
         DispositionTemplatesCreator,
-        _DECISION_TIMEFRAME_TAGS,
-        _TRIED_TO_REACH_TAGS,
+        build_disposition_scenarios,
     )
 except ImportError:
     from whatsapp_template_agents.disposition_templates_creator import (  # type: ignore
         DispositionTemplatesCreator,
-        _DECISION_TIMEFRAME_TAGS,
-        _TRIED_TO_REACH_TAGS,
+        build_disposition_scenarios,
     )
 
 
-def _build_scenarios() -> List[Dict[str, str]]:
-    """The fixed (disposition, disposition_details) pairs to run the creator for.
+def _fetch_campaign_type(campaign_objective_id: str) -> str:
+    record = pg.get(
+        "campaign_objective",
+        "campaign_objective_id",
+        campaign_objective_id,
+    )
+    if isinstance(record, list):
+        record = record[0] if record else None
+    if not record:
+        raise ValueError(
+            f"campaign_objective not found for id='{campaign_objective_id}'"
+        )
+    return record.get("campaign_type") or "pre-sales"
 
-    Order matches the user-facing scenario groups. Built from the creator's own
-    tag lists so this stays in sync with its ``KNOWN_DISPOSITION_CASES``.
-    """
-    scenarios: List[Dict[str, str]] = [
-        # Language barrier — send existing template in a new language.
-        {"disposition": "engaged", "disposition_details": "Language barrier"},
-        # Post-sales / pre-sales: customer converted.
-        {"disposition": "converted", "disposition_details": "Converted"},
-        # Engaged but a follow-up was explicitly requested.
-        {"disposition": "engaged", "disposition_details": "Follow Up Required"},
-    ]
-    # "We tried to call you but couldn't connect" framing.
-    scenarios += [
-        {"disposition": "engaged", "disposition_details": tag}
-        for tag in _TRIED_TO_REACH_TAGS
-    ]
-    # "We connected x days ago — would you like to proceed now?" framing.
-    scenarios += [
-        {"disposition": "engaged", "disposition_details": tag}
-        for tag in _DECISION_TIMEFRAME_TAGS
-    ]
-    return scenarios
+
+def _build_scenarios(campaign_type: str) -> List[Dict[str, str]]:
+    """(disposition, disposition_details) pairs for the given campaign type."""
+    return build_disposition_scenarios(campaign_type)
 
 
 def _run_one_scenario(
@@ -134,15 +111,9 @@ def create_all_disposition_templates(
 ) -> Dict[str, Any]:
     """Run the disposition template creator across every standard scenario.
 
-    No disposition input is taken — every standard scenario is always created.
-    Only the creator's own inputs are required:
-      - campaign_objective_id (required)
-      - dealership_id (required)
-      - languages (required) — target languages, string or list
-      - communication_credential_id (optional) — resolved from dealership if omitted
-
-    Each scenario is best-effort: a failure is logged and skipped so the rest of
-    the suite still gets created. Returns a per-scenario summary plus the failures.
+    Scenarios are resolved from the campaign objective's campaign_type
+    (pre-sales or post-sales). Each scenario is best-effort: a failure is
+    logged and skipped so the rest of the suite still gets created.
     """
     logger = logger or hp.get_logger(__name__)
 
@@ -160,6 +131,8 @@ def create_all_disposition_templates(
     if not languages:
         raise ValueError("languages is required (string or non-empty list)")
 
+    campaign_type = _fetch_campaign_type(campaign_objective_id)
+
     base_source: Dict[str, Any] = {
         "campaign_objective_id": campaign_objective_id,
         "dealership_id": dealership_id,
@@ -168,10 +141,11 @@ def create_all_disposition_templates(
     if communication_credential_id:
         base_source["communication_credential_id"] = communication_credential_id
 
-    scenarios = _build_scenarios()
+    scenarios = _build_scenarios(campaign_type)
     logger.info(
         f"Creating ALL disposition templates | "
         f"campaign_objective_id={campaign_objective_id} | "
+        f"campaign_type={campaign_type} | "
         f"dealership_id={dealership_id} | languages={languages} | "
         f"scenarios={len(scenarios)}"
     )
@@ -207,6 +181,7 @@ def create_all_disposition_templates(
 
     return {
         "campaign_objective_id": campaign_objective_id,
+        "campaign_type": campaign_type,
         "dealership_id": dealership_id,
         "languages": languages,
         "scenarios_total": len(scenarios),

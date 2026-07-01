@@ -4,7 +4,7 @@ import os
 #python -m cron.cron_test
 
 
-from gryd_worker import gryd
+from config import gryd
 
 # Configure service name
 gryd.SERVICE = 'autocrm-agent'
@@ -20,5 +20,5 @@ from cron.cron import create_campaign_templates, update_template_status
 
 
 
-worker_result = update_template_status(dealership_id="daveai")
+worker_result = update_template_status(dealership_id="dave-ai-sociograph-solutions-india")
 print(json.dumps(worker_result, ensure_ascii=False, indent=2))

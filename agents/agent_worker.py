@@ -13,10 +13,11 @@ except ImportError:
     from base_agent import BaseAgent, gryd
 THREADS_PER_SESSION = 0.1
 __version__ = "0.0.1"
-import whatsapp_template_creator_agent
-import disposition_templates_creator
-import disposition_template_approval_updator
+import whatsapp_template_agents.whatsapp_template_creator_agent
+import whatsapp_template_agents.disposition_templates_creator
+import whatsapp_template_agents.disposition_template_approval_updator
 import get_disposition_template
-import update_template_status_by_id
+import whatsapp_template_agents.template_status_update
 import whatsapp_template_agents.bulk_send_for_approval
+import whatsapp_template_agents.bulk_template_creator
 import whatsapp_template_agents.edit_template

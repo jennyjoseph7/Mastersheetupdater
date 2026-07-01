@@ -105,6 +105,7 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
         self.dealership_id = source.get("dealership_id", "")
         self.languages = self._validate_languages(source.get("languages", ["english"]))
         self.cta_buttons = source.get("cta_buttons", [])
+        self.include_cta_buttons = source.get("include_cta_buttons", True)
         self.ai_generation = source.get("ai_generation",True)
 
         self.model_identifier = "databricks-gpt-5.5" #'databricks-gpt-5.4-mini' ##"groq-qwen-3-32B" 'groq-qwen-32b' 'groq-deepseek-r1-distill-llama-70b'  "gcp-gemini-2.5-flash-lite" #
@@ -163,6 +164,22 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
                 names.append(attr["name"])
 
         return names
+
+    def _cta_handling_instructions(self) -> str:
+        if not self.include_cta_buttons:
+            return (
+                "- This is a confirmation-only template: do NOT include any CTA buttons. "
+                "Return suggested_ctas as an empty array []."
+            )
+        if self.cta_buttons:
+            return (
+                f"- Use these campaign CTA buttons as suggested_ctas (they also guide "
+                f"what action to nudge in template_text): {self.cta_buttons}."
+            )
+        return (
+            "- No preferred CTA buttons were provided — generate 2-3 relevant CTAs, "
+            "always including \"Request a Call Back\"."
+        )
 
     def _build_prompt(self):
         """
@@ -224,17 +241,16 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
             - lead_tags: array of 2-3 short, descriptive words (e.g., ["service-due", "new-model"]).
 
         4. ATTRIBUTE HANDLING (CRITICAL):
-            - You need to use relevant attributes provided : '{self.input_data}' in the 'Available Customer Data' except 'disposition' and 'disposition_details'. Don't add anything that is not present, but whatever is present, must include.
+            - You need to use relevant attributes provided : '{self.input_data}' in the 'Available Customer Data' except 'disposition', 'disposition_details', 'disposition_details_explanation', 'campaign_ctas', and 'cta_buttons'. Don't add anything that is not present, but whatever is present, must include.
             - If 'disposition' is present in the data, **use its value solely to understand the customer's last interaction and tailor the message's tone and context (e.g., if the disposition is "Busy", the template should be apologetic or mention trying again later).**
-            - **'disposition' and 'disposition_details' MUST NOT be included as placeholders in the template_message and attributes_used. Use these details for have a understanding of what to write. If disposition and disposition details exists in input it means it is a follow up message template. Just have understanding of what type of followup and write template message**
+            - **'disposition', 'disposition_details', 'disposition_details_explanation', 'campaign_ctas', and 'cta_buttons' MUST NOT be included as placeholders in the template_message and attributes_used. Use campaign_ctas/cta_buttons to understand what action to nudge toward.**
             - The placeholder format MUST be {{attribute_name}} exactly (e.g., {{person_name}}).
             - HARD EXCLUSION: NEVER use a phone number, mobile number, contact number, email, OTP, or any sensitive identifier as a placeholder — even if such an attribute (e.g. phone_number, mobile, email) appears in the provided attribute list. Silently skip it; do NOT put it in template_text and do NOT count it as a required attribute.
             - Do not add any irrelevant attribute that is not provided in the input data. Use only the attributes given and make sure to include all of them (except disposition and disposition_details) in the template text as {{placeholders}}.
             - Do not use a attribute somewhere it is not relevant. For example : Hi {{phone_number}}, Use relevant ones like : Hi {{person_name}}, Your {{current_car_model}} is due for service, Book your slot now! Here person_name and current_car_model are relevant attributes but phone_number is not relevant and also it is sensitive attribute so it should not be included in template text.
 
         5. CTA HANDLING:
-            - If existing CTA buttons are provided: {self.cta_buttons}, use them as suggested_ctas.
-            - If no CTA buttons provided, generate 2-3 relevant CTAs, always including "Request a Call Back".
+            {self._cta_handling_instructions()}
             - CTA eg. library for reference: ["Download Brochure", "Compare Variants", "Book a Test Drive", "Book a Showroom Visit", "Locate a Showroom", "Request a Call Back", "Exchange Old Car"]
             - Rules : These CTAs must be there when it comes to these campaign objectives :
                     Free Service Due Reminder >> [Book a Service, Request a Call Back]
@@ -266,8 +282,8 @@ class WhatsappTemplateCreatorAgent(BaseAgent):
 
         Campaign Objective: {self.campaign_objective}
         Campaign Type: {self.campaign_type}
-        Available Customer Data: {self.input_data} (Use ALL attributes except 'disposition_details'. Attributes must be formatted as {{attribute_name}} in the template_text.), All attributes must include in the template_message except 'disposition_details' and 'disposition'
-        Preferred CTA Buttons: {self.cta_buttons}
+        Available Customer Data: {self.input_data} (Use ALL attributes except 'disposition_details', 'disposition_details_explanation', 'disposition', 'campaign_ctas', and 'cta_buttons'. Attributes must be formatted as {{attribute_name}} in the template_text.), All attributes must include in the template_message except those context-only fields.
+        Preferred CTA Buttons: {self.cta_buttons if self.include_cta_buttons else "None — confirmation message only, no buttons"}
 
         Create an engaging, personalized template under 400 characters that uses ALL necessary customer attributes and strictly follows the instructions above. Generate relevant 'lead_tags' (2-3 words) based on the template's purpose.
 

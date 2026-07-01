@@ -153,8 +153,12 @@ def post_rml_template_for_approval(
     )
     template_variables = _resolve_template_variables(template_data, ordered_vars)
 
-    lang_raw = (template_data.get("language") or "english").strip().capitalize()
-    lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+    lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+        template_data.get("language") or "english"
+    )
+    if lang_error:
+        return {"success": False, "error": lang_error}
+
     normalized_template_name = migrator._normalize_template_name(
         template_data["template_name"]
     )
