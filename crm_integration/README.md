@@ -10,7 +10,7 @@ This integration connects a Google Sheet (customer data source) with the AutoNga
 
 ```
 Google Sheet (customer rows)
-  ↓ list_pre_sales_leads()
+  ↓ read_leads_from_sheet()
 cron/cron.py → process_crm_campaigns()
   ↓ _trigger_audience_task()
 AI Voice Call (Airtel/AutoNgage)
@@ -19,7 +19,7 @@ _poll_and_post_process_session()
   ↓ session.history (DB)
 post_session_process()   → LLM disposition + summary
   ↓ update_lead_in_sheet() [async task]
-GoogleDocsCRM.update_row_by_phone()
+GoogleDocsCRM.update_row_by_phone_number()
   ↓
 Google Sheet row updated
 ```
@@ -34,9 +34,9 @@ Google Sheet row updated
 |---|---|
 | `__init__(sheet_name)` | Authenticates via service account, opens spreadsheet by title, selects first tab (`.sheet1`) |
 | `get_sheet_headers()` | Returns row 1 of the sheet as a list |
-| `list_pre_sales_leads(batch_size, status_filter)` | Reads all rows, filters already-processed leads (Status = QUEUED/CONTACTED/etc.) |
-| `update_row_by_phone(phone_number, data)` | Finds row(s) by "Mobile Number", writes each key in `data`. Auto-creates column if missing |
-| `patch_pre_sales_lead(search_data, status)` | Updates only the "Status" column |
+| `read_leads_from_sheet(batch_size, status_filter)` | Reads all rows, filters already-processed leads (Status = QUEUED/CONTACTED/etc.) |
+| `update_row_by_phone_number(phone_number, data)` | Finds row(s) by "Mobile Number", writes each key in `data`. Auto-creates column if missing |
+| `update_status_for_matching_rows(search_data, status)` | Updates only the "Status" column |
 | `normalize_row(row_dict)` | Maps sheet column names → internal field names using `HEADER_MAPPING` |
 
 ### `crm_integration/crm_integration/load_crm.py`
@@ -169,7 +169,7 @@ for h in ['Mobile Number', 'Status', 'Cust. Name']:
     assert h in headers, f'FAIL: missing header: {h}'
 print('✅ Required headers present')
 
-leads = crm.list_pre_sales_leads(batch_size=3)
+leads = crm.read_leads_from_sheet(batch_size=3)
 print(f'Fetched {len(leads)} new leads:')
 for l in leads:
     print(f'  phone={l.get(\"phone_number\")}  name={l.get(\"person_name\")}  status={l.get(\"status\")}')
@@ -184,7 +184,7 @@ import sys; sys.path.insert(0, 'crm_integration')
 from crm_integration.crm_integration.connectors.google_docs_crm import GoogleDocsCRM
 
 crm = GoogleDocsCRM('Ambal Sanganur Post-sales')
-result = crm.update_row_by_phone(
+result = crm.update_row_by_phone_number(
     phone_number='7696770402',
     data={'Disposition': 'test_staging_run', 'Lead Summary': 'Automated test — ignore', 'Sentiment': 'neutral'}
 )
@@ -295,7 +295,7 @@ bash crm_integration/run_tests.sh
 
 | # | Scenario | Notes |
 |---|---|---|
-| 14 | Lead already QUEUED/CONTACTED | Filtered out by `list_pre_sales_leads`. No duplicate call |
+| 14 | Lead already QUEUED/CONTACTED | Filtered out by `read_leads_from_sheet`. No duplicate call |
 | 15 | Sheet has zero new leads | Exits cleanly with 0 leads processed |
 | 16 | Meta lead with no `facebook_lead_id` | CAPI fires but Meta can't attribute to specific ad |
 | 17 | `post_session_process` runs twice (cron restart mid-poll) | Row updated twice (idempotent). LLM called twice (extra cost) |

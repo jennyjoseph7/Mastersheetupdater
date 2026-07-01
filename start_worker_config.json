@@ -158,7 +158,7 @@
 	{
             "name": "crm_integration",
             "entry_point": "autoengage_crm_worker.py",
-            "gryd_service": "AUTOCRM_INEGRATION",
+            "gryd_service": "AUTOCRM_CRM_UPDATE_SERVICE_NAME",
             "parallel_threads": 1,
             "shutdown_time": 0
         }

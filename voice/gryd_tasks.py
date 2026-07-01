@@ -205,10 +205,8 @@ def trigger_voice_call(*args, **kwargs):
                 }
 
                 logger.info(f"Updating session status to 'queued' for session_id: {session_data.get('session_id')}")
-                session_model.patch(
-                    session_data.get("session_id"),
-                    {"status": "queued"}
-                )
+                config.flag_error_to_session_or_lead(session_data.get('session_id'), f"Error in generating prompt: {x.get('message')}", status = "queued")
+
                 with get_pg_connector() as pg:
                     pg.update(
                         config_data["table"],
@@ -295,19 +293,24 @@ def trigger_voice_call(*args, **kwargs):
             if latest["provider_status"] in ["attempted"]:
                 if time.time() > attempted_timeout:
                     logger.info(f"Call seems to be not connecting for: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}. Ending session.")
-                    post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
-                    gryd.create_async_task(
-                        "end_session_and_post_process",
-                        config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
-                        args  = [],
-                        kwargs={
-                            "session_id": session_data["session_id"],
-                            "additional_dict":{
-                                "status": "completed",
-                                "disposition": "busy"
+                    sn = session_model.get(session_data["session_id"])
+                    if sn and sn.get("session_live", True):
+                        post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "busy"})
+                        gryd.create_async_task(
+                            "end_session_and_post_process",
+                            config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
+                            args  = [],
+                            kwargs={
+                                "session_id": session_data["session_id"],
+                                "additional_dict":{
+                                    "status": "completed",
+                                    "disposition": "busy"
+                                }
                             }
-                        }
-                    )
+                        )
+                    else:
+                        post_contact_status_voice(session_id = session_data["session_id"], message_id=session_data["session_id"], **{"status": "failed"})
+
                     return
                 logger.info(f"Call is ongoing for, still connecting: {session_data.get('phone_number')}, message_id: {session_data['session_id']}, status: {latest['provider_status']}")
                 continue

@@ -1,8 +1,6 @@
 import sys
 import os
 
-# Ensure autobot_agents root is always on sys.path regardless of
-# which directory the worker binary is launched from.
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
@@ -17,130 +15,44 @@ gryd.SERVICE=AUTOCRM_CRM_UPDATE_SERVICE_NAME
 gryd.set_queue_manager()
 
 
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def post_pre_sales_lead(
-   crm_name,
-   data,
-   logger=None,
-   job=None
-):
+# @gryd.is_a_task(logger_param="logger",job_param="job")
+# def post_pre_sales_lead(crm_name,data,logger=None,job=None):
 
+#     crm=load_crm(crm_name)
+
+#     return crm.post_pre_sales_lead(
+#        data
+#     )
+
+
+@gryd.is_a_task(logger_param="logger",job_param="job")
+def read_leads_from_sheet(crm_name,last_updated=None,logger=None,job=None):
     crm=load_crm(crm_name)
-
-    return crm.post_pre_sales_lead(
-       data
-    )
-
-
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def list_pre_sales_leads(
-    crm_name,
-    last_updated=None,
-    logger=None,
-    job=None
-):
-
-    crm=load_crm(crm_name)
-
-    return crm.list_pre_sales_leads(
+    return crm.read_leads_from_sheet(
        last_updated=last_updated
     )
 
 
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def patch_post_sales_lead(crm_name, lead_id, data, logger=None, job=None):
+# @gryd.is_a_task(
+#  logger_param="logger",
+#  job_param="job"
+# )
+# def list_post_sales_leads(
+#     crm_name,
+#     last_updated=None,
+#     logger=None,
+#     job=None
+# ):
 
-    crm = load_crm(crm_name)
+#     crm = load_crm(crm_name)
 
-    return crm.patch_post_sales_lead(
-        {"phone_number": lead_id},
-        data
-    )
-
-
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def post_post_sales_lead(
-    crm_name,
-    data,
-    logger=None,
-    job=None
-):
-
-    crm = load_crm(crm_name)
-
-    return crm.post_post_sales_lead(data)
+#     return crm.list_post_sales_leads(
+#         last_updated=last_updated
+#     )
 
 
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def patch_post_sales_leads_bulk(
-    crm_name,
-    phone_numbers,
-    status,
-    logger=None,
-    job=None
-):
-    """
-    Bulk-update the status for a group of post-sales leads.
-
-    Args:
-        crm_name (str): CRM connector to use (e.g. "googledocs").
-        phone_numbers (list): Phone numbers of the leads to update.
-        status (str): New status to apply to all matched leads.
-    """
-    crm = load_crm(crm_name)
-
-    return crm.patch_post_sales_leads_bulk(
-        phone_numbers=phone_numbers,
-        status=status
-    )
-
-
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def list_post_sales_leads(
-    crm_name,
-    last_updated=None,
-    logger=None,
-    job=None
-):
-
-    crm = load_crm(crm_name)
-
-    return crm.list_post_sales_leads(
-        last_updated=last_updated
-    )
-
-
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def fetch_crm_leads(
-    campaign_id,
-    crm_name,
-    sheet_name,
-    last_sync_timestamp=None,
-    campaign_type="pre-sales",
-    logger=None,
-    job=None
-):
+@gryd.is_a_task(logger_param="logger",job_param="job")
+def fetch_crm_leads(campaign_id,crm_name,sheet_name,last_sync_timestamp=None,campaign_type="pre-sales",logger=None,job=None):
     """
     Called by the cron job to fetch NEW leads from an external CRM
     (e.g., Google Sheet) since the last sync.
@@ -163,10 +75,7 @@ def fetch_crm_leads(
     """
     crm = load_crm(crm_name, sheet_name=sheet_name)
 
-    if campaign_type == "pre-sales":
-        leads = crm.list_pre_sales_leads(last_updated=last_sync_timestamp)
-    else:
-        leads = crm.list_post_sales_leads(last_updated=last_sync_timestamp)
+    leads = crm.read_leads_from_sheet(last_updated=last_sync_timestamp)
 
     return {
         "campaign_id":   campaign_id,
@@ -176,18 +85,8 @@ def fetch_crm_leads(
     }
 
 
-@gryd.is_a_task(
- logger_param="logger",
- job_param="job"
-)
-def update_lead_in_crm(
-    crm_name,
-    sheet_name,
-    phone_number,
-    status,
-    logger=None,
-    job=None
-):
+@gryd.is_a_task(logger_param="logger",job_param="job")
+def update_lead_in_crm(crm_name,sheet_name,phone_number,status,logger=None,job=None):
     """
     Called after a lead is processed (call placed) to write the updated
     status back to the external CRM (Google Sheet).
@@ -203,25 +102,20 @@ def update_lead_in_crm(
     """
     crm = load_crm(crm_name, sheet_name=sheet_name)
 
-    return crm.patch_pre_sales_lead(
+    return crm.update_status_for_matching_rows(
         {"phone_number": phone_number},
         status
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # CALLBACK TASK — called by  system after a call ends
-# ─────────────────────────────────────────────────────────────────────────────
 
-@gryd.is_a_task(
-    logger_param="logger",
-    job_param="job"
-)
+@gryd.is_a_task(logger_param="logger",job_param="job")
 def update_lead_in_sheet(
-    sheet_name,
     phone_number,
-    sheet_url=None,      # full Google Sheet URL (preferred over sheet_name)
-    credentials=None,    # api_key dict from DB crm_source_details
+    sheet_url,      # full Google Sheet URL (preferred over sheet_name)
+    sheet_name=None,
+    credentials=None,    
     logger=None,
     job=None,
     **kwargs
@@ -262,16 +156,16 @@ def update_lead_in_sheet(
     """
     logger = logger or print
 
-    
+    logger.info(f"Sheet URL: {sheet_url}")
 
     crm = load_crm(
         "googledocs",
-        credentials=credentials,   # dict from DB — takes priority
+        # credentials=credentials,   # dict from DB — takes priority
         sheet_url=sheet_url,       # full URL → open_by_key
         sheet_name=sheet_name,     # fallback legacy title
     )
 
-    result = crm.update_row_by_phone(
+    result = crm.update_row_by_phone_number(
         phone_number=str(phone_number).strip(),
         data=kwargs
     )

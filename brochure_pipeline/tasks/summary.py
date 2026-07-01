@@ -14,16 +14,15 @@ from gryd_worker import gryd
 from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
 from config import AutocrmModel
-import requests
+# import requests
+import rag_agent
 
 load_dotenv()
 logger = get_logger(__name__)
 
 
-VECTOR_SERVICE_URL = os.getenv("VECTOR_SERVICE_URL")
-VECTOR_ENTERPRISE_ID = os.getenv("VECTOR_ENTERPRISE_ID")
-VECTOR_SESSION_ID = os.getenv("VECTOR_SESSION_ID")
-VECTOR_TOKEN = os.getenv("VECTOR_TOKEN")
+VECTOR_VEC_DB_IDENTIFIER = os.getenv("VECTOR_VEC_DB_IDENTIFIER", "qdrant-test-databricks-qwen-qwen3-0.6b")
+VECTOR_COLLECTION_NAME = os.getenv("VECTOR_COLLECTION_NAME", "None_autocrm_ingestion")
 
 def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
     gryd_tasks = []
@@ -35,7 +34,8 @@ def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
             "kwargs": {
                 "texts": entry.get('summary_text', ''),
                 "pipeline": "RAG",
-                "conversation_id": "autocrm_ingestion",
+                "conversation_id": "autocrm_ingestion",      
+                "collection_name": "None_autocrm_ingestion",      
                 "metadata": {
                     "document_id": f"{doc_id_prefix}_{suffix}",
                     "level": level,
@@ -173,8 +173,7 @@ def run_summary_dispatcher(document_id: str, job_id: str, vehicle_model_id: str,
         logger.warning("⚠️ No vector tasks were produced by the summary worker.")
 
     return {"status": "completed", "model_year_id": model_year_id, "results": results}
-    
-    
+
 def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id: str, expected_variants: list):
     logger.info(f"🤖 [Worker] Generating TOON summaries for Model Year ID: {model_year_id}")
     
@@ -255,49 +254,57 @@ def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id:
         "status": "success", 
         "vector_tasks_payload": gryd_tasks
     }
+
+
 def run_vector_ingestion(tasks_payload: list):
-    """
-    Takes the generated tasks payload and fires off vector upload commands
-    via HTTP POST to the vector service.
-    """
     if not tasks_payload:
         logger.error("❌ No tasks payload provided.")
         return {"status": "failed", "message": "Empty tasks_payload."}
 
-    if not VECTOR_SERVICE_URL:
-        logger.error("❌ VECTOR_SERVICE_URL not set in environment.")
-        return {"status": "failed", "message": "Missing VECTOR_SERVICE_URL."}
+    documents = []
+    metadatas = []
 
-    headers = {
-        "accept": "*/*",
-        "content-type": "application/json",
-        "x-gryd-enterprise-id": VECTOR_ENTERPRISE_ID,
-        "x-gryd-session-id": VECTOR_SESSION_ID,
-        "x-gryd-token": VECTOR_TOKEN
-    }
-
-    successful, failed = 0, 0
-    logger.info(f"🚀 Starting ingestion of {len(tasks_payload)} items...")
-    logger.info(f"check creds {VECTOR_SERVICE_URL}, {VECTOR_ENTERPRISE_ID}, {VECTOR_SESSION_ID}, {VECTOR_TOKEN}")
     for item in tasks_payload:
-        try:
-            logger.info( f"this is testing: {(item)}")
-            response = requests.post(
+        kwargs = item.get("kwargs", {})
 
-                VECTOR_SERVICE_URL,
-                headers=headers,
-                json={"kwargs": item.get("kwargs")},
-                
-                timeout=30
-            )
-            if response.status_code in (200, 201, 202):
-                successful += 1
-                logger.info(f"✅ Vector item ingested successfully.")
-            else:
-                failed += 1
-                logger.error(f"❌ Vector ingestion failed. Status: {response.status_code}, Response: {response.text}")
-        except Exception as e:
-            failed += 1
-            logger.error(f"❌ Failed to ingest item: {e}")
+        text = kwargs.get("texts", "")
+        pipeline = kwargs.get("pipeline", "RAG")
+        conversation_id = kwargs.get("conversation_id", "autocrm_ingestion")
+        metadata = kwargs.get("metadata", {})
 
-    return {"status": "completed", "sent": successful, "failed": failed}
+        combined_metadata = {
+            **metadata,
+            "pipeline": pipeline,
+            "texts": text,
+            "conversation_id": conversation_id
+        }
+
+        documents.append(text)
+        metadatas.append(combined_metadata)
+
+    # ✅ DEBUG: print exactly what we're sending
+    logger.info(f"🔍 DEBUG documents: {json.dumps(documents, indent=2)}")
+    logger.info(f"🔍 DEBUG metadatas: {json.dumps(metadatas, indent=2, default=str)}")
+    logger.info(f"🔍 DEBUG vec_db_identifier: {VECTOR_VEC_DB_IDENTIFIER}")
+    logger.info(f"🔍 DEBUG collection_name: {VECTOR_COLLECTION_NAME}")
+
+    try:
+        results = rag_agent.vector_update(
+            documents=documents,
+            metadatas=metadatas,
+            vec_db_identifier=VECTOR_VEC_DB_IDENTIFIER,
+            collection_name=VECTOR_COLLECTION_NAME
+        )
+
+        # ✅ DEBUG: print the raw results from rag_agent
+        logger.info(f"🔍 DEBUG rag_agent results: {json.dumps(results, indent=2, default=str)}")
+
+        successful = sum(1 for r in results if r.get("status") == "success")
+        failed = sum(1 for r in results if r.get("status") != "success")
+
+        logger.info(f"✅ Vector ingestion complete. Sent: {successful}, Failed: {failed}")
+        return {"status": "completed", "sent": successful, "failed": failed}
+
+    except Exception as e:
+        logger.error(f"❌ Vector ingestion failed: {e}")
+        return {"status": "failed", "message": str(e)}

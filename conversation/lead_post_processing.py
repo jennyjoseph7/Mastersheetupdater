@@ -209,6 +209,8 @@ def post_session_process(*args, **kwargs):
     
     session_data = session_data.get("data",{})
     campaign_data = session_data.get("campaign_data", {})
+    campaign_obj = session_data.get("ctas", [])
+    mlogger.info("post_session_process_campaign_obj == {}".format(campaign_obj))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
     mlogger.info("campaign_data == {}".format(campaign_data))
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
@@ -258,8 +260,8 @@ def post_session_process(*args, **kwargs):
        
     updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if messages and len(messages) > 0 else {"disposition"}
         
-    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
-    if updated_lead_data.get("disposition_detail").lower() == "requested callback":
+    session_update_data = {"disposition": updated_lead_data.get("disposition", "").upper(), "disposition_detail":updated_lead_data.get("disposition_detail", "").upper(), "campaign_objective_name": campaign_obj}
+    if updated_lead_data.get("disposition_detail", "").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_date" in follow_up:
@@ -269,7 +271,7 @@ def post_session_process(*args, **kwargs):
                     updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
                 except KeyError as e:
                     mlogger.info("KeyError == {}".format(e))
-    if updated_lead_data.get("disposition_detail").lower() =="language barrier":
+    if updated_lead_data.get("disposition_detail","").lower() =="language barrier":
         follow_up = get_preffered_language(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_language" in follow_up:
@@ -421,31 +423,26 @@ def post_session_process(*args, **kwargs):
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
         try:
             crm_source = sales_campaign_data.get("crm_source_details", {}) or {}
-            crm_sheet  = crm_source.get('sheet_url', '')
-            crm_credentials = crm_source.get('api_key')       # dict from DB
+            crm_sheet_url  = crm_source.get('sheet_url', '')
+            # crm_credentials = crm_source.get('api_key')       # dict from DB
             crm_phone  = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
-            crm_update = {
-                "sheet_url":   crm_sheet,         # full URL → open_by_key
-                "sheet_name":  crm_sheet,         # legacy compat
-                "phone_number": crm_phone,
-                "credentials": crm_credentials,  # api_key dict from DB
-            }
-            crm_update.update({k: v for k, v in updated_lead_data.items() if k not in crm_update})
-            if crm_sheet and crm_phone:
+            mlogger.info(f"[CRM DEBUG] crm_sheet={crm_sheet_url}, crm_phone={crm_phone}")
+            mlogger.info(f"Session update data == {session_update_data}")
+            if crm_sheet_url and crm_phone:
                 gryd.create_async_task(
                     "update_lead_in_sheet",
                     AUTOCRM_CRM_UPDATE_SERVICE_NAME,
-                    args=[],
-                    kwargs=crm_update,
+                    args=[crm_phone, crm_sheet_url],
+                    kwargs=session_update_data
                 )
                 mlogger.info(
-                    f"[CRM DEBUG] crm_sheet={crm_sheet}, crm_phone={crm_phone}"
+                    f"[CRM DEBUG] crm_sheet={crm_sheet_url}, crm_phone={crm_phone}"
                 )
-                mlogger.info(f"Entered CRM update for sheet={crm_sheet} phone={crm_phone}")
+                mlogger.info(f"Entered CRM update for sheet={crm_sheet_url} phone={crm_phone}")
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
-        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary_english": summary_updated})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
@@ -618,7 +615,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
             latest_lead_disposition = incoming_status
             if incoming_status == "failed":
                 update_payload["disposition_detail"] = data.get("failure_reason")
-
+            
             update_payload["previous_contact_channel"] = channel 
             
             person_payload = {"previous_contact_channel": channel}
@@ -1966,26 +1963,6 @@ def get_disposition_classification(query = None, session_id = None, session_data
 
     result = run_prompt_sync(user_query = " ",  system_prompt= prompt, history=[], **{"session_id": session_id, "model_identifier":"databricks-gemini-3.1-flash-lite"})
     return result
-
-
-def update_error_in_lead_and_session(error_msg,source,**kwargs):
-    
-    mlogger.info(f"[Error Occured] - {error_msg} -- Source - {source}. So updating in the lead and session.")
-    
-    lead_id=kwargs.get("lead_id")
-    lead_model=kwargs.get("lead_model")
-    channel=kwargs.get("channel")
-    session_id=kwargs.get("session_id") or None
-    lead_model_id="pre_sales_lead_id" if lead_model == "pre_sales_lead" else "post_sales_lead_id"
-    with get_pg_connector() as pg:
-        if lead_id and lead_model:
-            pg.update(lead_model,lead_model_id,lead_id,{"disposition":"error","disposition_detail":error_msg})
-        if not session_id:
-            s_d=list(pg.list("session",{"lead_id":lead_id,"lead_model":lead_model,"channel":channel}))
-            session_id=s_d[0].get("session_id") if s_d else None
-        pg.update("session","session_id",session_id,{"disposition":"error","disposition_detail":error_msg})
-        mlogger.info(f"Updated ERROR in lead and session for lead_id={lead_id} and lead_model={lead_model} and channel={channel} and session_id={session_id}")
-    return
 
 def get_prompt_file(file_name: str) -> str:
     file_path = os.path.join(PROMPT_DIR, file_name)

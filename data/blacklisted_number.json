@@ -1,0 +1,54 @@
+{
+    "name": "blacklisted_number",
+    "attributes": [
+        {
+            "name": "region_id",
+            "type": "uid",
+            "required": true,
+            "default": "india"
+        },
+        {
+            "name": "phone_number",
+            "type": "text",
+            "constraint": {
+                "function": "phone_validator"
+            },
+            "converter": {
+                "function": "auto_format_phone_number",
+                "kwargs": {
+                    "region_id": "{region_id}"
+                }
+            },
+            "id": true
+        },
+        {
+            "name": "dealership_ids",
+            "type": "string_list"
+        },
+        {
+            "name": "channels",
+            "type": "string_list",
+            "default": [
+                "voice_phone"
+            ],
+            "options": [
+                "email",
+                "whatsapp_chat",
+                "rcs",
+                "voice_phone",
+                "whatsapp_voice_note",
+                "whatsapp_voice_call",
+                "sms",
+                "voice",
+                "voicebot",
+                "web_chat",
+                "web_chat_voice",
+                "fb_chat",
+                "insta_chat",
+                "twitter_chat",
+                "zoom_bot",
+                "ms_teams"
+            ]
+        }
+    ]
+}

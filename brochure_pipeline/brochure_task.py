@@ -49,7 +49,6 @@ def summary_dispatcher_task(**kwargs):
     model_year_id = kwargs.get("model_year_id")
     expected_variants = kwargs.get("expected_variants", [])
     
-    
     variant_id_list = kwargs.get("variant_id", [])
     if not expected_variants and variant_id_list:
         expected_variants = []
@@ -80,6 +79,14 @@ def summary_worker_task(**kwargs):
 @gryd.is_a_task()
 def vector_ingestion_task(**kwargs):
     tasks_payload = kwargs.get("tasks_payload", [])
+    
+    # If tasks_payload is empty but the kwargs itself looks like a single vector item, wrap it
+    if not tasks_payload and kwargs.get("texts"):
+        tasks_payload = [{
+            "service": "vector_document",
+            "function_name": "update_vector",
+            "kwargs": kwargs
+        }]
     
     if not tasks_payload:
         logger.error("❌ No tasks payload provided to vector_ingestion_task.")

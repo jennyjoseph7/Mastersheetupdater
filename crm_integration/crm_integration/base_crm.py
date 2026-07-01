@@ -11,14 +11,13 @@ class BaseCRMClass(ABC):
         self.connected = False
 
 
-    # shared logic 1
     def connect(self):
         self.connected=True
         logging.info(f"{self.crm_name} connected")
 
 
-    # shared logic 2
     def validate_payload(self,data):
+        
         if not isinstance(data,dict):
             raise ValueError("Payload must be dictionary")
 
@@ -28,7 +27,6 @@ class BaseCRMClass(ABC):
         return True
 
 
-    # shared logic 3
     def not_implemented(self,method):
         logging.info(
            f"{method} not implemented for {self.crm_name}"
@@ -36,95 +34,23 @@ class BaseCRMClass(ABC):
         return {
             "status":"not_implemented"
         }
-
-
-    ##################################
-    # abstract methods
-    ##################################
+        
 
     @abstractmethod
-    def post_pre_sales_lead(self,data):
+    def read_leads_from_sheet(self):
         pass
 
 
     @abstractmethod
-    def list_pre_sales_leads(self):
+    def find_lead_by_phone_number(self, lead_id):
         pass
-
 
     @abstractmethod
-    def post_post_sales_lead(self,data):
+    def update_row_by_phone_number(self, phone_number, data):
         pass
-
-    # -------------------------
-    # PRE SALES LEADS
-    # -------------------------
 
     @abstractmethod
-    def list_pre_sales_leads(self):
+    def update_status_for_matching_rows(self, lead_id, data):
         pass
 
 
-    @abstractmethod
-    def get_pre_sales_lead(self, lead_id):
-        pass
-
-
-    @abstractmethod
-    def post_pre_sales_lead(self, data):
-        pass
-
-
-    @abstractmethod
-    def patch_pre_sales_lead(self, lead_id, data):
-        pass
-
-
-
-    # -------------------------
-    # POST SALES LEADS
-    # -------------------------
-
-    @abstractmethod
-    def list_post_sales_leads(self):
-        pass
-
-
-    @abstractmethod
-    def get_post_sales_lead(self, lead_id):
-        pass
-
-
-    @abstractmethod
-    def post_post_sales_lead(self, data):
-        pass
-
-
-    @abstractmethod
-    def patch_post_sales_lead(self, lead_id, data):
-        pass
-
-
-
-    # -------------------------
-    # CUSTOMER
-    # -------------------------
-
-    @abstractmethod
-    def list_customers(self):
-        pass
-
-
-    @abstractmethod
-    def get_customer(self, customer_id):
-        pass
-
-
-    @abstractmethod
-    def post_customer(self, data):
-        pass
-
-
-    @abstractmethod
-    def patch_customer(self, customer_id, data):
-        pass

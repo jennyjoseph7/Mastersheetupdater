@@ -126,7 +126,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={"dealership_id":['ambal-auto-india']},
+            kwargs={"voice_batch_size": 30},
             add_schedule_to_queue=False
         )
         
@@ -135,7 +135,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={"dealership_id":['ambal-auto-india']},
+            kwargs={},
             add_schedule_to_queue=False
         )
         
@@ -145,6 +145,15 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
               service=AUTOCRM_CRON_SERVICE_NAME,
               schedule = "15 0 * * *",
               kwargs={"inactive_days": 14},
+              add_schedule_to_queue=False
+        )
+        
+        cron_worker.add_cron_job(
+            enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
+              task="end_campaigns",
+              service=AUTOCRM_CRON_SERVICE_NAME,
+              schedule="30 13 * * *", 
+              kwargs={},
               add_schedule_to_queue=False
         )
 
@@ -271,10 +280,21 @@ def get_dealership_details(agent_user_id, *args, **kwargs):
         raise ValueError("Dealership is mis-configured for user id: %s", agent_user_id)
     return dealership
 
-@app.route('/blacklist-a-number', methods = ["POST"])
+@app.route('/blacklist-number/<phone_number>', methods = ["GET", "POST", "DELETE"])
 @gryd_routes.payload_decorator()
-def blacklist_a_number_func(phone_number):
-    pass
+def blacklist_a_number_func(phone_number, **kwargs):
+    logger.info("Kwargs: %s", kwargs)
+    params = {}
+    for k in ('dealership_id', 'region_id', 'channel'):
+        if kwargs.get(k):
+            params[k] = kwargs.get(k)
+    if request.method.upper() == 'POST':
+        return blacklist_a_number(phone_number = phone_number, **params)
+    elif request.method.upper() == 'DELETE':
+        return remove_a_number_from_blacklist(phone_number = phone_number, **params)
+    return is_blacklisted_number(phone_number, **params)
+
+
 
 
 app.register_blueprint(ai_service_app.ai_service_routes)

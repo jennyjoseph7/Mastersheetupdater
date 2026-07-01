@@ -214,7 +214,7 @@ class SalesforceCRM(BaseCRMClass):
         }
 
 
-    def list_pre_sales_leads(self, last_updated=None, **kwargs) -> list:
+    def read_leads_from_sheet(self, last_updated=None, **kwargs) -> list:
         """
         List Leads from Salesforce.
         Optionally filter by last_updated (ISO 8601 datetime string).
@@ -234,7 +234,7 @@ class SalesforceCRM(BaseCRMClass):
         return [self._from_sf_record(r) for r in records]
 
 
-    def get_pre_sales_lead(self, search_data: dict) -> dict:
+    def find_lead_by_phone_number(self, search_data: dict) -> dict:
         """Get a single Lead by phone_number or VIN."""
         phone = search_data.get("phone_number")
         vin   = search_data.get("VIN")
@@ -259,7 +259,7 @@ class SalesforceCRM(BaseCRMClass):
         return self._from_sf_record(records[0])
 
 
-    def patch_pre_sales_lead(self, search_data: dict, updated_status: str) -> dict:
+    def update_status_for_matching_rows(self, search_data: dict, updated_status: str) -> dict:
         """Update the Status of a Lead identified by phone_number or VIN."""
         lead_id = self._find_lead_id(search_data)
 
@@ -285,7 +285,7 @@ class SalesforceCRM(BaseCRMClass):
 
 
     def list_post_sales_leads(self, **kwargs) -> list:
-        return self.list_pre_sales_leads(**kwargs)
+        return self.read_leads_from_sheet(**kwargs)
 
 
     def get_post_sales_lead(self, lead_id: str) -> dict:
@@ -318,7 +318,7 @@ class SalesforceCRM(BaseCRMClass):
         failed  = []
 
         for phone in phone_numbers:
-            result = self.patch_pre_sales_lead({"phone_number": phone}, status)
+            result = self.update_status_for_matching_rows({"phone_number": phone}, status)
             if result.get("updated"):
                 updated.append(phone)
             else:
@@ -337,7 +337,7 @@ class SalesforceCRM(BaseCRMClass):
     # ------------------------------------------------------------------
 
     def list_customers(self, **kwargs) -> list:
-        return self.list_pre_sales_leads(**kwargs)
+        return self.read_leads_from_sheet(**kwargs)
 
 
     def get_customer(self, customer_id: str) -> dict:

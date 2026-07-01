@@ -18,7 +18,7 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, AUTOCRM_VOICE_SERVICE_NAME, AUTOCR
 from crm_integration.crm_integration import load_crm
 from crm_integration.crm_integration.load_crm import load_crm
 from conversation.lead_post_processing import post_session_process
-from crm_integration.crm_integration.cron import _trigger_audience_task
+# from crm_integration.crm_integration.cron import _trigger_audience_task
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
@@ -26,7 +26,7 @@ from campaign.campaign_workflow import CHANNEL_IDENTIFIER_MAP
 from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 from gryd_worker import gryd,gryd_db_helper as db, beats as cron_worker,gryd_audit_helper
 from communication.connectors.communication_helpers import handle_session_post_process_or_end
-
+from campaign.campaign_manager import manual_register_and_trigger_lead
 pg = AutoCRMPGConnector(enterprise_id="autocrm")
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
@@ -352,153 +352,131 @@ def manage_active_sessions(*args, **kwargs):
     INACTIVITY_TIMEOUT_SECONDS = kwargs_dict.get("inactivity_timeout_seconds", 10) * 60
 
     mlogger.info("------------ Managing active sessions ------------")
-
-    query = r"""
-    WITH message_updates AS (
-        SELECT
-            m.dict->>'session_id' AS session_id,
-            MAX(
-                GREATEST(
-                    CASE
-                        WHEN COALESCE(m.dict->>'created','')
-                            ~ '^[0-9]+(\.[0-9]+)?$'
-                        THEN (m.dict->>'created')::NUMERIC
-                        ELSE EXTRACT(
-                            EPOCH FROM
-                            (m.dict->>'created')::TIMESTAMPTZ
-                        )
-                    END,
-                    CASE
-                        WHEN COALESCE(m.dict->>'updated','')
-                            ~ '^[0-9]+(\.[0-9]+)?$'
-                        THEN (m.dict->>'updated')::NUMERIC
-                        ELSE EXTRACT(
-                            EPOCH FROM
-                            (m.dict->>'updated')::TIMESTAMPTZ
-                        )
-                    END
-                )
-            ) AS latest_message_time
-        FROM message m
-        GROUP BY m.dict->>'session_id'
-    )
-
+    
+    query="""
     SELECT *
-    FROM (
-        SELECT
-        (
-            s.dict::jsonb ||
-            jsonb_build_object(
+        FROM (
+            SELECT
+            (
+                s.dict::jsonb ||
+                jsonb_build_object(
 
-                'needs_history_update',
-                    COALESCE(
-                        mu.latest_message_time,
-                        0
-                    ) >
-                    COALESCE(
-                        (s.dict->>'history_updated_time')::NUMERIC,
-                        0
-                    ),
-
-                'needs_post_process',
-                    CASE
-                        WHEN (
-                            (s.dict->>'last_response_time') IS NOT NULL
-                            AND (
-                                s.dict->>'last_post_process_time' IS NULL
-                                OR (
-                                    EXTRACT(EPOCH FROM NOW())::NUMERIC -
+                    'needs_history_update',
+                        CASE
+                            WHEN
+                                (s.dict->>'last_response_time') IS NOT NULL
+                                AND (
+                                    (s.dict->>'history_updated_time') IS NULL
+                                    OR
                                     COALESCE(
-                                        (s.dict->>'last_post_process_time')::NUMERIC,
+                                        (s.dict->>'last_response_time')::NUMERIC,
+                                        0
+                                    ) >
+                                    COALESCE(
+                                        (s.dict->>'history_updated_time')::NUMERIC,
                                         0
                                     )
-                                ) >= %s
+                                )
+                            THEN TRUE
+                            ELSE FALSE
+                        END,
+                        
+
+                    'needs_post_process',
+                        CASE
+                            WHEN (
+                                (s.dict->>'last_response_time') IS NOT NULL
+                                AND (
+                                    s.dict->>'last_post_process_time' IS NULL
+                                    OR (
+                                        EXTRACT(EPOCH FROM NOW())::NUMERIC -
+                                        COALESCE(
+                                            (s.dict->>'last_post_process_time')::NUMERIC,
+                                            0
+                                        )
+                                    ) >= %s
+                                )
+                                AND COALESCE(
+                                    (s.dict->>'has_unprocessed_history')::BOOLEAN,
+                                    FALSE
+                                ) = TRUE
                             )
-                            AND COALESCE(
-                                (s.dict->>'has_unprocessed_history')::BOOLEAN,
-                                FALSE
-                            ) = TRUE
+                            THEN TRUE
+                            ELSE FALSE
+                        END,
+
+                    'inactive_cutoff_epoch',
+                        CASE
+                            WHEN (s.dict->>'last_response_time') IS NOT NULL
+                            THEN
+                                (
+                                    (s.dict->>'last_response_time')::NUMERIC
+                                    + %s
+                                )
+                            ELSE NULL
+                        END
+                )
+            ) AS dict
+
+            FROM session s
+
+            WHERE
+                (s.dict->>'session_live')::BOOLEAN = TRUE
+
+                AND COALESCE(
+                    s.dict->>'status',
+                    ''
+                ) NOT IN ('completed', 'failed', 'busy')
+
+                AND COALESCE(
+                    s.dict->>'channel',
+                    ''
+                ) != 'voice_phone'
+
+                AND (
+                    (
+                        s.dict->>'campaign_type' = 'pre-sales'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM pre_sales_campaign p
+                            WHERE
+                                p.dict->>'campaign_id' =
+                                s.dict->>'campaign_id'
+                                AND LOWER(
+                                    p.dict->>'campaign_status'
+                                ) = 'active'
                         )
-                        THEN TRUE
-                        ELSE FALSE
-                    END,
-
-                'inactive_cutoff_epoch',
-                    CASE
-                        WHEN (s.dict->>'last_response_time') IS NOT NULL
-                        THEN
-                            (
-                                (s.dict->>'last_response_time')::NUMERIC
-                                + %s
-                            )
-                        ELSE NULL
-                    END
-            )
-        ) AS dict
-
-        FROM session s
-
-        LEFT JOIN message_updates mu
-            ON mu.session_id = s.dict->>'session_id'
+                    )
+                    OR
+                    (
+                        s.dict->>'campaign_type' = 'post-sales'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM post_sales_campaign p
+                            WHERE
+                                p.dict->>'campaign_id' =
+                                s.dict->>'campaign_id'
+                                AND LOWER(
+                                    p.dict->>'campaign_status'
+                                ) = 'active'
+                        )
+                    )
+                )
+        ) q
 
         WHERE
-            (s.dict->>'session_live')::BOOLEAN = TRUE
-
-            AND COALESCE(
-                s.dict->>'status',
-                ''
-            ) NOT IN ('completed', 'failed', 'busy')
-
-            AND COALESCE(
-                s.dict->>'channel',
-                ''
-            ) != 'voice_phone'
-
-            AND (
-                (
-                    s.dict->>'campaign_type' = 'pre-sales'
-                    AND EXISTS (
-                        SELECT 1
-                        FROM pre_sales_campaign p
-                        WHERE
-                            p.dict->>'campaign_id' =
-                            s.dict->>'campaign_id'
-                            AND LOWER(
-                                p.dict->>'campaign_status'
-                            ) = 'active'
-                    )
-                )
-                OR
-                (
-                    s.dict->>'campaign_type' = 'post-sales'
-                    AND EXISTS (
-                        SELECT 1
-                        FROM post_sales_campaign p
-                        WHERE
-                            p.dict->>'campaign_id' =
-                            s.dict->>'campaign_id'
-                            AND LOWER(
-                                p.dict->>'campaign_status'
-                            ) = 'active'
-                    )
-                )
+            COALESCE(
+                (q.dict->>'needs_history_update')::BOOLEAN,
+                FALSE
             )
-    ) q
+            OR
+            COALESCE(
+                (q.dict->>'needs_post_process')::BOOLEAN,
+                FALSE
+            )
 
-    WHERE
-        COALESCE(
-            (q.dict->>'needs_history_update')::BOOLEAN,
-            FALSE
-        )
-        OR
-        COALESCE(
-            (q.dict->>'needs_post_process')::BOOLEAN,
-            FALSE
-        )
-        
-    LIMIT %s
+        LIMIT %s;
     """
-    
     
     with get_pg_connector() as pg:
 
@@ -677,7 +655,8 @@ def manage_active_sessions(*args, **kwargs):
 
         mlogger.info("************************************************")
    
-   
+    
+        
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
@@ -813,14 +792,14 @@ def end_campaigns(**kwargs):
                     f"Ending campaign_id={campaign_id} in {table}"
                 )
 
-                # pg.update(
-                #     table,
-                #     "campaign_id",
-                #     campaign_id,
-                #     {
-                #         "campaign_status": "Completed"
-                #     }
-                # )
+                pg.update(
+                    table,
+                    "campaign_id",
+                    campaign_id,
+                    {
+                        "campaign_status": "Completed"
+                    }
+                )
 
             mlogger.info(f"Completed processing for {table}")
             
@@ -1992,7 +1971,7 @@ def process_lead(pg,lead, channel):
         mlogger.info("[PROCESS] channel identifier %s", channel_identifier)
         # mlogger.info("[PROCESS] lead data %s", json.dumps(data,indent=4))
         # TODO: Based on the next_trigger and next_channel call process_single_lead
-        mlogger.info(f"Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
+        mlogger.info(f"Autotriggering - Calling process_single_lead task for channel: {channel}, channel_identifier: {channel_identifier}, lead_id: {lead_id}, campaign_type: {campaign_type}")
         gryd.create_async_task('process_single_lead', AUTOCRM_CAMPAIGN_SERVICE_NAME, args= [
                 channel,
                 lead_id,
@@ -2016,25 +1995,44 @@ def process_lead(pg,lead, channel):
 
 def fetch_leads(dealership_id, channel, batch_size):
     with get_pg_connector() as pg:
+        
         query = """
             WITH pre AS (
-                SELECT dict, 'pre_sales' AS lead_type
-                FROM pre_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'pre_sales' AS lead_type
+                FROM pre_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM pre_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             ),
             post AS (
-                SELECT dict, 'post_sales' AS lead_type
-                FROM post_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'post_sales' AS lead_type
+                FROM post_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM post_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             )
             SELECT *
@@ -2044,13 +2042,15 @@ def fetch_leads(dealership_id, channel, batch_size):
                 SELECT * FROM post
             ) t
             ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
-            LIMIT %s
+            LIMIT %s;
         """
+        
         params = (
             dealership_id, channel, batch_size,
             dealership_id, channel, batch_size,
             batch_size
         )
+        
         _leads=pg.fetch_all(query, params)
         mlogger.info(f"[fetch_leads] TOTAL LEADS for dealership_id={dealership_id} and channel={channel} is {len(_leads)}")
         # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
@@ -2062,7 +2062,6 @@ def fetch_leads(dealership_id, channel, batch_size):
 
         for lead in _leads:
             data, lead_type = lead
-
             if lead_type == "pre_sales":
                 lead_model = "pre_sales_lead"
                 lead_id = data.get("pre_sales_lead_id")
@@ -2071,31 +2070,7 @@ def fetch_leads(dealership_id, channel, batch_size):
                 lead_id = data.get("post_sales_lead_id")
 
             unique_key = f"{lead_model}:{lead_id}"
-
-            if unique_key in seen:
-                duplicates.append(unique_key)
-                continue
-
-            seen.add(unique_key)
-            unique_leads.append(lead)
-
-        if duplicates:
-            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
-
-        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
-        return unique_leads
-
-        for lead in _leads:
-            data, lead_type = lead
-
-            if lead_type == "pre_sales":
-                lead_model = "pre_sales_lead"
-                lead_id = data.get("pre_sales_lead_id")
-            else:
-                lead_model = "post_sales_lead"
-                lead_id = data.get("post_sales_lead_id")
-
-            unique_key = f"{lead_model}:{lead_id}"
+            # mlogger.info(f"[fetch_leads] Processing lead for lead_model: {lead_model}, lead_id: {lead_id}, campaign_id: {data.get('campaign_id')}")
 
             if unique_key in seen:
                 duplicates.append(unique_key)
@@ -2360,9 +2335,10 @@ def get_active_crm_campaigns():
                '{campaign_model}' AS campaign_model
         FROM {campaign_model}
         WHERE dict->>'campaign_status'=%s
-        AND (dict->>'last_sync_timestamp'):: NUMERIC
-            <= EXTRACT(EPOCH FROM NOW())
+        
         """
+        # AND (dict->>'last_sync_timestamp'):: NUMERIC
+        #     <= EXTRACT(EPOCH FROM NOW())
 
         results = pg.fetch_all(
             query,
@@ -2378,9 +2354,8 @@ def get_active_crm_campaigns():
 
     return campaigns
 
-# ─────────────────────────────────────────────────────────────────────────────
 # SESSION POLL HELPER — called by process_crm_campaigns after triggering a lead
-# ─────────────────────────────────────────────────────────────────────────────
+
 def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600, poll_interval: int = 5):
     """
     After _trigger_audience_task queues a call, poll the DB every `poll_interval`
@@ -2513,9 +2488,6 @@ def _poll_and_post_process_session(lead_id: str, logger, timeout_secs: int = 600
     )
 
 
-
-
-
 @gryd.is_a_task(function_name="process_crm_campaigns",logger_param="logger",job_param="job")
 def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=None):
     # Get all the active campaign where te campaign_Status is Continuous and last_sync_timestamp <= current time
@@ -2601,56 +2573,45 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                     credentials=crm_details.get("api_key"),   # dict from DB
                     sheet_url=crm_details.get("sheet_url"),   # full URL from DB
                 )
+                
 
-                leads = crm.list_pre_sales_leads(
+                leads = crm.read_leads_from_sheet(
                     batch_size=leads_to_fetch
                 )
 
-                logger.info(
-                    f"Fetched {len(leads)} leads"
-                )
+                logger.info(f"Fetched {len(leads)} leads for {dealership_id} - {channel}")
 
                 for lead in leads:
                     
                     try:
-                        from crm_integration.crm_integration.cron import _trigger_audience_task
                         
-                        # _trigger_audience_task(
+                        # calling trigger_audience_task which will upload the specific lead to the model and then trigger the campaign
                         task_result = _trigger_audience_task(
                             lead=lead,
                             campaign_id=campaign.get("campaign_id"),
                             campaign_objective_id=campaign.get("campaign_objective_id"),
                             campaign_type=campaign_type,
                             dealership_id=dealership_id,
+                            channels=channels,
                             dealership_name=campaign.get("dealership_name")
                         )
-                        # try:
-                        #     logger.info("[TEST] Calling post_session_process")
-
-                        #     list(post_session_process(**{"session_id": "6a44571b-ed6f-36dd-b26b-7be37c88b313"}))
-
-                        # except Exception as e:
-                        #     logger.error(f"post_session_process failed: {e}")
-    
-                        crm.patch_pre_sales_lead(
-                            lead,
-                            "QUEUED"
-                        )
-
+                        
+                        # mlogger.info(f"Lead: {json.dumps(lead,indent=4)} ")
+                        #as soon as the call is triggered, update the lead status back to the sheet for that specific lead.
+                        crm.update_status_for_matching_rows(lead,"queued")
+                        
                         # After triggering the call, poll DB for the real completed
-                        # session and run post-processing to update disposition/lead_summary
-                        logger.info(f" print task result {task_result}")
+                        logger.info(f"[process_crm_campaigns] Task result: {task_result}")
                         lead_id = (task_result or {}).get("lead_id")
                         if lead_id:
-                            logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")
-                            _poll_and_post_process_session(lead_id, logger)
+                            # logger.info(f"[CRON] Waiting for call session to complete for lead_id={lead_id}")
+                            # _poll_and_post_process_session(lead_id, logger)
+                            logger.info(f"[process_crm_campaigns] Lead id: {lead_id} for campaign: {campaign.get('campaign_id')} and channel: {channel} has been processed.")
                         else:
-                            logger.warning("[CRON] No lead_id in task result, skipping post-process polling")
+                            logger.warning(f"[process_crm_campaigns] No lead_id {lead_id} in task result for campaign: {campaign.get('campaign_id')} and channel: {channel}")
 
                     except Exception as e:
-                        logger.error(
-                            f"Lead failed: {e}"
-                        )
+                        logger.error(f"Lead failed: {e}")
                 logger.info(
                     f"Finished processing leads for campaign_model={campaign.get('campaign_model')} and channel={channel}")
                 pg.update(
@@ -2662,13 +2623,56 @@ def process_crm_campaigns(batch_size=None, queue_length=None , logger=None, job=
                     }
                 )    
                     
-
-
-
         except Exception:
             logger.exception(
                 f"Campaign error: {campaign.get('_id')}"
             )
+
+
+def _trigger_audience_task(lead: dict,campaign_id: str,campaign_objective_id: str,campaign_type: str,dealership_id: str,dealership_name: str,channels:list,logger=None):
+    logger = logger or mlogger
+
+    name = lead.get("person_name", "")
+    phone_number = lead.get("phone_number", "")
+    email = lead.get("email", "")
+
+    vehicle_model = lead.get("vehicle_model", "")
+    vehicle_category = (
+        lead.get("vehicle_category", "Passenger Vehicle")
+        or "Passenger Vehicle"
+    )
+
+    model_preference = [vehicle_model] if vehicle_model else []
+
+    task_args = (name,phone_number,email)
+
+    task_kwargs = {
+        "channel": channels,
+        "campaign_id": campaign_id,
+        "campaign_objective_id": campaign_objective_id,
+        "campaign_type": campaign_type,
+        "dealership_id": dealership_id,
+        "dealership_name": dealership_name or "",
+        "model_preference": model_preference,
+        "brand_preference": [],
+        "color_preference": [],
+        "feature_preferences": [],
+        "vehicle_category": vehicle_category,
+    }
+
+    logger.info(
+        f"[CRON] Queueing manual_register_and_trigger_lead "
+        f"for phone={phone_number}"
+    )
+
+    result =list(manual_register_and_trigger_lead(*task_args, **task_kwargs))
+    if not result:
+        logger.info(f"[CRON][ERROR] Task failed for phone={phone_number}")
+    result = result[0].get("_result") if isinstance(result, list) else result
+    # lead_id = (result or {}).get("lead_id")    
+    # logger.info(f"[CRON][DEBUG] Queue response: {lead_id}, result={result}")
+ 
+    return result
 
 
 def get_c_and_wcrt(c = None, wcontroller = None):
@@ -2728,6 +2732,196 @@ def scale_up_voice(environment = None, count = 1, retries = 3, logger = None, jo
             c = c, wcontroller = wcontroller,
         ), OUTBOUND_VOICE_SERVICES
     ))
+
+
+def check_inactive_sessions(*args, **kwargs):
+    """
+    Check for inactive sessions, and update them accordingly.
+
+    Parameters:
+        *args: Any additional positional arguments
+        **kwargs: Any additional keyword arguments
+
+    Keyword Arguments:
+        inactivity_time (int): The number of minutes to consider a session inactive.
+            Defaults to 30.
+        only_for_channels (List[str]): A list of channels to check for inactive sessions.
+            Defaults to [].
+        outbound_timeout_minutes (int): The number of minutes to wait for an outbound response.
+            Defaults to 1440.
+
+    Returns:
+        None
+    """
+
+    kwargs_dict = dict(kwargs)
+
+    inactivity_time = kwargs_dict.get("inactivity_time") or 30
+    only_for_channels = kwargs_dict.get("only_for_channels") or []
+    outbound_timeout_minutes = kwargs_dict.get("outbound_timeout_minutes") or 1440
+
+    mlogger.info(
+        "------------ Checking for inactive sessions ------------- "
+        f"inactivity_time={inactivity_time}"
+    )
+
+    filters = {"session_live": True, "status": "completed~","status":"busy~","status":"failed~"}
+    condition, param = apply_filters(**filters)
+
+    with get_pg_connector() as pg:
+        session_list = list(
+            db.GrydPGConnector.list(pg, "session", condition, param)
+        )
+
+        mlogger.info(f"Active sessions count: {len(session_list)}")
+
+        if not session_list:
+            mlogger.info("No active sessions found.")
+            return
+
+        now_epoch = int(time.time())
+        other_channels = []
+        for session in session_list:
+            session_id = session.get("session_id")
+            channel = session.get("channel")
+            campaign_type = session.get("campaign_type") or "inbound"
+
+            if channel not in only_for_channels:
+                other_channels.append(channel)
+                # mlogger.info(
+                #     f"Skipping session {session_id} "
+                #     f"(channel={channel})"
+                # )
+                continue
+
+            # last activity time ----------
+            last_response_str = session.get("last_response_time")
+            last_history_str = session.get("history_updated_time")
+            session_created_str = (
+                session.get("created") or session.get("start_time")
+            )
+
+            if last_response_str:
+                last_activity_epoch = int(last_response_str)
+            elif last_history_str:
+                last_activity_epoch = int(last_history_str)
+            elif session_created_str:
+                last_activity_epoch = int(session_created_str)
+            else:
+                mlogger.warning(
+                    f"Session {session_id} has no timestamps; "
+                    "skipping inactivity check"
+                )
+                continue
+
+            last_response_epoch = (
+                int(last_response_str) if last_response_str else None
+            )
+            last_history_epoch = (
+                int(last_history_str) if last_history_str else None
+            )
+
+            # inactivity timeout ----------
+            # if campaign_type != "post-sales":
+            #     session_timeout_seconds = outbound_timeout_minutes * 60
+            # else:
+            #     session_timeout_seconds = inactivity_time * 60
+
+            session_timeout_seconds = inactivity_time * 60 
+            mlogger.info(
+                f"Session {session_id} timeout set to "
+                f"{session_timeout_seconds}s"
+            )
+            inactive_cutoff_epoch = (
+                last_activity_epoch + session_timeout_seconds
+            )
+
+            existing_history = session.get("history", []) or []
+
+            # Only sync history if last_response_time moved forward
+            if (
+                last_response_epoch
+                and (
+                    last_history_epoch is None
+                    or last_response_epoch > last_history_epoch
+                )
+            ):
+                history_rows = list(
+                    pg.list("message", {"session_id": session_id})
+                )
+
+                new_records = []
+                for row in history_rows:
+                    ts = row.get("created") or row.get("updated")
+                    if ts:
+                        ts = int(ts)
+                        if (
+                            last_history_epoch is None
+                            or ts > last_history_epoch
+                        ):
+                            new_records.append(row)
+
+                if new_records:
+                    appended_history = []
+                    last_ts = None
+
+                    for record in new_records:
+                        ts = record.get("created") or record.get("updated")
+                        if ts:
+                            last_ts = int(ts)
+
+                        appended_history.append(
+                            {
+                                "index": record.get("index"),
+                                "role": (
+                                    "user"
+                                    if record.get("reply_to") == ""
+                                    else "agent"
+                                ),
+                                "timestamp": ts,
+                                "message": record.get("message"),
+                            }
+                        )
+
+                    pg.update(
+                        "session",
+                        "session_id",
+                        session_id,
+                        {
+                            "history": existing_history
+                            + appended_history,
+                            "history_updated_time": last_ts,
+                        },
+                    )
+                    # TODO:also update session related data to respective lead_model by passing last_session_id which will update last_session_channel,last_interaction etc..
+                    # update_session_data_in_lead(session_id=session_id,"") 
+                    mlogger.info(
+                        f"Appended {len(appended_history)} messages"
+                        f"for session {session_id}"
+                    )
+                else:
+                    mlogger.info(f"No new history rows for session {session_id}")
+            else:
+                mlogger.info(f"Skipping history sync for session {session_id} (no new responses)")
+
+            # Inactivity Check ----------
+            if now_epoch > inactive_cutoff_epoch:
+                mlogger.info(
+                    f"Ending inactive session {session_id} "
+                    f"(inactive for {now_epoch - last_activity_epoch}s)"
+                )
+
+                # ending the session --------
+                # end_session(session_id=session_id, pg=pg)
+            else:
+                mlogger.info(
+                    f"Session {session_id} still active "
+                    f"({inactive_cutoff_epoch - now_epoch}s remaining)"
+                )
+        mlogger.info(f"Other channel counts skipped: {len(other_channels)}")
+        mlogger.info("************************************************")
+        return 
+
 
 if __name__ == "__main__":
     pass

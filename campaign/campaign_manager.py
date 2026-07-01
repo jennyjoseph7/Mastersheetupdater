@@ -29,9 +29,8 @@ from agents.get_email_template_agent import get_email_template
 from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
 from communication.connectors.connector_rcs import gryd_send_rcs
-from conversation.lead_post_processing import update_error_in_lead_and_session
 from communication.common_functions import get_communication_credential,generate_uid
-from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,get_phone_code_from_dealership,AutocrmModel
+from config import AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_COMMUNICATION_SERVICE_NAME, AUTOCRM_CORE_SERVICE_NAME,AUTOCRM_VOICE_SERVICE_NAME, SERVICE,VOICE_PROVIDER_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,get_phone_code_from_dealership,is_blacklisted_number,flag_error_to_session_or_lead,AutocrmModel
 gryd.SERVICE = AUTOCRM_CAMPAIGN_SERVICE_NAME
 gryd.set_queue_manager()
 logger = gryd.hp.get_logger(gryd.SERVICE)
@@ -45,12 +44,6 @@ def clean_phone_number(phone_number: str) -> str:
     """
     return re.sub(r"\D", "", str(phone_number))
 
-
-
-def update_error_to_models(error_msg,source=None,stack_trace=None,**kwargs):
-    logger.info(f"Error occurred in source-{source} and Error message -{error_msg}")
-    update_lead_disposition_and_post_billing(kwargs)
-    return
 
 class BaseCampaignCreater:
     def create_text_template(self):
@@ -1156,12 +1149,23 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             yield {"status": "Error", "error_description": f"No lead found for {lead_id_field}={lead_id}"}
             return
         lead_data = result
-
+    
     if not lead_id:
         yield {"status": "Error", "error_description": "Lead ID missing"}
         return
 
     logger.info(f"Lead found for lead_id={lead_id}")
+    mobile = lead_data.get("channel_identifier") or lead_data.get("phone_number")
+    number_blacklisted=is_blacklisted_number(mobile, lead_data.get("dealership_id"), lead_data.get("region_id"), channel)
+    if number_blacklisted:
+        logger.info(f"Number {mobile} is blacklisted. Skipping campaign for lead_id={lead_id}")
+        flag_error_to_session_or_lead(
+            lead_id=lead_id,
+            lead_model=lead_table,
+            error_message=f"Number {mobile} is Blacklisted for dealership id -{lead_data.get('dealership_id')}, channel -{channel} and region -{lead_data.get('region_id')}",
+            disposition="error"
+        )
+        return
     if channel_identifier:
         logger.info(f"CHANNEL_IDENTIFIER-----{channel_identifier} for lead_id={lead_id}")
         lead_data["channel_identifier"] = channel_identifier
@@ -1188,15 +1192,12 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             # template_data=testing_whatsapp_template()
         except Exception as e:
             logger.error(f"Error in get_template for channel email: {str(e)}")
-            update_error_to_models(
-                error_msg=f"Error in get_template for channel email: {str(e)}",
-                source="process_single_lead",
-                **{
-                    "lead_id": lead_id,
-                    "campaign_id": campaign_id,
-                    "campaign_type": campaign_type,
-                    "channel": channel
-                })
+            flag_error_to_session_or_lead(
+                lead_id=lead_id,
+                lead_model=lead_table,
+                error_message=f"Error in get_template for channel email: {str(e)}",
+                disposition="error"
+            )
             yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
             return
         
@@ -1230,71 +1231,88 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         # logger.info("Template Data: %s", template_data)
     elif channel in ("whatsapp_chat", "sms", "rcs"):
         logger.info(f"channel: {channel}")
-        if not templateID:
+
+        dealership_id = lead_data.get("dealership_id")
+
+        if templateID:
+            with get_pg_connector() as pg:
+                template_data = pg.get("template", "template_id", templateID)
+
+        else:
             try:
-                template_data= get_template(
+                template_list = get_template(
                     lead_id=lead_id,
                     campaign_type=campaign_type,
-                    # campaign_objective= [campaign_objective_name] or [],
                     campaign_objective_id=lead_data.get("campaign_objective_id"),
-                    dealership_id=lead_data.get("dealership_id"),
+                    dealership_id=dealership_id,
                     lead_info={}
                 )
-                # template_data=testing_whatsapp_template()
-                
             except Exception as e:
-                logger.error(f"Error in get_template for channel {channel}: {str(e)}")
-                update_error_to_models(
-                    error_msg=f"Error in get_template: {str(e)}",
-                    source="get_template",
-                    **{
-                        "lead_id": lead_id,
-                        "campaign_id": campaign_id,
-                        "campaign_type": campaign_type,
-                        "channel": channel
-                    }
+                error = f"Error in get_template for channel {channel}: {e}"
+                logger.exception(error)
+
+                flag_error_to_session_or_lead(
+                    lead_id=lead_id,
+                    lead_model=lead_table,
+                    error_message=error,
+                    disposition="error"
                 )
-                yield {"status": "Error", "error_description": f"Error in get_template: {str(e)}"}
+
+                yield {
+                    "status": "Error",
+                    "error_description": error
+                }
                 return
-            
-            if not template_data or not isinstance(template_data, list):
-                update_error_to_models(
-                    error_msg=f"Error in get_template: Invalid template data- {template_data}",
-                    source="get_template",
-                    **{
-                        "lead_id": lead_id,
-                        "campaign_id": campaign_id,
-                        "campaign_type": campaign_type,
-                        "channel": channel
-                    }
+
+            if not isinstance(template_list, list) or not template_list:
+                error = f"Invalid template data: {template_list}"
+
+                flag_error_to_session_or_lead(
+                    lead_id=lead_id,
+                    lead_model=lead_table,
+                    error_message=error,
+                    disposition="error"
                 )
-                yield {"status": "Error", "error_description": f"No template found for lead_id={lead_id}"}
+
+                yield {
+                    "status": "Error",
+                    "error_description": f"No template found for lead_id={lead_id}"
+                }
                 return
-            
-            template_data = template_data[0]
-            
-            # _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel,provider_name=template_data.get("provider_name","rml"))
-            _d=get_communication_credential(dealership_id=lead_data.get("dealership_id"), channel=channel)
-            logger.info(f"GET COMMUNICATION CREDS-->{_d}, dealership_id: {lead_data.get('dealership_id')}, channel: {channel}")
-            if _d:
-                sender_name=_d.get("sender")
-                
-            logger.info(f"Communication Credential found for dealership_id: {lead_data.get('dealership_id')}, channel: {channel} and sender phone_number: {sender_name}")
-        else:
-            with get_pg_connector() as pg:
-                template_details=pg.get("template","template_id",templateID)
-                template_data=template_details
-        logger.info(f"TEmplate data: {template_data}")
-        
-        if template_data.get("provider_name")=="Rml":
-            template_data["template_type"] = template_data.get("template_type")+"_template"
-        logger.info(f"Template ID for phone_number={lead_data.get('phone_number')}: {template_data.get('template_id')}")
+
+            template_data = template_list[0]
+
+            creds = get_communication_credential(
+                dealership_id=dealership_id,
+                channel=channel
+            )
+
+            logger.info(
+                f"Communication credentials: {creds}, "
+                f"dealership_id={dealership_id}, channel={channel}"
+            )
+
+            sender_name = creds.get("sender") if creds else None
+
+            logger.info(
+                f"Sender phone_number: {sender_name}"
+            )
+
+        logger.info(f"Template data: {template_data}")
+
+        if template_data.get("provider_name") == "Rml":
+            template_data["template_type"] = (
+                f"{template_data.get('template_type')}_template"
+            )
+
+        logger.info(
+            f"Template ID for phone_number={lead_data.get('phone_number')}: "
+            f"{template_data.get('template_id')}"
+        )
     else:
         yield {"status": "Error", "error_description": f"Unsupported channel: {channel}"}
         return
 
-    mobile = lead_data.get("channel_identifier") or lead_data.get("phone_number")
-    
     # logger.info(f"Campaign ID: {campaign_id}, Original Mobile: {mobile}")
     customer_name = "Dear NADA Visitor" if campaign_id == "4c99d5ea-4441-3ce6-841f-de5d7585b3b7" and lead_data.get("person_name") is None else lead_data.get("person_name")
     lead_data['person_name']=customer_name
