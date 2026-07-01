@@ -342,6 +342,11 @@ def apply_next_schedule_time_floor(lead: dict, delay: int | float | None, logger
     Returns delay in seconds from now, bumped up when now + delay would fall before it.
     """
     logger = logger or mlogger
+    campaign_type = lead.get('campaign_type', "pre-sales")
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
+    lead_id = lead.get(lead_id_attr)
+    campaign_id = lead.get('campaign_id')
     if delay is None:
         return None
     existing = get_lead_next_schedule_time(lead)
@@ -353,8 +358,11 @@ def apply_next_schedule_time_floor(lead: dict, delay: int | float | None, logger
         return delay
     adjusted = max(0.0, existing - now)
     logger.info(
-        "Respecting existing next_schedule_time %s for lead: adjusting delay from %s to %s",
+        "Respecting existing next_schedule_time %s for lead id %s in %s campaign %s: adjusting delay from %s to %s",
         hp.to_datetime(existing),
+        lead_id,
+        campaign_type,
+        campaign_id,
         time_difference(float(delay)),
         time_difference(adjusted),
     )
@@ -391,8 +399,9 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
 def get_due_date(lead: dict, statuses: list, timezone: str = None, logger=None):
     logger = logger or mlogger
     due_date = None
-    campaign_type = lead.get('campaign_type').replace('-', '_')
-    lead_id_attr = f"{campaign_type}_lead_id"
+    campaign_type = lead.get('campaign_type')
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
     campaign_id = lead.get('campaign_id')
     for k in DUE_DATE_ATTRIBUTES:
         if lead.get(k):
@@ -431,8 +440,9 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     st = hp.time()
     logger.info("Loading models for get_channel_from_lead")
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
-    campaign_type = campaign_details.get('campaign_type').replace('-', '_')
-    lead_id_attr = f"{campaign_type}_lead_id"
+    campaign_type = campaign_details.get('campaign_type')
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
     lead_id = lead.get(lead_id_attr)
     campaign_id = campaign_details.get('campaign_id')
     dealership_id = campaign_details.get('dealership_id')
