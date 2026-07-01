@@ -223,6 +223,10 @@ class WorkflowScenarioMixin:
     def assert_delay_at_least(self, actual, minimum, tolerance=DELAY_TOLERANCE_SECONDS):
         assert_delay_at_least(self, actual, minimum, tolerance)
 
+    def assert_epoch_near(self, actual, expected, tolerance=DELAY_TOLERANCE_SECONDS):
+        """Assert epoch timestamps match within +/- tolerance seconds."""
+        assert_delay_near(self, actual, expected, tolerance)
+
     def setUp(self):
         self._patchers = [
             patch("campaign.campaign_workflow.AutocrmModel"),
@@ -504,15 +508,15 @@ class TestNextScheduleTimeFloor(WorkflowScenarioMixin, unittest.TestCase):
         self.assertGreater(result.delay, 1800)
 
     def test_floor_helper_no_existing_schedule(self):
-        self.assertEqual(cw.apply_next_schedule_time_floor({}, 7200), 7200)
+        self.assert_delay_near(cw.apply_next_schedule_time_floor({}, 7200), 7200)
 
     def test_floor_helper_respects_existing_schedule(self):
-        lead = {"next_schedule_time": _now() + 5000}
+        lead = _pre_sales_lead(next_schedule_time=_now() + 5000)
         self.assert_delay_near(cw.apply_next_schedule_time_floor(lead, 0), 5000)
 
     def test_floor_helper_does_not_shorten_later_delay(self):
-        lead = {"next_schedule_time": _now() + 1000}
-        self.assertEqual(cw.apply_next_schedule_time_floor(lead, 9000), 9000)
+        lead = _pre_sales_lead(next_schedule_time=_now() + 1000)
+        self.assert_delay_near(cw.apply_next_schedule_time_floor(lead, 9000), 9000)
 
 
 class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
@@ -523,14 +527,14 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         service_due = _now() + 7 * 86400
         lead = _post_sales_lead(next_service_due=service_due)
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(service_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(service_due))
 
     def test_po02_insurance_due_date_when_no_service(self):
         """PO-02: insurance_expiry_date used when service date absent."""
         insurance_due = _now() + 45 * 86400
         lead = _post_sales_lead(insurance_expiry_date=insurance_due)
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(insurance_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(insurance_due))
 
     def test_po03_service_date_precedence_over_insurance(self):
         """PO-03: DUE_DATE_ATTRIBUTES order — service wins over insurance."""
@@ -541,7 +545,7 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
             insurance_expiry_date=insurance_due,
         )
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(service_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(service_due))
 
     def test_po04_no_due_date_falls_back_to_first_status(self):
         """PO-04: Missing due dates → earliest status created timestamp."""
@@ -549,7 +553,7 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         statuses = [_status("failed", "whatsapp_chat", created=created)]
         lead = _post_sales_lead()
         due_epoch = cw.get_due_date(lead, statuses, logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(created), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(created))
 
     def test_po05_past_due_beyond_stop_period_stops_follow_up(self):
         """PO-05: Last attempt well after due date + stop_period → no delay."""

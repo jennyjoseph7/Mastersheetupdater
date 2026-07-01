@@ -654,9 +654,7 @@ def manage_active_sessions(*args, **kwargs):
                 mlogger.exception(f"Error processing session_id={session.get('session_id')}: {str(e)}")
 
         mlogger.info("************************************************")
-   
-    
-        
+
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
     params = ()
