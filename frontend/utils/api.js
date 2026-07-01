@@ -378,7 +378,7 @@ async function fetchCampaignSummary(dealershipId = getDealershipId()) {
 //     sort_reverse: true,
 //   });
 // }
-async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all", campaignId = "") {
+async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all", campaignId = "", search = "", campaignType = "") {
   const dealershipId = getDealershipId();
   if (!dealershipId) return { items: [], total: 0 };
 
@@ -391,14 +391,20 @@ async function fetchAudienceTasks(page = 1, pageSize = 10, filterType = "all", c
     sort_reverse: "true",
   });
 
+  if (search) {
+    params.append("search_term", "~" + search);
+  }
+
+  if (campaignType) {
+    const backendType = campaignType === "presales" ? "pre-sales" : campaignType === "postsales" ? "post-sales" : campaignType;
+    params.append("campaign_type", backendType);
+  }
+
   if (campaignId) {
     params.append("campaign_id", campaignId);
   } else {
     // 2. Append the exact filter logic matching your backend
-    if (filterType === "previous") {
-      // Appends "&campaign_id~="
-      params.append("campaign_id~", "");
-    } else if (filterType === "fresh") {
+    if (filterType === "fresh") {
       // Appends "&campaign_id="
       params.append("campaign_id", "");
     }

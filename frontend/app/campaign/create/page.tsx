@@ -493,20 +493,21 @@ const [launchStep, setLaunchStep] = useState(0);
 
 // 1. Keep your state
   const [audienceSourceType, setAudienceSourceType] = useState<"upload" | "previous" | "fresh" | null>(null);
+  const [audienceSearch, setAudienceSearch] = useState("");
 
   // 2. Remove the client-side `usedAudiences` and `freshAudiences` filter variables. 
   // We will just use `audienceTasks` directly since the server is filtering it now.
 
-  // 3. Update loadAudienceData to accept and pass the filter type
-  const loadAudienceData = async (currentPage = 1, type = audienceSourceType) => {
+  // 3. Update loadAudienceData to accept and pass the filter type and search
+  const loadAudienceData = async (currentPage = 1, type = audienceSourceType, searchVal = audienceSearch) => {
     // Don't fetch if they selected upload or haven't selected yet
     if (!type || type === "upload") return; 
 
     setIsLoadingAudience(true);
-    const fetchcount = 10; 
+    const fetchcount = 5; // Reduced page size to 5 for a cleaner table UI
     try {
-      // Pass the type down to the API
-      const res: any = await fetchAudienceTasks(currentPage, fetchcount, type);
+      // Pass the type, search, and campaignType down to the API
+      const res: any = await fetchAudienceTasks(currentPage, fetchcount, type, "", searchVal, campaignType);
       
       let items = [];
       let total = 0;
@@ -531,12 +532,16 @@ const [launchStep, setLaunchStep] = useState(0);
     }
   };
 
-  // 4. Update useEffect to trigger fetching when the page OR the card type changes
+  // 4. Update useEffect to trigger fetching with debounce when search, page, or type changes
   useEffect(() => {
     if (creationStep === "audience") {
-      loadAudienceData(page, audienceSourceType);
+      const delayDebounceFn = setTimeout(() => {
+        loadAudienceData(page, audienceSourceType, audienceSearch);
+      }, 300);
+
+      return () => clearTimeout(delayDebounceFn);
     }
-  }, [creationStep, page, audienceSourceType]);
+  }, [creationStep, page, audienceSourceType, audienceSearch]);
   // Fetch Objectives
 const [displayObjectives, setDisplayObjectives] = useState<any[]>([]);
 
@@ -1917,65 +1922,130 @@ const handleProceed = async () => {
                       </div>
                     </div>
                   )}
-                  {/* Render Selection Dropdowns Conditionally */}
-                 {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-4">
-                      <Label htmlFor="audience-select" className="font-semibold">
-                        {audienceSourceType === "previous" ? "Select Previously Used Audience" : "Select Fresh Audience"}
-                      </Label>
-                      <Select
-                        onValueChange={(val) => {
-                          setTargetAudience([val]);
-                          const task = audienceTasks.find((t) => t.task_id === val);
-                          if (task) setSelectedAudienceDetails(task);
-                        }}
-                        value={targetAudience[0] || ""}
-                      >
-                        <SelectTrigger id="audience-select" className="h-12 text-base">
-                          <SelectValue placeholder="Choose audience segment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                     {isLoadingAudience ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
-                          ) : (
-                            <>
-                              {audienceTasks.map((task) => ( // <--- Map directly over audienceTasks
-                                <SelectItem key={task.task_id} value={task.task_id}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">
-                                      {task.source_name || task.audience_name || "Untitled List"}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {parseInt(task.process_size || 0).toLocaleString()} Records
-                                    </Badge>
+                  {/* Render Selection list Conditionally */}
+                  {(audienceSourceType === "previous" || audienceSourceType === "fresh") && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-4 mt-4 p-4 border rounded-lg bg-slate-50/50">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <Label className="font-semibold text-lg text-slate-800">
+                          {audienceSourceType === "previous" ? "Select Previously Used Audience" : "Select Fresh Audience"}
+                        </Label>
+                        {/* Search Input */}
+                        <div className="relative w-full sm:w-72">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="text"
+                            placeholder="Search by name..."
+                            value={audienceSearch}
+                            onChange={(e) => {
+                              setAudienceSearch(e.target.value);
+                              setPage(1); // Reset page to 1 when searching
+                            }}
+                            className="pl-9 h-10 w-full bg-white shadow-sm border-slate-200 focus-visible:ring-primary"
+                          />
+                        </div>
+                      </div>
+
+                      {/* List/Table Container */}
+                      <div className="border rounded-md overflow-hidden bg-white shadow-sm">
+                        {isLoadingAudience ? (
+                          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+                            <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                            <span className="text-sm">Loading audience sets...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="divide-y">
+                              {audienceTasks.map((task) => {
+                                const isSelected = targetAudience[0] === task.task_id;
+                                return (
+                                  <div
+                                    key={task.task_id}
+                                    onClick={() => {
+                                      setTargetAudience([task.task_id]);
+                                      setSelectedAudienceDetails(task);
+                                    }}
+                                    className={cn(
+                                      "flex items-center justify-between p-4 cursor-pointer transition-all hover:bg-slate-50/80",
+                                      isSelected && "bg-primary/5 hover:bg-primary/10 border-l-4 border-l-primary"
+                                    )}
+                                  >
+                                    <div className="space-y-1">
+                                      <h5 className="font-medium text-slate-900">
+                                        {task.source_name || task.audience_name || "Untitled List"}
+                                      </h5>
+                                      <p className="text-xs text-muted-foreground">
+                                        Created: {task.created ? new Date(task.created * 1000).toLocaleDateString() : "N/A"}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <Badge variant="secondary" className="bg-slate-100 text-slate-700 font-semibold">
+                                        {parseInt(task.process_size || 0).toLocaleString()} Records
+                                      </Badge>
+                                      <div
+                                        className={cn(
+                                          "w-5 h-5 rounded-full border flex items-center justify-center transition-all",
+                                          isSelected ? "border-primary bg-primary text-white" : "border-slate-300"
+                                        )}
+                                      >
+                                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                                      </div>
+                                    </div>
                                   </div>
-                                </SelectItem>
-                              ))}
-                              
+                                );
+                              })}
+
                               {audienceTasks.length === 0 && (
-                                <div className="p-4 text-center text-sm text-muted-foreground">
-                                  No {audienceSourceType} lists found.
+                                <div className="text-center py-12 text-muted-foreground">
+                                  No {audienceSourceType === "previous" ? "previous" : "fresh"} audience lists found.
                                 </div>
                               )}
-                              {/* Standard Pagination Details */}
-                              <div className="flex items-center justify-between p-2 border-t mt-2 bg-slate-50" onKeyDown={(e) => e.stopPropagation()}>
-                                <Button variant="ghost" size="sm" disabled={page <= 1} onClick={(e) => { e.preventDefault(); setPage((p) => p - 1); }} className="h-8 w-8 p-0">
-                                  <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <span className="text-xs text-muted-foreground font-medium">Page {page} of {totalPages || 1}</span>
-                                <Button variant="ghost" size="sm" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); setPage((p) => p + 1); }} className="h-8 w-8 p-0">
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
+                            </div>
+
+                            {/* Pagination Controls */}
+                            {totalPages > 1 && (
+                              <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-t">
+                                <span className="text-xs text-muted-foreground">
+                                  Page <strong className="text-slate-800">{page}</strong> of <strong className="text-slate-800">{totalPages}</strong>
+                                </span>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setPage((p) => p - 1);
+                                    }}
+                                    className="h-8 px-3"
+                                  >
+                                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setPage((p) => p + 1);
+                                    }}
+                                    className="h-8 px-3"
+                                  >
+                                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                                  </Button>
+                                </div>
                               </div>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                            )}
+                          </>
+                        )}
+                      </div>
 
                       {targetAudience.length > 0 && (
-                        <div className="mt-2 p-3 bg-secondary/10 rounded-md flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Selected Segment ID: {targetAudience[0]}</span>
-                          <Badge className="bg-primary">Selected</Badge>
+                        <div className="p-3.5 bg-green-50/50 border border-green-200/60 rounded-md flex justify-between items-center text-sm animate-in fade-in zoom-in-95">
+                          <div className="flex items-center gap-2 text-green-950 font-medium">
+                            <Check className="h-4 w-4 text-green-600 stroke-[3]" />
+                            <span>Selected: {selectedAudienceDetails?.source_name || selectedAudienceDetails?.audience_name || "Custom Segment"}</span>
+                          </div>
+                          <span className="text-xs text-green-700 font-mono bg-green-100/50 px-2 py-0.5 rounded">ID: {targetAudience[0]}</span>
                         </div>
                       )}
                     </div>
