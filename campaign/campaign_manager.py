@@ -322,7 +322,7 @@ class BaseCampaignCreater:
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
-                    "provider_status": "queued",
+                    "provider_status": "attempted",
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,

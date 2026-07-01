@@ -352,153 +352,131 @@ def manage_active_sessions(*args, **kwargs):
     INACTIVITY_TIMEOUT_SECONDS = kwargs_dict.get("inactivity_timeout_seconds", 10) * 60
 
     mlogger.info("------------ Managing active sessions ------------")
-
-    query = r"""
-    WITH message_updates AS (
-        SELECT
-            m.dict->>'session_id' AS session_id,
-            MAX(
-                GREATEST(
-                    CASE
-                        WHEN COALESCE(m.dict->>'created','')
-                            ~ '^[0-9]+(\.[0-9]+)?$'
-                        THEN (m.dict->>'created')::NUMERIC
-                        ELSE EXTRACT(
-                            EPOCH FROM
-                            (m.dict->>'created')::TIMESTAMPTZ
-                        )
-                    END,
-                    CASE
-                        WHEN COALESCE(m.dict->>'updated','')
-                            ~ '^[0-9]+(\.[0-9]+)?$'
-                        THEN (m.dict->>'updated')::NUMERIC
-                        ELSE EXTRACT(
-                            EPOCH FROM
-                            (m.dict->>'updated')::TIMESTAMPTZ
-                        )
-                    END
-                )
-            ) AS latest_message_time
-        FROM message m
-        GROUP BY m.dict->>'session_id'
-    )
-
+    
+    query="""
     SELECT *
-    FROM (
-        SELECT
-        (
-            s.dict::jsonb ||
-            jsonb_build_object(
+        FROM (
+            SELECT
+            (
+                s.dict::jsonb ||
+                jsonb_build_object(
 
-                'needs_history_update',
-                    COALESCE(
-                        mu.latest_message_time,
-                        0
-                    ) >
-                    COALESCE(
-                        (s.dict->>'history_updated_time')::NUMERIC,
-                        0
-                    ),
-
-                'needs_post_process',
-                    CASE
-                        WHEN (
-                            (s.dict->>'last_response_time') IS NOT NULL
-                            AND (
-                                s.dict->>'last_post_process_time' IS NULL
-                                OR (
-                                    EXTRACT(EPOCH FROM NOW())::NUMERIC -
+                    'needs_history_update',
+                        CASE
+                            WHEN
+                                (s.dict->>'last_response_time') IS NOT NULL
+                                AND (
+                                    (s.dict->>'history_updated_time') IS NULL
+                                    OR
                                     COALESCE(
-                                        (s.dict->>'last_post_process_time')::NUMERIC,
+                                        (s.dict->>'last_response_time')::NUMERIC,
+                                        0
+                                    ) >
+                                    COALESCE(
+                                        (s.dict->>'history_updated_time')::NUMERIC,
                                         0
                                     )
-                                ) >= %s
+                                )
+                            THEN TRUE
+                            ELSE FALSE
+                        END,
+                        
+
+                    'needs_post_process',
+                        CASE
+                            WHEN (
+                                (s.dict->>'last_response_time') IS NOT NULL
+                                AND (
+                                    s.dict->>'last_post_process_time' IS NULL
+                                    OR (
+                                        EXTRACT(EPOCH FROM NOW())::NUMERIC -
+                                        COALESCE(
+                                            (s.dict->>'last_post_process_time')::NUMERIC,
+                                            0
+                                        )
+                                    ) >= %s
+                                )
+                                AND COALESCE(
+                                    (s.dict->>'has_unprocessed_history')::BOOLEAN,
+                                    FALSE
+                                ) = TRUE
                             )
-                            AND COALESCE(
-                                (s.dict->>'has_unprocessed_history')::BOOLEAN,
-                                FALSE
-                            ) = TRUE
+                            THEN TRUE
+                            ELSE FALSE
+                        END,
+
+                    'inactive_cutoff_epoch',
+                        CASE
+                            WHEN (s.dict->>'last_response_time') IS NOT NULL
+                            THEN
+                                (
+                                    (s.dict->>'last_response_time')::NUMERIC
+                                    + %s
+                                )
+                            ELSE NULL
+                        END
+                )
+            ) AS dict
+
+            FROM session s
+
+            WHERE
+                (s.dict->>'session_live')::BOOLEAN = TRUE
+
+                AND COALESCE(
+                    s.dict->>'status',
+                    ''
+                ) NOT IN ('completed', 'failed', 'busy')
+
+                AND COALESCE(
+                    s.dict->>'channel',
+                    ''
+                ) != 'voice_phone'
+
+                AND (
+                    (
+                        s.dict->>'campaign_type' = 'pre-sales'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM pre_sales_campaign p
+                            WHERE
+                                p.dict->>'campaign_id' =
+                                s.dict->>'campaign_id'
+                                AND LOWER(
+                                    p.dict->>'campaign_status'
+                                ) = 'active'
                         )
-                        THEN TRUE
-                        ELSE FALSE
-                    END,
-
-                'inactive_cutoff_epoch',
-                    CASE
-                        WHEN (s.dict->>'last_response_time') IS NOT NULL
-                        THEN
-                            (
-                                (s.dict->>'last_response_time')::NUMERIC
-                                + %s
-                            )
-                        ELSE NULL
-                    END
-            )
-        ) AS dict
-
-        FROM session s
-
-        LEFT JOIN message_updates mu
-            ON mu.session_id = s.dict->>'session_id'
+                    )
+                    OR
+                    (
+                        s.dict->>'campaign_type' = 'post-sales'
+                        AND EXISTS (
+                            SELECT 1
+                            FROM post_sales_campaign p
+                            WHERE
+                                p.dict->>'campaign_id' =
+                                s.dict->>'campaign_id'
+                                AND LOWER(
+                                    p.dict->>'campaign_status'
+                                ) = 'active'
+                        )
+                    )
+                )
+        ) q
 
         WHERE
-            (s.dict->>'session_live')::BOOLEAN = TRUE
-
-            AND COALESCE(
-                s.dict->>'status',
-                ''
-            ) NOT IN ('completed', 'failed', 'busy')
-
-            AND COALESCE(
-                s.dict->>'channel',
-                ''
-            ) != 'voice_phone'
-
-            AND (
-                (
-                    s.dict->>'campaign_type' = 'pre-sales'
-                    AND EXISTS (
-                        SELECT 1
-                        FROM pre_sales_campaign p
-                        WHERE
-                            p.dict->>'campaign_id' =
-                            s.dict->>'campaign_id'
-                            AND LOWER(
-                                p.dict->>'campaign_status'
-                            ) = 'active'
-                    )
-                )
-                OR
-                (
-                    s.dict->>'campaign_type' = 'post-sales'
-                    AND EXISTS (
-                        SELECT 1
-                        FROM post_sales_campaign p
-                        WHERE
-                            p.dict->>'campaign_id' =
-                            s.dict->>'campaign_id'
-                            AND LOWER(
-                                p.dict->>'campaign_status'
-                            ) = 'active'
-                    )
-                )
+            COALESCE(
+                (q.dict->>'needs_history_update')::BOOLEAN,
+                FALSE
             )
-    ) q
+            OR
+            COALESCE(
+                (q.dict->>'needs_post_process')::BOOLEAN,
+                FALSE
+            )
 
-    WHERE
-        COALESCE(
-            (q.dict->>'needs_history_update')::BOOLEAN,
-            FALSE
-        )
-        OR
-        COALESCE(
-            (q.dict->>'needs_post_process')::BOOLEAN,
-            FALSE
-        )
-        
-    LIMIT %s
+        LIMIT %s;
     """
-    
     
     with get_pg_connector() as pg:
 
@@ -676,6 +654,7 @@ def manage_active_sessions(*args, **kwargs):
                 mlogger.exception(f"Error processing session_id={session.get('session_id')}: {str(e)}")
 
         mlogger.info("************************************************")
+  
 
 def apply_filters(session_id=None, user_id=None, channel=None, session_live=None, status=None, disposition=None):
     conditions = [] 
@@ -812,14 +791,14 @@ def end_campaigns(**kwargs):
                     f"Ending campaign_id={campaign_id} in {table}"
                 )
 
-                # pg.update(
-                #     table,
-                #     "campaign_id",
-                #     campaign_id,
-                #     {
-                #         "campaign_status": "Completed"
-                #     }
-                # )
+                pg.update(
+                    table,
+                    "campaign_id",
+                    campaign_id,
+                    {
+                        "campaign_status": "Completed"
+                    }
+                )
 
             mlogger.info(f"Completed processing for {table}")
             
@@ -2015,25 +1994,44 @@ def process_lead(pg,lead, channel):
 
 def fetch_leads(dealership_id, channel, batch_size):
     with get_pg_connector() as pg:
+        
         query = """
             WITH pre AS (
-                SELECT dict, 'pre_sales' AS lead_type
-                FROM pre_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'pre_sales' AS lead_type
+                FROM pre_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM pre_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             ),
             post AS (
-                SELECT dict, 'post_sales' AS lead_type
-                FROM post_sales_lead
-                WHERE 
-                    dict->>'dealership_id' = %s
-                    AND dict->>'next_channel' = %s
-                    AND (dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
-                ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
+                SELECT
+                    l.dict,
+                    'post_sales' AS lead_type
+                FROM post_sales_lead l
+                WHERE
+                    l.dict->>'dealership_id' = %s
+                    AND l.dict->>'next_channel' = %s
+                    AND (l.dict->>'next_schedule_time')::NUMERIC <= EXTRACT(EPOCH FROM NOW())
+                    AND EXISTS (
+                        SELECT 1
+                        FROM post_sales_campaign c
+                        WHERE
+                            c.dict->>'campaign_id' = l.dict->>'campaign_id'
+                            AND LOWER(c.dict->>'campaign_status') IN ('active', 'continuous')
+                    )
+                ORDER BY (l.dict->>'next_schedule_time')::NUMERIC ASC
                 LIMIT %s
             )
             SELECT *
@@ -2043,13 +2041,15 @@ def fetch_leads(dealership_id, channel, batch_size):
                 SELECT * FROM post
             ) t
             ORDER BY (dict->>'next_schedule_time')::NUMERIC ASC
-            LIMIT %s
+            LIMIT %s;
         """
+        
         params = (
             dealership_id, channel, batch_size,
             dealership_id, channel, batch_size,
             batch_size
         )
+        
         _leads=pg.fetch_all(query, params)
         mlogger.info(f"[fetch_leads] TOTAL LEADS for dealership_id={dealership_id} and channel={channel} is {len(_leads)}")
         # mlogger.info(f"LEAD_DATA-->{json.dumps(_leads,indent=4)}")
@@ -2061,7 +2061,6 @@ def fetch_leads(dealership_id, channel, batch_size):
 
         for lead in _leads:
             data, lead_type = lead
-
             if lead_type == "pre_sales":
                 lead_model = "pre_sales_lead"
                 lead_id = data.get("pre_sales_lead_id")
@@ -2070,6 +2069,7 @@ def fetch_leads(dealership_id, channel, batch_size):
                 lead_id = data.get("post_sales_lead_id")
 
             unique_key = f"{lead_model}:{lead_id}"
+            # mlogger.info(f"[fetch_leads] Processing lead for lead_model: {lead_model}, lead_id: {lead_id}, campaign_id: {data.get('campaign_id')}")
 
             if unique_key in seen:
                 duplicates.append(unique_key)
@@ -2084,30 +2084,6 @@ def fetch_leads(dealership_id, channel, batch_size):
         mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
         return unique_leads
 
-        for lead in _leads:
-            data, lead_type = lead
-
-            if lead_type == "pre_sales":
-                lead_model = "pre_sales_lead"
-                lead_id = data.get("pre_sales_lead_id")
-            else:
-                lead_model = "post_sales_lead"
-                lead_id = data.get("post_sales_lead_id")
-
-            unique_key = f"{lead_model}:{lead_id}"
-
-            if unique_key in seen:
-                duplicates.append(unique_key)
-                continue
-
-            seen.add(unique_key)
-            unique_leads.append(lead)
-
-        if duplicates:
-            mlogger.info(f"[fetch_leads] DUPLICATE LEADS FOUND: {duplicates}")
-
-        mlogger.info(f"[fetch_leads] Returning {len(unique_leads)} unique leads for dealership_id={dealership_id} and channel={channel}")
-        return unique_leads
 
 # @gryd.is_a_task(function_name="test_campaign_workflow")
 # def test_campaign_workflow(*args, **kwargs):
