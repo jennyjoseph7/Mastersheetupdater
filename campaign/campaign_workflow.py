@@ -109,7 +109,7 @@ REQUIRED_RETRIGGER = {
 
 CAMPAIGN_WORKFLOW = {
     "queued": {
-        "retries": 20,
+        "retries": 0,
         "delay": 0,
         "trigger": None
     },
@@ -126,7 +126,7 @@ CAMPAIGN_WORKFLOW = {
     "attempted": {
         "retries": 20,
         "delay_type": "linear",
-        "delay": 3600*6,
+        "delay": 3600*4,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
@@ -272,7 +272,7 @@ def get_highest_status(statuses: list):
 
 def get_attempts(statuses: list, status: str):
     # In the scenario that lower status are missed or not upgraded, then we can align attempt with any of the statuses
-    statuses_lower_than = DISPOSITION_LOWER.get(status, ["reached", "failed"])
+    statuses_lower_than = DISPOSITION_LOWER.get(status, ["attempted"])
     return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) in statuses_lower_than, statuses))
 
 def get_next_delay(attempts: int, workflow_stage: dict, timezone: str = None, due_date: int = None, last_attempt_timestamp: int = None, dealership_timings = None, channel = None):
