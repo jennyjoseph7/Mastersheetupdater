@@ -13,39 +13,52 @@ import typing
 
 from ai_service import ai_service
 from os.path import dirname, abspath, join as joinpath
+
 BASE_DIR = dirname(dirname(abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 from gryd_worker import gryd, gryd_helpers as hp
+
 json = hp.json
 APP_DIR = dirname(abspath(__file__))
 if APP_DIR not in sys.path:
     sys.path.insert(1, APP_DIR)
-from config import AUTOCRM_APP_ENTERPRISE_ID, OPENAI_API_KEY, \
-    OPENAI_IMAGE_MODEL, \
-    OPENAI_IMAGE_SIZE, \
-    OPENAI_INPUT_TEXT_TOKEN_PRICE, \
-    OPENAI_OUTPUT_TEXT_TOKEN_PRICE, \
-    OPENAI_INPUT_IMAGE_TOKEN_PRICE, \
-    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE, \
-    FIREFLY_SERVICES_CLIENT_ID, \
-    FIREFLY_SERVICES_CLIENT_SECRET, \
-    FIREFLY_CONTENT_CLASS, \
-    FIREFLY_STRUCTURE_STRENGTH, \
-    FIREFLY_CREDITS_PER_IMAGE, \
-    FIREFLY_USD_PER_CREDIT, \
-    ADOBE_ANALYTICS_GLOBAL_COMPANY_ID, \
-    ADOBE_ANALYTICS_CLIENT_ID, \
-    ADOBE_ANALYTICS_ACCESS_TOKEN, \
-    VALIDATE_PROMPT_MODEL, \
-    AutocrmModel
-from combine_images import merge_layers, DEFAULT_PNG_ELEMENTS, DEFAULT_SVG_ELEMENTS, replace_svg_text_by_id, DEFAULT_OFFER, DEFAULT_CAMPAIGN_DETAILS
+from config import (
+    AUTOCRM_APP_ENTERPRISE_ID,
+    OPENAI_API_KEY,
+    OPENAI_IMAGE_MODEL,
+    OPENAI_IMAGE_SIZE,
+    OPENAI_INPUT_TEXT_TOKEN_PRICE,
+    OPENAI_OUTPUT_TEXT_TOKEN_PRICE,
+    OPENAI_INPUT_IMAGE_TOKEN_PRICE,
+    OPENAI_OUTPUT_IMAGE_TOKEN_PRICE,
+    FIREFLY_SERVICES_CLIENT_ID,
+    FIREFLY_SERVICES_CLIENT_SECRET,
+    FIREFLY_CONTENT_CLASS,
+    FIREFLY_STRUCTURE_STRENGTH,
+    FIREFLY_CREDITS_PER_IMAGE,
+    FIREFLY_USD_PER_CREDIT,
+    ADOBE_ANALYTICS_GLOBAL_COMPANY_ID,
+    ADOBE_ANALYTICS_CLIENT_ID,
+    ADOBE_ANALYTICS_ACCESS_TOKEN,
+    VALIDATE_PROMPT_MODEL,
+    AutocrmModel,
+)
+from combine_images import (
+    merge_layers,
+    DEFAULT_PNG_ELEMENTS,
+    DEFAULT_SVG_ELEMENTS,
+    replace_svg_text_by_id,
+    DEFAULT_OFFER,
+    DEFAULT_CAMPAIGN_DETAILS,
+)
 from check_distortion import analyze_image, pad_and_resize_image, compare_images
 from spdl_comfy import comfy_image_generation_task
 from spdl_comfy import gemini_image_generation_task
 from spark_helpers import func_gryd_file_system, download_file
 from prompt_formatter import convert_prompt as _convert_prompt
-SERVICE = 'spark'
+
+SERVICE = "spark"
 gryd.SERVICE = SERVICE
 THREADS_PER_SESSION = 0.3
 __version__ = "0.0.1"
@@ -56,19 +69,38 @@ FIREFLY_IMS_SCOPE = os.environ.get(
     "FIREFLY_IMS_SCOPE",
     "openid,AdobeID,read_organizations,firefly_enterprise,firefly_api,ff_apis",
 )
-FIREFLY_JOB_POLL_INTERVAL_SEC = float(os.environ.get("FIREFLY_JOB_POLL_INTERVAL_SEC", "1"))
+FIREFLY_JOB_POLL_INTERVAL_SEC = float(
+    os.environ.get("FIREFLY_JOB_POLL_INTERVAL_SEC", "1")
+)
 FIREFLY_JOB_MAX_WAIT_SEC = float(os.environ.get("FIREFLY_JOB_MAX_WAIT_SEC", "600"))
 DEFAULT_OUTPUT_PATH = joinpath(APP_DIR, "output")
 hp.mkdir_p(DEFAULT_OUTPUT_PATH)
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
 
-@gryd.is_a_task(function_name="distortion_report", job_param='job', logger_param='logger')
-def distortion_report(image_path: str, model: str = None, min_dim: int = 1024, max_aspect_ratio: float = 3, job: dict = None, logger: hp.logging.Logger = None):
+@gryd.is_a_task(
+    function_name="distortion_report", job_param="job", logger_param="logger"
+)
+def distortion_report(
+    image_path: str,
+    model: str = None,
+    min_dim: int = 1024,
+    max_aspect_ratio: float = 3,
+    job: dict = None,
+    logger: hp.logging.Logger = None,
+):
     logger = logger or mlogger
-    return analyze_image(image_path, model=model, min_dim=min_dim, max_aspect_ratio=max_aspect_ratio, verbose = True, logger=logger)
+    return analyze_image(
+        image_path,
+        model=model,
+        min_dim=min_dim,
+        max_aspect_ratio=max_aspect_ratio,
+        verbose=True,
+        logger=logger,
+    )
 
-def do_download(url, files_to_delete = None, suffix='.png'):
+
+def do_download(url, files_to_delete=None, suffix=".png"):
     files_to_delete = files_to_delete or []
     if not url:
         return None
@@ -78,11 +110,18 @@ def do_download(url, files_to_delete = None, suffix='.png'):
     files_to_delete.append(file_name.name)
     return download_file(url, file_name.name)
 
-def manage_svg(element: str, rooftop: dict, template: dict, files_to_delete: list, logger: hp.logging.Logger = None):
+
+def manage_svg(
+    element: str,
+    rooftop: dict,
+    template: dict,
+    files_to_delete: list,
+    logger: hp.logging.Logger = None,
+):
     logger = logger or mlogger
     if not rooftop:
         return None
-    element_svg_path = template.get(DEFAULT_SVG_ELEMENTS[element]['url'])
+    element_svg_path = template.get(DEFAULT_SVG_ELEMENTS[element]["url"])
     if not element_svg_path:
         return None
     text_to_ids = DEFAULT_SVG_ELEMENTS[element]["ids"]
@@ -106,12 +145,17 @@ def get_logo(
     if not brand:
         logger.warning(f"{logo_type.title()} not found: {brand}")
         return None
-    if template.get('theme_type') == 'light':
-        return do_download(brand.get('light_theme_logo_url') or brand.get('logo_url'), files_to_delete)
-    elif template.get('theme_type') == 'dark':
-        return do_download(brand.get('dark_theme_logo_url') or brand.get('logo_url'), files_to_delete)
+    if template.get("theme_type") == "light":
+        return do_download(
+            brand.get("light_theme_logo_url") or brand.get("logo_url"), files_to_delete
+        )
+    elif template.get("theme_type") == "dark":
+        return do_download(
+            brand.get("dark_theme_logo_url") or brand.get("logo_url"), files_to_delete
+        )
     else:
-        return do_download(brand.get('logo_url'), files_to_delete)
+        return do_download(brand.get("logo_url"), files_to_delete)
+
 
 def do_the_merge(
     rooftop_type: str,
@@ -195,7 +239,6 @@ def do_the_merge(
             DEFAULT_OUTPUT_PATH, f"{rooftop_type}_{hp.uuid.uuid4()}.png"
         )
 
-
         merge_layers(
             base_png, png_args, svg_args, output_path=output_path, logger=logger
         )
@@ -239,8 +282,9 @@ def create_campaign_image(
     rooftop_type: str,
     template_id: str,
     base_png: str,
-    campaign_title: str = None,
     campaign_hook: str = None,
+    campaign_slogan: str = None,
+    campaign_title: str = None,
     campaign_message: str = None,
     campaign_hashtags: typing.Union[list[str], str] = None,
     campaign_caption: str = None,
@@ -258,8 +302,9 @@ def create_campaign_image(
             "rooftop_type",
             "template_id",
             "base_png",
-            "campaign_title",
             "campaign_hook",
+            "campaign_slogan",
+            "campaign_title",
             "campaign_message",
             "campaign_hashtags",
             "campaign_caption"
@@ -277,8 +322,9 @@ def create_campaign_image(
     - rooftop_type (str): Type of rooftop, e.g., 'showroom', 'workshop', or 'buyback_center'.
     - template_id (str): The ID of the template to use for image generation.
     - base_png (str): URL or path to the base PNG image.
-    - campaign_title (str): (Optional) Title of the campaign.
     - campaign_hook (str): (Optional) Campaign hook or tagline.
+    - campaign_slogan (str):(Optional) Campaign slogan .
+    - campaign_title (str): (Optional) Title of the campaign.
     - campaign_message (str): (Optional) Campaign message content.
     - campaign_hashtags (str or list[str]): (Optional) Hashtags to use for the campaign, as comma/pipe/space/semicolon separated string or list.
     - campaign_caption (str): (Optional) Caption to appear with the campaign image.
@@ -336,12 +382,16 @@ def create_campaign_image(
         rooftop.get("hashtags") or [], previous_hashtags=campaign_hashtags
     )
     campaign_details = {
-        "title": campaign_title or "",
         "hook": campaign_hook or "",
+        "slogan": campaign_slogan or "",
+        "title": campaign_title or "",
         "message": campaign_message or "",
         "hashtags": campaign_hashtags,
         "caption": campaign_caption or "",
     }
+    print(
+        f"__title:{campaign_title},__hook:{campaign_hook}, __slogan:{campaign_slogan}"
+    )
     return do_the_merge(
         template_id,
         base_png,
@@ -536,7 +586,7 @@ def create_rooftop_image(
     brand = brand_model.get(brand_id)
     logger.info(f"Brand: {brand}")
     campaign_details = {
-        "title": post_idea.get("slogan"),
+        "slogan": post_idea.get("slogan"),
         "hook": post_idea.get("hook"),
         "message": post_idea.get("message"),
         "hashtags": manage_hashtags(
@@ -588,15 +638,15 @@ def create_rooftop_images_batch(
     if not rooftop_type:
         raise ValueError(f"Invalid campaign type: {post_idea.get('campaign_type')}")
     rooftop_model = get_rooftop_model(rooftop_type, logger=logger)
-    region_id = post_idea.get('region_id')
-    brand_id = post_idea.get('brand_id')
+    region_id = post_idea.get("region_id")
+    brand_id = post_idea.get("brand_id")
     brand = brand_model.get(brand_id)
     template_id = post_idea.get("autosphere_template_id")
     template = template_model.get(template_id)
     rooftop_post_model = get_rooftop_post_model(rooftop_type, logger=logger)
     offer = DEFAULT_OFFER
     campaign_details = {
-        "title": post_idea.get("slogan"),
+        "slogan": post_idea.get("slogan"),
         "hook": post_idea.get("hook"),
         "message": post_idea.get("message"),
         "hashtags": manage_hashtags(
@@ -763,9 +813,7 @@ def openai_image_generation(
         edit_prompt = f"{prompt.strip()} (Preserve details and features of the car.)"
         logger.info(f"Edit prompt: {edit_prompt}")
 
-        headers = {
-            "Authorization": f"Bearer {api_key}"
-        }
+        headers = {"Authorization": f"Bearer {api_key}"}
 
         api_url = "https://api.openai.com/v1/images/edits"
 
@@ -778,7 +826,7 @@ def openai_image_generation(
         }
 
         data = {
-            "model": kwargs.get('model_name', OPENAI_IMAGE_MODEL),
+            "model": kwargs.get("model_name", OPENAI_IMAGE_MODEL),
             "prompt": edit_prompt,
             "n": fixed_number_of_images,
             "size": kwargs.get("size", OPENAI_IMAGE_SIZE),
@@ -812,7 +860,7 @@ def openai_image_generation(
 
         # -------------------- HANDLE OUTPUT --------------------
         for idx, item in enumerate(output_items):
-            logger.info(f"Processing image {idx+1}")
+            logger.info(f"Processing image {idx + 1}")
 
             if "b64_json" in item:
                 logger.info("Image received as base64")

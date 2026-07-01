@@ -17,3 +17,4 @@ cleantext==1.1.4
 lxml>=6.0.2
 pypdf==6.6.2
 facebook_business==25.0.0
+imagesize 

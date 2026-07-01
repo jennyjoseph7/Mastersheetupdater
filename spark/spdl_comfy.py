@@ -4,6 +4,7 @@ import time
 import uuid
 import logging
 import requests
+import imagesize
 import vertexai
 import tempfile
 from openai import OpenAI
@@ -243,6 +244,9 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
                 if not os.path.exists(output_path):
                     logger.warning(f"Output image not found: {output_path}")
                     continue
+
+                width, height = imagesize.get(output_path)
+                logger.info(f"Output image dimensions: width={width}, height={height} ({output_path})")
 
                 ext = os.path.splitext(output_path)[1].lower().lstrip('.')
                 media_type = "image" if ext in ("png", "jpg", "jpeg", "webp", "gif") else "document"
