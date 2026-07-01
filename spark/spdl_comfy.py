@@ -18,6 +18,7 @@ from google.genai.local_tokenizer import LocalTokenizer
 from gryd_worker import gryd
 from prompt_formatter import convert_prompt as _convert_prompt
 from spark_helpers import func_gryd_file_system
+from check_distortion import pad_and_resize_image
 
 # -------------------- BASE DIR --------------------
 from os.path import dirname, abspath, join as joinpath
@@ -63,6 +64,7 @@ SERVICE = AUTOCRM_SPARK_COMFY_SERVICE_NAME
 gryd.SERVICE = SERVICE
 THREADS_PER_SESSION = 0.3
 gryd.set_queue_manager()
+GRYD_UPLOAD_DIMENSIONS = [1080, 1350]
 
 
 # -------------------- HELPERS --------------------
@@ -276,7 +278,13 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
 
                 width, height = imagesize.get(output_path)
                 logger.info(
-                    f"__Output image dimensions: width={width}, height={height} ({output_path})"
+                    f"Output image dimensions: width={width}, height={height} ({output_path})"
+                )
+
+                pad_and_resize_image(output_path, list(GRYD_UPLOAD_DIMENSIONS), logger=logger)
+                upload_width, upload_height = imagesize.get(output_path)
+                logger.info(
+                    f"Resized for Gryd upload: width={upload_width}, height={upload_height} ({output_path})"
                 )
 
                 ext = os.path.splitext(output_path)[1].lower().lstrip(".")
@@ -292,6 +300,9 @@ def comfy_image_generation_task(input_image_url, prompt, number_of_images=1, **k
                 if url:
                     image_urls.append(url)
                     logger.info(f"Uploaded to GRYD, URL: {url}")
+                    logger.info(
+                        f"Gryd upload dimensions: width={upload_width}, height={upload_height}"
+                    )
                 else:
                     logger.warning(f"Upload failed for: {output_path}")
 
