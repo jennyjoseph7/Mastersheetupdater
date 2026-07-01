@@ -519,7 +519,7 @@ def get_valid_value(row, key):
         return None
     return value.strip()
 
-def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, next_schedule_time = None, logger = None):
+def process_common_row(campaign_type, row, models, missing_reason = None, dealership_id = None, campaign_id = None, campaign_objective_id = None, audience_name = None, rooftop_type = None, rooftop_id = None, next_schedule_time = None, logger = None, audience_task_id = None):
     logger = logger or mlogger
     logger.info(f"Processing common row: {row}")
     missing_reason = missing_reason or []
@@ -529,6 +529,8 @@ def process_common_row(campaign_type, row, models, missing_reason = None, dealer
     row['campaign_type'] = campaign_type
     row['audience_name'] = audience_name
     row[f"{rooftop_type}_id"] = rooftop_id if rooftop_type else None
+    if audience_task_id:
+        row['audience_task_id'] = audience_task_id
     logger.info(f"Processing common row after adding common columns: {row}")
     campaign_objective_model = AutocrmModel('campaign_objective')
     campaign_objective = campaign_objective_model.get(campaign_objective_id)
@@ -909,6 +911,16 @@ def gryd_task_assign_audience_to_campaign(
         "campaign_objective_id": campaign_objective_id,
         "dealership_id": dealership_id
     }
+
+    # If a specific audience_task_id is provided in kwargs, restrict updates to that set
+    audience_task_id = kwargs.get("audience_task_id")
+    if audience_task_id:
+        filters["audience_task_id"] = audience_task_id
+
+    # If audience_name is provided in kwargs, restrict updates to that audience name
+    audience_name = kwargs.get("audience_name")
+    if audience_name:
+        filters["audience_name"] = audience_name
 
     logger.info(f"Filtering leads by: {filters}")
     logger.info(f"Applying updates to fields: {list(instance.keys())}")
@@ -1683,6 +1695,7 @@ def gryd_task_import_leads_from_csv(
     rooftop_id = workshop_id if rooftop_type == 'workshop' else showroom_id if rooftop_type == 'showroom' else dealership_id
     campaign_objective_id = kwargs.get("campaign_objective_id")
     next_schedule_time = kwargs.get("next_schedule_time")
+    audience_task_id = kwargs.get("audience_task_id")
     logger.info(f"Importing leads from CSV for campaign_type: {campaign_type}, dealership_id: {dealership_id}, csv_file_link: {csv_file_link}, campaign_id: {campaign_id}, enterprise_id: {enterprise_id}, mapping: {mapping}, {rooftop_type}_id: {rooftop_id}, audience_name: {audience_name}")
     # Model selection
     models = load_models(campaign_type)
@@ -1720,7 +1733,7 @@ def gryd_task_import_leads_from_csv(
                     missing_reason = [f"Line {i}: "]
                     row = {headers[i]: row.get(k) for i, k in enumerate(row.keys()) if is_valid_value(row, k)}
                     logger.info(f"Row: {row}")
-                    row, missing_reason = process_common_row(campaign_type, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, next_schedule_time = next_schedule_time, logger = logger)
+                    row, missing_reason = process_common_row(campaign_type, row, models, missing_reason, dealership_id, campaign_id = campaign_id, campaign_objective_id = campaign_objective_id, audience_name = audience_name, rooftop_type = rooftop_type, rooftop_id = rooftop_id, next_schedule_time = next_schedule_time, logger = logger, audience_task_id = audience_task_id)
                     row_ctx = {
                       "line_num": i,
                       **row

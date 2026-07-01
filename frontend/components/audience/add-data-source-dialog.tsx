@@ -12,11 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Stepper } from "@/components/campaign/stepper";
 import { EnterConnectionDetails } from "./steps/enter-connection-details";
 import { AssignAudienceDetails } from "./steps/assign-audience-details";
-import { MapFields } from "./steps/map-fields";  
+import { MapFields } from "./steps/map-fields";
 import { PreviewConfirm } from "./steps/preview-confirm";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import type { DataSource } from "@/app/audience/page";
-import { startImportTask, createAudienceTask, updateAudienceTask, getDealershipId } from "@/utils/api";
+import {
+  startImportTask,
+  createAudienceTask,
+  updateAudienceTask,
+  getDealershipId,
+} from "@/utils/api";
 import { get } from "http";
 
 // NEW PROP: prefilledData
@@ -26,7 +31,7 @@ interface AddDataSourceDialogProps {
   onSave: (
     dataSource: Omit<DataSource, "id" | "lastSynced" | "status"> & {
       [key: string]: any;
-    }
+    },
   ) => void;
   prefilledData?: {
     category?: string;
@@ -51,10 +56,10 @@ export interface DataSourceFormData {
   headers: string;
   file: File | null;
   fileUrl?: string;
-  extractedHeaders: string[]; 
+  extractedHeaders: string[];
   fieldMappings: FieldMapping[];
   errorCsvUrl?: string;
-  taskId?: string; 
+  taskId?: string;
   taskStatus?: string;
   audienceTaskId?: string; // [Changed] Added to store DB ID
   audienceName: string;
@@ -118,12 +123,13 @@ export function AddDataSourceDialog({
   // Re-sync props if dialog is reused without unmounting
   useEffect(() => {
     if (isOpen && prefilledData) {
-        setFormData(prev => ({
-            ...prev,
-            category: prefilledData.category || prev.category,
-            campaignObjectiveId: prefilledData.objectiveId || prev.campaignObjectiveId,
-            campaignId: prefilledData.campaignId || prev.campaignId,
-        }));
+      setFormData((prev) => ({
+        ...prev,
+        category: prefilledData.category || prev.category,
+        campaignObjectiveId:
+          prefilledData.objectiveId || prev.campaignObjectiveId,
+        campaignId: prefilledData.campaignId || prev.campaignId,
+      }));
     }
   }, [isOpen, prefilledData]);
 
@@ -135,17 +141,46 @@ export function AddDataSourceDialog({
     setIsStartingImport(true);
     try {
       const mappingPayload: Record<string, string> = {};
-      formData.fieldMappings.forEach(m => {
+      formData.fieldMappings.forEach((m) => {
         if (m.enabled && m.sourceField && m.targetField) {
           mappingPayload[m.sourceField] = m.targetField;
         }
       });
 
       // Use the prefilled Draft Campaign ID if available, otherwise fallback to Objective ID
-      const targetCampaignId = formData.campaignId || formData.campaignObjectiveId;
-      
+      const targetCampaignId =
+        formData.campaignId || formData.campaignObjectiveId;
 
-      
+      // Generate a temporary task ID to create the record first
+      const tempTaskId =
+        "autongage_import_task_" + Math.random().toString(36).substring(2, 15);
+
+      const newTask = await createAudienceTask({
+        task_id: tempTaskId,
+        campaign_type: formData.category,
+        campaign_objective_id: formData.campaignObjectiveId,
+        campaign_id: formData.campaignId || "",
+        campaign_objective_name: "",
+        audience_name: formData.audienceName,
+        dealership_id: getDealershipId(),
+        tags: formData.tags || [],
+        csv_file_url: formData.fileUrl,
+        error_csv_link: "",
+        field_mapping: formData.fieldMappings.map((m) => ({
+          source_field: m.sourceField,
+          target_field: m.targetField,
+          enabled: m.enabled,
+        })),
+        source_name: formData.sourceName || "Uploaded via csv",
+        source_type: formData.sourceType || "csv",
+        csv_status: "pending",
+      });
+
+      const dbAudienceTaskId =
+        newTask?.audience_task_id || newTask?._id || newTask?.id;
+      if (!dbAudienceTaskId)
+        throw new Error("Failed to create audience task record");
+
       const data = await startImportTask(
         formData.category,
         formData.audienceName,
@@ -153,44 +188,28 @@ export function AddDataSourceDialog({
         formData.tags,
         formData.sourceName,
         mappingPayload,
-        targetCampaignId 
+        targetCampaignId,
+        getDealershipId(),
+        dbAudienceTaskId,
       );
 
       const taskId = data.job?.task_id;
       if (!taskId) throw new Error("No Task ID returned");
 
-      // [Changed] Capture response to get the DB ID
-      const newTask = await createAudienceTask({
+      // Update the record with the actual Gryd taskId
+      await updateAudienceTask(dbAudienceTaskId, {
         task_id: taskId,
-        campaign_type: formData.category,
-        campaign_objective_id: formData.campaignObjectiveId, 
-        campaign_id: formData.campaignId || "",
-        campaign_objective_name: "",
-        audience_name: formData.audienceName,
-        dealership_id: getDealershipId(),
-        tags: formData.tags || [],
-        csv_file_url: formData.fileUrl,
-        error_csv_link: "", 
-        field_mapping: formData.fieldMappings.map(m => ({
-          source_field: m.sourceField,
-          target_field: m.targetField,
-          enabled: m.enabled
-        })),
-        source_name: formData.sourceName || "Uploaded via csv",
-        source_type: formData.sourceType || "csv",
-        csv_status: "pending"
       });
 
       // [Changed] Store audienceTaskId
-      updateFormData({ 
-        taskId: taskId, 
+      updateFormData({
+        taskId: taskId,
         taskStatus: "started",
-        audienceTaskId: newTask?.audience_task_id || newTask?._id || newTask?.id
+        audienceTaskId: dbAudienceTaskId,
       });
-      
+
       setCompletedSteps([...completedSteps, currentStep]);
       setCurrentStep(currentStep + 1);
-
     } catch (error) {
       console.error("Failed to start import or create task record:", error);
       alert("Failed to initiate import task. Please try again.");
@@ -223,14 +242,14 @@ export function AddDataSourceDialog({
   // [Changed] Updated handleSave to call updateAudienceTask
   const handleSave = async () => {
     setIsSaving(true);
-    
+
     // Update status and size in DB
     if (formData.audienceTaskId) {
       try {
         await updateAudienceTask(formData.audienceTaskId, {
           csv_status: "connected",
           audience_size: formData.audienceSize,
-          process_size: formData.processedCount
+          process_size: formData.processedCount,
         });
       } catch (error) {
         console.error("Failed to update audience task status:", error);
@@ -246,10 +265,10 @@ export function AddDataSourceDialog({
       category: formData.category,
       tags: formData.tags,
       connectionDetails: {
-        taskId: formData.taskId, 
+        taskId: formData.taskId,
       },
     };
-    
+
     onSave(dataSource as any);
     setIsSaving(false);
     handleClose();
@@ -264,7 +283,11 @@ export function AddDataSourceDialog({
   const isStepValid = () => {
     switch (currentStep) {
       case 1:
-        return !!(formData.audienceName && formData.category && formData.campaignObjectiveId);
+        return !!(
+          formData.audienceName &&
+          formData.category &&
+          formData.campaignObjectiveId
+        );
       case 2:
         return !!(
           formData.sourceName &&
@@ -272,8 +295,10 @@ export function AddDataSourceDialog({
           formData.fileUrl &&
           formData.extractedHeaders.length > 0
         );
-      case 3: 
-        return formData.fieldMappings.some(m => m.enabled && m.sourceField && m.targetField);
+      case 3:
+        return formData.fieldMappings.some(
+          (m) => m.enabled && m.sourceField && m.targetField,
+        );
       case 4:
         return true;
       default:
@@ -294,12 +319,14 @@ export function AddDataSourceDialog({
         <DialogHeader>
           <DialogTitle>
             {currentStep === 1
-              ? (isPrefilled ? "Add Audience Details" : "Select Category & Add Audience Details")
+              ? isPrefilled
+                ? "Add Audience Details"
+                : "Select Category & Add Audience Details"
               : currentStep === 2
-              ? "Upload & Connection"
-              : currentStep === 3
-              ? "Map Fields"
-              : "Preview & Confirm"}
+                ? "Upload & Connection"
+                : currentStep === 3
+                  ? "Map Fields"
+                  : "Preview & Confirm"}
           </DialogTitle>
         </DialogHeader>
 
@@ -316,7 +343,7 @@ export function AddDataSourceDialog({
             <AssignAudienceDetails
               formData={formData}
               updateFormData={updateFormData}
-              isPrefilled={isPrefilled} 
+              isPrefilled={isPrefilled}
             />
           )}
           {currentStep === 2 && (
@@ -326,10 +353,7 @@ export function AddDataSourceDialog({
             />
           )}
           {currentStep === 3 && (
-            <MapFields
-              formData={formData}
-              updateFormData={updateFormData}
-            />
+            <MapFields formData={formData} updateFormData={updateFormData} />
           )}
           {currentStep === 4 && (
             <PreviewConfirm
@@ -348,22 +372,32 @@ export function AddDataSourceDialog({
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          
+
           <div className="text-sm text-muted-foreground">
             Step {currentStep} of {steps.length}
           </div>
 
           {currentStep < 4 ? (
-            <Button onClick={handleNext} disabled={!isStepValid() || isStartingImport}>
-              {isStartingImport && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              onClick={handleNext}
+              disabled={!isStepValid() || isStartingImport}
+            >
+              {isStartingImport && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {currentStep === 3 ? "Import & Preview" : "Continue"}
               {!isStartingImport && <ChevronRight className="h-4 w-4 ml-2" />}
             </Button>
           ) : (
-            <Button onClick={handleSave} disabled={formData.taskStatus !== "completed" || isSaving}>
+            <Button
+              onClick={handleSave}
+              disabled={formData.taskStatus !== "completed" || isSaving}
+            >
               {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {formData.taskStatus === "completed" 
-                ? (isSaving ? "Saving..." : "Save & Connect") 
+              {formData.taskStatus === "completed"
+                ? isSaving
+                  ? "Saving..."
+                  : "Save & Connect"
                 : "Processing..."}
             </Button>
           )}

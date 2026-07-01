@@ -894,7 +894,10 @@ const handleProceed = async () => {
           createdCampaignId,
           selectedAudienceDetails.campaign_objective_id || selectedAudienceDetails.objective_id || selectedObjective,
           getDealershipId(),
-          {},
+          { 
+            audience_task_id: selectedAudienceDetails.task_id,
+            audience_name: selectedAudienceDetails.audience_name
+          },
           ((msg: string) => setLaunchStatus(msg)) as any
         );
       }
@@ -1853,23 +1856,37 @@ const handleProceed = async () => {
                       <p className="text-xs text-muted-foreground mt-1">Upload via CSV/Excel</p>
                     </Card>
 
-                   <Card
+                    <Card
                       className={cn(
-                        "opacity-50 cursor-not-allowed transition-all text-center p-4 bg-muted/5 border-muted/50"
+                        "cursor-pointer hover:border-primary transition-all text-center p-4",
+                        audienceSourceType === "previous" && "border-primary bg-primary/5"
                       )}
+                      onClick={() => {
+                        setAudienceSourceType("previous");
+                        setTargetAudience([]);
+                        setSelectedAudienceDetails(null);
+                        setPage(1);
+                      }}
                     >
-                      <Database className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      <h4 className="font-semibold text-sm text-muted-foreground">Previously Used</h4>
+                      <Database className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <h4 className="font-semibold text-sm">Previously Used</h4>
                       <p className="text-xs text-muted-foreground mt-1">Clone from past campaigns</p>
                     </Card>
 
                     <Card
                       className={cn(
-                        "opacity-50 cursor-not-allowed transition-all text-center p-4 bg-muted/5 border-muted/50"
+                        "cursor-pointer hover:border-primary transition-all text-center p-4",
+                        audienceSourceType === "fresh" && "border-primary bg-primary/5"
                       )}
+                      onClick={() => {
+                        setAudienceSourceType("fresh");
+                        setTargetAudience([]);
+                        setSelectedAudienceDetails(null);
+                        setPage(1);
+                      }}
                     >
-                      <Users className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      <h4 className="font-semibold text-sm text-muted-foreground">Unused Fresh Set</h4>
+                      <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
+                      <h4 className="font-semibold text-sm">Unused Fresh Set</h4>
                       <p className="text-xs text-muted-foreground mt-1">Select unused leads</p>
                     </Card>
                   </div>

@@ -187,6 +187,7 @@ async function startImportTask(
   fieldMapping = {},
   campaignIdOrObjectiveId = "",
   dealershipId = getDealershipId(),
+  audienceTaskId = "",
 ) {
   const kwargs = {
     audience_name: audienceName,
@@ -195,6 +196,7 @@ async function startImportTask(
     tags,
     source_name: sourceName || "Uploaded via csv",
     mapping: fieldMapping,
+    audience_task_id: audienceTaskId,
   };
 
   if (campaignIdOrObjectiveId) {
