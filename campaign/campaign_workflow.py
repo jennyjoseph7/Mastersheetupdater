@@ -11,7 +11,8 @@ from config import AUTOCRM_APP_ENTERPRISE_ID, \
     get_phone_code_from_dealership, \
     get_cheapest_channel, \
     get_channel_identifier_from_lead, \
-    process_phone_number
+    process_phone_number, \
+    DUE_DATE_ATTRIBUTES
     
 from autocrm_db_helper import get_pg_connector
 from typing import List, Union, Dict, Any
@@ -105,14 +106,15 @@ REQUIRED_RETRIGGER = {
 }
 
 
+
 CAMPAIGN_WORKFLOW = {
     "queued": {
-        "retries": 10,
+        "retries": 0,
         "delay": 0,
         "trigger": None
     },
     "failed": {
-        "retries": 4,
+        "retries": 20,
         "delay_type": "linear",
         "delay": 3600*4,
         "trigger": "switch_to_next_credential"
@@ -122,38 +124,105 @@ CAMPAIGN_WORKFLOW = {
         "trigger": "switch_to_next_credential"
     },
     "attempted": {
-        "retries": 4,
+        "retries": 20,
         "delay_type": "linear",
-        "delay": 3600*6,
+        "delay": 3600*4,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
-        "retries": 2,
-        "delay": 3600*2,
-        "delay_type": "linear",
-        "trigger": "switch_to_next_channel"
+        "retries": 20,
+        "delay_type": "v_function",
+        "delay_param": 1,
+        "minimum_delay": 2*3600,
+        "maximum_delay": 5*24*3600,
+        "stop_period": 3600*24*30,
+        "trigger": "switch_to_next_credential"
     },
     "contacted": {
-        "retries": 1,
-        "delay": 3600*4,
-        "delay_type": "linear",
-        "trigger": "switch_to_next_channel"
+        "retries": 20,
+        "delay_type": "v_function",
+        "delay_param": 1,
+        "minimum_delay": 2*3600,
+        "maximum_delay": 5*24*3600,
+        "stop_period": 3600*24*30,
+        "trigger": "switch_to_next_credential"
     },
     "engaged": {
-        "retries": 0,
-        "delay": 86400,
+        "retries": 20,
+        "delay_type": "v_function",
+        "delay_param": 1,
+        "minimum_delay": 2*3600,
+        "maximum_delay": 5*24*3600,
+        "stop_period": 3600*24*30,
         "trigger": "follow_up_contact"
     },
     "converted": {
         "retries": 0,
         "delay": 0,
+        "delay_type": "v_function",
         "trigger": "confirmation_message"
     }
 }
 
 mlogger = gryd.hp.get_logger(gryd.SERVICE)
 
+def time_difference(tf):
+    if tf< 60:
+        return f"{tf:.2f} seconds"
+    if tf < 3600:
+        return f"{tf / 60.0:.2f} minutes"
+    if tf < 3600*24:
+        return f"{tf / 3600.0:.2f} hours"
+    return f"{tf / (3600.0*24):.2f} days"
 
+def v_function(last_attempt_timestamp, due_date, minimum_delay = 2*3600, maximum_delay = 5*24*3600, stop_period = 3600*24*30):
+    """
+    This function uses the Due date to calculate the next attempt timestamp.
+    It uses a "v" shaped curve, meaning, the delay decreases as the due date approaches.
+    If the due date has passed then the delay again increases slowly until the stop period.
+    Args:
+        last_attempt_timestamp: The timestamp of the last attempt.
+        due_date: The due date of the task.
+        minimum_delay: The minimum delay in seconds.
+        maximum_delay: The maximum delay in seconds.
+    Returns:
+        The next attempt timestamp.
+    """
+    if last_attempt_timestamp is None or due_date is None:
+        return hp.epoch() + minimum_delay
+    last_attempt_timestamp = hp.to_epoch(last_attempt_timestamp)
+    due_date = hp.to_epoch(due_date)
+    if last_attempt_timestamp - due_date > stop_period:
+        return None
+    slope = (maximum_delay - minimum_delay) / stop_period
+    x = abs(due_date - last_attempt_timestamp)
+    sign = '-' if last_attempt_timestamp < due_date else '+'
+    mlogger.debug(f"Time difference: {sign}{time_difference(x)}")
+    delay = slope * x + minimum_delay
+    mlogger.debug(f"Original Delay: {time_difference(delay)}")
+    delay = min(maximum_delay, max(minimum_delay, delay))
+    return delay
+
+
+def simulate_v_function(due_date, minimum_delay = 2*3600, maximum_delay = 5*24*3600, stop_period = 3600*24*30, factor = 1):
+    """
+    This function simulates the v_function.
+    Args:
+        last_attempt_timestamp: The timestamp of the last attempt.
+        due_date: The due date of the task.
+        minimum_delay: The minimum delay in seconds.
+        maximum_delay: The maximum delay in seconds.
+    """
+    last_attempt_timestamp = hp.to_epoch(due_date) - 60*24*3600 # 60 days before the due date
+    while True:
+        delay = v_function(last_attempt_timestamp, due_date, minimum_delay, maximum_delay, stop_period, factor)
+        if delay is None:
+            break
+        next_attempt_timestamp = last_attempt_timestamp + delay
+        print(f"T1: {hp.to_datetime(last_attempt_timestamp)}, T2: {hp.to_datetime(next_attempt_timestamp)}, delay: {time_difference(next_attempt_timestamp - last_attempt_timestamp)}")
+        last_attempt_timestamp = next_attempt_timestamp
+    return last_attempt_timestamp
+    
 
 
 def get_model_and_attrs(campaign_type: str, enterprise_id: str = None):
@@ -203,28 +272,99 @@ def get_highest_status(statuses: list):
 
 def get_attempts(statuses: list, status: str):
     # In the scenario that lower status are missed or not upgraded, then we can align attempt with any of the statuses
-    statuses_lower_than = DISPOSITION_LOWER.get(status, [status])
+    statuses_lower_than = DISPOSITION_LOWER.get(status, ["attempted"])
     return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) in statuses_lower_than, statuses))
 
-def get_next_delay(status: str, attempts: int, workflow_stage: dict, timezone: str = None):
+def get_next_delay(attempts: int, workflow_stage: dict, timezone: str = None, due_date: int = None, last_attempt_timestamp: int = None, dealership_timings = None, channel = None):
     timezone = timezone or "Asia/Kolkata"
+    due_date = due_date or hp.epoch()
+    last_attempt_timestamp = last_attempt_timestamp or hp.epoch()
     next_delay_type = workflow_stage.get('delay_type', 'linear')
     next_delay_param = workflow_stage.get('delay_param', 1)
     next_delay = workflow_stage.get('delay', 1) or 1
+    minimum_delay = workflow_stage.get('minimum_delay', 2*3600)
+    maximum_delay = workflow_stage.get('maximum_delay', 5*24*3600)
+    stop_period = workflow_stage.get('stop_period', 3600*24*30)
     if next_delay_type == "exponential":
         next_delay = next_delay * (2 ** (next_delay_param * (attempts + 1)))
     elif next_delay_type == "linear":
         next_delay = next_delay * attempts * next_delay_param
+    elif next_delay_type == "v_function":
+        next_delay = v_function(last_attempt_timestamp, due_date, minimum_delay = minimum_delay, maximum_delay = maximum_delay, stop_period = stop_period)
+        if next_delay is None:
+            return None
     #TODO: Make sure the delay falls in the calling/messaging timeslot according to the timezone
     next_time = hp.now(timezone) + hp.timedelta(seconds=next_delay)
-    if next_time.hour < 9:
-        return next_delay + (9 - next_time.hour) * 3600
-    if next_time.hour > 18:
-        return next_delay + (24 + 9 - next_time.hour) * 3600
+    day_full = next_time.strftime("%A").lower()
+    day_short = next_time.strftime("%a").lower()
+    channel = channel or "voice_phone"
+    dealership_timings = dealership_timings or {
+        "start_time": 9,
+        "end_time": 18
+    }
+    def get_time(time_key, default_time):
+        # We need to get the time from the dealership_timings dictionary.
+        # We need to check for the keys in the following order:
+        # 1. {channel}_{day_full}_{time_key}
+        # 2. {channel}_{day_short}_{time_key}
+        # 3. {day_full}_{time_key}
+        # 4. {day_short}_{time_key}
+        # 5. time_key
+        # If the key is not found, then we return the default time.
+        for k_ in [f'{channel}_{day_full}_{time_key}', f"{channel}_{day_short}_{time_key}", f'{day_full}_{time_key}', f'{day_short}_{time_key}', time_key]:
+            if k_ in dealership_timings:
+                return dealership_timings.get(k_)
+        return default_time
+    start_time = get_time("start_time", 9)
+    end_time = get_time("end_time", 18)
+    if next_time.hour < start_time:
+        # e.g if next_time.hour is 8 and start_time is 9, 
+        # then we need to add 1 hour to the delay to get 1 hour which will be next day's 9 a.m.
+        return next_delay + ((start_time - next_time.hour) * 3600)
+    if next_time.hour > end_time:
+        # e.g if next_time.hour is 19 and end_time is 18, 
+        # then we need to add 24 hours to the delay to get 24 - 19 + 9 = 14 hours 
+        # which will be next day's 9 a.m.
+        return next_delay + ((24 - next_time.hour + start_time) * 3600)
     return next_delay
 
-def get_remaining_retries(workflow_stage: dict, attempts: int = 0):
-    return max(0, (workflow_stage.get('retries', 0) or 0) - attempts)
+def get_lead_next_schedule_time(lead: dict):
+    """Return the lead's existing next_schedule_time as epoch, if set."""
+    for key in ("next_schedule_time", "next_scheduled_time"):
+        value = lead.get(key)
+        if value is not None and value != "":
+            return hp.to_epoch(value)
+    return None
+
+def apply_next_schedule_time_floor(lead: dict, delay: int | float | None, logger=None):
+    """
+    If the lead already has next_schedule_time, do not schedule earlier than that.
+    Returns delay in seconds from now, bumped up when now + delay would fall before it.
+    """
+    logger = logger or mlogger
+    if delay is None:
+        return None
+    existing = get_lead_next_schedule_time(lead)
+    if existing is None:
+        return delay
+    now = hp.epoch()
+    proposed = now + float(delay)
+    if proposed >= existing:
+        return delay
+    adjusted = max(0.0, existing - now)
+    logger.info(
+        "Respecting existing next_schedule_time %s for lead: adjusting delay from %s to %s",
+        hp.to_datetime(existing),
+        time_difference(float(delay)),
+        time_difference(adjusted),
+    )
+    return adjusted
+
+def get_remaining_retries(workflow_stage: dict, attempts: int = 0, all_credentials_count: int = 0):
+    max_retries = workflow_stage.get('retries', 0) or 0
+    if all_credentials_count > 0:
+        max_retries = int(hp.np.ceil(max_retries / all_credentials_count))
+    return max(0, max_retries - attempts)
 
 def get_statuses(channel: str, channel_type: str, channel_identifier: str, status_model: AutocrmModel = None, lead_id: str = None, campaign_id: str = None, dealership_id: str = None, logger=None):
     logger = logger or mlogger
@@ -242,11 +382,29 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
         kws["campaign_id"] = campaign_id
     if dealership_id:
         kws["dealership_id"] = dealership_id
-    statuses = list(filter(lambda x: x.get('channel') == channel, DEBUG_STATUS)) if DEBUG_STATUS else status_model.list(**kws)
+    statuses = list(filter(lambda x: x.get('channel') == channel, DEBUG_STATUS)) if DEBUG_STATUS is not None else status_model.list(**kws)
     logger.info(f"Time taken to get statuses: {hp.time() - st} seconds")
     if not statuses:
         return None
     return statuses
+
+def get_due_date(lead: dict, statuses: list, timezone: str = None, logger=None):
+    logger = logger or mlogger
+    due_date = None
+    campaign_type = lead.get('campaign_type').replace('-', '_')
+    lead_id_attr = f"{campaign_type}_lead_id"
+    campaign_id = lead.get('campaign_id')
+    for k in DUE_DATE_ATTRIBUTES:
+        if lead.get(k):
+            due_date = hp.to_datetime(lead[k], tz = timezone)
+            due_epoch = hp.to_epoch(due_date)
+            logger.info(f"Due date found in lead id {lead.get(lead_id_attr)} in {campaign_type} campaign {campaign_id}: {k} = {due_date}")
+            return due_epoch
+    earliest_status = min(statuses, key=lambda x: x.get('created'))
+    created_datetime = hp.to_datetime(earliest_status.get('created'), tz = timezone)
+    created_epoch = hp.to_epoch(created_datetime)
+    logger.info(f"No due date found in lead id {lead.get(lead_id_attr)} in {campaign_type} campaign {campaign_id}, getting earliest status when created: {created_datetime}")
+    return created_epoch
 
 
 @gryd.is_a_task(function_name="get_channel_from_lead", job_param='job', auth_param='auth', logger_param='logger')
@@ -273,16 +431,29 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     st = hp.time()
     logger.info("Loading models for get_channel_from_lead")
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
+    campaign_type = campaign_details.get('campaign_type').replace('-', '_')
+    lead_id_attr = f"{campaign_type}_lead_id"
+    lead_id = lead.get(lead_id_attr)
     campaign_id = campaign_details.get('campaign_id')
     dealership_id = campaign_details.get('dealership_id')
     status_model = AutocrmModel('contact_status')
     region_model = AutocrmModel('region')
     region_subdivision_model = AutocrmModel('region_subdivision')
+    dealership_model = AutocrmModel('dealership')
+    dealership = dealership_model.get(dealership_id)
     workflow = workflow or CAMPAIGN_WORKFLOW
     logger.debug(f"Workflow: {workflow}")
     disposition = disposition or "queued"
     logger.info(f"Loaded models for get_channel_from_lead in {hp.time() - st} seconds")
     channels = campaign_details.get('channels') or ["voice_phone"]
+    # get all the credentials for the lead
+    all_credentials = {}
+    all_credentials_count = 0
+    for channel in channels:
+        channel_identifier_list = get_channel_identifier_from_lead(channel, lead, logger=logger)
+        all_credentials[channel] = channel_identifier_list
+        all_credentials_count += len(channel_identifier_list)
+    # Get the timezone for the campaign
     timezone = "Asia/Kolkata"
     if "region_subdivision_id" in campaign_details:
         region_subdivision = region_subdivision_model.get(campaign_details.get('region_subdivision_id'))
@@ -290,61 +461,72 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     else:
         region = region_model.get(campaign_details.get('region_id'))
         timezone = hp.make_single(region.get('timezones'), default = "Asia/Kolkata", force = True)
+    # Get the dealership timings for the campaign
+    dealership_timings = dealership.get('campaign_timings', {})
+    # Get the current channel for the lead
     current_channel = current_channel or lead.get('last_contacted_channel')
     logger.info(f"Current channel: {current_channel}")
     channels = sort_channel_by_cheapest(channels, current_channel=current_channel, channel_sequence = campaign_details.get('channel_sequence'), last_contacted_channel = lead.get('last_contacted_channel'))
-    logger.info(f"Checking for channels: {channels} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+    logger.info(f"Checking lead id {lead_id} in {campaign_type} campaign {campaign_id}, for channels: {channels}, enterprise_id={enterprise_id}")
     for channel in channels:
         channel_type = CHANNEL_IDENTIFIER_MAP.get(channel)
-        logger.info(f"Processing channel: {channel} with type: {channel_type} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
-        channel_identifier_list = get_channel_identifier_from_lead(channel, lead, channel_identifier=current_channel_identifier, logger=logger)
-        if not channel_identifier_list:
-            logger.error(f"No channel identifiers found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
-            continue
+        logger.info(f"Processing lead id {lead_id} in {campaign_type} campaign {campaign_id}, channel: {channel} with type: {channel_type}, enterprise_id={enterprise_id}")
         change_channel = False
+        channel_identifier_list = all_credentials.get(channel, []) 
+        if not channel_identifier_list:
+            logger.error(f"No channel identifiers found for lead id {lead_id} in {campaign_type} campaign {campaign_id}, channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
+            continue
         for channel_identifier in channel_identifier_list:
-            logger.info(f"Processing channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
+            logger.info(f"Processing lead id {lead_id} in {campaign_type} campaign {campaign_id}, channel identifier: {channel_identifier} for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
             statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, lead_id=lead_id, campaign_id=campaign_id, dealership_id=dealership_id, logger=logger)
             if not statuses:
-                logger.info(f"No statuses found for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, starting now.")
-                return channel, channel_identifier, 0, None
-            last_status = hp.make_single(statuses, force = True)
+                logger.info(f"No statuses found for lead id {lead_id} in {campaign_type} campaign {campaign_id}, channel: {channel} with channel identifier: {channel_identifier}, enterprise_id={enterprise_id}, starting now.")
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, 0, logger=logger), None
+            due_date = get_due_date(lead, statuses, timezone=timezone, logger=logger)
+            last_status_record = hp.make_single(statuses, force = True)
+            last_status = DISPOSITION_MAP.get(last_status_record.get('provider_status'), last_status_record.get('provider_status'))
+            last_attempt_timestamp = hp.to_epoch(last_status_record.get('updated') or last_status_record.get('created'))
             highest_status = get_highest_status(statuses)
-            logger.info(f"Highest status: {highest_status}")
+            logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Highest status: {highest_status}, last status: {last_status}, enterprise_id={enterprise_id}, due date: {due_date}")
             if highest_status == "queued":
-                return channel, channel_identifier, 0, None
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, 0, logger=logger), None
             if highest_status != "contacted":
                 attempts = get_attempts(statuses, highest_status)
-                logger.info("Got attempts for uncontacted: %s", attempts)
+                logger.info(f"Got {attempts} attempts for uncontacted in lead id {lead_id} in {campaign_type} campaign {campaign_id}, enterprise_id={enterprise_id}")
                 workflow_stage = (workflow or {}).get(highest_status) or CAMPAIGN_WORKFLOW.get(highest_status)
-                logger.info("Workflow stage taken: %s", workflow_stage)
+                logger.info("Workflow stage taken for lead id {lead_id} in {campaign_type} campaign {campaign_id}, enterprise_id={enterprise_id}: %s", workflow_stage)
                 # We haven't contacted yet, so we need to try and find the right credential and channel to connect to.
-                next_delay = get_next_delay(highest_status, attempts, workflow_stage, timezone=timezone)
-                next_retries = get_remaining_retries(workflow_stage, attempts)
-                logger.info("Next retries: %s, attempts: %s", next_retries, attempts)
+                next_delay = get_next_delay(attempts, workflow_stage, timezone=timezone, due_date=due_date, last_attempt_timestamp=last_attempt_timestamp, dealership_timings=dealership_timings, channel=channel)
+                next_retries = get_remaining_retries(workflow_stage, attempts, all_credentials_count=all_credentials_count)
+                logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Next retries: {next_retries}, attempts: {attempts}, enterprise_id={enterprise_id}")
                 if next_retries > 0:
-                    return channel, channel_identifier, next_delay, None
+                    return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), None
                 trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
             else:
                 # We have connected, so we need to follow up with the contact.
                 workflow_stage = (workflow or {}).get(disposition) or CAMPAIGN_WORKFLOW.get(disposition)
-                logger.info(f"Workflow stage for disposition: {disposition} is {workflow_stage}")
+                logger.info(f"Workflow stage in contacted for lead id {lead_id} in {campaign_type} campaign {campaign_id}, disposition: {disposition} is {workflow_stage}")
                 attempts = get_attempts(statuses, "contacted") # We need to count the number of times we have contacted.
-                logger.info(f"Attempts: {attempts}")
-                return None, None, 0, None  # In current production if contacted we will not follow-up
-                if disposition in ["engaged", "converted"]:
-                    attempts /= max(workflow_stage.get('retries', 0), 1) # We need to calculate attempts per contact.
-                    logger.info(f"Attempts per contact: {attempts}")
-                    logger.info(f"In current production if engaged or converted we will not follow-up: {disposition}")
-                    return None, None, 0, None
-                next_delay = get_next_delay(highest_status, attempts, workflow_stage)
-                logger.info(f"Next delay: {next_delay}")
-                #TODO: If user has requested call-back, then we should get next delay from the lead follow_up_date attribue if available
-                next_retries = get_remaining_retries(workflow_stage, attempts)
-                logger.info(f"Next retries: {next_retries}")
-                if next_retries > 0:
-                    return channel, channel_identifier, next_delay, None
-                trigger = workflow_stage.get('trigger', 'follow_up_contact')
+                logger.info(f"Got {attempts} attempts for contacted in lead id {lead_id} in {campaign_type} campaign {campaign_id}, enterprise_id={enterprise_id}")
+                disposition_detail = (lead.get('disposition_detail') or "").upper().replace(" ", "_").replace("-", "_")
+                if disposition == "converted":
+                    # In the current version we are not following up for converted leads.
+                    return None, None, 0, "confirmation_message"
+                if disposition  == "contacted" or (disposition == "engaged" and disposition_detail in [
+                        "REQUESTED_CALLBACK",
+                        "VOICEMAIL",
+                        "AUDIO_ISSUE",
+                        "NO_RESPONSE",
+                        "CALL_DISCONNECTED"
+                    ]):
+                    next_delay = get_next_delay(attempts, workflow_stage, timezone=timezone, due_date=due_date, last_attempt_timestamp=last_attempt_timestamp, dealership_timings=dealership_timings, channel=channel)
+                    next_execution_time = f"({hp.to_datetime(hp.epoch() + next_delay, tz = timezone)})" if next_delay else ""
+                    logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Next delay: {next_delay}{next_execution_time}, attempts: {attempts}, enterprise_id={enterprise_id}")
+                    if next_delay is not None:
+                        return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "follow_up_contact"
+                    trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
+                    # In current version we are not following up for other disposition details.
+                return None, None, 0, None
             if trigger == "switch_to_next_credential":
                 continue
             elif trigger == "switch_to_next_channel":
@@ -353,11 +535,11 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
             elif trigger == "follow_up_contact":
                 logger.info(f"Following up contact for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
                 logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                return channel, channel_identifier, next_delay, "follow_up_contact"
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "follow_up_contact"
             elif trigger == "confirmation_message":
                 logger.info(f"Sending confirmation message for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
                 logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                return channel, channel_identifier, next_delay, "confirmation_message"
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "confirmation_message"
             if change_channel:
                 break
     logger.info(f"No next action found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
@@ -634,20 +816,20 @@ if __name__ == "__main__":
             {
                 "provider_status": "attempted",
                 "channel": "whatsapp_chat",
+                "created": 1773214855.7515764,
             },
             {
                 "provider_status": "contacted",
                 "channel": "voice_phone",
+                "created": 1773214855.7515764,
             },
             {
                 "provider_status": "attempted",
                 "channel": "voice_phone",
+                "created": 1773214855.7515764,
             }
         ]
         DEBUG_LEAD = {
-            "created": 1773214855.7515764,
-            "pincode": "560098",
-            "updated": 1773214855.75223,
             "region_id": "india",
             "campaign_id": "123",
             "dealer_name": "Stellantis",
