@@ -1,5 +1,4 @@
 from connectors.whatsapp_connectors.source_connectors import *
-# from campaign.campaign_manager import update_error_to_models
 from typing import Any
 class AirtelCampaignManager:
     def __init__(self,*args,**kwargs):
@@ -128,15 +127,7 @@ class AirtelCampaignManager:
         variables, payload = self._resolve_variables_and_payload(message_data, params_data)
 
         if not media_id:
-            # update_error_to_models(
-            #     error_msg=f"Error in get_template for channel email: {str(e)}",
-            #     source="process_single_lead",
-            #     **{
-            #         "lead_id": lead_id,
-            #         "campaign_id": campaign_id,
-            #         "campaign_type": campaign_type,
-            #         "channel": channel
-            #     })
+            
             raise ValueError("Media ID is required.")
         # Build media_attachment
         media_attachment = {

@@ -763,7 +763,7 @@ def delete_old_websocket_urls(older_than = 24*3600):
     ssm.delete_many(filters = kwargs)
     return list_websocket_urls()
 
-def flag_error_to_session(session_id = None, error_message = "Error in session.", disposition = "failed", status = "failed", logger = None, lead_id = None, lead_model = None):
+def flag_error_to_session_or_lead(session_id = None, error_message = "Error in session.", disposition = "failed", status = "failed", logger = None, lead_id = None, lead_model = None):
     logger = logger or clogger
     if session_id:
         sm = AutocrmModel('session')
