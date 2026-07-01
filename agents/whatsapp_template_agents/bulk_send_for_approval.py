@@ -90,14 +90,6 @@ DEFAULT_AIRTEL_AUTH = {
     },
 }
 
-LANG_TO_CODE = {
-    "English": "en", "Hindi": "hi", "Assamese": "as", "Bengali": "bn",
-    "Gujarati": "gu", "Kannada": "kn", "Kashmiri": "ks", "Malayalam": "ml",
-    "Marathi": "mr", "Nepali": "ne", "Odia": "or", "Punjabi": "pa",
-    "Sanskrit": "sa", "Sindhi": "sd", "Tamil": "ta", "Telugu": "te",
-    "Urdu": "ur", "Konkani": "kok", "Manipuri": "mni", "Maithili": "mai",
-    "Santali": "sat", "Dogri": "doi", "Bodo": "bdo",
-}
 
 MEDIA_TYPE_MAP = {
     "image": "IMAGE",
@@ -188,8 +180,11 @@ def _build_template_content(template: dict) -> Tuple[dict, List[str]]:
       - Media (URL based)         → + media type and url-based sample.fileHandle
     """
     body = template.get("template_message") or template.get("body") or ""
-    lang_raw = (template.get("language") or "english").strip().capitalize()
-    lang_code = LANG_TO_CODE.get(lang_raw, "en")
+    lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+        template.get("language") or "english"
+    )
+    if lang_error:
+        raise ValueError(lang_error)
 
     ordered_vars = _extract_ordered_variables(body)
     processed_body = _process_message_variables(body, ordered_vars)
@@ -323,8 +318,11 @@ def _submit_rml_template_for_approval(
     ordered_vars = migrator._extract_ordered_variables(body)
     processed_body = migrator._process_message_variables(body, ordered_vars)
 
-    lang_raw = (template.get("language") or "english").strip().capitalize()
-    lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+    lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+        template.get("language") or "english"
+    )
+    if lang_error:
+        raise ValueError(lang_error)
 
     normalized_name = migrator._normalize_template_name(template_name)
     category = (

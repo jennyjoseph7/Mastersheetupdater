@@ -25,7 +25,7 @@ result = gryd.await_result(
         "disposition": "engaged",
         "disposition_details": "language barrier",
         "dealership_id": "daveai",
-        "languages": ["Hindi"],
+        "languages": ["Assamese"],
         # "communication_credential_id": "airtel-whatsapp_chat-917795030574",
     },
 )

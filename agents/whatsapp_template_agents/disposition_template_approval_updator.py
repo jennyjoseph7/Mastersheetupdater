@@ -44,8 +44,7 @@ pg = AutoCRMPGConnector(enterprise_id="autocrm")
 
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 
-FIRST_PAUSE_SECONDS = 3 * 60
-ROUND_PAUSE_SECONDS = 5 * 60
+SINGLE_CHECK_PAUSE_SECONDS = 5 * 60
 STATUS_UPDATE_PAUSE_SECONDS = 2
 
 ALLOWED_DB_STATUSES = frozenset({"pending", "approved", "rejected", "error"})
@@ -343,8 +342,11 @@ def _recreate_airtel_template(
         processed_message = migrator._process_message_variables(
             template_message, ordered_vars
         )
-        lang_raw = (record.get("language") or "english").strip().capitalize()
-        lang_code = WhatsAppTemplateMigrator.LANG_TO_CODE.get(lang_raw, "en")
+        lang_code, lang_error = WhatsAppTemplateMigrator.resolve_language_code(
+            record.get("language") or "english"
+        )
+        if lang_error:
+            raise RuntimeError(lang_error)
 
         # Submit FIRST: only touch the DB once we have a new templateId so a
         # failed submission never leaves the disposition set short a template.
@@ -611,24 +613,25 @@ def update_disposition_template_approval(
     communication_credentials_id: str,
     logger=None,
     job=None,
-):
+) -> dict:
     """
-    Fire-and-forget polling task for disposition template approval status.
+    Single-shot approval status check for disposition templates.
 
-    Waits 2 minutes before the first check, then re-checks every 60 minutes
-    until every template is approved, rejected, or error. Templates still
-    pending approval remain in the poll list between rounds.
+    Waits 5 minutes, checks provider status once, updates the DB, then exits
+    so the worker thread is not held in a long polling loop. Returns the lists
+    of approved and still-pending template ids.
     """
     logger = logger or gryd.hp.get_logger(__name__)
+    empty_result = {"approved_template_ids": [], "pending_template_ids": []}
 
     pending = [tid for tid in (template_ids or []) if tid]
     if not pending:
-        logger.info("No template ids to track; exiting approval poll.")
-        return
+        logger.info("No template ids to track; exiting approval check.")
+        return empty_result
 
     if not communication_credentials_id:
-        logger.error("communication_credentials_id is required for approval poll.")
-        return
+        logger.error("communication_credentials_id is required for approval check.")
+        return empty_result
 
     credential = pg.get(
         "communication_credential",
@@ -639,37 +642,33 @@ def update_disposition_template_approval(
         logger.error(
             f"communication_credential not found: {communication_credentials_id}"
         )
-        return
+        return empty_result
 
     logger.info(
-        f"Disposition approval poll started for {len(pending)} templates | "
+        f"Disposition approval check scheduled for {len(pending)} template(s) | "
         f"credential={communication_credentials_id} | "
-        f"first pause={FIRST_PAUSE_SECONDS}s | "
-        f"round pause={ROUND_PAUSE_SECONDS}s"
+        f"pause={SINGLE_CHECK_PAUSE_SECONDS}s before single check"
     )
 
-    time.sleep(FIRST_PAUSE_SECONDS)
+    time.sleep(SINGLE_CHECK_PAUSE_SECONDS)
 
-    # Persists across rounds so a template that keeps coming back without a
-    # valid status is recreated at most MAX_RECREATION_ATTEMPTS times.
-    recreation_attempts: Dict[str, int] = {}
+    logger.info(f"Running single approval check for {len(pending)} template(s)")
+    still_pending = _check_and_update_templates(pending, credential, logger)
 
-    round_num = 1
-    while pending:
-        logger.info(
-            f"Approval poll round {round_num}: checking {len(pending)} template(s)"
-        )
-        pending = _check_and_update_templates(
-            pending, credential, logger, recreation_attempts
-        )
+    approved_template_ids: List[str] = []
+    still_pending_set = set(still_pending)
+    for template_id in pending:
+        if template_id in still_pending_set:
+            continue
+        record = _fetch_template_record(template_id)
+        if record and record.get("status") == "approved":
+            approved_template_ids.append(template_id)
 
-        if not pending:
-            logger.info("All disposition templates resolved; exiting approval poll.")
-            break
-
-        logger.info(
-            f"{len(pending)} template(s) still pending approval; "
-            f"sleeping {ROUND_PAUSE_SECONDS}s before next round"
-        )
-        time.sleep(ROUND_PAUSE_SECONDS)
-        round_num += 1
+    logger.info(
+        f"Disposition approval check complete | "
+        f"approved={len(approved_template_ids)} | pending={len(still_pending)}"
+    )
+    return {
+        "approved_template_ids": approved_template_ids,
+        "pending_template_ids": still_pending,
+    }
