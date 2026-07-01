@@ -24,7 +24,7 @@ from campaign.campaign_workflow import determine_campaign_next_action,CHANNEL_ID
 from communication.connectors.communication_helpers import _wait_for_next_minute,get_or_create_person
 
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
-from agents.get_whatsapp_template_agent import get_whatsapp_template
+from agents.whatsapp_template_agents.get_whatsapp_template_agent import get_whatsapp_template
 from agents.get_email_template_agent import get_email_template
 from agents.get_rcs_template_agent import get_rcs_template
 from communication.connectors.email_communication import communication_sender
@@ -1138,11 +1138,10 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
         return
     
     # campaign_details = campaign_details[0]
-    campaign_objective_name=campaign_details.get("campaign_objective_name") 
-    logger.info(f"campaign_objective_name: {campaign_objective_name}")
-    if not campaign_objective_name:
-        
-        yield {"status": "Error", "error_description": f"No campaign objective name found for campaign_id={campaign_id}"}
+    campaign_objective_id = campaign_details.get("campaign_objective_id")
+    logger.info(f"campaign_objective_id: {campaign_objective_id}")
+    if not campaign_objective_id:
+        yield {"status": "Error", "error_description": f"No campaign objective id found for campaign_id={campaign_id}"}
         return
     # logger.info(f"Campaign details: {json.dumps(campaign_details,indent=4)}")
     if isinstance(lead, dict):
@@ -1182,7 +1181,7 @@ def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=Non
             template_data= get_template(
                 lead_id=lead_id,
                 campaign_type=campaign_type,
-                campaign_objective= [campaign_objective_name] or [],
+                campaign_objective_id=campaign_objective_id,
                 dealership_id=lead_data.get("dealership_id"),
                 lead_info={}
             )

@@ -1,15 +1,25 @@
 import json
-import os, sys
-import random, re, requests
+import os
+import sys
+import random
+import re
+import requests
 from pprint import pprint
-from agents.base_agent import BaseAgent, gryd
 
-
+# agents/whatsapp_template_agents/<this file> → up three levels = project root
 PROJECT_ROOT = os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 )
+AGENTS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+if AGENTS_DIR not in sys.path:
+    sys.path.insert(0, AGENTS_DIR)
+
+try:
+    from agents.base_agent import BaseAgent, gryd
+except ImportError:
+    from base_agent import BaseAgent, gryd
 
 from autocrm_db_helper.PGConnector import AutoCRMPGConnector
 pg = AutoCRMPGConnector(enterprise_id="autocrm")

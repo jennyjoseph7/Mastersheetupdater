@@ -127,6 +127,10 @@
             "refers": "parents.model_year.brand_level_guardrails"
         },
         {
+            "name": "feature_summary",
+            "type": "text"
+        },
+        {
             "name": "oem_id",
             "refers": "parents.model_year.oem_id"
         },

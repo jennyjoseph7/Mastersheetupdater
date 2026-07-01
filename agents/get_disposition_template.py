@@ -15,20 +15,22 @@ if PROJECT_ROOT not in sys.path:
 # NOTE: disposition_templates_creator sets gryd.SERVICE to the agent service at
 # import time, so it is imported BEFORE we configure our own service below.
 try:
-    from .disposition_templates_creator import (
+    from agents.whatsapp_template_agents.disposition_templates_creator import (
         DispositionTemplatesCreator,
         KNOWN_DISPOSITION_CASES,
     )
 except ImportError:
-    from disposition_templates_creator import (  # type: ignore
+    from whatsapp_template_agents.disposition_templates_creator import (  # type: ignore
         DispositionTemplatesCreator,
         KNOWN_DISPOSITION_CASES,
     )
 
 try:
-    from .disposition_template_approval_updator import _check_and_update_templates
+    from agents.whatsapp_template_agents.disposition_template_approval_updator import (
+        _check_and_update_templates,
+    )
 except ImportError:
-    from disposition_template_approval_updator import (  # type: ignore
+    from whatsapp_template_agents.disposition_template_approval_updator import (  # type: ignore
         _check_and_update_templates,
     )
 
@@ -431,7 +433,9 @@ def get_disposition_template(lead_info=None, lead_id=None, campaign_objective_id
         # already-filtered variables. Only create if it finds no template.
         # Lazy import: get_whatsapp_template_agent sets gryd.SERVICE to the
         # short-run worker at import time, which would mis-register this task.
-        from agents.get_whatsapp_template_agent import get_whatsapp_template_agent
+        from agents.whatsapp_template_agents.get_whatsapp_template_agent import (
+            get_whatsapp_template_agent,
+        )
 
         template_agent = get_whatsapp_template_agent(source=data, logger=logger)
         result = template_agent.run()
