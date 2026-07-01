@@ -315,7 +315,7 @@ class BaseCampaignCreater:
                     "phone_number":mobile_number,
                     "dealership_id":campaign_details.get("dealership_id"),
                     "message_id": (response.get("message_id", None) if channel == "whatsapp_chat" else getattr(response.get("response"), "sid", None)),
-                    "provider_status": "queued",
+                    "provider_status": "attempted",
                     "message_template_type": campaign_details.get("message_template_type"),
                     "channel_provider":provider_name,
                     "channel":patch_user_data.get("channel") or channel,
@@ -752,7 +752,7 @@ def trigger_queued_campaigns(*args, **kwargs):
     lead_table="pre_sales_lead" if campaign_type == "pre-sales" else "post_sales_lead"
     start_timestamp = kwargs.get("start")
     end_timestamp = kwargs.get("end","")
-    filters = { "_as_option": True, "disposition": "queued", "created": f"{start_timestamp},{end_timestamp}" }
+    filters = { "_as_option": True, "disposition": "attempted", "created": f"{start_timestamp},{end_timestamp}" }
     filters.update(kwargs.get("additional_filters", {}))
 
     logger.info(f"Fetching queued leads for campaign_type={campaign_type} with filters: {filters}")
@@ -1026,7 +1026,7 @@ def check_and_create_lead_object(**kwargs):
             "person_name": kwargs.get("person_name"),
             "email": kwargs.get("email"),
             "dealer_name": "us dealership",
-            "disposition": "queued",
+            "disposition": "attempted",
             "region_name": "United states",
             "workshop_id": "None",
             "phone_number": kwargs.get("phone_number"),
