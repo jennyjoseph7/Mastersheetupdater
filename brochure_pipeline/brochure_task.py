@@ -80,6 +80,14 @@ def summary_worker_task(**kwargs):
 def vector_ingestion_task(**kwargs):
     tasks_payload = kwargs.get("tasks_payload", [])
     
+    # If tasks_payload is empty but the kwargs itself looks like a single vector item, wrap it
+    if not tasks_payload and kwargs.get("texts"):
+        tasks_payload = [{
+            "service": "vector_document",
+            "function_name": "update_vector",
+            "kwargs": kwargs
+        }]
+    
     if not tasks_payload:
         logger.error("❌ No tasks payload provided to vector_ingestion_task.")
         return {"status": "failed", "message": "Empty tasks_payload."}

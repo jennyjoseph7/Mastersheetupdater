@@ -14,270 +14,57 @@ from gryd_worker import gryd
 from brochure_pipeline.agents.summary_agent import VectorIngestionAgent
 from dotenv import load_dotenv
 from config import AutocrmModel
-import requests
-import re
+# import requests
+import rag_agent
 
 load_dotenv()
 logger = get_logger(__name__)
 
 
-VECTOR_SERVICE_URL = os.getenv("VECTOR_SERVICE_URL")
-VECTOR_ENTERPRISE_ID = os.getenv("VECTOR_ENTERPRISE_ID")
-VECTOR_SESSION_ID = os.getenv("VECTOR_SESSION_ID")
-VECTOR_TOKEN = os.getenv("VECTOR_TOKEN")
-
-# def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
-#     gryd_tasks = []
-#     logger.info(f"THis is the llm generated data: {llm_data}")  
-#     def create_payload(entry, level, suffix):
-#         return {
-#             "service": "vector_document",
-#             "function_name": "update_vector",
-#             "kwargs": {
-#                 "texts": entry.get('summary_text', ''),
-#                 "pipeline": "RAG",
-#                 "conversation_id": "autocrm_ingestion",
-#                 "metadata": {
-#                     "document_id": f"{doc_id_prefix}_{suffix}",
-
-
-#                     "level": level,
-#                     "information": entry.get('toon_text', '') 
-#                 },
-#                 "i2ce_headers": {"Content-Type": "application/json"}
-#             }
-#         }
-    
-#     # 1. Models & Years
-#     if "vehicle_model" in llm_data:
-#         gryd_tasks.append(create_payload(llm_data["vehicle_model"], "Brand_Model", "general"))
-#     if "model_year" in llm_data:
-#         gryd_tasks.append(create_payload(llm_data["model_year"], "Brand_Model_Year", "year_spec"))
-        
-#     # 2. Variants (Directly from LLM output now)
-#     for i, v in enumerate(llm_data.get("variants", [])):
-#         v_id = v.get("variant_id", f"var_{i}").replace(" ", "_").lower()
-#         gryd_tasks.append(create_payload(v, "Variant_Detail", f"variant_{v_id}"))
-
-#     # 3. Categories & Features
-#     for i, f in enumerate(llm_data.get("feature_categories", [])):
-#         c_id = f.get("summary_text", f"cat_{i}").replace(" ", "_").lower()
-#         gryd_tasks.append(create_payload(f, "Feature_Category", f"feature_category_{c_id}"))
-        
-#     for i, s in enumerate(llm_data.get("specific_features", [])):
-#         s_id = s.get("summary_text", f"spec_{i}").replace(" ", "_").lower()
-#         gryd_tasks.append(create_payload(s, "Specific_Feature_DeepDive", f"feature_deep_{s_id}"))
-
-#     return gryd_tasks
-
-
-def _normalize(value: str) -> str:
-    """Convert string to lowercase snake_case."""
-    if not value:
-        return ""
-    value = re.sub(r"[^\w\s-]", "", value)
-    return value.strip().replace(" ", "_").replace("-", "_").lower()
-
-
-def _extract_tag(text: str, tag: str) -> str:
-    """
-    Extract value from toon_text.
-    Example:
-        [BRAND] Mahindra
-        [MODEL] New Bolero
-    """
-    if not text:
-        return ""
-
-    match = re.search(rf"\[{re.escape(tag)}\]\s*(.+)", text)
-    return match.group(1).strip() if match else ""
-
+VECTOR_VEC_DB_IDENTIFIER = os.getenv("VECTOR_VEC_DB_IDENTIFIER", "qdrant-test-databricks-qwen-qwen3-0.6b")
+VECTOR_COLLECTION_NAME = os.getenv("VECTOR_COLLECTION_NAME", "None_autocrm_ingestion")
 
 def format_for_gryd_vector(llm_data: dict, doc_id_prefix: str) -> list:
-    """
-    Convert LLM output into Gryd vector payloads.
-
-    Metadata schema:
-        - document_id
-        - information
-        - brand
-        - model
-        - model_year
-        - document_type
-        - variant_name
-        - feature_category
-        - feature_name
-    """
-
-    logger.info("LLM generated data: %s", llm_data)
-
     gryd_tasks = []
-
-    vehicle_model = llm_data.get("vehicle_model", {})
-    model_year = llm_data.get("model_year", {})
-
-    vehicle_text = vehicle_model.get("toon_text", "")
-    year_text = model_year.get("toon_text", "")
-
-    # ------------------------------------------------------------------
-    # Mandatory metadata
-    # ------------------------------------------------------------------
-    brand = _extract_tag(vehicle_text, "BRAND")
-    model = _extract_tag(vehicle_text, "MODEL")
-    model_year_value = _extract_tag(year_text, "YEAR")
-
-    # Fallbacks if toon_text is missing
-    if not brand or not model:
-        summary = vehicle_model.get("summary_text", "")
-        if summary:
-            parts = summary.split(maxsplit=1)
-            brand = brand or (parts[0] if parts else "")
-            model = model or (parts[1] if len(parts) > 1 else "")
-
-    if not model_year_value:
-        summary = model_year.get("summary_text", "")
-        if summary:
-            model_year_value = summary.split()[-1]
-
-    def create_payload(
-        entry: dict,
-        *,
-        document_type: str,
-        suffix: str,
-        variant_name: str = None,
-        feature_category: str = None,
-        feature_name: str = None,
-    ):
+    
+    def create_payload(entry, level, suffix):
         return {
             "service": "vector_document",
             "function_name": "update_vector",
             "kwargs": {
-                "texts": entry.get("summary_text", ""),
+                "texts": entry.get('summary_text', ''),
                 "pipeline": "RAG",
-                "conversation_id": "autocrm_ingestion",
+                "conversation_id": "autocrm_ingestion",      
+                "collection_name": "None_autocrm_ingestion",      
                 "metadata": {
                     "document_id": f"{doc_id_prefix}_{suffix}",
-                    "information": entry.get("toon_text", ""),
-
-                    # Mandatory searchable fields
-                    "brand": brand,
-                    "model": model,
-                    "model_year": model_year_value,
-                    "document_type": document_type,
-
-                    # Optional searchable fields
-                    "variant_name": variant_name,
-                    "feature_category": feature_category,
-                    "feature_name": feature_name,
+                    "level": level,
+                    "information": entry.get('toon_text', '') 
                 },
-                "i2ce_headers": {
-                    "Content-Type": "application/json"
-                },
-            },
+                "i2ce_headers": {"Content-Type": "application/json"}
+            }
         }
+    
+    # 1. Models & Years
+    if "vehicle_model" in llm_data:
+        gryd_tasks.append(create_payload(llm_data["vehicle_model"], "Brand_Model", "general"))
+    if "model_year" in llm_data:
+        gryd_tasks.append(create_payload(llm_data["model_year"], "Brand_Model_Year", "year_spec"))
+        
+    # 2. Variants (Directly from LLM output now)
+    for i, v in enumerate(llm_data.get("variants", [])):
+        v_id = v.get("variant_id", f"var_{i}").replace(" ", "_").lower()
+        gryd_tasks.append(create_payload(v, "Variant_Detail", f"variant_{v_id}"))
 
-    # ==============================================================
-    # Vehicle Model
-    # ==============================================================
+    # 3. Categories & Features
+    for i, f in enumerate(llm_data.get("feature_categories", [])):
+        c_id = f.get("summary_text", f"cat_{i}").replace(" ", "_").lower()
+        gryd_tasks.append(create_payload(f, "Feature_Category", f"feature_category_{c_id}"))
+        
+    for i, s in enumerate(llm_data.get("specific_features", [])):
+        s_id = s.get("summary_text", f"spec_{i}").replace(" ", "_").lower()
+        gryd_tasks.append(create_payload(s, "Specific_Feature_DeepDive", f"feature_deep_{s_id}"))
 
-    if vehicle_model:
-        gryd_tasks.append(
-            create_payload(
-                vehicle_model,
-                document_type="model",
-                suffix="general",
-            )
-        )
-
-    # ==============================================================
-    # Model Year
-    # ==============================================================
-
-    if model_year:
-        gryd_tasks.append(
-            create_payload(
-                model_year,
-                document_type="model_year",
-                suffix="year_spec",
-            )
-        )
-
-    # ==============================================================
-    # Variants
-    # ==============================================================
-
-    for i, variant in enumerate(llm_data.get("variants", [])):
-        variant_name = variant.get("variant_name", "")
-
-        variant_id = variant.get("variant_id", "")
-        if not variant_id or variant_id.upper() == "UNKNOWN":
-            variant_id = variant_name or f"variant_{i}"
-
-        gryd_tasks.append(
-            create_payload(
-                variant,
-                document_type="variant",
-                suffix=f"variant_{_normalize(variant_id)}",
-                variant_name=variant_name,
-            )
-        )
-
-    # ==============================================================
-    # Feature Categories
-    # ==============================================================
-
-    for i, category in enumerate(llm_data.get("feature_categories", [])):
-        category_name = _extract_tag(
-            category.get("toon_text", ""),
-            "CATEGORY_NAME",
-        )
-
-        if not category_name:
-            category_name = f"category_{i}"
-
-        gryd_tasks.append(
-            create_payload(
-                category,
-                document_type="feature_category",
-                suffix=f"feature_category_{_normalize(category_name)}",
-                feature_category=category_name,
-            )
-        )
-
-    # ==============================================================
-    # Specific Features
-    # ==============================================================
-
-    for i, feature in enumerate(llm_data.get("specific_features", [])):
-        feature_name = _extract_tag(
-            feature.get("toon_text", ""),
-            "FEATURE_NAME",
-        )
-
-        if not feature_name:
-            feature_name = f"feature_{i}"
-
-        # Try to infer category if present
-        feature_category = None
-        for category in llm_data.get("feature_categories", []):
-            category_text = category.get("toon_text", "")
-            if feature_name.lower() in category_text.lower():
-                feature_category = _extract_tag(
-                    category_text,
-                    "CATEGORY_NAME",
-                )
-                break
-
-        gryd_tasks.append(
-            create_payload(
-                feature,
-                document_type="specific_feature",
-                suffix=f"feature_{_normalize(feature_name)}",
-                feature_name=feature_name,
-                feature_category=feature_category,
-            )
-        )
-    logger.info(f"RAVI {gryd_tasks}")
     return gryd_tasks
 
 def update_autocrm_summaries(db_updates: dict, vehicle_model_id: str, model_year_id: str):
@@ -361,11 +148,32 @@ def run_summary_dispatcher(document_id: str, job_id: str, vehicle_model_id: str,
         }
     }]
 
-    results = gryd.yield_results(worker_payload)
+    job_iterator = gryd.yield_results(worker_payload)
+    results = [res for res in job_iterator]
+
+    # --- Wire up vector ingestion ---
+    # Collect all vector tasks produced by the worker(s) and dispatch them.
+    all_vector_tasks = []
+    for res in results:
+        if isinstance(res, dict) and res.get("status") == "success":
+            all_vector_tasks.extend(res.get("vector_tasks_payload", []))
+
+    if all_vector_tasks:
+        logger.info(f"🔗 Dispatching {len(all_vector_tasks)} vector ingestion tasks...")
+        vector_jobs = [{
+            "task": "vector_ingestion_task",
+            "service": "brochure-pipeline",
+            "args": [],
+            "kwargs": {"tasks_payload": all_vector_tasks}
+        }]
+        vector_iterator = gryd.yield_results(vector_jobs)
+        vector_results = [r for r in vector_iterator]
+        logger.info(f"✅ Vector ingestion dispatched. Results: {vector_results}")
+    else:
+        logger.warning("⚠️ No vector tasks were produced by the summary worker.")
 
     return {"status": "completed", "model_year_id": model_year_id, "results": results}
-    
-    
+
 def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id: str, expected_variants: list):
     logger.info(f"🤖 [Worker] Generating TOON summaries for Model Year ID: {model_year_id}")
     
@@ -446,49 +254,57 @@ def run_summary_worker(brochure_text: str, vehicle_model_id: str, model_year_id:
         "status": "success", 
         "vector_tasks_payload": gryd_tasks
     }
+
+
 def run_vector_ingestion(tasks_payload: list):
-    """
-    Takes the generated tasks payload and fires off vector upload commands
-    via HTTP POST to the vector service.
-    """
     if not tasks_payload:
         logger.error("❌ No tasks payload provided.")
         return {"status": "failed", "message": "Empty tasks_payload."}
 
-    if not VECTOR_SERVICE_URL:
-        logger.error("❌ VECTOR_SERVICE_URL not set in environment.")
-        return {"status": "failed", "message": "Missing VECTOR_SERVICE_URL."}
+    documents = []
+    metadatas = []
 
-    headers = {
-        "accept": "*/*",
-        "content-type": "application/json",
-        "x-gryd-enterprise-id": VECTOR_ENTERPRISE_ID,
-        "x-gryd-session-id": VECTOR_SESSION_ID,
-        "x-gryd-token": VECTOR_TOKEN
-    }
-
-    successful, failed = 0, 0
-    logger.info(f"🚀 Starting ingestion of {len(tasks_payload)} items...")
-    logger.info(f"check creds {VECTOR_SERVICE_URL}, {VECTOR_ENTERPRISE_ID}, {VECTOR_SESSION_ID}, {VECTOR_TOKEN}")
     for item in tasks_payload:
-        try:
-            logger.info( f"this is testing: {(item)}")
-            response = requests.post(
+        kwargs = item.get("kwargs", {})
 
-                VECTOR_SERVICE_URL,
-                headers=headers,
-                json={"kwargs": item.get("kwargs")},
-                
-                timeout=30
-            )
-            if response.status_code in (200, 201, 202):
-                successful += 1
-                logger.info(f"✅ Vector item ingested successfully.")
-            else:
-                failed += 1
-                logger.error(f"❌ Vector ingestion failed. Status: {response.status_code}, Response: {response.text}")
-        except Exception as e:
-            failed += 1
-            logger.error(f"❌ Failed to ingest item: {e}")
+        text = kwargs.get("texts", "")
+        pipeline = kwargs.get("pipeline", "RAG")
+        conversation_id = kwargs.get("conversation_id", "autocrm_ingestion")
+        metadata = kwargs.get("metadata", {})
 
-    return {"status": "completed", "sent": successful, "failed": failed}
+        combined_metadata = {
+            **metadata,
+            "pipeline": pipeline,
+            "texts": text,
+            "conversation_id": conversation_id
+        }
+
+        documents.append(text)
+        metadatas.append(combined_metadata)
+
+    # ✅ DEBUG: print exactly what we're sending
+    logger.info(f"🔍 DEBUG documents: {json.dumps(documents, indent=2)}")
+    logger.info(f"🔍 DEBUG metadatas: {json.dumps(metadatas, indent=2, default=str)}")
+    logger.info(f"🔍 DEBUG vec_db_identifier: {VECTOR_VEC_DB_IDENTIFIER}")
+    logger.info(f"🔍 DEBUG collection_name: {VECTOR_COLLECTION_NAME}")
+
+    try:
+        results = rag_agent.vector_update(
+            documents=documents,
+            metadatas=metadatas,
+            vec_db_identifier=VECTOR_VEC_DB_IDENTIFIER,
+            collection_name=VECTOR_COLLECTION_NAME
+        )
+
+        # ✅ DEBUG: print the raw results from rag_agent
+        logger.info(f"🔍 DEBUG rag_agent results: {json.dumps(results, indent=2, default=str)}")
+
+        successful = sum(1 for r in results if r.get("status") == "success")
+        failed = sum(1 for r in results if r.get("status") != "success")
+
+        logger.info(f"✅ Vector ingestion complete. Sent: {successful}, Failed: {failed}")
+        return {"status": "completed", "sent": successful, "failed": failed}
+
+    except Exception as e:
+        logger.error(f"❌ Vector ingestion failed: {e}")
+        return {"status": "failed", "message": str(e)}
