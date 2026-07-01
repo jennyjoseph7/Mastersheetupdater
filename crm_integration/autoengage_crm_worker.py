@@ -10,10 +10,10 @@ from gryd_worker import gryd
 from config import AUTOCRM_CRM_UPDATE_SERVICE_NAME
 from crm_integration.crm_integration.load_crm import load_crm
 
-
 gryd.SERVICE=AUTOCRM_CRM_UPDATE_SERVICE_NAME
 gryd.set_queue_manager()
 
+logger = gryd.hp.get_logger(gryd.SERVICE)
 
 # @gryd.is_a_task(logger_param="logger",job_param="job")
 # def post_pre_sales_lead(crm_name,data,logger=None,job=None):
@@ -110,7 +110,7 @@ def update_lead_in_crm(crm_name,sheet_name,phone_number,status,logger=None,job=N
 
 # CALLBACK TASK — called by  system after a call ends
 
-@gryd.is_a_task(logger_param="logger",job_param="job")
+@gryd.is_a_task(function_name="update_lead_in_sheet",logger_param="logger",job_param="job")
 def update_lead_in_sheet(
     phone_number,
     sheet_url,      # full Google Sheet URL (preferred over sheet_name)
@@ -154,10 +154,8 @@ def update_lead_in_sheet(
             }
         )
     """
-    logger = logger or print
 
-    logger.info(f"Sheet URL: {sheet_url}")
-
+    # print(f"update_lead_in_sheet({phone_number}, {sheet_url}, {sheet_name}, {kwargs})")
     crm = load_crm(
         "googledocs",
         # credentials=credentials,   # dict from DB — takes priority

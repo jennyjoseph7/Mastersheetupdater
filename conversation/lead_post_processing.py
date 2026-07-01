@@ -201,7 +201,6 @@ def post_session_process(*args, **kwargs):
                                         "pre-initiated"]:
         mlogger.info("status is {}, Not doing post processing".format(session_mdl_obj.get("status")))
         return
-        
     if not session_data:
         mlogger.info("session_data not found for session_id == {}".format(session_id))
         yield from yield_error("error","session_data not found",*args, **kwargs)
@@ -219,10 +218,10 @@ def post_session_process(*args, **kwargs):
     with get_pg_connector() as pg:
         lead_data = pg.get(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id) or campaign_data.get("user_data") or {}
         sales_campaign_data = pg.get(f"{campaign_type}_campaign", "campaign_id", session_mdl_obj.get("campaign_id")) if session_mdl_obj.get("campaign_id") else {}
-
+        # mlogger.info("sales_campaign_data == {}".format(sales_campaign_data))
         cur_lead = lead_data.get('disposition', None)
         # cur_disp_detail = lead_data.get('disposition_detail', None)
-
+        
 
     if not lead_data:
         mlogger.info("lead_data not found for session_id == {} having campaign_data == {}".format(session_id, campaign_data))
@@ -422,25 +421,59 @@ def post_session_process(*args, **kwargs):
         pg.update("session","session_id",session_id,session_update_data)
         mlogger.info("appointment data == {}".format(appt_date_time_purpose))
         try:
-            crm_source = sales_campaign_data.get("crm_source_details", {}) or {}
-            crm_sheet_url  = crm_source.get('sheet_url', '')
-            # crm_credentials = crm_source.get('api_key')       # dict from DB
-            crm_phone  = (updated_lead_data.get("mobile_number") or updated_lead_data.get("phone_number") or lead_data.get("mobile_number") or lead_data.get("phone_number"))
+            crm_source = sales_campaign_data.get("crm_source_details") or {}
+            crm_sheet_url = crm_source.get("sheet_url", "")
+
+            crm_phone = (
+                updated_lead_data.get("mobile_number")
+                or updated_lead_data.get("phone_number")
+                or lead_data.get("mobile_number")
+                or lead_data.get("phone_number")
+            )
+
             mlogger.info(f"[CRM DEBUG] crm_sheet={crm_sheet_url}, crm_phone={crm_phone}")
-            mlogger.info(f"Session update data == {session_update_data}")
+            # mlogger.info(f"Session update data == {session_update_data}")
+
+            excluded_keys = {
+                "campaign_objective_name",
+                "customer_mood",
+                "customer_priority",
+                "recommended_action",
+                "customer_intent",
+                "session_id",
+                "customer_sentiment"
+            }
+
+            crm_update_data = {
+                k: v
+                for k, v in session_update_data.items()
+                if k not in excluded_keys
+            }
+
+            _data = {}
+
+            if session_mdl_obj.get("channel") == "voice_phone":
+                _data.update({
+                    "summary": session_mdl_obj.get("summary", ""),
+                    "duration": session_mdl_obj.get("duration", 0),
+                })
+
+            _data.update(crm_update_data)
+            mlogger.info(f"Updating the lead to CRM with data == {_data}")
             if crm_sheet_url and crm_phone:
                 gryd.create_async_task(
                     "update_lead_in_sheet",
                     AUTOCRM_CRM_UPDATE_SERVICE_NAME,
                     args=[crm_phone, crm_sheet_url],
-                    kwargs=session_update_data
+                    kwargs=_data,
                 )
+
                 mlogger.info(
-                    f"[CRM DEBUG] crm_sheet={crm_sheet_url}, crm_phone={crm_phone}"
+                    f"Entered CRM update for sheet={crm_sheet_url} phone={crm_phone}"
                 )
-                mlogger.info(f"Entered CRM update for sheet={crm_sheet_url} phone={crm_phone}")
-        except Exception as e:
-            mlogger.exception(f"Failed to enter CRM update: {e}")
+
+        except Exception:
+            mlogger.exception("Failed while scheduling CRM update")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
         update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary_english": summary_updated})
         if position_new_despo > existing_position_despo:

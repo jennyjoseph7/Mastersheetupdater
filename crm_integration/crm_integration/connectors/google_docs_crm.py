@@ -55,7 +55,7 @@ class GoogleDocsCRM(BaseCRMClass):
 
     def __init__(self, sheet_name=None, sheet_url=None):
                 
-        
+        # logger.info(f"Initializing GoogleDocsCRM with sheet_name={sheet_name}, sheet_url={sheet_url}")
         scope = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
@@ -71,7 +71,8 @@ class GoogleDocsCRM(BaseCRMClass):
             else:
                 spreadsheet_id = sheet_url
             self.sheet = client.open_by_key(spreadsheet_id).sheet1
-            []
+            self.sheet.resize(rows=1000, cols=50)  
+            
         elif sheet_name:
             self.sheet = client.open(sheet_name).sheet1
         else:
@@ -177,8 +178,8 @@ class GoogleDocsCRM(BaseCRMClass):
                 return row
 
         return {"error": "Not found"}
-    
-    def update_row_by_phone_number(self, phone_number: str, data: dict) -> dict:
+
+    def update_row_by_phone_number(self, phone_number: str, data: dict):
         """
         Find row(s) where 'Mobile Number' == phone_number and write all
         non-empty key-value pairs from `data` back to the sheet.
@@ -204,6 +205,7 @@ class GoogleDocsCRM(BaseCRMClass):
             if v is not None and str(v).strip() not in ("", "None", "none")
         }
 
+        logger.info(f"update_row_by_phone_number({phone_number}, {data})")
         if not data:
             return {"updated": False, "rows_updated": 0, "columns_added": [], "note": "all values were empty"}
 
@@ -211,6 +213,7 @@ class GoogleDocsCRM(BaseCRMClass):
         headers  = self.sheet.row_values(1)
         all_rows = self.sheet.get_all_values()
 
+        # logger.info(f"Headers: {headers}")
         # Find the "Mobile Number" column index
         phone_idx = next(
             (i for i, h in enumerate(headers) if h.strip().lower() == "mobile number"),
@@ -263,7 +266,7 @@ class GoogleDocsCRM(BaseCRMClass):
 
     def update_status_for_matching_rows(self, search_data, updated_status):
         
-        print(f"update_status_for_matching_rows({search_data}, {updated_status})")
+        logger.info(f"update_status_for_matching_rows ({search_data}, {updated_status})")
         headers = self.get_sheet_headers()
         rows = self.sheet.get_all_values()
 
