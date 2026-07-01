@@ -209,6 +209,8 @@ def post_session_process(*args, **kwargs):
     
     session_data = session_data.get("data",{})
     campaign_data = session_data.get("campaign_data", {})
+    campaign_obj = session_data.get("ctas", [])
+    mlogger.info("post_session_process_campaign_obj == {}".format(campaign_obj))
     campaign_type = "pre_sales" if campaign_data.get("campaign_type").lower() == "pre-sales" else "post_sales"
     mlogger.info("campaign_data == {}".format(campaign_data))
     lead_id = session_data.get("user_data").get(f"{campaign_type}_lead_id") or session_mdl_obj.get("lead_id")
@@ -258,8 +260,8 @@ def post_session_process(*args, **kwargs):
        
     updated_lead_data = get_disposition(session_id,session_data,session_mdl_obj, sentiment_classification) if messages and len(messages) > 0 else {"disposition"}
         
-    session_update_data = {"disposition": updated_lead_data.get("disposition"), "disposition_detail":updated_lead_data.get("disposition_detail")}
-    if updated_lead_data.get("disposition_detail").lower() == "requested callback":
+    session_update_data = {"disposition": updated_lead_data.get("disposition", "").upper(), "disposition_detail":updated_lead_data.get("disposition_detail", "").upper(), "campaign_objective_name": campaign_obj}
+    if updated_lead_data.get("disposition_detail", "").lower() == "requested callback":
         follow_up = get_callback_date_time(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_date" in follow_up:
@@ -269,7 +271,7 @@ def post_session_process(*args, **kwargs):
                     updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
                 except KeyError as e:
                     mlogger.info("KeyError == {}".format(e))
-    if updated_lead_data.get("disposition_detail").lower() =="language barrier":
+    if updated_lead_data.get("disposition_detail","").lower() =="language barrier":
         follow_up = get_preffered_language(session_id,session_data)
         if isinstance(follow_up,dict):
             if "follow_up_language" in follow_up:
@@ -440,7 +442,7 @@ def post_session_process(*args, **kwargs):
         except Exception as e:
             mlogger.exception(f"Failed to enter CRM update: {e}")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
-        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist})
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary_english": summary_updated})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):

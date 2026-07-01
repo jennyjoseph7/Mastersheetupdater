@@ -49,7 +49,6 @@ def summary_dispatcher_task(**kwargs):
     model_year_id = kwargs.get("model_year_id")
     expected_variants = kwargs.get("expected_variants", [])
     
-    
     variant_id_list = kwargs.get("variant_id", [])
     if not expected_variants and variant_id_list:
         expected_variants = []
