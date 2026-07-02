@@ -368,11 +368,71 @@ def post_session_process(*args, **kwargs):
     #     mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
     
     appt_date_time_purpose = {}
-    
-    if updated_lead_data.get("disposition") == "converted":
+    mlogger.info("Disposition after post session processing: {}".format(updated_lead_data.get("disposition")))
+    if updated_lead_data.get("disposition") in ["converted", "engaged"]:
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
         updated_lead_data.update(appt_date_time_purpose)
-    
+        
+        try:
+            import re
+            dealership_id = session_mdl_obj.get("dealership_id")
+            if dealership_id:
+                with get_pg_connector() as pg_conn:
+                    dealer_record = pg_conn.get("dealership", "dealership_id", dealership_id)
+                
+                if dealer_record:
+                    to_phone = (
+                        dealer_record.get("primary_contact_phone")
+                        or dealer_record.get("billing_contact_phone")
+                        or dealer_record.get("secondary_contact_phone")
+                    )
+                    if to_phone:
+                        to_phone_clean = re.sub(r"\D", "", str(to_phone))
+                        
+                        creds = get_communication_credential(dealership_id="daveai", channel="whatsapp_chat")
+                        from_number = creds.get("sender") if creds else "917795030574"
+                        whatsapp_provider = creds.get("provider_name") if creds else "airtel"
+                        
+                        cust_name = session_mdl_obj.get("person_name") or lead_data.get("person_name") or "Unknown"
+                        cust_phone = session_mdl_obj.get("phone_number") or lead_data.get("phone_number") or "N/A"
+                        dealer_name = dealer_record.get("dealer_name") or "Unknown"
+                        
+                        appt_date = appt_date_time_purpose.get("appointment_date") or "N/A"
+                        appt_time = appt_date_time_purpose.get("appointment_time") or "N/A"
+                        appt_purpose_list = appt_date_time_purpose.get("purpose") or []
+                        appt_purpose = ", ".join(appt_purpose_list) if isinstance(appt_purpose_list, list) else str(appt_purpose_list)
+                        lead_summary = updated_lead_data.get("lead_summary") or session_mdl_obj.get("summary") or "N/A"
+                        
+                        message_text = (
+                            f"🔔 *Lead Converted Successfully!*\n\n"
+                            f"A lead has been successfully converted. Details:\n"
+                            f"• *Customer Name*: {cust_name}\n"
+                            f"• *Customer Phone*: {cust_phone}\n"
+                            f"• *Dealership*: {dealer_name}\n"
+                            f"• *Appointment Date*: {appt_date}\n"
+                            f"• *Appointment Time*: {appt_time}\n"
+                            f"• *Purpose*: {appt_purpose}\n"
+                            f"• *Summary*: {lead_summary}"
+                        )
+                        
+                        mlogger.info(f"Enqueuing WhatsApp notification to dealership {dealership_id} phone {to_phone_clean} from {from_number}")
+                        gryd.create_async_task(
+                            "send_message_whatsapp",
+                            AUTOCRM_COMMUNICATION_SERVICE_NAME,
+                            args=["919641731644", from_number],
+                            kwargs={
+                                "whatsapp_provider": whatsapp_provider,
+                                "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
+                                "message": message_text
+                            }
+                        )
+                    else:
+                        mlogger.warning(f"No contact phone number found for dealership {dealership_id} to send WhatsApp alert.")
+            else:
+                mlogger.warning("No dealership_id found in session_mdl_obj; skipping WhatsApp alert.")
+        except Exception as e:
+            mlogger.error(f"Failed to send WhatsApp conversion notification to dealership: {e}", exc_info=True)
+
     user_or_vehicle_data = get_extra_data(session_id,session_data)
     
     summary_updated = get_summary(session_id,session_data)
@@ -1423,7 +1483,7 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
     disp_details_options = {
             "CONVERTED": {
                 "CONVERTED": "Use this category when the customer successfully completes the campaign objective during the conversation and provides all required information or confirmation needed to finalize the lead, booking, inquiry, or conversion action."
-            },
+            },  
 
             "POSITIVE": {
                 "ENQUIRED FOR TEST DRIVE": "Use this category when the customer independently asks for a test drive, expresses interest in experiencing the vehicle firsthand, or requests details about scheduling a test drive.",
