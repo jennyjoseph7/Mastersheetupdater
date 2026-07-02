@@ -1400,10 +1400,14 @@ class WhatsappMessangerConnector:
 
         logger.info(f"Loading campaign src_type: {src_type}")
         source_class = cls._registry.get(src_type)
+        logger.info(f"source_class: {source_class}")
+        logger.info(f"kwargs: {kwargs}")
+        logger.info(f"source_type: {source_type}")
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
-        
-        return source_class(whatsapp_provider=source_type,*args,**kwargs)
+        provider = kwargs.pop("whatsapp_provider", source_type)
+        return source_class(whatsapp_provider=provider,*args,**kwargs)
+                
 
 
 class WhatsappReceiverConnector:
@@ -1423,6 +1427,7 @@ class WhatsappReceiverConnector:
 
         logger.info(f"Loading campaign src_type: {src_type}")
         source_class = cls._registry.get(src_type)
+       
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
         

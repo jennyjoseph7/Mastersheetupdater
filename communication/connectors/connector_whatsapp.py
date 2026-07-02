@@ -251,7 +251,6 @@ def send_message_whatsapp(*args,**kwargs):
         mlogger.info("No Whatsapp Provider found")
         return {"error":"Whatsapp Provider not found"}
     provider_init = WhatsappMessangerConnector.whatsapp(whatsapp_provider,*args,**kwargs)
-    
     res = provider_init.send_message_whatsapp(*args,**kwargs)
     return res
 
