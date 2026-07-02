@@ -67,7 +67,11 @@ export default function TopNavigation() {
 
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/dealership_summary", label: "Dealership Summary", icon: LayoutDashboard },
+    {
+      href: "/dealership_summary",
+      label: "Dealership Summary",
+      icon: LayoutDashboard,
+    },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/template", label: "Template", icon: FileText },
     // { href: "/connection", label: "Connection", icon: LinkIcon },
@@ -85,7 +89,7 @@ export default function TopNavigation() {
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105 "
+              className="w-auto h-10 transition-transform group-hover:scale-105 "
             />
           </Link>
           <div className="flex items-center gap-3">
@@ -115,7 +119,7 @@ export default function TopNavigation() {
               alt="DaveAI Logo"
               width={120}
               height={24}
-              className="w-auto h-6 transition-transform group-hover:scale-105 "
+              className="w-auto h-10 transition-transform group-hover:scale-105 "
             />
           </Link>
 
@@ -133,7 +137,7 @@ export default function TopNavigation() {
                     "hover:bg-accent/80 hover:text-accent-foreground",
                     active
                       ? "bg-primary/10 text-primary shadow-sm"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   <Icon className={cn("h-4 w-4", active && "text-primary")} />
@@ -205,8 +209,7 @@ export default function TopNavigation() {
                       {user.name}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-{user.dealershipId || user.email}
-
+                      {user.dealershipId || user.email}
                     </p>
                     <Badge variant="secondary" className="w-fit mt-1">
                       <Coins className="mr-1 h-3 w-3" />

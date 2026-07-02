@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReCAPTCHA from "react-google-recaptcha";
 import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
 // import { PhoneInput } from "react-international-phone";
 import {
   Card,

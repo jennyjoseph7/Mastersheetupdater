@@ -1895,7 +1895,8 @@ def mark_inactive_dealerships(*args,**kwargs):
     with get_pg_connector() as pg:
         INACTIVE_DAYS=kwargs.get("inactive_days",14)
         inactivity_days=time.time()-(INACTIVE_DAYS * 24 * 60 * 60)
-
+        limit=kwargs.get("limit",100)
+        
         query = f"""
         WITH latest_contact AS (
             SELECT DISTINCT ON (dict->>'dealership_id')
@@ -1919,6 +1920,7 @@ def mark_inactive_dealerships(*args,**kwargs):
                 lc.created IS NULL
                 OR lc.created < {inactivity_days}
             )
+        LIMIT {limit}
         """
 
         result = pg.fetch_all(query)
@@ -1927,8 +1929,8 @@ def mark_inactive_dealerships(*args,**kwargs):
         mlogger.info(f"Inactive dealership count: {len(result)} for inactive days = {INACTIVE_DAYS} days")
 
         for dealership_id, created in result:
-            mlogger.info(f"Dealership={dealership_id}, last_contact={created}")
-            
+            mlogger.info(f"Dealership={dealership_id} is inactive for {INACTIVE_DAYS} days. Last contact timestamp={created}")
+
             pg.update("dealership", "dealership_id", dealership_id, {"dealer_status": "inactive"})
             
         return {

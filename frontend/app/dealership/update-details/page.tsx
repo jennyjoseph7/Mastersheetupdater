@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
 import {
   Card,
   CardContent,
