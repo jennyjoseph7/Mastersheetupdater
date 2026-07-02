@@ -4,7 +4,7 @@ from connectors.whatsapp_connectors.source_connectors import *
 class AirtelWebhookConverter(BaseWebhookConverter):
     logger.info("AirtelWebhookConverter initialized")
     def __init__(self,whatsapp_provider,*args,**kwargs)-> None:
-        super().__init__(whatsapp_provider=whatsapp_provider,*args,**kwargs)
+        super().__init__(*args,**kwargs)
 
         
 
@@ -251,7 +251,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         Initialize the AirtelWhatsAppMessenger class.
         Any setup related to the service can be added here in the future.
         """
-        super().__init__(*args,**kwargs)
+        super().__init__(self,*args,**kwargs)
         self.temporary_data={}
     def process_request(
         self,

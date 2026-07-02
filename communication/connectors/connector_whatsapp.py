@@ -1,6 +1,5 @@
 # This file contains all the gryd task and initialises whatsapp connectors.
 
-import sys, os
 from os.path import (
     exists as ispath,
     dirname,
@@ -12,15 +11,10 @@ from os.path import (
     sep as dirsep,
     isfile
 )
-
-_connectors_dir = dirname(abspath(__file__))
-_communication_dir = dirname(_connectors_dir)
-_project_root = dirname(_communication_dir)
-for path in (_project_root, _communication_dir):
-    if path not in sys.path:
-        sys.path.insert(0, path)
-
 from flask import request
+
+# added new instead of
+import sys,os
 import time
 from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
@@ -33,6 +27,9 @@ import functools
 from autocrm_db_helper import get_pg_connector
 #  this from connectors.base_connector_communication import *
 
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()

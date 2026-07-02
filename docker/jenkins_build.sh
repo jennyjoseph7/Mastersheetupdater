@@ -112,13 +112,6 @@ create_sha_file() {
 
     SHA="$sha"
 
-    # FIX: this was defined but never called before, so per-worker
-    # version.sha files were never written. Called here so it runs
-    # with $dir_name (i.e. $WORKER_DIR) as the current directory,
-    # matching where start_worker_config.json and the worker
-    # subfolders actually live.
-    print_worker_git_info
-
     popd >/dev/null || exit 1
 }
 
