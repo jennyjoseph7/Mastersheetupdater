@@ -126,7 +126,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_all_dealerships_for_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={"voice_batch_size": 30},
+            kwargs={"voice_batch_size": 30,"dealership_id":["stellantis--jeep-india","stellantis-india","daveai","dave-ai-sociograph-solutions-india"]},
             add_schedule_to_queue=False
         )
         
@@ -135,7 +135,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             task="process_dealerships_non_voice",
             service=AUTOCRM_CRON_SERVICE_NAME,
             schedule = "*/20 3-13 * * *", #till 7:10pm it runs..
-            kwargs={},
+            kwargs={"dealership_id":["stellantis--jeep-india","stellantis-india","daveai","dave-ai-sociograph-solutions-india"]},
             add_schedule_to_queue=False
         )
         
@@ -143,7 +143,7 @@ def SETUP(skip_models = False, skip_data = False, start_models_from = None, star
             enterprise_id=AUTOCRM_APP_ENTERPRISE_ID,
               task="mark_inactive_dealerships",
               service=AUTOCRM_CRON_SERVICE_NAME,
-              schedule = "15 0 * * *",
+              schedule = "30 13 * * *",
               kwargs={"inactive_days": 14},
               add_schedule_to_queue=False
         )
