@@ -10,6 +10,7 @@ import {
   executeTaskWithPolling,
   cloneLeadsTask,
   assignAudienceTask,
+  updateAudienceTask,
 } from "@/utils/api";
 import { api, dealershipUpdateDetails } from "@/lib/api";
 
@@ -464,7 +465,9 @@ function CampaignCreateContent() {
         const endpoint = `/gryd/db/objects/template?campaign_objective_name=${encodeURIComponent(objectiveName)}&dealership_id=${encodeURIComponent(dealershipId)}`;
         const res = await api(endpoint, "GET");
         const templates = res.data || [];
-        const hasTemplates = templates.some((t: any) => t.status === "approved");
+        const hasTemplates = templates.some(
+          (t: any) => t.status === "approved",
+        );
         setHasWhatsappTemplates(hasTemplates);
         if (!hasTemplates) {
           setSelectedChannels((prev) => prev.filter((c) => c !== "whatsapp"));
@@ -777,7 +780,7 @@ function CampaignCreateContent() {
       setSelectedChannels(
         hasWhatsappTemplates
           ? ["voice", "whatsapp", "email"]
-          : ["voice", "email"]
+          : ["voice", "email"],
       );
     } catch (error: any) {
       console.error(error);
@@ -963,6 +966,16 @@ function CampaignCreateContent() {
           },
           ((msg: string) => setLaunchStatus(msg)) as any,
         );
+        try {
+          await updateAudienceTask(selectedAudienceDetails.audience_task_id, {
+            campaign_id: createdCampaignId,
+          });
+        } catch (patchErr) {
+          console.error(
+            "Failed to patch audience task with campaign ID",
+            patchErr,
+          );
+        }
       }
     } catch (err) {
       console.error("Audience task error", err);
@@ -1893,66 +1906,75 @@ function CampaignCreateContent() {
                           </CardHeader>
                           <CardContent>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              {channels
-                                .map((ch) => {
-                                  const isWhatsappDisabled = ch.id === "whatsapp" && !hasWhatsappTemplates;
-                                  return (
-                                    <div key={ch.id} className="flex flex-col gap-1">
-                                      <Card
-                                        className={cn(
-                                          "border-2 transition-all h-full",
-                                          isWhatsappDisabled 
-                                            ? "opacity-60 cursor-not-allowed border-slate-200 bg-slate-50"
-                                            : "cursor-pointer",
-                                          selectedChannels.includes(ch.id) && !isWhatsappDisabled
-                                            ? "border-primary bg-primary/5 shadow-sm"
-                                            : !isWhatsappDisabled ? "opacity-50" : ""
-                                        )}
-                                        onClick={() => {
-                                          if (isWhatsappDisabled) return;
-                                          if (selectedChannels.includes(ch.id)) {
-                                            setSelectedChannels(
-                                              selectedChannels.filter(
-                                                (c) => c !== ch.id,
-                                              ),
-                                            );
-                                          } else {
-                                            setSelectedChannels([
-                                              ...selectedChannels,
-                                              ch.id,
-                                            ]);
-                                          }
-                                        }}
-                                      >
-                                        <CardContent className="flex flex-col items-center justify-center p-4 h-full">
-                                          <div
-                                            className={cn(
-                                              "mb-2",
-                                              selectedChannels.includes(ch.id) && !isWhatsappDisabled
-                                                ? "text-primary"
-                                                : "text-muted-foreground",
-                                            )}
-                                          >
-                                            {ch.icon}
-                                          </div>
-                                          <span className="font-semibold text-center text-sm">
-                                            {ch.name}
-                                          </span>
-                                          {selectedChannels.includes(ch.id) && !isWhatsappDisabled && (
+                              {channels.map((ch) => {
+                                const isWhatsappDisabled =
+                                  ch.id === "whatsapp" && !hasWhatsappTemplates;
+                                return (
+                                  <div
+                                    key={ch.id}
+                                    className="flex flex-col gap-1"
+                                  >
+                                    <Card
+                                      className={cn(
+                                        "border-2 transition-all h-full",
+                                        isWhatsappDisabled
+                                          ? "opacity-60 cursor-not-allowed border-slate-200 bg-slate-50"
+                                          : "cursor-pointer",
+                                        selectedChannels.includes(ch.id) &&
+                                          !isWhatsappDisabled
+                                          ? "border-primary bg-primary/5 shadow-sm"
+                                          : !isWhatsappDisabled
+                                            ? "opacity-50"
+                                            : "",
+                                      )}
+                                      onClick={() => {
+                                        if (isWhatsappDisabled) return;
+                                        if (selectedChannels.includes(ch.id)) {
+                                          setSelectedChannels(
+                                            selectedChannels.filter(
+                                              (c) => c !== ch.id,
+                                            ),
+                                          );
+                                        } else {
+                                          setSelectedChannels([
+                                            ...selectedChannels,
+                                            ch.id,
+                                          ]);
+                                        }
+                                      }}
+                                    >
+                                      <CardContent className="flex flex-col items-center justify-center p-4 h-full">
+                                        <div
+                                          className={cn(
+                                            "mb-2",
+                                            selectedChannels.includes(ch.id) &&
+                                              !isWhatsappDisabled
+                                              ? "text-primary"
+                                              : "text-muted-foreground",
+                                          )}
+                                        >
+                                          {ch.icon}
+                                        </div>
+                                        <span className="font-semibold text-center text-sm">
+                                          {ch.name}
+                                        </span>
+                                        {selectedChannels.includes(ch.id) &&
+                                          !isWhatsappDisabled && (
                                             <Badge className="mt-2 bg-green-600">
                                               Active
                                             </Badge>
                                           )}
-                                        </CardContent>
-                                      </Card>
-                                      {isWhatsappDisabled && (
-                                        <span className="text-[10px] text-red-500 font-medium leading-tight text-center px-1 mt-1">
-                                          WhatsApp is not available for this campaign objective due to no template
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                                      </CardContent>
+                                    </Card>
+                                    {isWhatsappDisabled && (
+                                      <span className="text-[10px] text-red-500 font-medium leading-tight text-center px-1 mt-1">
+                                        WhatsApp is not available for this
+                                        campaign objective due to no template
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                             {/* NEW UI: Voice Call Configuration */}
                             {selectedChannels.includes("voice") && (
