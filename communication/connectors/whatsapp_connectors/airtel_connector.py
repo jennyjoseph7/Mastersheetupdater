@@ -4,7 +4,7 @@ from connectors.whatsapp_connectors.source_connectors import *
 class AirtelWebhookConverter(BaseWebhookConverter):
     logger.info("AirtelWebhookConverter initialized")
     def __init__(self,whatsapp_provider,*args,**kwargs)-> None:
-        super().__init__(*args,**kwargs)
+        super().__init__(whatsapp_provider=whatsapp_provider,*args,**kwargs)
 
         
 

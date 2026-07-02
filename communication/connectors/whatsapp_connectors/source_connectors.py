@@ -280,8 +280,14 @@ class BaseWebhookConverter:
             }
 
         return interactive_data, media_detail
-    
 
+    @property
+    def whatsapp_provider(self):
+        return getattr(self, '_whatsapp_provider', None)
+
+    @whatsapp_provider.setter
+    def whatsapp_provider(self, value):
+        self._whatsapp_provider = value.lower() if isinstance(value, str) else value
 
     def __init__(self, whatsapp_provider: str=None, message_model_name: Optional[str] = "whatsapp_message", default_message_dict = {},*args,**kwargs):
         self.default_message_dict: Dict[str, str] = {
@@ -922,6 +928,14 @@ class PayloadBuilder:
 
 
 class BaseWhatsappMessenger:
+    @property
+    def whatsapp_provider(self):
+        return getattr(self, '_whatsapp_provider', None)
+
+    @whatsapp_provider.setter
+    def whatsapp_provider(self, value):
+        self._whatsapp_provider = value.lower() if isinstance(value, str) else value
+
     def flatten_json(self,nested_json, parent_key='', sep='.'):
         items = []
         for k, v in nested_json.items():
@@ -1450,10 +1464,11 @@ class WhatsappCampaignTemplate:
         logger.info(f"Loading campaign src_type: {src_type}")
         logger.info(f"WhatsappCampaignTemplate registry: {WhatsappCampaignTemplate._registry.keys()}")
         source_class = cls._registry.get(src_type)
-        logger.info(f"source_class: {source_class}")
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
         
+        # Pop whatsapp_provider if already present in kwargs to avoid multiple values for keyword argument error
+        kwargs.pop("whatsapp_provider", None)
         return source_class(whatsapp_provider=source_type,*args,**kwargs)
 
 
