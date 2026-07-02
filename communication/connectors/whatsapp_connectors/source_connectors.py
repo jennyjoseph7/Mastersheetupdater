@@ -1403,6 +1403,8 @@ class WhatsappMessangerConnector:
         if not source_class:
             raise ValueError(f"Unsupported source type: {src_type}")
         
+        # Pop whatsapp_provider if already present in kwargs to avoid multiple values for keyword argument error
+        kwargs.pop("whatsapp_provider", None)
         return source_class(whatsapp_provider=source_type,*args,**kwargs)
 
 

@@ -2,9 +2,14 @@ import os,json
 from os.path import exists as ispath, dirname, basename, join as joinpath, abspath, split as pathsplit, splitext, sep as dirsep, isfile
 import sys
 import pdfkit
-_root = dirname(dirname(abspath(__file__)))
-if _root not in sys.path:
-    sys.path.insert(0, _root)
+
+_connectors_dir = dirname(abspath(__file__))
+_communication_dir = dirname(_connectors_dir)
+_project_root = dirname(_communication_dir)
+for path in (_project_root, _communication_dir):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 from communication.connectors.communication_helpers import *
 from communication.connectors.mail_connectors.source_connector import MailSourceFactory
 from config import AUTOCRM_COMMUNICATION_SERVICE_NAME,EMAIL_PROVIDER_NAME,EMAIL_SENDER_NAME,AUTOCRM_APP_ENTERPRISE_ID

@@ -251,7 +251,7 @@ class AirtelWhatsAppMessenger(BaseWhatsappMessenger):
         Initialize the AirtelWhatsAppMessenger class.
         Any setup related to the service can be added here in the future.
         """
-        super().__init__(self,*args,**kwargs)
+        super().__init__(*args,**kwargs)
         self.temporary_data={}
     def process_request(
         self,

@@ -2,6 +2,14 @@
 import functools
 import os
 import sys
+
+_connectors_dir = os.path.dirname(os.path.abspath(__file__))
+_communication_dir = os.path.dirname(_connectors_dir)
+_project_root = os.path.dirname(_communication_dir)
+for path in (_project_root, _communication_dir):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 import json
 import time
 import uuid
@@ -41,10 +49,6 @@ from validate_email import validate_email
 from communication.common_functions import get_communication_credential, generate_uid
 # from communication.connectors.connector_whatsapp import post_lead_disposition
 from conversation.lead_post_processing import update_lead_disposition_and_post_billing
-# --- Set import path for internal modules ---
-_communication_dir = dirname(dirname(abspath(__file__)))
-if _communication_dir not in sys.path:
-    sys.path.insert(0, _communication_dir)
 from config import AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,AUTOCRM_CAMPAIGN_SERVICE_NAME,AUTOCRM_APP_ENTERPRISE_ID,AUTOCRM_COMMUNICATION_SERVICE_NAME,get_phone_code_from_dealership
 from gryd_worker import gryd, gryd_helpers as hp,gryd_db_helper as db
 logger=gryd.logger
