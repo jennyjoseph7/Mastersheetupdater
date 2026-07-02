@@ -46,13 +46,15 @@ PS-02  Queued provider status → start now (delay 0)
 PS-03  Single failed attempt on whatsapp → retry same channel with linear delay
 PS-04  Failed retries exhausted on whatsapp → advance to voice_phone
 PS-05  Error on whatsapp (0 retries) → skip to next channel immediately
-PS-06  Attempted on voice_phone → retry (attempt count uses failed/reached only)
+PS-06  Attempted on voice_phone → linear retry delay on same channel
 PS-07  Reached (delivered) on whatsapp → schedule via v_function delay
 PS-08  Highest contacted + disposition contacted → follow_up_contact
 PS-09  Engaged + REQUESTED_CALLBACK → follow_up_contact
 PS-10  Engaged without callback detail → no next action
 PS-11  Converted disposition → confirmation_message trigger
 PS-12  Multi-status history (attempted + contacted) → contacted wins
+PS-13  Existing future next_schedule_time → do not schedule before it
+PS-14  Existing next_schedule_time + longer workflow delay → keep later time
 
 Post-sales (due-date driven)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -220,6 +222,10 @@ class WorkflowScenarioMixin:
 
     def assert_delay_at_least(self, actual, minimum, tolerance=DELAY_TOLERANCE_SECONDS):
         assert_delay_at_least(self, actual, minimum, tolerance)
+
+    def assert_epoch_near(self, actual, expected, tolerance=DELAY_TOLERANCE_SECONDS):
+        """Assert epoch timestamps match within +/- tolerance seconds."""
+        assert_delay_near(self, actual, expected, tolerance)
 
     def setUp(self):
         self._patchers = [
@@ -390,7 +396,7 @@ class TestPreSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         self.assert_delay_near(result.delay, 0)
 
     def test_ps06_attempted_uses_linear_six_hour_backoff(self):
-        """PS-06: Lone attempted status → attempts=0 → zero delay before retry."""
+        """PS-06: Attempted status → linear retry delay on same channel."""
         result = self.run_channel_scenario(
             lead=_pre_sales_lead(),
             campaign=_campaign(channels=["voice_phone"]),
@@ -398,7 +404,7 @@ class TestPreSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
             disposition="attempted",
         )
         self.assertEqual(result.channel, "voice_phone")
-        self.assert_delay_near(result.delay, 0)
+        self.assert_delay_at_least(result.delay, CAMPAIGN_WORKFLOW["attempted"]["delay"])
 
     def test_ps07_reached_uses_v_function_delay(self):
         """PS-07: Reached (delivered) → v_function delay before retry."""
@@ -471,6 +477,48 @@ class TestPreSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         self.assertEqual(result.trigger, "follow_up_contact")
 
 
+class TestNextScheduleTimeFloor(WorkflowScenarioMixin, unittest.TestCase):
+    """Ensure computed delays never move next_schedule_time earlier than existing."""
+
+    def test_floor_bumps_immediate_retry_to_existing_schedule(self):
+        """Future next_schedule_time + zero workflow delay → wait until that time."""
+        future = _now() + 3600
+        lead = _pre_sales_lead(next_schedule_time=future)
+        result = self.run_channel_scenario(
+            lead=lead,
+            campaign=_campaign(channels=["voice_phone"]),
+            statuses=None,
+        )
+        self.assertEqual(result.channel, "voice_phone")
+        self.assert_delay_near(result.delay, 3600)
+
+    def test_floor_keeps_later_computed_delay(self):
+        """When now + delay is already after next_schedule_time, keep computed delay."""
+        future = _now() + 1800
+        lead = _pre_sales_lead(next_schedule_time=future)
+        result = self.run_channel_scenario(
+            lead=lead,
+            campaign=_campaign(channels=["whatsapp_chat"]),
+            statuses=[_status("failed", "whatsapp_chat")],
+            disposition="failed",
+        )
+        self.assertEqual(result.channel, "whatsapp_chat")
+        expected = CAMPAIGN_WORKFLOW["failed"]["delay"] * 1
+        self.assert_delay_at_least(result.delay, expected)
+        self.assertGreater(result.delay, 1800)
+
+    def test_floor_helper_no_existing_schedule(self):
+        self.assert_delay_near(cw.apply_next_schedule_time_floor({}, 7200), 7200)
+
+    def test_floor_helper_respects_existing_schedule(self):
+        lead = _pre_sales_lead(next_schedule_time=_now() + 5000)
+        self.assert_delay_near(cw.apply_next_schedule_time_floor(lead, 0), 5000)
+
+    def test_floor_helper_does_not_shorten_later_delay(self):
+        lead = _pre_sales_lead(next_schedule_time=_now() + 1000)
+        self.assert_delay_near(cw.apply_next_schedule_time_floor(lead, 9000), 9000)
+
+
 class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
     """Post-sales leads carry service / warranty / insurance due dates."""
 
@@ -479,14 +527,14 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         service_due = _now() + 7 * 86400
         lead = _post_sales_lead(next_service_due=service_due)
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(service_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(service_due))
 
     def test_po02_insurance_due_date_when_no_service(self):
         """PO-02: insurance_expiry_date used when service date absent."""
         insurance_due = _now() + 45 * 86400
         lead = _post_sales_lead(insurance_expiry_date=insurance_due)
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(insurance_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(insurance_due))
 
     def test_po03_service_date_precedence_over_insurance(self):
         """PO-03: DUE_DATE_ATTRIBUTES order — service wins over insurance."""
@@ -497,7 +545,7 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
             insurance_expiry_date=insurance_due,
         )
         due_epoch = cw.get_due_date(lead, [_status("delivered", "whatsapp_chat")], logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(service_due), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(service_due))
 
     def test_po04_no_due_date_falls_back_to_first_status(self):
         """PO-04: Missing due dates → earliest status created timestamp."""
@@ -505,7 +553,7 @@ class TestPostSalesWorkflow(WorkflowScenarioMixin, unittest.TestCase):
         statuses = [_status("failed", "whatsapp_chat", created=created)]
         lead = _post_sales_lead()
         due_epoch = cw.get_due_date(lead, statuses, logger=MagicMock())
-        self.assertAlmostEqual(due_epoch, cw.hp.to_epoch(created), places=0)
+        self.assert_epoch_near(due_epoch, cw.hp.to_epoch(created))
 
     def test_po05_past_due_beyond_stop_period_stops_follow_up(self):
         """PO-05: Last attempt well after due date + stop_period → no delay."""
@@ -585,6 +633,8 @@ TEST_CASES = [
     ("PS-10", "Pre-sales engaged no action", TestPreSalesWorkflow.test_ps10_engaged_without_callback_no_action),
     ("PS-11", "Pre-sales converted", TestPreSalesWorkflow.test_ps11_converted_confirmation_message),
     ("PS-12", "Pre-sales mixed statuses", TestPreSalesWorkflow.test_ps12_contacted_beats_attempted_in_history),
+    ("PS-13", "Respect existing next_schedule_time", TestNextScheduleTimeFloor.test_floor_bumps_immediate_retry_to_existing_schedule),
+    ("PS-14", "Keep delay after next_schedule_time", TestNextScheduleTimeFloor.test_floor_keeps_later_computed_delay),
     ("PO-01", "Post-sales service due date", TestPostSalesWorkflow.test_po01_service_due_date_used_for_scheduling),
     ("PO-02", "Post-sales insurance due date", TestPostSalesWorkflow.test_po02_insurance_due_date_when_no_service),
     ("PO-03", "Post-sales date precedence", TestPostSalesWorkflow.test_po03_service_date_precedence_over_insurance),

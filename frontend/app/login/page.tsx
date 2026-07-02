@@ -50,24 +50,31 @@ export default function LoginPage() {
 
   // Get reCAPTCHA site key from environment
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
-  console.log("[autoNgage] reCAPTCHA site key status:", recaptchaSiteKey ? "Loaded" : "Not found" ,recaptchaSiteKey);
+  console.log(
+    "[autoNgage] reCAPTCHA site key status:",
+    recaptchaSiteKey ? "Loaded" : "Not found",
+    recaptchaSiteKey,
+  );
   const isRecaptchaEnabled = Boolean(recaptchaSiteKey);
 
   // Debug: Log the site key status (remove in production)
   useEffect(() => {
     if (isRecaptchaEnabled) {
-      console.log(
+      console
+        .log
         // "[reCAPTCHA] Site key loaded:",
         // recaptchaSiteKey.substring(0, 10) + "..."
-      );
-      console.log(
+        ();
+      console
+        .log
         // "[reCAPTCHA] Current domain:",
         // typeof window !== "undefined" ? window.location.hostname : "server"
-      );
+        ();
     } else {
-      console.warn(
+      console
+        .warn
         // "[reCAPTCHA] Site key not found. Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local"
-      );
+        ();
     }
   }, [recaptchaSiteKey, isRecaptchaEnabled]);
 
@@ -125,7 +132,7 @@ export default function LoginPage() {
       setError(
         err instanceof Error
           ? err.message
-          : "Invalid email or password. Please try again."
+          : "Invalid email or password. Please try again.",
       );
       // Reset reCAPTCHA on error
       if (isRecaptchaEnabled) {
@@ -170,7 +177,7 @@ export default function LoginPage() {
               alt="autoNgage Logo"
               width={230}
               height={56}
-              className="w-auto h-10 "
+              className="w-auto h-15 "
             />
           </div>
           <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
@@ -370,8 +377,8 @@ export default function LoginPage() {
             Privacy Policy
           </Link>
         </p> */}
- <p className="text-center text-sm text-muted-foreground mt-6">
-        By signing in, you agree to our Terms of Service and Privacy Policy
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          By signing in, you agree to our Terms of Service and Privacy Policy
         </p>
         {/* Made by Dave AI */}
         <div className="text-center mt-8">

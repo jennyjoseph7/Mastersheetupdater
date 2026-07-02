@@ -109,7 +109,7 @@ REQUIRED_RETRIGGER = {
 
 CAMPAIGN_WORKFLOW = {
     "queued": {
-        "retries": 20,
+        "retries": 0,
         "delay": 0,
         "trigger": None
     },
@@ -126,7 +126,7 @@ CAMPAIGN_WORKFLOW = {
     "attempted": {
         "retries": 20,
         "delay_type": "linear",
-        "delay": 3600*6,
+        "delay": 3600*4,
         "trigger": "switch_to_next_credential"
     },
     "reached": {
@@ -272,7 +272,7 @@ def get_highest_status(statuses: list):
 
 def get_attempts(statuses: list, status: str):
     # In the scenario that lower status are missed or not upgraded, then we can align attempt with any of the statuses
-    statuses_lower_than = DISPOSITION_LOWER.get(status, ["reached", "failed"])
+    statuses_lower_than = DISPOSITION_LOWER.get(status, ["attempted"])
     return sum(1 for _ in filter(lambda x: DISPOSITION_MAP.get(x.get('provider_status'), x.get('provider_status')) in statuses_lower_than, statuses))
 
 def get_next_delay(attempts: int, workflow_stage: dict, timezone: str = None, due_date: int = None, last_attempt_timestamp: int = None, dealership_timings = None, channel = None):
@@ -328,6 +328,46 @@ def get_next_delay(attempts: int, workflow_stage: dict, timezone: str = None, du
         return next_delay + ((24 - next_time.hour + start_time) * 3600)
     return next_delay
 
+def get_lead_next_schedule_time(lead: dict):
+    """Return the lead's existing next_schedule_time as epoch, if set."""
+    for key in ("next_schedule_time", "next_scheduled_time"):
+        value = lead.get(key)
+        if value is not None and value != "":
+            return hp.to_epoch(value)
+    return None
+
+def apply_next_schedule_time_floor(lead: dict, delay: int | float | None, logger=None):
+    """
+    If the lead already has next_schedule_time, do not schedule earlier than that.
+    Returns delay in seconds from now, bumped up when now + delay would fall before it.
+    """
+    logger = logger or mlogger
+    campaign_type = lead.get('campaign_type', "pre-sales")
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
+    lead_id = lead.get(lead_id_attr)
+    campaign_id = lead.get('campaign_id')
+    if delay is None:
+        return None
+    existing = get_lead_next_schedule_time(lead)
+    if existing is None:
+        return delay
+    now = hp.epoch()
+    proposed = now + float(delay)
+    if proposed >= existing:
+        return delay
+    adjusted = max(0.0, existing - now)
+    logger.info(
+        "Respecting existing next_schedule_time %s for lead id %s in %s campaign %s: adjusting delay from %s to %s",
+        hp.to_datetime(existing),
+        lead_id,
+        campaign_type,
+        campaign_id,
+        time_difference(float(delay)),
+        time_difference(adjusted),
+    )
+    return adjusted
+
 def get_remaining_retries(workflow_stage: dict, attempts: int = 0, all_credentials_count: int = 0):
     max_retries = workflow_stage.get('retries', 0) or 0
     if all_credentials_count > 0:
@@ -359,8 +399,9 @@ def get_statuses(channel: str, channel_type: str, channel_identifier: str, statu
 def get_due_date(lead: dict, statuses: list, timezone: str = None, logger=None):
     logger = logger or mlogger
     due_date = None
-    campaign_type = lead.get('campaign_type').replace('-', '_')
-    lead_id_attr = f"{campaign_type}_lead_id"
+    campaign_type = lead.get('campaign_type')
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
     campaign_id = lead.get('campaign_id')
     for k in DUE_DATE_ATTRIBUTES:
         if lead.get(k):
@@ -399,8 +440,9 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
     st = hp.time()
     logger.info("Loading models for get_channel_from_lead")
     enterprise_id = enterprise_id or auth.get('enterprise_id') or AUTOCRM_APP_ENTERPRISE_ID
-    campaign_type = campaign_details.get('campaign_type').replace('-', '_')
-    lead_id_attr = f"{campaign_type}_lead_id"
+    campaign_type = campaign_details.get('campaign_type')
+    campaign_type_key = campaign_type.lower().replace('-', '_')
+    lead_id_attr = f"{campaign_type_key}_lead_id"
     lead_id = lead.get(lead_id_attr)
     campaign_id = campaign_details.get('campaign_id')
     dealership_id = campaign_details.get('dealership_id')
@@ -449,7 +491,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
             statuses = get_statuses(channel, channel_type, channel_identifier, status_model=status_model, lead_id=lead_id, campaign_id=campaign_id, dealership_id=dealership_id, logger=logger)
             if not statuses:
                 logger.info(f"No statuses found for lead id {lead_id} in {campaign_type} campaign {campaign_id}, channel: {channel} with channel identifier: {channel_identifier}, enterprise_id={enterprise_id}, starting now.")
-                return channel, channel_identifier, 0, None
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, 0, logger=logger), None
             due_date = get_due_date(lead, statuses, timezone=timezone, logger=logger)
             last_status_record = hp.make_single(statuses, force = True)
             last_status = DISPOSITION_MAP.get(last_status_record.get('provider_status'), last_status_record.get('provider_status'))
@@ -457,7 +499,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
             highest_status = get_highest_status(statuses)
             logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Highest status: {highest_status}, last status: {last_status}, enterprise_id={enterprise_id}, due date: {due_date}")
             if highest_status == "queued":
-                return channel, channel_identifier, 0, None
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, 0, logger=logger), None
             if highest_status != "contacted":
                 attempts = get_attempts(statuses, highest_status)
                 logger.info(f"Got {attempts} attempts for uncontacted in lead id {lead_id} in {campaign_type} campaign {campaign_id}, enterprise_id={enterprise_id}")
@@ -468,7 +510,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                 next_retries = get_remaining_retries(workflow_stage, attempts, all_credentials_count=all_credentials_count)
                 logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Next retries: {next_retries}, attempts: {attempts}, enterprise_id={enterprise_id}")
                 if next_retries > 0:
-                    return channel, channel_identifier, next_delay, None
+                    return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), None
                 trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
             else:
                 # We have connected, so we need to follow up with the contact.
@@ -491,7 +533,7 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
                     next_execution_time = f"({hp.to_datetime(hp.epoch() + next_delay, tz = timezone)})" if next_delay else ""
                     logger.info(f"For lead id {lead_id} in {campaign_type} campaign {campaign_id}, Next delay: {next_delay}{next_execution_time}, attempts: {attempts}, enterprise_id={enterprise_id}")
                     if next_delay is not None:
-                        return channel, channel_identifier, next_delay, "follow_up_contact"
+                        return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "follow_up_contact"
                     trigger = workflow_stage.get('trigger', 'switch_to_next_credential')
                     # In current version we are not following up for other disposition details.
                 return None, None, 0, None
@@ -503,11 +545,11 @@ def get_channel_from_lead(lead: dict, campaign_details: dict, enterprise_id: Uni
             elif trigger == "follow_up_contact":
                 logger.info(f"Following up contact for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
                 logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                return channel, channel_identifier, next_delay, "follow_up_contact"
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "follow_up_contact"
             elif trigger == "confirmation_message":
                 logger.info(f"Sending confirmation message for channel: {channel} with channel identifier: {channel_identifier} for campaign_id={campaign_id}, enterprise_id={enterprise_id}")
                 logger.info(f"Time taken to get channel from lead: {hp.time() - st} seconds")
-                return channel, channel_identifier, next_delay, "confirmation_message"
+                return channel, channel_identifier, apply_next_schedule_time_floor(lead, next_delay, logger=logger), "confirmation_message"
             if change_channel:
                 break
     logger.info(f"No next action found for channel: {channel} for campaign_id={campaign_id}, enterprise_id={enterprise_id}, doing nothing.")
