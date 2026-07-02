@@ -36,6 +36,9 @@ from os.path import (
     sep as dirsep,
     isfile
 )
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
 
 from validate_email import validate_email
 from communication.common_functions import get_communication_credential, generate_uid
@@ -54,9 +57,6 @@ from connectors.communication_configs import *
 # from communication.connectors.whatsapp_connectors.source_connectors import BaseWebhookConverter
 
 # Path to parent folder
-PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if PARENT_DIR not in sys.path:
-    sys.path.insert(0, PARENT_DIR)
 
 from autocrm_db_helper import get_pg_connector
 
