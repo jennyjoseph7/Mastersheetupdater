@@ -1,6 +1,6 @@
 from gryd_worker import gryd, gryd_routes, gryd_helpers as hp, beats as cron_worker
 from ai_service import ai_service_app
-import os, sys, csv, re
+import os, sys, csv, re, base64, requests
 mlogger = hp.get_logger(__name__)
 AUTOCRM_APP_ENTERPRISE_ID = os.environ.get("AUTOCRM_APP_ENTERPRISE_ID", "autocrm")
 AUTOCRM_ADMIN_ID = os.environ.get("AUTOCRM_ADMIN_ID", "ananth+autocrm-app@i2ce.in")
@@ -103,6 +103,55 @@ DUE_DATE_ATTRIBUTES = {
     "insurance_expiry_date": -45 * 3600 * 24,
     "extended_warranty_expiry_date": -60 * 3600 * 24
 }
+
+MIME_TYPES = {
+    # Document Formats
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "doc": "application/msword",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.ms-excel",
+    "csv": "text/csv",
+    "pdf": "application/pdf",
+
+    # Data / API Formats
+    "json": "application/json",
+    "xml": "application/xml",
+    "yaml": "application/x-yaml",
+
+    # Audio Formats
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav",
+    "ogg": "audio/ogg",
+    "aac": "audio/aac",
+    "m4a": "audio/mp4",
+
+    # Video Formats
+    "mp4": "video/mp4",
+    "webm": "video/webm",
+    "avi": "video/x-msvideo",
+    "mov": "video/quicktime",
+    "mkv": "video/x-matroska",
+    "3gp": "video/3gpp",
+
+    # Image Formats
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "svg": "image/svg+xml",
+    "webp": "image/webp",
+    "tiff": "image/tiff",
+
+    # Other / Generic Types
+    "txt": "text/plain",
+    "html": "text/html",
+    "bin": "application/octet-stream",
+    "form": "multipart/form-data",
+    "urlencoded": "application/x-www-form-urlencoded"
+}
+
+
 
 AUTOCRM_CALL_CONNECTED_PRICE = float(os.environ.get("AUTOCRM_CALL_CONNECTED_PRICE", 2))
 AUTOCRM_CALL_CONNECTED_ITEM = "call_connected"
@@ -802,6 +851,63 @@ def flag_error_to_session_or_lead(session_id = None, error_message = "Error in s
         lm.update(lead_id, {'disposition': disposition, "disposition_detail": error_message})
         logger.info(f"Flagged error to lead {lead_id}: {error_message}")
     return True
+
+
+def save_audio_buffer_to_file(audio_data, file_path: str = None, ext: str = "mp3") -> str:
+    """Save audio buffer (bytes or base64 str) to a local file. Returns the file path."""
+    if file_path is None:
+        file_path = f"/tmp/{uuid.uuid4()}.{ext}"
+    
+    if isinstance(audio_data, str):
+        audio_data = base64.b64decode(audio_data)
+    
+    with open(file_path, "wb") as f:
+        f.write(audio_data)
+    
+    mlogger.info(f"Audio saved to: {file_path}")
+    return file_path
+
+def func_gryd_file_system(local_path, media_type = 'document', logger = None):
+    """
+    Uploads a file to the Gryd File System.
+    Args:
+        local_path: The path to the local file to upload.
+        logger: The logger to use.
+        **kwargs: Additional keyword arguments.
+    Returns:
+        The URL of the uploaded file.
+    """
+    logger = logger or mlogger
+    logger.info(f"Uploading file to Gryd File System: {local_path} with media type: {media_type}")
+    url = f"{GRYD_FILE_SERVER_URL}/media/{media_type}"
+
+    ext = os.path.splitext(local_path)[1].replace('.','').lower()
+    content_type = MIME_TYPES[ext]
+
+    logger.info(f'Local Path: {local_path}')
+    logger.info(f'Content Type: {content_type}')
+
+    headers = {
+        'X-I2CE-ENTERPRISE-ID': 'gryd_file_system',
+        'X-I2CE-USER-ID': GRYD_FILE_USER_ID,
+        'X-I2CE-API-KEY': GRYD_FILE_API_KEY
+    }
+    public_url = None
+    with open(local_path, 'rb') as f:
+        files = [('file',(os.path.basename(local_path), f, content_type))]
+        response = requests.request("POST", url, headers=headers, files=files)
+        logger.info(f'Gryd File System Response: {response.text}')
+        if response.status_code == 200:
+            resp_json = response.json()
+            public_url = resp_json.get('cdn_url')
+
+    if public_url:
+        try:
+            os.remove(local_path)
+            logger.info(f"Deleted local file: {local_path}")
+        except Exception as e:
+            logger.error(f"Error deleting local file {local_path}: {e}")
+    return public_url
 
 if __name__ == "__main__":
     
