@@ -421,7 +421,7 @@ def post_session_process(*args, **kwargs):
                             AUTOCRM_COMMUNICATION_SERVICE_NAME,
                             args=["919641731644", from_number],
                             kwargs={
-                                "whatsapp_provider": whatsapp_provider,
+                                "whatsapp_provider": whatsapp_provider.lower(),
                                 "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
                                 "message": message_text
                             }
