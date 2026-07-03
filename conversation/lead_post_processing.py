@@ -194,11 +194,13 @@ def post_session_process(*args, **kwargs):
         except Exception as e:
             mlogger.error(f"Failed to update session history early: {e}")
 
-    if session_mdl_obj.get("status") in ["busy",
-                                        "no-answer",
-                                        "cancelled",
-                                        "failed",
-                                        "pre-initiated"]:
+    if session_mdl_obj.get("status") in [   
+                                            "busy",
+                                            "no-answer",
+                                            "cancelled",
+                                            "failed",
+                                            "pre-initiated"
+                                            ]:
         mlogger.info("status is {}, Not doing post processing".format(session_mdl_obj.get("status")))
         return
     if not session_data:
@@ -270,6 +272,7 @@ def post_session_process(*args, **kwargs):
                     updated_lead_data["follow_up_date"] = timestamp_object.timestamp()
                 except KeyError as e:
                     mlogger.info("KeyError == {}".format(e))
+                    
     if updated_lead_data.get("disposition_detail","").lower() =="language barrier":
         follow_up = get_preffered_language(session_id,session_data)
         if isinstance(follow_up,dict):
@@ -368,6 +371,7 @@ def post_session_process(*args, **kwargs):
     #     mlogger.exception(f"Failed to trigger sop alert workflow: {e}")
     
     appt_date_time_purpose = {}
+    mlogger.info("updated_lead_data after post session processing: {}".format(updated_lead_data))
     mlogger.info("Disposition after post session processing: {}".format(updated_lead_data.get("disposition")))
     if updated_lead_data.get("disposition") in ["converted", "engaged"]:
         appt_date_time_purpose = get_appt_date_time_purpose(session_id,session_data)
@@ -536,7 +540,7 @@ def post_session_process(*args, **kwargs):
             mlogger.exception("Failed while scheduling CRM update")
         session_hist = auto_val.plot_lead_session_history_func(ins = None, lead_attribute = lead_id)
         mlogger.info("session_hist_for_session_id == {} having session_history {}".format(session_id, session_hist))
-        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary_english": summary_updated})
+        update_session_hist = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,{"lead_timeline": session_hist, "lead_summary": summary_updated})
         if position_new_despo > existing_position_despo:
             updated_lead_data = pg.update(f"{campaign_type}_lead",f"{campaign_type}_lead_id",lead_id,updated_lead_data)
             if appt_date_time_purpose.get("appointment_date"):
@@ -1639,9 +1643,9 @@ def get_disposition(session_id, session_data_cache,session_mdl_obj, sentiment):
 
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id}, temperature = 0.2, **{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id})
 
-    mlogger.info("prompt == {}".format(prompt))
+    # mlogger.info("prompt == {}".format(prompt))
     resp = run_prompt_sync(user_query=" ",system_prompt=prompt,history=[],audit_params={"session_id":session_id},**{"model_identifier":"databricks-gemini-3.1-flash-lite","session_id":session_id, "temperature": 0.2})
-    # mlogger.info("disposition prompt response ======= {}".format(resp))
+    mlogger.info("disposition prompt response ======= {}".format(resp))
 
     return hp.json.loads(resp)
 
