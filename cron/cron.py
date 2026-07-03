@@ -591,14 +591,9 @@ def manage_active_sessions(*args, **kwargs):
                     )
 
                     if not history_rows:
-                        mlogger.info(
-                            f"No new messages found for session {session_id}"
-                        )
-                        continue
-
-                    mlogger.info(
-                        f"Found {len(history_rows)} messages for session {session_id}"
-                    )
+                        mlogger.info(f"No new messages found for session {session_id}")
+                    else:
+                        mlogger.info(f"Found {len(history_rows)} messages for session {session_id}")
 
                     appended_history = []
                     last_ts = None
@@ -622,36 +617,36 @@ def manage_active_sessions(*args, **kwargs):
                             "message": record.get("message"),
                         })
 
-                    if not appended_history:
-                        mlogger.info(f"No valid messages found for session {session_id}")
-                        continue
+                    if appended_history:
+                    
+                        mlogger.info(f"Appending {len(appended_history)} messages to history for session {session_id}")
 
-                    mlogger.info(f"Appending {len(appended_history)} messages to history for session {session_id}")
+                        start_time = normalize_ts(session.get("start_time"))
 
-                    start_time = normalize_ts(session.get("start_time"))
+                        update_payload = {
+                            "history": existing_history + appended_history,
+                            "history_updated_time": float(last_ts),
+                            "has_unprocessed_history": True
+                        }
 
-                    update_payload = {
-                        "history": existing_history + appended_history,
-                        "history_updated_time": float(last_ts),
-                        "has_unprocessed_history": True
-                    }
+                        if start_time and last_ts:
+                            update_payload["duration"] = (last_ts - start_time)
 
-                    if start_time and last_ts:
-                        update_payload["duration"] = (last_ts - start_time)
+                        pg.update(
+                            "session",
+                            "session_id",
+                            session_id,
+                            update_payload
+                        )
 
-                    pg.update(
-                        "session",
-                        "session_id",
-                        session_id,
-                        update_payload
-                    )
-
-                    mlogger.info(f"Updated history for session_id={session_id} messages_added={len(appended_history)} history_updated_time={last_ts}")
+                        mlogger.info(f"Updated history for session_id={session_id} messages_added={len(appended_history)} history_updated_time={last_ts}")
 
                     # needs_post_process = True
-                
+                    else:
+                        mlogger.info(f"No new messages found for session {session_id}")
+                        
                 # POST PROCESS
-
+                mlogger.info(f"Checking if post-process is needed for session_id={session_id}")
                 if needs_post_process:
 
                     mlogger.info(f"Calling post-process for session_id={session_id}")
