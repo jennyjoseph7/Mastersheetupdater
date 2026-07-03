@@ -778,26 +778,26 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     args=[],
                     kwargs=p
                 )
-                mlogger.info(f"Template message posted to session history for lead_id: {lead_id} for channel: whatsapp_chat")
-                mlogger.info(f"payload for posting template message to session history: {p}")
-                # posting the template message to the session history for the lead, so that we have a record of the message sent to the customer.
-                history=[]
-                current_timestamp = float(time.time())
-                history.extend([
-                    {
-                        "role": "user",
-                        "index": 0,
-                        "message": p.get("customer_response", ""),
-                        "timestamp": current_timestamp,
-                    },
-                    {
-                        "role": "agent",
-                        "index": 1,
-                        "message": p["responses"][0]["placeholder"],
-                        "timestamp": current_timestamp,
-                    },
-                ])
-                pg.update("session","session_id",session_id,{"history": history,"history_updated_time": current_timestamp})
+                # mlogger.info(f"Template message posted to session history for lead_id: {lead_id} for channel: whatsapp_chat")
+                # mlogger.info(f"payload for posting template message to session history: {p}")
+                # # posting the template message to the session history for the lead, so that we have a record of the message sent to the customer.
+                # history=[]
+                # current_timestamp = float(time.time())
+                # history.extend([
+                #     {
+                #         "role": "user",
+                #         "index": 0,
+                #         "message": p.get("customer_response", ""),
+                #         "timestamp": current_timestamp,
+                #     },
+                #     {
+                #         "role": "agent",
+                #         "index": 1,
+                #         "message": p["responses"][0]["placeholder"],
+                #         "timestamp": current_timestamp,
+                #     },
+                # ])
+                # pg.update("session","session_id",session_id,{"history": history,"history_updated_time": current_timestamp})
                 
         
         
