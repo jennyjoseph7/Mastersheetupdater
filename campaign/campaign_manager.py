@@ -1075,7 +1075,7 @@ def check_and_create_lead_object(**kwargs):
         
  
 @gryd.is_a_task(function_name="process_single_lead")
-def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None,image_url=None, custom_template_variables=None,skip_workflow=False):
+def process_single_lead(channel, lead, campaign_type, campaign_id,templateID=None, user_id=None,disposition_tag=None,disposition_detail_tag=None,channel_identifier=None,image_url=None, custom_template_variables=None,skip_workflow=False, **kwargs):
     
     """
     Process a single lead and send campaign messages for each user.

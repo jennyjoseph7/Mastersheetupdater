@@ -16,6 +16,9 @@ from flask import request
 # added new instead of
 import sys,os
 import time
+_root = dirname(dirname(abspath(__file__)))
+if _root not in sys.path:
+    sys.path.insert(0, _root)
 from connectors.communication_helpers import format_box_log,safe_orjson_dumps
 from connectors.communication_configs import DB_TIMEZONE
 from communication.common_functions import generate_uid
@@ -27,9 +30,6 @@ import functools
 from autocrm_db_helper import get_pg_connector
 #  this from connectors.base_connector_communication import *
 
-_root = dirname(dirname(abspath(__file__)))
-if _root not in sys.path:
-    sys.path.insert(0, _root)
 from gryd_worker import gryd, gryd_db_helper as db, gryd_helpers as hp
 gryd.SERVICE = AUTOCRM_COMMUNICATION_SERVICE_NAME
 gryd.set_queue_manager()
