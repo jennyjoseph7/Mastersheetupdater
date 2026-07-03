@@ -364,18 +364,27 @@ def manage_active_sessions(*args, **kwargs):
                     'needs_history_update',
                         CASE
                             WHEN
-                                (s.dict->>'last_response_time') IS NOT NULL
-                                AND (
-                                    (s.dict->>'history_updated_time') IS NULL
-                                    OR
-                                    COALESCE(
-                                        (s.dict->>'last_response_time')::NUMERIC,
-                                        0
-                                    ) >
-                                    COALESCE(
-                                        (s.dict->>'history_updated_time')::NUMERIC,
-                                        0
+                                (
+                                    (s.dict->>'last_response_time') IS NOT NULL
+                                    AND (
+                                        (s.dict->>'history_updated_time') IS NULL
+                                        OR
+                                        COALESCE(
+                                            (s.dict->>'last_response_time')::NUMERIC,
+                                            0
+                                        ) >
+                                        COALESCE(
+                                            (s.dict->>'history_updated_time')::NUMERIC,
+                                            0
+                                        )
                                     )
+                                )
+                                OR
+                                (
+                                    (s.dict->>'history_updated_time') IS NULL
+                                    AND LOWER(
+                                        COALESCE(s.dict->>'disposition', '')
+                                    ) IN ('contacted', 'reached')
                                 )
                             THEN TRUE
                             ELSE FALSE
