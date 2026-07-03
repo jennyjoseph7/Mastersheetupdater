@@ -550,6 +550,10 @@ def post_session_process(*args, **kwargs):
                 posted = m.post(visit_data)
                 mlogger.info("visit posted == {}".format(posted))
     
+            channel_identifier = get_channel_identifier(session_mdl_obj)
+            mlogger.info(f"--------[CALL] In the function post process session. Calling next campaign workflow task for latest lead disposition -- {updated_lead_data.get('disposition')} for filters: {updated_lead_data.get('campaign_id')},{updated_lead_data.get('campaign_type')},{lead_id},{session_mdl_obj.get('channel')},{channel_identifier}")
+            call_next_campaign_workflow_task(updated_lead_data.get("campaign_id"),updated_lead_data.get("campaign_type"),lead_id,updated_lead_data.get("channel"),channel_identifier,updated_lead_data.get("disposition"),pg=pg,skip_workflow=False)
+            
 @gryd.is_a_task(function_name="update_channel_identifier")
 def update_channel_identifier(user_id,**data):
     """
