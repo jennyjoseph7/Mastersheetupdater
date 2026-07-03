@@ -782,7 +782,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                 mlogger.info(f"payload for posting template message to session history: {p}")
                 # posting the template message to the session history for the lead, so that we have a record of the message sent to the customer.
                 history=[]
-                current_timestamp = time.time()
+                current_timestamp = float(time.time())
                 history.extend([
                     {
                         "role": "user",
@@ -797,7 +797,7 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                         "timestamp": current_timestamp,
                     },
                 ])
-                pg.update("session","session_id",session_id,{"history": history})
+                pg.update("session","session_id",session_id,{"history": history,"history_updated_time": current_timestamp})
                 
         
         
