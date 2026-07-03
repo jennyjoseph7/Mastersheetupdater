@@ -1282,7 +1282,8 @@ def smartflo_webhook():
         session_model.update(session_id, 
                              {
                                 "call_recording": payload.get("recording_url"), 
-                                "duration": float(payload.get("duration", 0.0))
+                                "duration": float(payload.get("duration", 0.0)),
+                                "session_live": False
                             }) #add more attributes when needed
         logger.info(f"[webhook-/smartflo/webhook] Time taken to update session with recording URL and duration: {time() - t:.2f} seconds")
         gryd_tasks.post_contact_status_voice(session_id = session_id, message_id = session_id,  **{"status": status})
@@ -1308,8 +1309,11 @@ def process():
     payload = request.get_json()
 
     logger.info(f"Processing payload: {json.dumps(payload, indent=4)}")
-
+    
+    recording_url = None
     if payload.get("full_audio"):
+        file_path = config.save_audio_buffer_to_file(payload.get("full_audio"))
+        recording_url = config.func_gryd_file_system(file_path, media_type = "mp3")
         return jsonify({"status": "ignored", "message": "Full audio payloads are ignored to save bandwidth"})
 
     data = payload.get("data", {})
@@ -1336,19 +1340,23 @@ def process():
     logger.info(f"Triggering post session process for session_id: {session_id}")
 
 
+    kwagrs = {
+        "session_id": session_id,
+        "additional_dict":{
+            "history": session_history,
+            "status": "completed",
+            "summary": transcript_summary,
+        },
+        "channel": "voice_phone"
+    }
+    if recording_url:
+        kwagrs["additional_dict"]["recording_url"] = recording_url
+
     gryd_tasks.gryd.create_async_task(
         "end_session_and_post_process",
         config.AUTOCRM_CONVERSATION_POST_PROCESS_SERVICE_NAME,
         args  = [],
-        kwargs={
-            "session_id": session_id,
-            "additional_dict":{
-                "history": session_history,
-                "status": "completed",
-                "summary": transcript_summary
-            },
-            "channel": "voice_phone"
-        }
+        kwargs = kwagrs
     )
 
 

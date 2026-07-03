@@ -425,7 +425,7 @@ def post_session_process(*args, **kwargs):
                             AUTOCRM_COMMUNICATION_SERVICE_NAME,
                             args=["919641731644", from_number],
                             kwargs={
-                                "whatsapp_provider": whatsapp_provider,
+                                "whatsapp_provider": whatsapp_provider.lower(),
                                 "enterprise_id": AUTOCRM_APP_ENTERPRISE_ID,
                                 "message": message_text
                             }
@@ -554,6 +554,10 @@ def post_session_process(*args, **kwargs):
                 posted = m.post(visit_data)
                 mlogger.info("visit posted == {}".format(posted))
     
+            channel_identifier = get_channel_identifier(session_mdl_obj)
+            mlogger.info(f"--------[CALL] In the function post process session. Calling next campaign workflow task for latest lead disposition -- {updated_lead_data.get('disposition')} for filters: {updated_lead_data.get('campaign_id')},{updated_lead_data.get('campaign_type')},{lead_id},{session_mdl_obj.get('channel')},{channel_identifier}")
+            call_next_campaign_workflow_task(updated_lead_data.get("campaign_id"),updated_lead_data.get("campaign_type"),lead_id,updated_lead_data.get("channel"),channel_identifier,updated_lead_data.get("disposition"),pg=pg,skip_workflow=False)
+            
 @gryd.is_a_task(function_name="update_channel_identifier")
 def update_channel_identifier(user_id,**data):
     """
@@ -782,6 +786,27 @@ def update_lead_disposition_and_post_billing(incoming_status, user_id=None, shou
                     args=[],
                     kwargs=p
                 )
+                # mlogger.info(f"Template message posted to session history for lead_id: {lead_id} for channel: whatsapp_chat")
+                # mlogger.info(f"payload for posting template message to session history: {p}")
+                # # posting the template message to the session history for the lead, so that we have a record of the message sent to the customer.
+                # history=[]
+                # current_timestamp = float(time.time())
+                # history.extend([
+                #     {
+                #         "role": "user",
+                #         "index": 0,
+                #         "message": p.get("customer_response", ""),
+                #         "timestamp": current_timestamp,
+                #     },
+                #     {
+                #         "role": "agent",
+                #         "index": 1,
+                #         "message": p["responses"][0]["placeholder"],
+                #         "timestamp": current_timestamp,
+                #     },
+                # ])
+                # pg.update("session","session_id",session_id,{"history": history,"history_updated_time": current_timestamp})
+                
         
         
         # calling ananth task to determine next campaign action based on updated diposition and other params, doing this after updating the lead so that we have the latest lead data in that task.
