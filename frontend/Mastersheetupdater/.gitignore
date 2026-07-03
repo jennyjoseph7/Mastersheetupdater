@@ -1,0 +1,42 @@
+# Secrets
+.env
+.env.*
+*.local
+server/.env
+config.js
+
+# Temp & cache
+set_key_temp.txt
+.chrome-profile/
+*.log
+.DS_Store
+Thumbs.db
+nul
+
+# IDE
+.vscode/
+.idea/
+.vs/
+
+# Dependencies (if any)
+node_modules/
+
+# Mimocode
+.mimocode
+
+# Docs & data not meant for tracking
+campaign-generator-ai-spec.md
+CLAUDE-FABLE-5.md
+test-data.csv
+
+# Graphify output
+graphify-out/
+.graphify-out/
+
+# Next.js build
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Agent scratch scripts
+.agents/

@@ -1,0 +1,46 @@
+{
+  "name": "mastersheetupdater",
+  "version": "1.0.0",
+  "description": "Browser-based tools for automotive lead operations. Self-contained HTML files with no backend — everything runs locally. External resources (fonts, JS libraries) are self-hosted for offline use and security compliance.",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/postbuild.js",
+    "start": "next start",
+    "lint": "tsc --noEmit",
+    "test": "echo \"no tests yet\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jennyjoseph7/Mastersheetupdater.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jennyjoseph7/Mastersheetupdater/issues"
+  },
+  "homepage": "https://github.com/jennyjoseph7/Mastersheetupdater#readme",
+  "dependencies": {
+    "@dietrichgebert/ponytail": "^4.8.3",
+    "chart.js": "^4.5.1",
+    "dom-to-image-more": "^3.10.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "opencode-ponytail": "^4.7.3",
+    "typescript": "^6.0.3"
+  },
+  "main": "config.example.js"
+}
