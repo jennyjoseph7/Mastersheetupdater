@@ -34,7 +34,9 @@ def WARM_UP():
     return
 
 
-
-
+@gryd.is_a_task(function_name="send_custom_template")
+def send_custom_template(*args,**kwargs):
+    logger.info("Send custom template called---")
+    BaseWebhookConverter.send_custom_template(*args,**kwargs)
 
 

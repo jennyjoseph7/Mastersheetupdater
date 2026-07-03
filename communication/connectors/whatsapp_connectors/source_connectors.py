@@ -755,7 +755,7 @@ class BaseWebhookConverter:
 
         template_id = kwargs.get("template_id")
         mobile_number = kwargs.get("mobile_number")
-        
+        additional_attributes = kwargs.get("additional_attributes")
 
         if not template_id or not mobile_number:
             logger.error("template_id or mobile_number")
@@ -771,6 +771,7 @@ class BaseWebhookConverter:
             "template_id": template_id,   
             "sender": sender        
         }
+        
         headers = BaseWebhookConverter().get_headers(sender, "")
         logger.info(f"Headers: {headers}")
         config = PROVIDER_CONFIG.get(provider_name.lower(), {})
@@ -837,7 +838,8 @@ class BaseWebhookConverter:
     def send_custom_template(*args,**kwargs):
         logger.info("Send custom template called---")
         template_id=kwargs.get("template_id")
-        mobile_number=kwargs.get("mobile_number")        
+        mobile_number=kwargs.get("mobile_number")      
+        additional_attributes=kwargs.get("additional_attributes")  
         if not template_id or not mobile_number:
             logger.error("template_id or mobile_number missing")
             return
@@ -848,12 +850,11 @@ class BaseWebhookConverter:
             logger.error(f"No template found for template_id={template_id}")
             return
         
-        
         logger.info(f"[Send template] Template details: {template_details}")
         if template_details:
             t_data.update({
                 "template_id": template_details.get("template_id"),
-                "variables": template_details.get("template_variables"),
+                "variables": template_details.get("template_variables") ,
                 "buttons": template_details.get("template_button_payloads"),
                 "channel":template_details.get("channel"),
                 "sender":template_details.get("sender"),
@@ -861,6 +862,12 @@ class BaseWebhookConverter:
                 "mobile_number":mobile_number
             })
                         
+        if additional_attributes:
+            logger.info(f"additional_attributes: {additional_attributes}")
+            t_data.update({
+                "variables": additional_attributes.get("template_variables")
+            })
+            
         provider = WhatsappMessangerConnector.whatsapp(
                 t_data.get("provider_name"), *args, **kwargs
             )
