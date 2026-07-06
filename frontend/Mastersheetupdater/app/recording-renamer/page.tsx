@@ -280,16 +280,16 @@ export default function RecordingRenamerPage() {
     setStatusType('');
     setIsBusy(true);
     try {
-      parsedRows = await parseDataFile(dataFile);
-      setParsedRows(parsedRows);
-      applyDateFormat();
-      const built = buildResults(parsedRows);
-      resultRows = built.results;
-      setResultRows(resultRows);
-      matchedRows = built.matches;
-      setMatchedRows(matchedRows);
-      reportCsv = makeReportCsv(resultRows);
-      setReportCsv(reportCsv);
+      const newParsedRows = await parseDataFile(dataFile);
+      setParsedRows(newParsedRows);
+      applyDateFormat(newParsedRows);
+      const built = buildResults(newParsedRows);
+      const newResultRows = built.results;
+      setResultRows(newResultRows);
+      const newMatchedRows = built.matches;
+      setMatchedRows(newMatchedRows);
+      const newReportCsv = makeReportCsv(newResultRows);
+      setReportCsv(newReportCsv);
       renderResults(resultRows, built.urlCount);
       const missing = resultRows.filter(r => r.status === 'Missing').length;
       const skipped = resultRows.filter(r => r.status === 'Skipped').length;
@@ -435,8 +435,8 @@ export default function RecordingRenamerPage() {
           updateResultStatus(row, 'Failed', 'err', row.outputFile, (error as Error)?.message || 'Download failed', '');
         }
       }
-      reportCsv = makeReportCsv(resultRows);
-      setReportCsv(reportCsv);
+      const updatedReportCsv = makeReportCsv(resultRows);
+      setReportCsv(updatedReportCsv);
       if (!downloaded) {
         renderResults(resultRows, resultRows.filter(r => r.recordingRef && /^https?:\/\//i.test(r.recordingRef)).length);
         setStatusMsg('No recordings could be downloaded.');
@@ -482,9 +482,10 @@ export default function RecordingRenamerPage() {
     setUseCorsProxy(prev => !prev);
   }
 
-  function applyDateFormat() {
+  function applyDateFormat(rows?: ParsedRow[]) {
+    const target = rows ?? parsedRows;
     if (dateFormatSelect === 'auto') {
-      const dates = parsedRows.map(r => getRowValue(r, ['Call_Date', 'Call Date', 'Date', 'Updated']));
+      const dates = target.map(r => getRowValue(r, ['Call_Date', 'Call Date', 'Date', 'Updated']));
       setDateParseOrder(detectDateFormat(dates));
     } else {
       setDateParseOrder(dateFormatSelect as 'DMY' | 'MDY');
@@ -505,7 +506,7 @@ export default function RecordingRenamerPage() {
   }
 
   function handleDateFormatChange() {
-    applyDateFormat();
+    applyDateFormat(parsedRows);
     if (parsedRows.length) processBatch();
   }
 

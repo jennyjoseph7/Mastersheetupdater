@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const isDev = process.env.NODE_ENV === 'development';
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: isDev ? ['192.168.1.2'] : undefined,
   output: isDev ? undefined : 'export',
   basePath: isDev ? '' : '/Mastersheetupdater',
   assetPrefix: isDev ? '' : '/Mastersheetupdater/',

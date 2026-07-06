@@ -24,22 +24,24 @@
   },
   "homepage": "https://github.com/jennyjoseph7/Mastersheetupdater#readme",
   "dependencies": {
-    "@dietrichgebert/ponytail": "^4.8.3",
     "chart.js": "^4.5.1",
     "dom-to-image-more": "^3.10.0",
-    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "next": "^16.2.9",
+    "postcss": "^8.5.16",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@dietrichgebert/ponytail": "^4.8.4",
+    "@tailwindcss/postcss": "^4.3.2",
     "@types/node": "^26.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "opencode-ponytail": "^4.7.3",
+    "tailwindcss": "^4.3.2",
     "typescript": "^6.0.3"
   },
   "main": "config.example.js"
