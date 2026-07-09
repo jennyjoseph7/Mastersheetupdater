@@ -1,9 +1,0 @@
-validators
-bs4
-cleantext
-langchain_community
-pypdf
-streamlit 
-plotly
-streamlit_chat
-chardet
