@@ -342,6 +342,9 @@ export default function DispositionSyncV2Page() {
             pincode: row['pincode'] || '',
             language: selectedLanguage,
             lead_source: row['lead_source'] || '',
+            vehicle_model: row['vehicle_model'] || row['existing_vehicle_model'] || '',
+            reg_number: row['reg_number'] || '',
+            vin_number: row['vin_number'] || '',
             showroom_code: row['showroom_code'] || row['dealer_map_cd'] || row['dealer_code'] || '',
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
@@ -824,6 +827,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                   <option value="stellantis_wa">Stellantis WA</option>
                   <option value="bimal">Bimal</option>
                   <option value="saisamarth">Saisamarth</option>
+                  <option value="perfect_rider_wa">Perfect Rider WA</option>
                 </select>
               </div>
             </div>
