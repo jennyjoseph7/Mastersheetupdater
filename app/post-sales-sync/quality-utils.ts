@@ -413,6 +413,7 @@ function getOutputFieldChecks(dealerKey: string, output: Record<string, string>[
 export function buildQualityReport(params: {
   leadRows: Record<string, string>[];
   sessionRows: Record<string, string>[];
+  filteredSessionRows: Record<string, string>[];
   leads: { row: Record<string, string>; phone: string }[];
   sessionGroups: Record<string, Record<string, string>[]>;
   output: Record<string, string>[];
@@ -424,7 +425,7 @@ export function buildQualityReport(params: {
   const samples: { title: string; rows: string[] }[] = [];
   const leadPhones = new Map<string, number>();
   const invalidLeads: string[] = [];
-  const { leadRows, sessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo } = params;
+  const { leadRows, sessionRows, filteredSessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo } = params;
 
   leadRows.forEach((row, index) => {
     const phone = normalizePhone(get(row, ['phone_number', 'phone', 'mobile', 'contact_number', 'mobile_number']));
@@ -446,6 +447,12 @@ export function buildQualityReport(params: {
   const outputKeys = new Set(getOutputColumnsForDealer(dealerKey).map(col => col.key).filter(Boolean));
   const missingRecordings = outputKeys.has('call_recording') ? output.filter(row => row._matched === 'true' && !clean(row.call_recording)).length : 0;
 
+  // Drop-off tracking: session rows in → out
+  const filteredNoPhoneRows = filteredSessionRows.filter(row => !detectPhones(row).length);
+  const filteredNoPhone = filteredNoPhoneRows.length;
+  const filteredWithPhone = filteredSessionRows.length - filteredNoPhone;
+  const unmatchedSessions = Math.max(0, filteredWithPhone - output.length);
+
   if (roleInfo.filesSwapped) addQualityIssue(warnings, roleInfo.confidence === 'high' ? 'info' : 'warn', `Upload order auto-detected as swapped. Scores default=${roleInfo.defaultScore}, swapped=${roleInfo.swappedScore}.`);
   if (roleInfo.confidence !== 'high') addQualityIssue(warnings, 'warn', `Upload role confidence is ${roleInfo.confidence}.`);
   if (!leadRows.length) addQualityIssue(warnings, 'danger', 'Leads file has no data rows.');
@@ -456,7 +463,9 @@ export function buildQualityReport(params: {
   if (duplicatePhones.length) addQualityIssue(warnings, 'warn', `${duplicatePhones.length} duplicate lead phone(s) found.`);
   if (unmatched.length) addQualityIssue(warnings, 'warn', `${unmatched.length} lead(s) did not match a Sessions row.`);
   if (sessionOnlyPhones.length) addQualityIssue(warnings, 'info', `${sessionOnlyPhones.length} Sessions phone(s) not in Leads.`);
-  if (sessionsWithoutPhone) addQualityIssue(warnings, 'warn', `${sessionsWithoutPhone} session row(s) had no phone.`);
+  if (sessionsWithoutPhone) addQualityIssue(warnings, 'warn', `${sessionsWithoutPhone} session row(s) had no phone in raw file.`);
+  if (filteredNoPhone > 0) addQualityIssue(warnings, 'warn', `${filteredNoPhone} filtered session row(s) had no detectable phone.`);
+  if (unmatchedSessions > 0) addQualityIssue(warnings, 'warn', `${unmatchedSessions} session row(s) had phones not matching any lead — no output produced.`);
   if (unknownRows.length) addQualityIssue(warnings, 'warn', `${unknownRows.length} row(s) mapped to Unknown. Review dispositions.`);
   for (const check of missingOutputFields) addQualityIssue(warnings, check.level, `${check.count} row(s) missing ${check.label}.`);
   if (missingRecordings) addQualityIssue(warnings, 'info', `${missingRecordings} matched row(s) have no recording.`);
@@ -471,7 +480,8 @@ export function buildQualityReport(params: {
   if (duplicatePhones.length) samples.push({ title: 'Duplicate lead phones', rows: duplicatePhones.slice(0, 5).map(([p, c]) => `${p} appears ${c} times`) });
   const unmatchedSamples = unmatched.slice(0, 5).map(r => `${r.phone_number}${r.person_name ? ' - ' + r.person_name : ''}`);
   if (unmatchedSamples.length) samples.push({ title: 'Unmatched leads', rows: unmatchedSamples });
-  if (sessionOnlyPhones.length) samples.push({ title: 'Session-only phones', rows: sessionOnlyPhones.slice(0, 5) });
+  if (filteredNoPhoneRows.length) samples.push({ title: 'Filtered session rows with no phone', rows: filteredNoPhoneRows.slice(0, 5).map((r, i) => `Row ${i + 1}: ${Object.values(r).filter(v => clean(v)).slice(0, 3).join(' | ') || '(empty)'}`) });
+  if (sessionOnlyPhones.length) samples.push({ title: 'Session phones not in leads', rows: sessionOnlyPhones.slice(0, 20) });
   if (unknownRows.length) samples.push({ title: 'Unknown outcomes', rows: unknownRows.slice(0, 5).map(r => `${r.phone_number}: ${r.disposition_detail || '(blank)'}`) });
   const missingFieldsMissing = missingOutputFields.filter(c => c.count > 0);
   if (missingFieldsMissing.length) samples.push({ title: 'Missing output fields', rows: missingFieldsMissing.map(c => `${c.label}: ${c.count} row(s)`) });
@@ -482,9 +492,9 @@ export function buildQualityReport(params: {
     state: blocked ? 'blocked' : review ? 'review' : 'clean',
     canExport: output.length > 0 && !blocked,
     warnings, samples,
-    counts: { leadRows: leadRows.length, sessionRows: sessionRows.length, leads: leads.length, matched, unmatched: unmatched.length, invalidLeads: invalidLeads.length, duplicatePhones: duplicatePhones.length, sessionPhones: sessionPhones.length, sessionOnlyPhones: sessionOnlyPhones.length, sessionsWithoutPhone, unknown: unknownRows.length },
+    counts: { leadRows: leadRows.length, sessionRows: sessionRows.length, filteredSessionRows: filteredSessionRows.length, leads: leads.length, matched, unmatched: unmatched.length, invalidLeads: invalidLeads.length, duplicatePhones: duplicatePhones.length, sessionPhones: sessionPhones.length, sessionOnlyPhones: sessionOnlyPhones.length, sessionsWithoutPhone, unknown: unknownRows.length, filteredNoPhone, unmatchedSessions },
     roleInfo,
-    summary: [`${leads.length} valid lead(s)`, `${matched}/${output.length} matched`, `${sessionPhones.length} session phone(s)`, `role confidence: ${roleInfo.confidence}`],
+    summary: [`${leads.length} valid lead(s)`, `${matched}/${output.length} output`, `${sessionRows.length} sessions → ${filteredSessionRows.length} filtered → ${output.length} output`, `${sessionPhones.length} session phone(s)`, `role confidence: ${roleInfo.confidence}`],
   };
 }
 

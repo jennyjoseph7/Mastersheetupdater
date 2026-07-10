@@ -52,6 +52,7 @@ export default function PostSalesSyncPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState('');
   const [showResults, setShowResults] = useState(false);
+  const [sessionCount, setSessionCount] = useState(0);
   const [file1Status, setFile1Status] = useState('Drag and drop or click to browse');
   const [file2Status, setFile2Status] = useState('Drag and drop or click to browse');
   const [hasFile1, setHasFile1] = useState(false);
@@ -153,11 +154,11 @@ export default function PostSalesSyncPage() {
     });
   }
 
-  function renderStats(output: Record<string, string>[], booked: Record<string, string>[], completed: Record<string, string>[], notInterested: Record<string, string>[]) {
+  function renderStats(output: Record<string, string>[], booked: Record<string, string>[], completed: Record<string, string>[], notInterested: Record<string, string>[], sessionsIn: number) {
     const matched = output.filter(r => r._matched === 'true').length;
     const notConnected = output.filter(r => r.outcome === 'Not Connected').length;
     const unknown = output.filter(r => r.outcome === 'Unknown').length;
-    return { leads: output.length, matched, booked: booked.length, completed: completed.length, notInterested: notInterested.length, notConnected, unknown };
+    return { leads: output.length, sessionsIn, matched, booked: booked.length, completed: completed.length, notInterested: notInterested.length, notConnected, unknown };
   }
 
   function dedupeByPhone(rows: Record<string, string>[]): Record<string, string>[] {
@@ -335,7 +336,7 @@ export default function PostSalesSyncPage() {
         }
       }
 
-      const qr = buildQualityReport({ leadRows, sessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo });
+      const qr = buildQualityReport({ leadRows, sessionRows, filteredSessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo });
       setProcessedData(output);
       setQualityReport(qr);
 
@@ -346,6 +347,7 @@ export default function PostSalesSyncPage() {
       setBookedRows(bRows);
       setCompletedRows(cRows);
       setNotInterestedRows(nRows);
+      setSessionCount(filteredSessionRows.length);
       setShowResults(true);
       log(`Processing complete: ${output.length} leads (${bRows.length} booked, ${cRows.length} completed, ${nRows.length} not interested)`);
 
@@ -458,7 +460,7 @@ export default function PostSalesSyncPage() {
     setToDate('');
     setProcessedData([]); setQualityReport(null);
     setBookedRows([]); setCompletedRows([]); setNotInterestedRows([]);
-    setShowResults(false); aiProgress.reset();
+    setShowResults(false); setSessionCount(0); aiProgress.reset();
     setSortKey(null); setSortDir(null);
     setFile1Status('Drag and drop or click to browse');
     setFile2Status('Drag and drop or click to browse');
@@ -721,7 +723,7 @@ export default function PostSalesSyncPage() {
 
   const OUTPUT_COLUMNS = getOutputColumnsForDealer(dealerKey);
   const sortedData = getSortedData(processedData);
-  const stats = showResults ? renderStats(processedData, bookedRows, completedRows, notInterestedRows) : null;
+  const stats = showResults ? renderStats(processedData, bookedRows, completedRows, notInterestedRows, sessionCount) : null;
   const sortedInclude = sortedData.slice(0, previewLimit).map((r, i) => ({ ...r, lead_id: `L-${i + 1}` })) as Record<string, string>[];
   const canExport = qualityReport?.canExport ?? false;
 
@@ -866,7 +868,8 @@ export default function PostSalesSyncPage() {
           {showResults && stats && (
             <>
               <div className={styles['stats-bar']} style={{ display: 'flex' }}>
-                <div className={styles['stat-card']}><div className={styles['stat-label']}>Leads</div><div className={`${styles['stat-val']} ${styles.blue}`}>{stats.leads}</div></div>
+                <div className={styles['stat-card']}><div className={styles['stat-label']}>Sessions</div><div className={`${styles['stat-val']} ${styles.blue}`}>{stats.sessionsIn}</div></div>
+                <div className={styles['stat-card']}><div className={styles['stat-label']}>Output</div><div className={`${styles['stat-val']} ${styles.blue}`}>{stats.leads}</div></div>
                 <div className={styles['stat-card']}><div className={styles['stat-label']}>Matched</div><div className={`${styles['stat-val']} ${styles.green}`}>{stats.matched}</div></div>
                 <div className={styles['stat-card']}><div className={styles['stat-label']}>Service Booked</div><div className={`${styles['stat-val']} ${styles.green}`}>{stats.booked}</div></div>
                 <div className={styles['stat-card']}><div className={styles['stat-label']}>Service Completed</div><div className={`${styles['stat-val']} ${styles.green}`}>{stats.completed}</div></div>
