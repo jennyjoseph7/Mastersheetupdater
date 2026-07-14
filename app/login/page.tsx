@@ -17,6 +17,7 @@ export default function LoginPage() {
 
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('human_agent');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
@@ -37,7 +38,7 @@ export default function LoginPage() {
     if (!password) { setError('Please enter your password.'); return; }
     setLoading(true);
     try {
-      const result = await login(userId.trim(), password);
+      const result = await login(userId.trim(), password, role);
       if (result.ok) {
         setFlashSuccess(true);
         setTimeout(() => { router.push('/'); }, 1200);
@@ -80,6 +81,14 @@ export default function LoginPage() {
                 {warning && <div className="warn-msg show">{warning}</div>}
 
                 <form onSubmit={handleSubmit}>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="role">Role</label>
+                    <select className="form-input" id="role" value={role} onChange={e => setRole(e.target.value)} disabled={loading}>
+                      <option value="human_agent">Human Agent</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
                   <div className="form-group">
                     <label className="form-label" htmlFor="userId">Email or User ID</label>
                     <input className="form-input" id="userId" type="text" value={userId} onChange={e => setUserId(e.target.value)} placeholder="dealership@iamdave.ai" autoComplete="username" spellCheck="false" disabled={loading} />

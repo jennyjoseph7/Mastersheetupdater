@@ -1,3 +1,5 @@
+import { parseExcelSerialDate } from '@/lib/date-utils';
+
 export interface DealerColumn {
   header: string;
   key: string;
@@ -331,6 +333,12 @@ export function isLikelyIndianMobile(phone: string): boolean {
 export function parseAutoEngageDate(str: string): Date | null {
   if (!str) return null;
   const s = String(str).trim();
+  const num = Number(s);
+  if (!isNaN(num)) {
+    if (num > 1000000000000) return new Date(num);
+    if (num > 1000000000) return new Date(Math.floor(num) * 1000);
+    if (num > 30000 && num < 100000) return parseExcelSerialDate(num);
+  }
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)?/i);
   if (m) {
     let [, dd, mm, yyyy, hh, min, sec, ampm] = m;

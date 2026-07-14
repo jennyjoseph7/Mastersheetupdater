@@ -1,5 +1,6 @@
 import { classifyDisposition, isServiceBooked, isServiceCompleted, isNotInterested, isFeedbackOrEscalation, extractPerfectRidersLocation, extractPerfectRidersCRE } from './classify-utils';
 import { detectHistory, formatHistoryForPrompt } from '@/lib/ai/history-helpers';
+import { parseExcelSerialDate } from '@/lib/date-utils';
 
 /** Extracted session data for a single session row — used when outputting one row per call attempt. */
 export interface SessionRowData {
@@ -344,6 +345,12 @@ export function evaluateFileRoles(role1: RoleScore, role2: RoleScore): RoleInfo 
 export function parseAutoEngageDate(str: string): Date | null {
   if (!str) return null;
   const s = String(str).trim();
+  const num = Number(s);
+  if (!isNaN(num)) {
+    if (num > 1000000000000) return new Date(num);
+    if (num > 1000000000) return new Date(Math.floor(num) * 1000);
+    if (num > 30000 && num < 100000) return parseExcelSerialDate(num);
+  }
   const dmyTime = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?:?(\d{2})?\s*(am|pm)?/i);
   if (dmyTime) {
     let [, dd, mm, yyyy, hh, min, sec, ampm] = dmyTime;
