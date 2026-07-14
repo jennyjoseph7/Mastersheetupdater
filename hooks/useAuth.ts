@@ -82,7 +82,7 @@ export function useAuth() {
 
   useEffect(() => { checkSession(); }, [checkSession]);
 
-  const login = async (userId: string, password: string, role: string = 'human_agent'): Promise<{ ok: boolean; error?: string }> => {
+  const login = async (userId: string, password: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       const res = await fetch(`${grydEndpoint()}/gryd/login`, {
         method: 'POST',
@@ -91,7 +91,7 @@ export function useAuth() {
           'X-GRYD-ENTERPRISE-ID': 'autocrm',
           'X-GRYD-SIGNUP-TOKEN': grydSignupToken(),
         },
-        body: JSON.stringify({ user_id: userId, password, role, attribute: 'email', application_id: 'autocrm' }),
+        body: JSON.stringify({ user_id: userId, password, role: 'human_agent', attribute: 'email', application_id: 'autocrm' }),
       });
       const data = await res.json();
       if (!res.ok) return { ok: false, error: data.error || data.message || 'Login failed' };
