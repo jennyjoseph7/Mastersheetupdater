@@ -1,7 +1,6 @@
 window.JEJO_CONFIG = {
   grydEndpoint: 'https://autongagetools.jennyjoseph-k.workers.dev',
   grydModel: 'gcp-gemini-3.1-flash-lite-preview',
-  grydSignupToken: 'YXV0b2NybTE3NjI2MTAzOTUgMjY0NTI0',
   useGrydLlm: true,
   llmBatchSize: 30,
   llmMaxConcurrent: 5,
