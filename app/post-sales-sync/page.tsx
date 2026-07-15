@@ -294,9 +294,7 @@ export default function PostSalesSyncPage() {
             cohort: get(row, ['cohort', 'cohort_name', 'campaign_cohort']),
             model: get(row, ['model', 'car_model', 'model_name']),
             next_service_due: get(row, ['next_service_due', 'service_due_date', 'next_due_date']),
-            last_service_date: dealerKey === 'perfect_riders_service'
-              ? convertEpochToIST(get(row, ['last_service_date', 'last_service_dt', 'last_service_done_date', 'last_service_done', 'last_service_on', 'last_service', 'service_date', 'service_done_date', 'service_completed_date']))
-              : get(row, ['last_service_date', 'last_service_dt', 'last_service_done_date', 'last_service_done', 'last_service_on', 'last_service', 'service_date', 'service_done_date', 'service_completed_date']),
+            last_service_date: convertEpochToIST(get(row, ['last_service_date', 'last_service_dt', 'last_service_done_date', 'last_service_done', 'last_service_on', 'last_service', 'service_date', 'service_done_date', 'service_completed_date'])),
             customer_score: get(row, ['customer_score', 'score']),
             odometer_reading: get(row, ['odometer_reading', 'odometer', 'kms']),
             last_service_type: get(row, ['last_service_type', 'service_type']),
