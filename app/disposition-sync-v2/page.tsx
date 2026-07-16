@@ -824,6 +824,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                   <option value="singhal">Singhal</option>
                   <option value="fortune_hyryder">Fortune Hyryder</option>
                   <option value="fortune_honda">Fortune Honda</option>
+                  <option value="fortune_mg">Fortune MG</option>
                   <option value="stellantis_wa">Stellantis WA</option>
                   <option value="bimal">Bimal</option>
                   <option value="saisamarth">Saisamarth</option>

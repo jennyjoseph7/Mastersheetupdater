@@ -294,6 +294,7 @@ export const DEALER_CONFIGS: Record<string, DealerConfig> = {
   singhal: { name: 'Singhal', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   fortune_hyryder: { name: 'Fortune Hyryder', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   fortune_honda: { name: 'Fortune Honda', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
+  fortune_mg: { name: 'Fortune MG', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   stellantis_wa: { name: 'Stellantis WA', summarySource: 'lead_summary', columns: STELLANTIS_COLUMNS },
   saisamarth: { name: 'Saisamarth', summarySource: 'lead_summary', columns: SAISAMARTH_COLUMNS },
   default: { name: 'Default', summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
