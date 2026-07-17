@@ -355,7 +355,7 @@ export default function DispositionSyncV2Page() {
             summary: sd.summary || summary || 'No Response',
             disposition_detail: sd.session_disposition || dispositionDetail,
             manual_disposition_detail: '',
-            call_date: sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : '',
+            call_date: row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : ''),
             num_attempts: `=COUNTIF(${phoneCol}:${phoneCol};${phone})`,
             sentiment: sd.sentiment || '',
             recordings: sd.recording || '',
