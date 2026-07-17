@@ -26,8 +26,8 @@ const DEALERSHIPS: Record<string, { name: string; workflow: string; mode: string
   perfect_riders_service: { name: 'Perfect Riders', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['campaign_id', 'phone_number', 'existing_vehicle_model', 'vin_number'], sessionColumns: ['duration', 'status', 'start_time', 'sentiment_score', 'summary', 'call_recording', 'disposition_detail'] },
   pressana_service_feedback: { name: 'Pressana', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['campaign_id', 'phone_number', 'existing_vehicle_model'], sessionColumns: ['duration', 'status', 'start_time', 'sentiment_score', 'summary', 'call_recording', 'disposition_detail'] },
   suryabala_service: { name: 'Suryabala Honda', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['reg_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'next_service_due', 'last_service_type', 'vin_number'], sessionColumns: ['status', 'summary', 'duration', 'start_time', 'call_recording', 'sentiment_score', 'disposition_detail'] },
-  anant_wa: { name: 'Anant WA', workflow: 'WhatsApp Campaign', mode: 'post', leadColumns: ['lead_id', 'full_name', 'phone', 'city', 'pincode', 'language', 'cohort', 'campaign_id'], sessionColumns: ['call_triggered', 'status', 'summary', 'disposition_details', 'call_date', 'sentiment', 'duration', 'number_of_attempts'] },
   fortune_toyota_wa: { name: 'Fortune Toyota WA', workflow: 'WhatsApp Campaign', mode: 'post', leadColumns: ['lead_id', 'full_name', 'phone', 'city', 'pincode', 'language', 'cohort', 'campaign_id'], sessionColumns: ['call_triggered', 'status', 'summary', 'disposition_details', 'call_date', 'sentiment', 'duration', 'number_of_attempts'] },
+  perfect_rider_wa: { name: 'Perfect Rider WA', workflow: 'WhatsApp Campaign', mode: 'post', leadColumns: ['lead_id', 'full_name', 'phone', 'city', 'pincode', 'language', 'cohort', 'campaign_id'], sessionColumns: ['call_triggered', 'status', 'summary', 'disposition_details', 'call_date', 'sentiment', 'duration', 'number_of_attempts'] },
 };
 
 export default function PostSalesSyncPage() {
@@ -322,6 +322,10 @@ export default function PostSalesSyncPage() {
             autongage_disposition: sd.disposition || '',
             service_location: dealerKey === 'perfect_riders_service' ? extractPerfectRidersLocation(sd.summary) : '',
             service_type: sd.serviceType || '',
+            lead_source: dealerKey === 'perfect_rider_wa' ? get(row, ['lead_source', 'source', 'lead source']) : '',
+            conversion: dealerKey === 'perfect_rider_wa' ? (row['conversion'] || '') : '',
+            channel: dealerKey === 'perfect_rider_wa' ? (sessionRow['channel'] || '') : '',
+            seating: dealerKey === 'perfect_rider_wa' ? get(row, ['seating', 'seat', 'seats']) : '',
             lead_row_id: get(row, ['id', 'lead_id', 'leadid', 'customer_id']),
             exclusion_flag: classification.terminal ? 'YES' : '',
             _matched: 'true',
@@ -490,7 +494,8 @@ export default function PostSalesSyncPage() {
       pressana_post_service_feedback: ['Tamil', 'English'],
       suryabala_service: ['Tamil', 'English'],
       icare_feedback: ['Tamil', 'English'],
-      anant_wa: ['English'],
+      fortune_toyota_wa: ['English'],
+      perfect_rider_wa: ['English'],
     };
     const supportedLangs = DEALER_LANGUAGES[dealerKey] || ['English'];
 
@@ -804,8 +809,8 @@ export default function PostSalesSyncPage() {
                     <option value="pressana_post_service_feedback">Pressana Kia — Post Service Feedback</option>
                   </optgroup>
                   <optgroup label="WA">
-                    <option value="anant_wa">Anant — WhatsApp Campaign</option>
                     <option value="fortune_toyota_wa">Fortune Toyota — WhatsApp Campaign</option>
+                    <option value="perfect_rider_wa">Perfect Rider — WhatsApp Campaign</option>
                   </optgroup>
                 </select>
               </div>
