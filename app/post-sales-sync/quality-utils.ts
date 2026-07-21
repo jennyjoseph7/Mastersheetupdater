@@ -203,7 +203,7 @@ export function getOutputColumnsForDealer(dealerKey: string): OutputColumn[] {
     fortune_toyota_wa: [
       { header: 'Lead_ID', key: 'lead_id' },
       { header: 'Full_Name', key: 'full_name' },
-      { header: 'Phone', key: 'phone' },
+      { header: 'Phone', key: 'phone_number' },
       { header: 'City', key: 'city' },
       { header: 'Pincode', key: 'pincode' },
       { header: 'Language', key: 'language' },

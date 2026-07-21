@@ -727,7 +727,8 @@ export default function PostSalesSyncPage() {
   const OUTPUT_COLUMNS = getOutputColumnsForDealer(dealerKey);
   const sortedData = getSortedData(processedData);
   const stats = showResults ? renderStats(processedData, bookedRows, completedRows, notInterestedRows, sessionCount) : null;
-  const sortedInclude = sortedData.slice(0, previewLimit).map((r, i) => ({ ...r, lead_id: `L-${i + 1}` })) as Record<string, string>[];
+  const startIdNum = parseInt(leadIdStart, 10) || 0;
+  const sortedInclude = sortedData.slice(0, previewLimit).map((r, i) => ({ ...r, lead_id: startIdNum > 0 ? `L-${startIdNum + i}` : '' })) as Record<string, string>[];
   const canExport = qualityReport?.canExport ?? false;
 
   return (
