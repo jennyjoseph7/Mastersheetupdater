@@ -249,24 +249,6 @@ export default function DispositionSyncV2Page() {
         };
       }
 
-      // Call Triggered text — use filtered rows2
-      let minDate: Date | null = null, maxDate: Date | null = null;
-      for (const r of filteredRows2) {
-        const dStr = detectDate(r) || r['start_time'] || '';
-        const d = parseAutoEngageDate(dStr);
-        if (!d) continue;
-        if (!minDate || d < minDate) minDate = d;
-        if (!maxDate || d > maxDate) maxDate = d;
-      }
-      let callTriggered = '';
-      if (minDate && maxDate) {
-        const day = ordinalSuffix(minDate.getDate());
-        const month = MONTH_NAMES[minDate.getMonth()];
-        const tMin = formatTime12(minDate);
-        const tMax = formatTime12(maxDate);
-        callTriggered = `${day} ${month} Calls Triggered From ${tMin} - ${tMax}`;
-      }
-
       // Assemble output rows
       const output: Record<string, string>[] = [];
       const selectedLanguage = language;
@@ -349,19 +331,20 @@ export default function DispositionSyncV2Page() {
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
             last_session_id: isStellantis ? (sd.session_id || '') : (sd.session_id || row['last_session_id'] || row['session_id'] || ''),
-            call_triggered: callTriggered,
+            call_triggered: sessionRow['call_triggered'] || sessionRow['Call_Triggered'] || sessionRow['triggered'] || (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : '')),
             outcome,
             disposition: disp,
             summary: sd.summary || summary || 'No Response',
             disposition_detail: sd.session_disposition || dispositionDetail,
             manual_disposition_detail: '',
-            call_date: row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : ''),
+            call_date: sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : ''),
             num_attempts: `=COUNTIF(${phoneCol}:${phoneCol};${phone})`,
             sentiment: sd.sentiment || '',
             recordings: sd.recording || '',
             model,
             seating,
             exclusion_flag: priority >= TERMINAL_THRESHOLD ? 'YES' : '',
+            session_created: sessionRow['created'] || '',
             origin: sessionRow['origin'] || '',
             lead_timeline: row['lead_timeline'] || '',
             session_summary: sd.summary || '',
@@ -381,7 +364,7 @@ export default function DispositionSyncV2Page() {
         }
       }
 
-      const qr = buildQualityReport(rows1, rows2, allLeads, sessionGroups, sessionMap, output, callTriggered);
+      const qr = buildQualityReport(rows1, rows2, allLeads, sessionGroups, sessionMap, output, '');
       setProcessedData(output);
       setQualityReport(qr);
 
