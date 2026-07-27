@@ -267,6 +267,7 @@ export const DEALER_CONFIGS: Record<string, DealerConfig> = {
   fortune_mg: { name: 'Fortune MG', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   stellantis_wa: { name: 'Stellantis WA', summarySource: 'lead_summary', columns: STELLANTIS_COLUMNS },
   saisamarth: { name: 'Saisamarth', summarySource: 'lead_summary', columns: SAISAMARTH_COLUMNS },
+  rng: { name: 'RNG', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   default: { name: 'Default', summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
 };
 

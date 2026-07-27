@@ -828,6 +828,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                   <option value="stellantis_wa">Stellantis WA</option>
                   <option value="bimal">Bimal</option>
                   <option value="saisamarth">Saisamarth</option>
+                  <option value="rng">RNG</option>
                 </select>
               </div>
             </div>
