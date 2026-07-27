@@ -316,6 +316,20 @@ export default function DispositionSyncV2Page() {
 
           const dispositionText = (row['disposition_detail'] || '').toLowerCase();
 
+          const dateSrc = sd.dateStr || row['updated'];
+          let rowTriggered = '';
+          if (dateSrc) {
+            const dt = parseAutoEngageDate(dateSrc);
+            if (dt) {
+              const d = dt.getDate();
+              const s = ['th', 'st', 'nd', 'rd'];
+              const v = d % 100;
+              const sfx = s[(v - 20) % 10] || s[v] || s[0];
+              const t = formatTime12(dt);
+              rowTriggered = `${d}${sfx} ${MONTH_NAMES[dt.getMonth()]} Calls Triggered From ${t} - ${t}`;
+            }
+          }
+
           const rec: Record<string, string> = {
             lead_id: leadId,
             full_name: row['person_name'] || '',
@@ -331,7 +345,7 @@ export default function DispositionSyncV2Page() {
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
             last_session_id: isStellantis ? (sd.session_id || '') : (sd.session_id || row['last_session_id'] || row['session_id'] || ''),
-            call_triggered: sessionRow['call_triggered'] || sessionRow['Call_Triggered'] || sessionRow['triggered'] || (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : '')),
+            call_triggered: rowTriggered || sessionRow['call_triggered'] || sessionRow['Call_Triggered'] || sessionRow['triggered'] || (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : '')),
             outcome,
             disposition: disp,
             summary: sd.summary || summary || 'No Response',
