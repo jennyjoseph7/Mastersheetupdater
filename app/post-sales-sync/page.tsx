@@ -21,6 +21,7 @@ const DEALERSHIPS: Record<string, { name: string; workflow: string; mode: string
   ambal_service: { name: 'Ambal', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['reg_number', 'vin_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'customer_score', 'workshop_code', 'next_service_due', 'odometer_reading'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   bullmen_service: { name: 'Bullmen', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['reg_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'workshop_code', 'next_service_due', 'vin_number'], sessionColumns: ['status', 'summary', 'duration', 'start_time', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   fortune_service: { name: 'Fortune Toyota', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number', 'next_service_due'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail', 'service_type'] },
+  saisamarth: { name: 'Saisamarth', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number', 'next_service_due'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   icare_feedback: { name: 'Icare', workflow: 'Post-Sales Feedback Reminder', mode: 'post', leadColumns: ['campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'reg_number', 'vin_number', 'showroom_code', 'lead_code_for_dealership'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail', 'id_salt'] },
   pressana_post_service_feedback: { name: 'Pressana Kia', workflow: 'Post Service Feedback', mode: 'post', leadColumns: ['campaign_id', 'phone_number', 'last_service_date'], sessionColumns: ['duration', 'status', 'start_time', 'sentiment_score', 'summary', 'call_recording', 'disposition_detail'] },
   perfect_riders_service: { name: 'Perfect Riders', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['campaign_id', 'phone_number', 'existing_vehicle_model', 'vin_number'], sessionColumns: ['duration', 'status', 'start_time', 'sentiment_score', 'summary', 'call_recording', 'disposition_detail'] },
@@ -488,6 +489,7 @@ export default function PostSalesSyncPage() {
     const DEALER_LANGUAGES: Record<string, string[]> = {
       perfect_riders_service: ['Kannada', 'English'],
       fortune_service: ['Telugu', 'English'],
+      saisamarth: ['English'],
       ambal_service: ['Tamil', 'English'],
       bullmen_service: ['Tamil', 'English'],
       pressana_service_feedback: ['Tamil', 'English'],
@@ -801,6 +803,7 @@ export default function PostSalesSyncPage() {
                     <option value="ambal_service">Ambal — Service Reminder</option>
                     <option value="bullmen_service">Bullmen — Service Reminder</option>
                     <option value="fortune_service">Fortune — Service Reminder</option>
+                    <option value="saisamarth">Saisamarth — Service Reminder</option>
                     <option value="perfect_riders_service">Perfect Riders — Service Reminder</option>
                     <option value="pressana_service_feedback">Pressana — Service Reminder</option>
                     <option value="suryabala_service">Suryabala Honda — Service Reminder</option>

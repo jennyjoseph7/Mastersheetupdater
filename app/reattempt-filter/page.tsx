@@ -10,8 +10,8 @@ import { readFileAsArrayBuffer, excelSafe, validateFileSync } from '@/lib/data-p
 import * as XLSX from 'xlsx';
 import styles from './reattempt-filter.module.css';
 
-const AE_LEADS_PER_BATCH = 100;
 const AE_BATCH_STORAGE_KEY = 'jejo-ae-batch-export-v1';
+const AE_BATCH_SIZE_KEY = 'jejo-ae-batch-size';
 
 const TERMINAL_DISPOSITIONS = new Set(['not interested', 'dnd', 'wrong number', 'test drive booked', 'converted']);
 const CONNECTED_OUTCOMES = new Set(['connected']);
@@ -99,6 +99,9 @@ export default function ReattemptFilterPage() {
   const [dispoFilterVisible, setDispoFilterVisible] = useState(false);
   const [startLead, setStartLead] = useState(1);
   const [numBatches, setNumBatches] = useState(1);
+  const [batchSize, setBatchSize] = useState(() => {
+    try { return parseInt(localStorage.getItem(AE_BATCH_SIZE_KEY) || '100', 10) || 100; } catch { return 100; }
+  });
   const [batchHint, setBatchHint] = useState('');
   const [connectedCount, setConnectedCount] = useState(0);
   const [terminalCount, setTerminalCount] = useState(0);
@@ -442,7 +445,7 @@ export default function ReattemptFilterPage() {
     if (start < 1) start = 1;
     if (start > total) { setStatusMsg(`Start lead must be between 1 and ${total}.`); setStatusType('err'); return; }
     const remaining = total - start + 1;
-    const maxBatches = Math.ceil(remaining / AE_LEADS_PER_BATCH);
+    const maxBatches = Math.ceil(remaining / batchSize);
     let num = numBatches;
     if (num < 1) num = 1;
     if (num > maxBatches) num = maxBatches;
@@ -452,9 +455,9 @@ export default function ReattemptFilterPage() {
     let exported = 0, filesWritten = 0;
 
     for (let b = 0; b < num; b++) {
-      const sliceStartIdx = start - 1 + b * AE_LEADS_PER_BATCH;
+      const sliceStartIdx = start - 1 + b * batchSize;
       if (sliceStartIdx >= total) break;
-      const sliceLen = Math.min(AE_LEADS_PER_BATCH, total - sliceStartIdx);
+      const sliceLen = Math.min(batchSize, total - sliceStartIdx);
       const slice = includedLeads.slice(sliceStartIdx, sliceStartIdx + sliceLen);
       const aoa: string[][] = [schema.headers];
       for (const r of slice) aoa.push(schema.mapRow(r));
@@ -476,7 +479,7 @@ export default function ReattemptFilterPage() {
 
     const nextLeadIndex = start + exported;
     if (batchFingerprintRef.current && batchTemplateIdRef.current) saveBatchProgress(batchFingerprintRef.current, batchTemplateIdRef.current, batchInputRowCountRef.current, nextLeadIndex);
-    if (nextLeadIndex <= total) { setStartLead(nextLeadIndex); const rem = total - nextLeadIndex + 1; setNumBatches(Math.max(1, Math.ceil(rem / AE_LEADS_PER_BATCH))); }
+    if (nextLeadIndex <= total) { setStartLead(nextLeadIndex); const rem = total - nextLeadIndex + 1; setNumBatches(Math.max(1, Math.ceil(rem / batchSize))); }
     else { setStartLead(1); setNumBatches(1); }
     setStatusMsg(`Downloaded ${filesWritten} file(s), ${exported} lead(s).`);
     setStatusType('ok');
@@ -659,7 +662,7 @@ export default function ReattemptFilterPage() {
         {showResults && includedLeads.length > 0 && (
           <div className={styles['batch-panel']} style={{ display: 'block' }}>
             <div className={styles['batch-panel-title']}>Batch download</div>
-            <div className={styles['batch-panel-note']}>Each file: header + up to 100 leads (101 rows max per batch).</div>
+            <div className={styles['batch-panel-note']}>Each file: header + up to {batchSize} leads ({batchSize + 1} rows max per batch).</div>
             <div className={styles['batch-row']}>
               <div className={styles['batch-field']}>
                 <label>Start at lead #</label>
@@ -668,6 +671,10 @@ export default function ReattemptFilterPage() {
               <div className={styles['batch-field']}>
                 <label>Batches to download</label>
                 <input type="number" min={1} value={numBatches} onChange={e => setNumBatches(parseInt(e.target.value) || 1)} />
+              </div>
+              <div className={styles['batch-field']}>
+                <label>Batch size</label>
+                <input type="number" min={1} max={500} value={batchSize} onChange={e => { const v = parseInt(e.target.value) || 100; setBatchSize(v); try { localStorage.setItem(AE_BATCH_SIZE_KEY, String(v)); } catch {} }} />
               </div>
             </div>
             <div className={`${styles['batch-hint']} ${styles.mono}`}>

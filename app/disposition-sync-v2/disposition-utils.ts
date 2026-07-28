@@ -227,6 +227,30 @@ export const BIMAL_COLUMNS: DealerColumn[] = [
   { header: 'Seating', key: 'seating' },
 ];
 
+export const SWATI_HONDA_COLUMNS: DealerColumn[] = [
+  { header: 'Lead_Id', key: 'lead_id' },
+  { header: 'Full_Name', key: 'full_name' },
+  { header: 'Phone', key: 'phone' },
+  { header: 'Language', key: 'language' },
+  { header: 'Cohort', key: 'cohort' },
+  { header: 'Campaign_ID', key: 'campaign_id' },
+  { header: 'Last_session_id', key: 'last_session_id' },
+  { header: 'Origin', key: 'origin' },
+  { header: 'Lead_Timeline', key: 'lead_timeline' },
+  { header: 'Call_Triggered', key: 'call_triggered' },
+  { header: 'Outcome', key: 'outcome' },
+  { header: 'Disposition', key: 'disposition' },
+  { header: 'Summary', key: 'summary' },
+  { header: 'Disposition_detail', key: 'disposition_detail' },
+  { header: 'Manual_Disposition_detail', key: 'manual_disposition_detail' },
+  { header: 'Call_Date', key: 'call_date' },
+  { header: 'Number_of_attempts', key: 'num_attempts' },
+  { header: 'Sentiment', key: 'sentiment' },
+  { header: 'Recordings', key: 'recordings' },
+  { header: 'Call_Duration', key: 'call_duration' },
+  { header: 'Model', key: 'model' },
+];
+
 export const DEALER_CONFIGS: Record<string, DealerConfig> = {
   anant_cars: { name: 'Anant Cars', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   bimal: { name: 'Bimal', summarySource: 'lead_summary', columns: BIMAL_COLUMNS },
@@ -268,6 +292,7 @@ export const DEALER_CONFIGS: Record<string, DealerConfig> = {
   stellantis_wa: { name: 'Stellantis WA', summarySource: 'lead_summary', columns: STELLANTIS_COLUMNS },
   saisamarth: { name: 'Saisamarth', summarySource: 'lead_summary', columns: SAISAMARTH_COLUMNS },
   rng: { name: 'RNG', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
+  swati_honda: { name: 'Swati Honda', summarySource: 'lead_summary', columns: SWATI_HONDA_COLUMNS },
   default: { name: 'Default', summarySource: 'disposition_detail', columns: COMMON_COLUMNS },
 };
 

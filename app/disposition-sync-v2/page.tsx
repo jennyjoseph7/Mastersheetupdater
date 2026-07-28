@@ -316,7 +316,7 @@ export default function DispositionSyncV2Page() {
 
           const dispositionText = (row['disposition_detail'] || '').toLowerCase();
 
-          const dateSrc = sd.dateStr || row['updated'];
+          const dateSrc = row['updated'] || sd.dateStr;
           let rowTriggered = '';
           if (dateSrc) {
             const dt = parseAutoEngageDate(dateSrc);
@@ -345,13 +345,13 @@ export default function DispositionSyncV2Page() {
             cohort: row['campaign_objective_name'] || '',
             campaign_id: row['campaign_id'] || '',
             last_session_id: isStellantis ? (sd.session_id || '') : (sd.session_id || row['last_session_id'] || row['session_id'] || ''),
-            call_triggered: rowTriggered || sessionRow['call_triggered'] || sessionRow['Call_Triggered'] || sessionRow['triggered'] || (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : '')),
+            call_triggered: rowTriggered || sessionRow['call_triggered'] || sessionRow['Call_Triggered'] || sessionRow['triggered'] || (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : '')),
             outcome,
             disposition: disp,
             summary: sd.summary || summary || 'No Response',
             disposition_detail: sd.session_disposition || dispositionDetail,
             manual_disposition_detail: '',
-            call_date: sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : (row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : ''),
+            call_date: row['updated'] ? formatCallDate(parseAutoEngageDate(row['updated'])) : (sd.dateStr ? formatCallDate(parseAutoEngageDate(sd.dateStr)) : ''),
             num_attempts: `=COUNTIF(${phoneCol}:${phoneCol};${phone})`,
             sentiment: sd.sentiment || '',
             recordings: sd.recording || '',
@@ -825,6 +825,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                   <option value="stellantis_wa">Stellantis WA</option>
                   <option value="bimal">Bimal</option>
                   <option value="saisamarth">Saisamarth</option>
+                  <option value="swati_honda">Swati Honda</option>
                   <option value="rng">RNG</option>
                 </select>
               </div>
