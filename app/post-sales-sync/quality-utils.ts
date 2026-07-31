@@ -394,8 +394,9 @@ export function parseAutoEngageDate(str: string): Date | null {
   }
   const dmyTime = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2})?:?(\d{2})?:?(\d{2})?\s*(am|pm)?/i);
   if (dmyTime) {
-    let [, dd, mm, yyyy, hh, min, sec, ampm] = dmyTime;
-    const day = parseInt(dd, 10), month = parseInt(mm, 10), year = parseInt(yyyy, 10);
+    let [, a, b, yyyy, hh, min, sec, ampm] = dmyTime;
+    let day = parseInt(a, 10), month = parseInt(b, 10), year = parseInt(yyyy, 10);
+    if (month > 12) { const t = day; day = month; month = t; }
     let hour = parseInt(hh || '0', 10), minute = parseInt(min || '0', 10), second = parseInt(sec || '0', 10);
     if (ampm) {
       const a = ampm.toLowerCase();
