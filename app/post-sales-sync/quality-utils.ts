@@ -363,7 +363,7 @@ function detectPhones(obj: Record<string, string>): string[] {
 export function scoreFileRole(rows: Record<string, string>[]): RoleScore {
   if (!rows.length) return { lead: 0, session: 0 };
   const cols = new Set(Object.keys(rows[0]).filter(k => k !== '__raw'));
-  const leadHints = ['phone_number', 'person_name', 'customer_name', 'name', 'campaign_id', 'vehicle_model', 'reg_number', 'vin_number', 'next_service_due', 'last_service_date', 'lead_tags', 'lead_id'];
+  const leadHints = ['phone_number', 'person_name', 'customer_name', 'name', 'campaign_id', 'vehicle_model', 'reg_number', 'vin_number', 'vin_chasis_number', 'next_service_due', 'last_service_date', 'lead_tags', 'lead_id'];
   const sessionHints = ['status', 'session_status', 'call_status', 'summary', 'call_summary', 'disposition_detail', 'disposition', 'duration', 'start_time', 'start_date', 'created', 'call_date', 'sentiment_score', 'sentiment', 'call_recording', 'recording_url', 'session_id', 'last_session_id'];
   let lead = 0, session = 0;
   for (const key of leadHints) if (cols.has(key)) lead++;

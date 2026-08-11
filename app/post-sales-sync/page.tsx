@@ -283,7 +283,7 @@ export default function PostSalesSyncPage() {
             person_name: get(row, ['person_name', 'person_name1', 'customer_name', 'name', 'full_name']),
             showroom_code: get(row, ['showroom_code', 'show_room', 'dealer_code', 'store_code', 'location_code', 'lead_code_for_dealership']),
             reg_number: get(row, ['reg_number', 'registration_number', 'vehicle_registration_number']),
-            vin_number: get(row, ['vin_number', 'vin', 'chassis_number']),
+            vin_number: get(row, ['vin_number', 'vin', 'chassis_number', 'vin_chasis_number']),
             vehicle_model: vehicleModel,
             language,
             workshop_code: get(row, ['workshop_code', 'workshop', 'location_code', 'dealer_code', 'dealer']),
