@@ -23,7 +23,7 @@ export function extractSessionData(row: Record<string, string>): SessionRowData 
   return {
     status: get(row, ['status', 'session_status', 'call_status', 'conversation_status']),
     disposition: get(row, ['updated_disposition', 'disposition_detail', 'disposition', 'disposition_details', 'call_disposition']),
-    duration: get(row, ['duration', 'call_duration', 'talk_time', 'total_duration']),
+    duration: get(row, ['duration', 'call_duration', 'talk_time', 'total_duration', 'recordings_duration', 'recordings_durations', 'recording_duration']),
     startTime: detectDate(row),
     summary: get(row, ['summary', 'call_summary', 'conversation_summary', 'notes', 'remarks']),
     recording: detectRecording(row),
@@ -305,7 +305,7 @@ export function buildSessionMap(rows: Record<string, string>[]): { map: Record<s
       count: sessions.length,
       status: get(best, ['status', 'session_status', 'call_status', 'conversation_status']),
       disposition: get(best, ['updated_disposition', 'disposition_detail', 'disposition', 'disposition_details', 'call_disposition']),
-      duration: get(best, ['duration', 'call_duration', 'talk_time', 'total_duration']),
+      duration: get(best, ['duration', 'call_duration', 'talk_time', 'total_duration', 'recordings_duration', 'recordings_durations', 'recording_duration']),
       startTime: detectDate(best),
       summary: get(best, ['summary', 'call_summary', 'conversation_summary', 'notes', 'remarks']),
       recording: detectRecording(best),
@@ -338,6 +338,7 @@ export function detectRecording(row: Record<string, string>): string {
   if (direct) return direct;
   for (const [k, v] of Object.entries(row)) {
     if (k === '__raw' || !/record|audio|media/i.test(k)) continue;
+    if (/duration|length|time|seconds/i.test(k)) continue;
     if (clean(v)) return clean(v);
   }
   return '';
