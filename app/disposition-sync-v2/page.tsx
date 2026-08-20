@@ -286,7 +286,7 @@ export default function DispositionSyncV2Page() {
             summary = (row['disposition_detail'] || row['lead_summary'] || '').trim() || 'No Response';
             dispositionDetail = row['lead_summary'] || '';
           } else {
-            const summarySrc = row[dealerCfg.summarySource] || row['disposition_detail'] || '';
+            const summarySrc = row[dealerCfg.summarySource] || row['disposition_detail'] || row['summary'] || '';
             summary = summarySrc.trim() || 'No Response';
             dispositionDetail = row['disposition_detail'] || '';
           }
@@ -361,7 +361,7 @@ export default function DispositionSyncV2Page() {
             session_created: sessionRow['created'] || '',
             origin: sessionRow['origin'] || '',
             lead_timeline: row['lead_timeline'] || '',
-            session_summary: sd.summary || '',
+            session_summary: sd.summary || row['summary'] || '',
             session_history: sd.history_text || '',
             conversion: dispositionText.includes('converted') ? 'Yes' : '',
             channel: sd.channel || '',
@@ -492,19 +492,25 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     }
   }
 
+  function isAiCandidate(r: Record<string, string>): boolean {
+    const summ = (r.session_summary || '').trim();
+    const d = (r.disposition || '').trim().toLowerCase();
+    return !!summ && summ !== 'No Response' && !!d && d !== 'no response';
+  }
+
   function validateDispositionsWithLLM(force = false) {
     if (!processedData.length) return;
     if (aiValidationRef.current) return;
-    log('AI validation started, candidates:', processedData.filter(r => r.disposition === 'engaged' && r.session_summary !== 'No Response').length);
+    log('AI validation started, candidates:', processedData.filter(isAiCandidate).length);
 
-    // Filter: rows where disposition === 'engaged' AND session_summary !== 'No Response'
+    // Filter: rows with a real session summary and a real disposition
     const candidates: { index: number; summary: string; history: string; currentDisp: string; model: string; outcome: string; callDuration: string; leadSource: string }[] = [];
     for (let i = 0; i < processedData.length; i++) {
       const r = processedData[i];
       const summ = (r.session_summary || '').trim();
       const hist = (r.session_history || '').trim();
       const disp = (r.disposition_detail || '').trim();
-      if (r.disposition === 'engaged' && r.session_summary !== 'No Response') {
+      if (isAiCandidate(r)) {
         candidates.push({
           index: i,
           summary: summ,
@@ -729,7 +735,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
   const totalLeads = processedData.length;
   const connected = processedData.filter(r => r.outcome === 'Connected').length;
   const notConnected = processedData.filter(r => r.outcome === 'Not Connected').length;
-  const aiReady = processedData.filter(r => r.disposition === 'engaged' && r.session_summary !== 'No Response').length;
+  const aiReady = processedData.filter(isAiCandidate).length;
   const skippedNoSummary = processedData.filter(r => r.session_summary === '' || r.session_summary === 'No Response').length;
   const excluded = processedData.filter(r => r.exclusion_flag === 'YES').length;
   const withRecording = processedData.filter(r => r.recordings).length;
