@@ -80,7 +80,7 @@ export const BUSINESS_CONFIG: BusinessConfig = {
   validation: {
     file1RequiredGroups: [
       { label: 'Phone', candidates: ['phone_number', 'phone', 'mobile'] },
-      { label: 'Disposition', candidates: ['disposition'] },
+      { label: 'Disposition', candidates: ['disposition', 'disposition_details'] },
       { label: 'Updated date', candidates: ['updated', 'call_date'] },
     ],
     file1RecommendedGroups: [
@@ -507,7 +507,7 @@ export function detectSessionId(obj: Record<string, string>): string {
 }
 
 export function detectSessionDisposition(obj: Record<string, string>): string {
-  const candidates = ['disposition_detail', 'disposition', 'call_disposition'];
+  const candidates = ['disposition_detail', 'disposition', 'disposition_details', 'call_disposition'];
   for (const c of candidates) {
     if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
   }

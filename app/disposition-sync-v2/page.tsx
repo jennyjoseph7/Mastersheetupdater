@@ -265,7 +265,7 @@ export default function DispositionSyncV2Page() {
         const totalAttempts = sessions.length;
 
         for (const sessionRow of sessions) {
-          const disp = (row['disposition'] || '').trim();
+          const disp = (row['disposition'] || row['disposition_details'] || '').trim();
           const dispLower = disp.toLowerCase();
           const priority = getDispositionPriority(disp);
 
@@ -314,7 +314,7 @@ export default function DispositionSyncV2Page() {
 
           const leadId = startId > 0 ? `L-${startId + output.length}` : `L-${output.length + 1}`;
 
-          const dispositionText = (row['disposition_detail'] || '').toLowerCase();
+          const dispositionText = (row['disposition_detail'] || row['disposition_details'] || '').toLowerCase();
 
           const dateSrc = row['updated'] || sd.dateStr;
           let rowTriggered = '';
