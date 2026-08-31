@@ -723,7 +723,7 @@ export function formatAnantWAFields(record: Record<string, string>): Record<stri
     last_session_id: record.last_session_id || '',
     pincode: record.pincode?.toLowerCase() || '',
     channel: record.channel || '',
-    num_attempts: record.num_attempts ? 'No. of Attempts' : '0',
+    num_attempts: record.num_attempts || '0',
     sentiment: record.sentiment?.toUpperCase() || '',
   };
 }
