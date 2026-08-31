@@ -284,6 +284,31 @@ export const DEALER_CONFIGS: Record<string, DealerConfig> = {
       { header: 'Exclusion_Flag', key: 'exclusion_flag' },
     ],
   },
+  fortune_wa: {
+    name: 'Fortune WA', summarySource: 'lead_summary',
+    columns: [
+      { header: 'Lead_ID', key: 'lead_id' },
+      { header: 'Full_Name', key: 'full_name' },
+      { header: 'Phone', key: 'phone' },
+      { header: 'City', key: 'city' },
+      { header: 'Pincode', key: 'pincode' },
+      { header: 'Language', key: 'language' },
+      { header: 'Lead_Source', key: 'lead_source' },
+      { header: 'Cohort', key: 'cohort' },
+      { header: 'Campaign_ID', key: 'campaign_id' },
+      { header: 'Call_Triggered', key: 'call_triggered' },
+      { header: 'Origin', key: 'origin' },
+      { header: 'Lead_Timeline', key: 'lead_timeline' },
+      { header: 'Outcome', key: 'outcome' },
+      { header: 'Disposition', key: 'disposition' },
+      { header: 'SUMMARY', key: 'summary' },
+      { header: 'Call_Date', key: 'call_date' },
+      { header: 'No_of_Attempts', key: 'num_attempts' },
+      { header: 'SENTIMENT', key: 'sentiment' },
+      { header: 'Session ID', key: 'last_session_id' },
+      { header: 'Model', key: 'model' },
+    ],
+  },
   chennai_ev: { name: 'ChennaiEV', summarySource: 'summary', columns: COMMON_COLUMNS },
   singhal: { name: 'Singhal', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
   fortune_hyryder: { name: 'Fortune Hyryder', summarySource: 'lead_summary', columns: COMMON_COLUMNS },
@@ -477,7 +502,11 @@ export function detectSummary(obj: Record<string, string>): string {
 export function detectSentiment(obj: Record<string, string>): string {
   const candidates = ['sentiment_score', 'sentiment', 'score'];
   for (const c of candidates) {
-    if (obj[c] !== undefined && obj[c] !== '') return obj[c];
+    const v = obj[c];
+    if (v !== undefined && v !== '' && !isDateStr(v)) {
+      const trimmed = String(v).trim();
+      if (trimmed && !/^\d{1,2}\/\d{1,2}\/\d{4}/.test(trimmed)) return trimmed;
+    }
   }
   return '';
 }
@@ -499,7 +528,7 @@ export function detectDuration(obj: Record<string, string>): string {
 }
 
 export function detectSessionId(obj: Record<string, string>): string {
-  const candidates = ['session_id', 'id', 'last_session_id'];
+  const candidates = ['session_id', 'last_session_id', 'sessionid', 'seesion_id'];
   for (const c of candidates) {
     if (obj[c] !== undefined && obj[c] !== '') return String(obj[c]).trim();
   }
@@ -526,6 +555,7 @@ export function deriveSeating(seating: string, model: string): string {
 
 export function cellToString(val: unknown): string {
   if (val === undefined || val === null || val === '') return '';
+  if (val instanceof Date) return '';
   if (typeof val === 'number') {
     if (Number.isInteger(val)) return String(val);
     if (val > 999999 && Math.abs(val - Math.round(val)) < 0.01) return String(Math.round(val));
@@ -680,9 +710,9 @@ export function buildQualityReport(
   };
 }
 
-// Anant WA helpers
+// WA config helpers
 export function isAnantWAConfig(dealerKey: string): boolean {
-  return dealerKey === 'anant_wa';
+  return dealerKey === 'anant_wa' || dealerKey === 'fortune_wa';
 }
 
 export function formatAnantWAFields(record: Record<string, string>): Record<string, string> {
