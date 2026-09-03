@@ -79,6 +79,7 @@ A **Next.js** application for automotive lead operations. Processes AutoEngage e
 | **`/recording-renamer`** | Recording Renamer | Bulk rename call recordings with metadata |
 | **`/formatter`** | AutoEngage Formatter | Map client columns → AutoEngage upload format |
 | **`/call-analysis`** | Call Summary | Daily call analysis KPI tables |
+| **`/master-lead-matcher`** | Master Matcher | Club client lead files with processed master sheets by Reg No / Phone No |
 | **`/reattempt-filter`** | Re-Attempt Filter | Filter and batch export re-attempt leads |
 | **`/campaign-generator`** | Campaign Gen | Generate 20-field structured campaign JSONs |
 

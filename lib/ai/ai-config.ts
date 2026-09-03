@@ -10,7 +10,7 @@ export function getApiEndpoint(): string {
   if (typeof window !== 'undefined' && (window as any).JEJO_CONFIG?.grydEndpoint) {
     return (window as any).JEJO_CONFIG.grydEndpoint + '/gryd/v1/chat/completions';
   }
-  return 'https://autobot-webapp-dev.gryd.in/gryd/v1/chat/completions';
+  return 'https://autongagetools.jennyjoseph-k.workers.dev/gryd/v1/chat/completions';
 }
 
 export function isProxyEndpoint(): boolean {

@@ -38,5 +38,8 @@ graphify-out/
 out/
 tsconfig.tsbuildinfo
 
-# Agent scratch scripts
+# Agent scratch scripts & skills
 .agents/
+.agent/
+skills/
+skill-observations/

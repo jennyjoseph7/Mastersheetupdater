@@ -13,12 +13,17 @@ interface AuthState {
 
 function storage(key: string): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(key);
+  return sessionStorage.getItem(key) || localStorage.getItem(key);
 }
 function setStorage(key: string, value: string | null) {
   if (typeof window === 'undefined') return;
-  if (value) { sessionStorage.setItem(key, value); }
-  else { sessionStorage.removeItem(key); }
+  if (value) {
+    sessionStorage.setItem(key, value);
+    try { localStorage.setItem(key, value); } catch {}
+  } else {
+    sessionStorage.removeItem(key);
+    try { localStorage.removeItem(key); } catch {}
+  }
 }
 
 function parseExpiry(val: unknown): number {
@@ -35,7 +40,7 @@ function parseExpiry(val: unknown): number {
 
 function grydEndpoint(): string {
   if (typeof window !== 'undefined' && (window as any).JEJO_CONFIG?.grydEndpoint) return (window as any).JEJO_CONFIG.grydEndpoint;
-  return 'https://autobot-webapp-dev.gryd.in';
+  return 'https://autongagetools.jennyjoseph-k.workers.dev';
 }
 function grydSignupToken(): string {
   if (typeof window !== 'undefined' && (window as any).JEJO_CONFIG?.grydSignupToken) return (window as any).JEJO_CONFIG.grydSignupToken;
@@ -62,7 +67,12 @@ export function useAuth() {
         const res = await fetch(`${grydEndpoint()}/auth/check`, {
           headers: { 'X-GRYD-TOKEN': token, 'X-GRYD-SESSION-ID': sessionId || '' },
         });
-        if (!res.ok) serverValid = false;
+        if (!res.ok) {
+          // ponytail: 502/526/5xx = gryd origin down/cert expired — don't invalidate session
+          if (res.status === 502 || res.status === 526 || res.status >= 500) {
+            /* degraded — trust client */
+          } else serverValid = false;
+        }
       } catch {
         /* worker unreachable, trust client check */
       }
@@ -93,8 +103,18 @@ export function useAuth() {
         },
         body: JSON.stringify({ user_id: userId, password, role: 'human_agent', attribute: 'email', application_id: 'autocrm' }),
       });
-      const data = await res.json();
-      if (!res.ok) return { ok: false, error: data.error || data.message || 'Login failed' };
+      const raw = await res.text();
+      let data: any = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw.slice(0, 300) }; }
+      if (!res.ok) {
+        // ponytail: map 526/502 (cert expired) to actionable message, don't show generic "Check connection"
+        if (res.status === 502 || res.status === 526) {
+          const msg = data.message || data.error || raw.slice(0, 300);
+          if (msg.toLowerCase().includes('cert') || msg.includes('526')) return { ok: false, error: 'Gryd service unavailable — origin cert expired (526). Contact gryd infra to renew *.gryd.in.' };
+          return { ok: false, error: msg || 'Gryd service temporarily unavailable (502). Try again shortly.' };
+        }
+        return { ok: false, error: data.error || data.message || `Login failed (${res.status})` };
+      }
       const expiry = parseExpiry(data.expiry);
       setStorage('gryd_token', data.token);
       setStorage('gryd_session_id', data.session_id || '');
@@ -106,6 +126,9 @@ export function useAuth() {
       checkSession();
       return { ok: true };
     } catch (err: unknown) {
+      // ponytail: network/CORS failure — distinguish from gryd 5xx which is handled above
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.toLowerCase().includes('failed to fetch') || msg.toLowerCase().includes('network')) return { ok: false, error: 'Network error — check connection or try again.' };
       return { ok: false, error: 'Login failed. Check connection.' };
     }
   };

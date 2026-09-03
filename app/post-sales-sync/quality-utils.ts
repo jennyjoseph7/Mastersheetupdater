@@ -267,6 +267,44 @@ export function getOutputColumnsForDealer(dealerKey: string): OutputColumn[] {
       { header: 'Channel', key: 'channel' },
       { header: 'Seating', key: 'seating' },
     ],
+    keerthi_triumph: [
+      { header: 'WORKSHOP_CODE', key: 'workshop_code' }, { header: 'PERSON_NAME', key: 'person_name' },
+      { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'REG_NUMBER', key: 'reg_number' },
+      { header: 'VEHICLE_MODEL', key: 'vehicle_model' }, { header: 'VIN_NUMBER', key: 'vin_number' },
+      { header: 'STATUS', key: 'session_status' }, { header: 'SUMMARY', key: 'summary' },
+      { header: 'DISPOSITION_DETAILS', key: 'disposition' }, { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+      { header: 'CALL_DATE', key: 'call_date' }, { header: 'SENTIMENT', key: 'sentiment_score' },
+      { header: 'RECORDINGS', key: 'call_recording' }, { header: 'DURATION', key: 'duration' },
+      { header: 'CAMPAIGN_ID', key: 'campaign_id' }, { header: 'SESSION_ID', key: 'last_session_id' },
+      { header: 'INTERESTED', key: 'interested' }, { header: 'ORIGIN', key: 'origin' },
+      { header: 'LEAD_TIMELINE', key: 'lead_timeline' }, { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
+    ],
+    kt_due_overdue: [
+      { header: 'WORKSHOP_CODE', key: 'workshop_code' }, { header: 'PERSON_NAME', key: 'person_name' },
+      { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'REG_NUMBER', key: 'reg_number' },
+      { header: 'VEHICLE_MODEL', key: 'vehicle_model' }, { header: 'VIN_NUMBER', key: 'vin_number' },
+      { header: 'STATUS', key: 'session_status' }, { header: 'SUMMARY', key: 'summary' },
+      { header: 'DISPOSITION_DETAILS', key: 'disposition' }, { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+      { header: 'NEXT_SERVICE_DATE', key: 'next_service_due' },
+      { header: 'CALL_DATE', key: 'call_date' }, { header: 'SENTIMENT', key: 'sentiment_score' },
+      { header: 'RECORDINGS', key: 'call_recording' }, { header: 'DURATION', key: 'duration' },
+      { header: 'CAMPAIGN_ID', key: 'campaign_id' }, { header: 'SESSION_ID', key: 'last_session_id' },
+      { header: 'INTERESTED', key: 'interested' }, { header: 'ORIGIN', key: 'origin' },
+      { header: 'LEAD_TIMELINE', key: 'lead_timeline' }, { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
+    ],
+    kt_expiry_date: [
+      { header: 'WORKSHOP_CODE', key: 'workshop_code' }, { header: 'PERSON_NAME', key: 'person_name' },
+      { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'REG_NUMBER', key: 'reg_number' },
+      { header: 'VEHICLE_MODEL', key: 'vehicle_model' }, { header: 'VIN_NUMBER', key: 'vin_number' },
+      { header: 'STATUS', key: 'session_status' }, { header: 'SUMMARY', key: 'summary' },
+      { header: 'DISPOSITION_DETAILS', key: 'disposition' }, { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+      { header: 'WARRANTY_EXPIRY_DATE', key: 'warranty_expiry_date' },
+      { header: 'CALL_DATE', key: 'call_date' }, { header: 'SENTIMENT', key: 'sentiment_score' },
+      { header: 'RECORDINGS', key: 'call_recording' }, { header: 'DURATION', key: 'duration' },
+      { header: 'CAMPAIGN_ID', key: 'campaign_id' }, { header: 'SESSION_ID', key: 'last_session_id' },
+      { header: 'INTERESTED', key: 'interested' }, { header: 'ORIGIN', key: 'origin' },
+      { header: 'LEAD_TIMELINE', key: 'lead_timeline' }, { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
+    ],
   };
   return schemas[dealerKey] || [
     { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'SUMMARY', key: 'summary' },
@@ -431,7 +469,13 @@ export function convertEpochToIST(val: unknown): string {
 function missingColumns(rows: Record<string, string>[], expected: string[]): string[] {
   if (!rows.length || !expected || expected.some(col => col.startsWith('Use '))) return [];
   const cols = new Set(Object.keys(rows[0]).filter(k => k !== '__raw'));
-  return expected.filter(col => !cols.has(canonicalHeader(col)));
+  return expected.filter(col => {
+    const c = canonicalHeader(col);
+    if (cols.has(c)) return false;
+    if ((c === 'next_service_date' || c === 'next_service_due') && (cols.has('next_service_date') || cols.has('next_service_due') || cols.has('service_due_date') || cols.has('next_due_date'))) return false;
+    if (c === 'warranty_expiry_date' && (cols.has('warranty_expiry_date') || cols.has('warranty_expiry') || cols.has('warranty_date') || cols.has('ew_expiry_date') || cols.has('expiry_date'))) return false;
+    return true;
+  });
 }
 
 function sampleSourceRow(row: Record<string, string>, label: string): string {
@@ -457,6 +501,7 @@ function getOutputFieldChecks(dealerKey: string, output: Record<string, string>[
   if (keys.has('workshop_code')) checks.push({ key: 'workshop_code', label: 'Workshop code', level: 'warn', count: 0 });
   if (keys.has('last_service_date')) checks.push({ key: 'last_service_date', label: 'Last service date', level: 'warn', count: 0 });
   if (keys.has('next_service_due')) checks.push({ key: 'next_service_due', label: 'Next service date', level: 'warn', count: 0 });
+  if (keys.has('warranty_expiry_date')) checks.push({ key: 'warranty_expiry_date', label: 'Warranty expiry date', level: 'warn', count: 0 });
   return checks.map(c => ({ ...c, count: output.filter(row => !clean(row[c.key])).length })).filter(c => c.count > 0);
 }
 

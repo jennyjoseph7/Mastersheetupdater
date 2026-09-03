@@ -51,6 +51,12 @@ const TOOLS = [
     icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
   },
   {
+    href: '/master-lead-matcher', name: 'Master Matcher',
+    desc: 'Club raw Client Lead Files (with full client columns) with processed Master Sheets based on Registration No. or Phone No.',
+    color: 'indigo',
+    icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>,
+  },
+  {
     href: '/dashboard', name: 'Dashboard',
     desc: 'Upload Zoho exports to generate a visual call campaign summary with KPIs, charts, and follow-up insights.',
     color: 'yellow',

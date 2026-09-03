@@ -410,19 +410,22 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     if (!processedData.length) return;
     const cols = dealerCfg.columns;
     const keys = cols.map(c => c.key);
-    await copyText(rowsToTsv(processedData, keys), 'Copied rows. Paste with Ctrl+V in Zoho.');
+    const sorted = getSortedData(processedData);
+    await copyText(rowsToTsv(sorted, keys), 'Copied rows. Paste with Ctrl+V in Zoho.');
   }
 
   async function copyConvertedData() {
     if (!convertedRows.length) { setStatusMsg('No converted rows to copy.'); setStatusType('warn'); return; }
     const keys = ['lead_id', 'full_name', 'phone', 'model', 'language', 'disposition_detail', 'summary', 'call_date', 'city'];
-    await copyText(rowsToTsv(convertedRows, keys), 'Copied converted rows.');
+    const sorted = getSortedData(convertedRows);
+    await copyText(rowsToTsv(sorted, keys), 'Copied converted rows.');
   }
 
   async function copyTestDriveData() {
     if (!testDriveRows.length) { setStatusMsg('No test drive rows to copy.'); setStatusType('warn'); return; }
     const keys = ['lead_id', 'phone', 'model', 'language', 'call_date', 'summary'];
-    await copyText(rowsToTsv(testDriveRows, keys), 'Copied test drive rows.');
+    const sorted = getSortedData(testDriveRows);
+    await copyText(rowsToTsv(sorted, keys), 'Copied test drive rows.');
   }
 
   async function copyQualityReport() {
@@ -490,6 +493,9 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     if (abortRef.current) {
       abortRef.current.abort();
     }
+    aiProgress.abort('AI validation cancelled.');
+    aiValidationRef.current = false;
+    abortRef.current = null;
   }
 
   function isAiCandidate(r: Record<string, string>): boolean {
@@ -501,6 +507,14 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
   function validateDispositionsWithLLM(force = false) {
     if (!processedData.length) return;
     if (aiValidationRef.current) return;
+
+    const getAuth = (k: string) => (typeof window !== 'undefined' ? (sessionStorage.getItem(k) || localStorage.getItem(k)) : '') || '';
+    if (!getAuth('gryd_token') || !getAuth('gryd_session_id')) {
+      setStatusMsg('Not signed in or session expired. Please log in again.');
+      setStatusType('warn');
+      return;
+    }
+
     log('AI validation started, candidates:', processedData.filter(isAiCandidate).length);
 
     // Filter: rows with a real session summary and a real disposition
@@ -579,9 +593,9 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
       buildHeaders: () => {
         const cfg = (typeof window !== 'undefined' ? (window as any).JEJO_CONFIG : null) || {};
         return {
-          'X-GRYD-TOKEN': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_token') : '') || '',
-          'X-GRYD-SESSION-ID': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_session_id') : '') || '',
-          'X-GRYD-ENTERPRISE-ID': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_enterprise_id') : '') || 'autocrm',
+          'X-GRYD-TOKEN': getAuth('gryd_token'),
+          'X-GRYD-SESSION-ID': getAuth('gryd_session_id'),
+          'X-GRYD-ENTERPRISE-ID': getAuth('gryd_enterprise_id') || 'autocrm',
           'X-GRYD-SIGNUP-TOKEN': cfg.grydSignupToken || '',
           'X-GRYD-APPLICATION-ID': 'autocrm',
         };
@@ -596,7 +610,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     }).then((result) => {
       log('AI validation done, corrected:', Object.keys(correctedResults).length);
 
-      if (result.aborted) {
+      if (result.aborted || !aiValidationRef.current) {
         aiProgress.abort('AI validation cancelled.');
         aiValidationRef.current = false;
         abortRef.current = null;
@@ -956,8 +970,19 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                   <table>
                     <thead><tr>
                       {outputColumns.map(col => {
-                        const isSortable = ['full_name', 'phone', 'disposition'].includes(col.key);
-                        return <th key={col.key} className={isSortable ? styles['th-sortable'] : ''} onClick={isSortable ? () => toggleSort(col.key) : undefined}>{col.header}</th>;
+                        const isCurrentSort = sortKey === col.key;
+                        const sortArrow = isCurrentSort ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+                        return (
+                          <th
+                            key={col.key}
+                            className={styles['th-sortable']}
+                            onClick={() => toggleSort(col.key)}
+                            title={`Click to sort by ${col.header}`}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            {col.header}{sortArrow}
+                          </th>
+                        );
                       })}
                     </tr></thead>
                     <tbody>

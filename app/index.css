@@ -128,6 +128,7 @@
 .landing-page .tool-card.teal:hover { border-color: rgba(94,234,212,0.4); box-shadow: 0 24px 70px rgba(94,234,212,0.1); }
 .landing-page .tool-card.purple:hover { border-color: rgba(168,85,247,0.4); box-shadow: 0 24px 70px rgba(168,85,247,0.1); }
 .landing-page .tool-card.pink:hover { border-color: rgba(244,114,182,0.4); box-shadow: 0 24px 70px rgba(244,114,182,0.1); }
+.landing-page .tool-card.indigo:hover { border-color: rgba(99,102,241,0.4); box-shadow: 0 24px 70px rgba(99,102,241,0.1); }
 .landing-page .tool-card.yellow:hover { border-color: rgba(234,179,8,0.4); box-shadow: 0 24px 70px rgba(234,179,8,0.1); }
 
 /* ── TOOL ICON ─────────────────────────────────────────────── */
@@ -147,6 +148,7 @@
 .landing-page .tool-icon.teal { background: var(--accent8-soft); border: 1px solid rgba(94,234,212,0.3); color: var(--accent8); }
 .landing-page .tool-icon.purple { background: var(--accent4-soft); border: 1px solid rgba(168,85,247,0.3); color: var(--accent4); }
 .landing-page .tool-icon.pink { background: var(--accent6-soft); border: 1px solid rgba(244,114,182,0.3); color: var(--accent6); }
+.landing-page .tool-icon.indigo { background: rgba(99,102,241,0.14); border: 1px solid rgba(99,102,241,0.3); color: #6366f1; }
 .landing-page .tool-icon.yellow { background: var(--accent3-soft); border: 1px solid rgba(234,179,8,0.3); color: var(--accent3); }
 
 [data-theme="light"] .landing-page .tool-icon.green { border-color: rgba(22,163,74,0.25); }

@@ -15,6 +15,7 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://192.168.1.2:3000',
+  'http://192.168.1.4:3000',
 ];
 
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -94,6 +95,10 @@ export default {
         if (resp.status === 401 || resp.status === 403) {
           return jsonResponse(401, { error: 'Session expired', message: 'Token rejected by gryd.' }, origin);
         }
+        if (resp.status === 526 || resp.status === 525 || resp.status === 520 || resp.status >= 500) {
+          // ponytail: gryd origin down/cert expired — don't kill session, trust client
+          return jsonResponse(200, { valid: true, degraded: true, upstreamStatus: resp.status }, origin);
+        }
         return jsonResponse(200, { valid: true }, origin);
       } catch {
         // If gryd is unreachable, trust the token (degraded mode)
@@ -165,6 +170,8 @@ export default {
         clearTimeout(timeout);
         const responseText = await upstream.text();
         if (!upstream.ok) {
+          if (upstream.status === 526) return jsonResponse(502, { error: 'Bad Gateway', message: 'Gryd origin cert expired (526). Contact gryd infra to renew *.gryd.in.' }, origin);
+          if (upstream.status >= 500) return jsonResponse(502, { error: 'Gryd LLM error', message: responseText.slice(0, 500) || `Upstream ${upstream.status}` }, origin);
           return jsonResponse(upstream.status, { error: 'Gryd LLM error', message: responseText.slice(0, 500) }, origin);
         }
         let content = responseText;
@@ -214,7 +221,18 @@ export default {
         });
         clearTimeout(timeout);
         const text = await upstream.text();
+        // ponytail: never forward 526/5xx as-is — map to 502 JSON with CORS so frontend gets usable error
+        if (upstream.status === 526 || upstream.status === 525 || upstream.status === 520) {
+          return jsonResponse(502, { error: 'Bad Gateway', message: 'Gryd origin cert expired (526). Gryd infra must renew *.gryd.in on 34.14.184.212.', upstreamStatus: upstream.status }, origin);
+        }
+        if (upstream.status >= 500) {
+          return jsonResponse(502, { error: 'Bad Gateway', message: text.slice(0, 500) || `Upstream ${upstream.status}` }, origin);
+        }
         const ctype = upstream.headers.get('content-type') || 'application/json';
+        // ensure 4xx HTML doesn't leak as text/plain — wrap as JSON
+        if (upstream.status >= 400 && !ctype.includes('application/json')) {
+          return jsonResponse(upstream.status, { error: 'Upstream error', message: text.slice(0, 500) }, origin);
+        }
         return new Response(text, { status: upstream.status, headers: { ...corsHeaders(origin), 'Content-Type': ctype } });
       } catch (err) {
         clearTimeout(timeout);

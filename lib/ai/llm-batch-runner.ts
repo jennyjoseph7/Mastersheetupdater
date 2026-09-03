@@ -42,7 +42,13 @@ export async function runLlmBatches(opts: LlmBatchOptions): Promise<LlmBatchResu
   function recordThrottle(state: ThrottleState, retryAfterMs?: number): void { state.gapMs = Math.min(5000, state.gapMs * 2); state.consecutiveSuccesses = 0; state.cooldownUntil = Date.now() + (retryAfterMs || 1000); }
   function isRetryableStatus(status: number): boolean { return [408, 409, 425, 429, 500, 502, 503, 504, 523, 524].includes(status); }
   function isClientError(status: number): boolean { return status >= 400 && status < 500 && !isRetryableStatus(status); }
-  function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
+  function sleep(ms: number, sig?: AbortSignal): Promise<void> {
+    return new Promise(r => {
+      if (sig?.aborted) { r(); return; }
+      const t = setTimeout(r, ms);
+      sig?.addEventListener('abort', () => { clearTimeout(t); r(); }, { once: true });
+    });
+  }
   function jitter(ms: number): number { return Math.floor(ms * (0.75 + Math.random() * 0.5)); }
   function parseRetryAfter(header: string | null): number | undefined { if (!header) return undefined; const secs = parseInt(header, 10); if (!isNaN(secs)) return secs * 1000; const date = Date.parse(header); return isNaN(date) ? undefined : Math.max(0, date - Date.now()); }
   
@@ -93,33 +99,50 @@ export async function runLlmBatches(opts: LlmBatchOptions): Promise<LlmBatchResu
       let lastError: unknown;
       
       while (attempt <= maxRetries && !aborted && !signal?.aborted) {
-        if (throttle.cooldownUntil > Date.now()) await sleep(throttle.cooldownUntil - Date.now());
+        if (throttle.cooldownUntil > Date.now()) await sleep(throttle.cooldownUntil - Date.now(), signal);
+        if (signal?.aborted) { aborted = true; break; }
         const gap = jitter(throttle.gapMs);
-        await sleep(gap);
+        await sleep(gap, signal);
+        if (signal?.aborted) { aborted = true; break; }
         
         try {
           const headers = { 'Content-Type': 'application/json', ...(buildHeaders?.() || {}) };
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+          const onParentAbort = () => controller.abort();
+          signal?.addEventListener('abort', onParentAbort, { once: true });
           
-          const response = await fetch(getApiEndpoint(), {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeout);
+          let response: Response;
+          try {
+            response = await fetch(getApiEndpoint(), {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(body),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeout);
+            signal?.removeEventListener('abort', onParentAbort);
+          }
           
           if (!response.ok) {
-            if (isClientError(response.status)) throw new Error(`Client error: ${response.status}`);
+            const errText = await response.text();
+            let errMsg = `HTTP ${response.status}`;
+            try {
+              const errJson = JSON.parse(errText);
+              errMsg = errJson.message || errJson.error || errMsg;
+            } catch {
+              if (errText) errMsg = errText.slice(0, 200);
+            }
+            console.error(`[LLM Batch Runner] Request failed (${response.status}):`, errMsg);
+            if (isClientError(response.status)) throw new Error(`Client error: ${response.status} - ${errMsg}`);
             if (isRetryableStatus(response.status)) {
               const retryAfter = parseRetryAfter(response.headers.get('Retry-After'));
               recordThrottle(throttle, retryAfter);
               attempt++;
               continue;
             }
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status} - ${errMsg}`);
           }
           
           const rawText = await response.text();
@@ -147,7 +170,7 @@ export async function runLlmBatches(opts: LlmBatchOptions): Promise<LlmBatchResu
           break;
         } catch (err) {
           lastError = err;
-          if (err instanceof Error && err.name === 'AbortError') { aborted = true; break; }
+          if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) { aborted = true; break; }
           attempt++;
           if (attempt <= maxRetries) recordThrottle(throttle);
         }
@@ -162,5 +185,5 @@ export async function runLlmBatches(opts: LlmBatchOptions): Promise<LlmBatchResu
   const workers = Array.from({ length: maxConcurrent }, () => worker());
   await Promise.all(workers);
   
-  return { results, correctedCount, failedBatches, fromCache: cache.size > 0, aborted };
+  return { results, correctedCount, failedBatches, fromCache: cache.size > 0, aborted: aborted || Boolean(signal?.aborted) };
 }

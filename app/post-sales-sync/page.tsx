@@ -29,6 +29,9 @@ const DEALERSHIPS: Record<string, { name: string; workflow: string; mode: string
   suryabala_service: { name: 'Suryabala Honda', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['reg_number', 'campaign_id', 'person_name', 'phone_number', 'vehicle_model', 'next_service_due', 'last_service_type', 'vin_number'], sessionColumns: ['status', 'summary', 'duration', 'start_time', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   fortune_toyota_wa: { name: 'Fortune Toyota WA', workflow: 'WhatsApp Campaign', mode: 'post', leadColumns: ['lead_id', 'full_name', 'phone', 'city', 'pincode', 'language', 'cohort', 'campaign_id'], sessionColumns: ['call_triggered', 'status', 'summary', 'disposition_details', 'call_date', 'sentiment', 'duration', 'number_of_attempts'] },
   perfect_rider_wa: { name: 'Perfect Rider WA', workflow: 'WhatsApp Campaign', mode: 'post', leadColumns: ['lead_id', 'full_name', 'phone', 'city', 'pincode', 'language', 'cohort', 'campaign_id'], sessionColumns: ['call_triggered', 'status', 'summary', 'disposition_details', 'call_date', 'sentiment', 'duration', 'number_of_attempts'] },
+  keerthi_triumph: { name: 'KT PSF (Keerthi Triumph)', workflow: 'Post Service Feedback', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
+  kt_due_overdue: { name: 'KT Due/Overdue', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'next_service_date', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
+  kt_expiry_date: { name: 'KT Expiry Date', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'warranty_expiry_date', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
 };
 
 export default function PostSalesSyncPage() {
@@ -149,8 +152,18 @@ export default function PostSalesSyncPage() {
     if (!sortKey || !sortDir) return data;
     const dir = sortDir === 'asc' ? 1 : -1;
     return [...data].sort((a, b) => {
-      const va = String(a[sortKey!] || ''), vb = String(b[sortKey!] || '');
-      if (va !== vb) return va < vb ? -dir : dir;
+      const va = String(a[sortKey!] ?? '').trim();
+      const vb = String(b[sortKey!] ?? '').trim();
+      if (va === '' && vb !== '') return 1;
+      if (va !== '' && vb === '') return -1;
+      const numA = Number(va);
+      const numB = Number(vb);
+      if (!isNaN(numA) && !isNaN(numB) && va !== '' && vb !== '') {
+        if (numA !== numB) return (numA - numB) * dir;
+      } else {
+        const cmp = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp !== 0) return cmp * dir;
+      }
       return String(a.lead_id || '').localeCompare(String(b.lead_id || ''), undefined, { numeric: true });
     });
   }
@@ -294,7 +307,8 @@ export default function PostSalesSyncPage() {
             pincode: get(row, ['pincode', 'pin_code', 'zip', 'zip_code', 'postal_code']),
             cohort: get(row, ['cohort', 'cohort_name', 'campaign_cohort']),
             model: get(row, ['model', 'car_model', 'model_name']),
-            next_service_due: get(row, ['next_service_due', 'service_due_date', 'next_due_date']),
+            next_service_due: convertEpochToIST(get(row, ['next_service_due', 'next_service_date', 'service_due_date', 'next_due_date'])),
+            warranty_expiry_date: convertEpochToIST(get(row, ['warranty_expiry_date', 'warranty_expiry', 'warranty_date', 'warranty_expiration_date', 'warranty_expiration', 'ew_expiry_date', 'ew_expiry', 'extended_warranty_expiry_date', 'expiry_date', 'expiration_date', 'warranty_end_date'])),
             last_service_date: convertEpochToIST(get(row, ['last_service_date', 'last_service_dt', 'last_service_done_date', 'last_service_done', 'last_service_on', 'last_service', 'service_date', 'service_done_date', 'service_completed_date'])),
             customer_score: get(row, ['customer_score', 'score']),
             odometer_reading: get(row, ['odometer_reading', 'odometer', 'kms']),
@@ -376,7 +390,12 @@ export default function PostSalesSyncPage() {
       return;
     }
     const OUTPUT_COLUMNS = getOutputColumnsForDealer(dealerKey);
-    await copyText(rowsToTsv(processedData, OUTPUT_COLUMNS.map(c => c.key)), 'Copied rows. Paste with Ctrl+V in Zoho.');
+    const sorted = getSortedData(processedData);
+    const startIdNum = parseInt(leadIdStart, 10) || 0;
+    const finalRows = startIdNum > 0
+      ? sorted.map((r, i) => ({ ...r, lead_id: `L-${startIdNum + i}` }))
+      : sorted;
+    await copyText(rowsToTsv(finalRows, OUTPUT_COLUMNS.map(c => c.key)), 'Copied rows. Paste with Ctrl+V in Zoho.');
   }
 
   async function copyPreviewRows(type: string) {
@@ -392,8 +411,9 @@ export default function PostSalesSyncPage() {
       keys = ['phone_number', 'vehicle_model', 'vin_number', 'summary', 'call_date', 'cre_remarks'];
     }
     if (!rows?.length) { setStatusMsg('No rows to copy.'); setStatusType('warn'); return; }
+    const sorted = getSortedData(rows);
     const isPR = dealerKey === 'perfect_riders_service';
-    const data = rows.map(r => keys.map(k => {
+    const data = sorted.map(r => keys.map(k => {
       if (k === 'service_location') return isPR ? extractPerfectRidersLocation(r.summary || r.updated_disposition || r.disposition_detail) : '';
       if (k === 'cre_remarks') return isPR ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '';
       if (k === 'common_remarks') return '';
@@ -401,7 +421,7 @@ export default function PostSalesSyncPage() {
       if (k === 'summary') return r.summary || '';
       return String(r[k] || '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
     }).join('\t')).join('\n');
-    await copyText(data, `Copied ${rows.length} preview row(s).`);
+    await copyText(data, `Copied ${sorted.length} preview row(s).`);
   }
 
   async function copyQualityReport() {
@@ -429,7 +449,11 @@ export default function PostSalesSyncPage() {
     const headers = OUTPUT_COLUMNS.map(c => c.header);
     const keys = OUTPUT_COLUMNS.map(c => c.key);
     const sorted = getSortedData(processedData);
-    const dataRows = [headers, ...sorted.map(r => keys.map(k => excelSafe(r[k] ?? '')))];
+    const startIdNum = parseInt(leadIdStart, 10) || 0;
+    const finalRows = startIdNum > 0
+      ? sorted.map((r, i) => ({ ...r, lead_id: `L-${startIdNum + i}` }))
+      : sorted;
+    const dataRows = [headers, ...finalRows.map(r => keys.map(k => excelSafe(r[k] ?? '')))];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataRows), 'Output');
 
@@ -477,6 +501,9 @@ export default function PostSalesSyncPage() {
     if (abortRef.current) {
       abortRef.current.abort();
     }
+    aiProgress.abort('AI validation cancelled.');
+    aiValidationRef.current = false;
+    abortRef.current = null;
   }
 
   function validateDispositionsWithLLM(force = false) {
@@ -498,8 +525,18 @@ export default function PostSalesSyncPage() {
       icare_feedback: ['Tamil', 'English'],
       fortune_toyota_wa: ['English'],
       perfect_rider_wa: ['English'],
+      keerthi_triumph: ['Kannada', 'English', 'Hindi'],
+      kt_due_overdue: ['Kannada', 'English', 'Hindi'],
+      kt_expiry_date: ['Kannada', 'English', 'Hindi'],
     };
     const supportedLangs = DEALER_LANGUAGES[dealerKey] || ['English'];
+
+    const getAuth = (k: string) => (typeof window !== 'undefined' ? (sessionStorage.getItem(k) || localStorage.getItem(k)) : '') || '';
+    if (!getAuth('gryd_token') || !getAuth('gryd_session_id')) {
+      setStatusMsg('Not signed in or session expired. Please log in again.');
+      setStatusType('warn');
+      return;
+    }
 
     // Filter rows with completed session_status (matching original HTML logic)
     const candidates: { index: number; summary: string; history: string; currentDisp: string; callDate: string; outcome: string; vehicleModel: string; campaignId: string; dealerName: string; supportedLanguages: string }[] = [];
@@ -508,7 +545,7 @@ export default function PostSalesSyncPage() {
       const summ = (r.session_summary || '').trim();
       const hist = (r.session_history || '').trim();
       const disp = (r.disposition_detail || r.disposition || '').trim();
-      if (r.session_status === 'completed') {
+      if ((r.session_status || '').trim().toLowerCase() === 'completed') {
         candidates.push({
           index: i,
           summary: summ,
@@ -595,9 +632,9 @@ export default function PostSalesSyncPage() {
       buildHeaders: () => {
         const cfg = (typeof window !== 'undefined' ? (window as any).JEJO_CONFIG : null) || {};
         return {
-          'X-GRYD-TOKEN': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_token') : '') || '',
-          'X-GRYD-SESSION-ID': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_session_id') : '') || '',
-          'X-GRYD-ENTERPRISE-ID': (typeof window !== 'undefined' ? sessionStorage.getItem('gryd_enterprise_id') : '') || 'autocrm',
+          'X-GRYD-TOKEN': getAuth('gryd_token'),
+          'X-GRYD-SESSION-ID': getAuth('gryd_session_id'),
+          'X-GRYD-ENTERPRISE-ID': getAuth('gryd_enterprise_id') || 'autocrm',
           'X-GRYD-SIGNUP-TOKEN': cfg.grydSignupToken || '',
           'X-GRYD-APPLICATION-ID': 'autocrm',
         };
@@ -610,7 +647,7 @@ export default function PostSalesSyncPage() {
       },
       signal: abortController.signal,
     }).then((result) => {
-      if (result.aborted) {
+      if (result.aborted || !aiValidationRef.current) {
         aiProgress.abort('AI validation cancelled.');
         aiValidationRef.current = false;
         abortRef.current = null;
@@ -807,10 +844,13 @@ export default function PostSalesSyncPage() {
                     <option value="perfect_riders_service">Perfect Riders — Service Reminder</option>
                     <option value="pressana_service_feedback">Pressana — Service Reminder</option>
                     <option value="suryabala_service">Suryabala Honda — Service Reminder</option>
+                    <option value="kt_due_overdue">KT Due/Overdue — Keerthi Triumph</option>
+                    <option value="kt_expiry_date">KT Expiry Date — Keerthi Triumph</option>
                   </optgroup>
                   <optgroup label="Post-sales feedback reminder">
                     <option value="icare_feedback">Icare — Feedback Reminder</option>
                     <option value="pressana_post_service_feedback">Pressana Kia — Post Service Feedback</option>
+                    <option value="keerthi_triumph">KT PSF — Keerthi Triumph</option>
                   </optgroup>
                   <optgroup label="WA">
                     <option value="fortune_toyota_wa">Fortune Toyota — WhatsApp Campaign</option>
@@ -924,8 +964,19 @@ export default function PostSalesSyncPage() {
                   <table>
                     <thead><tr>
                       {OUTPUT_COLUMNS.map(col => {
-                        const isSortable = ['person_name', 'full_name', 'phone_number', 'disposition_detail'].includes(col.key);
-                        return <th key={col.key} className={isSortable ? styles['th-sortable'] : ''} onClick={isSortable ? () => toggleSort(col.key!) : undefined}>{col.header}</th>;
+                        const isCurrentSort = sortKey === col.key;
+                        const sortArrow = isCurrentSort ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+                        return (
+                          <th
+                            key={col.key}
+                            className={styles['th-sortable']}
+                            onClick={() => toggleSort(col.key!)}
+                            title={`Click to sort by ${col.header}`}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            {col.header}{sortArrow}
+                          </th>
+                        );
                       })}
                     </tr></thead>
                     <tbody>

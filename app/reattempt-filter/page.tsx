@@ -39,6 +39,7 @@ const DEALERSHIPS: Record<string, DealershipConfig> = {
   fortune_service: { name: 'Fortune Toyota', type: 'post-sales', showroom_code: '', region_name: 'India', dealership_id: 'fortune-toyota-india', brand: '', subdivision_name: '', workshop_code: '' },
   suryabala_service: { name: 'Suryabala Honda', type: 'post-sales', showroom_code: '', region_name: 'India', dealership_id: 'suryabala-honda-india', brand: '', subdivision_name: '', workshop_code: '' },
   icare_feedback: { name: 'Icare', type: 'post-sales', showroom_code: '', region_name: 'India', dealership_id: 'icare-india', brand: '', subdivision_name: '', workshop_code: '' },
+  keerthi_triumph: { name: 'KT PSF (Keerthi Triumph)', type: 'post-sales', showroom_code: '', region_name: 'India', dealership_id: 'keerthi-triumph-india', brand: 'Triumph', subdivision_name: '', workshop_code: '' },
 };
 
 interface ExcludedLead {
@@ -598,6 +599,7 @@ export default function ReattemptFilterPage() {
                     <option value="fortune_service">Fortune Toyota (Service)</option>
                     <option value="suryabala_service">Suryabala Honda (Service)</option>
                     <option value="icare_feedback">Icare (Feedback)</option>
+                    <option value="keerthi_triumph">KT PSF — Keerthi Triumph</option>
                   </optgroup>
                 </select>
               </div>
