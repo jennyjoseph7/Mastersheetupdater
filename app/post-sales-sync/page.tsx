@@ -10,6 +10,7 @@ import BatchProgressBar from '@/components/BatchProgressBar';
 import { useBatchProgress } from '@/hooks/useBatchProgress';
 import { readFileAsArrayBuffer, clean, esc, normalizePhone, canonicalHeader, isPhoneLike, excelSafe, validateFileSync, colLetter } from '@/lib/data-pipeline';
 import * as XLSX from 'xlsx';
+import XLSXStyle from 'xlsx-js-style';
 import { $log } from '@/lib/logger';
 import { classifyDisposition, isServiceBooked, isServiceCompleted, isNotInterested, isFeedbackOrEscalation, extractPerfectRidersLocation, extractPerfectRidersCRE } from './classify-utils';
 import { getOutputColumnsForDealer, buildSessionMap, buildQualityReport, scoreFileRole, evaluateFileRoles, get, formatDate, convertEpochToIST, parseAutoEngageDate, extractSessionData } from './quality-utils';
@@ -47,8 +48,11 @@ export default function PostSalesSyncPage() {
   const [language, setLanguage] = useState('English');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [keerthiReportRows, setKeerthiReportRows] = useState<Record<string, string>[]>([]);
+  const [aiValidated, setAiValidated] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processedData, setProcessedData] = useState<Record<string, string>[]>([]);
+  const processedDataRef = useRef<Record<string, string>[]>([]);
   const [qualityReport, setQualityReport] = useState<any>(null);
   const [bookedRows, setBookedRows] = useState<Record<string, string>[]>([]);
   const [completedRows, setCompletedRows] = useState<Record<string, string>[]>([]);
@@ -95,6 +99,69 @@ export default function PostSalesSyncPage() {
     let s = String(val).trim();
     if (/^\d[\d.]*[eE][+\-]?\d+$/.test(s)) { const n = parseFloat(s); if (isFinite(n) && n > 999999) return String(Math.round(n)); }
     return s;
+  }
+
+  function formatDateMMDDYYYY(input: string | undefined): string {
+    if (!input) return '';
+    const d = parseAutoEngageDate(input);
+    if (!d) return input;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${month}/${day}/${year}`;
+  }
+
+  function determineLeadCategoryFromDisp(resolvedDisp: string): string {
+    const text = resolvedDisp.toLowerCase();
+    if (text.includes('converted')) return 'Hot - Converted';
+    if (['test drive', 'showroom visit planned', 'vehicle booked for service', 'will decide tomorrow', 'will decide within 1 to 3 days', 'will decide within 4 to 7 days'].some(t => text.includes(t))) return 'Hot Lead';
+    if (['requested callback', 'follow up required', 'price inquiry', 'talk to human', 'interested in another car', 'will decide within 8 to 14 days', 'will decide within 15 to 30 days'].some(t => text.includes(t))) return 'Warm Lead';
+    return 'Cold Lead';
+  }
+
+  function extractServicePlan(leadRow: Record<string, string>, sessionRow: Record<string, string>): string {
+    const planType = get(leadRow, ['service_plan_type', 'serviceplantype', 'service_plan', 'serviceplan', 'service_type', 'Service Plan']);
+    if (planType) return planType;
+    const sessionPlan = get(sessionRow, ['service_plan_type', 'service_plan', 'service_type']);
+    if (sessionPlan) return sessionPlan;
+    const combined = [
+      get(leadRow, ['campaign_id', 'campaign', 'campaign_name', 'cohort', 'search_term']),
+      get(sessionRow, ['campaign_id', 'campaign', 'campaign_name', 'search_term', 'service_type']),
+    ].join(' ').toLowerCase();
+    if (combined.includes('_s1') || combined.includes('first service') || combined.includes('1st service')) return 'First';
+    if (combined.includes('_s2') || combined.includes('second service') || combined.includes('2nd service')) return 'Second';
+    if (combined.includes('_s3') || combined.includes('third service') || combined.includes('3rd service')) return 'Third';
+    if (combined.includes('_s4') || combined.includes('fourth service') || combined.includes('4th service')) return 'Fourth';
+    if (combined.includes('_s5') || combined.includes('fifth service') || combined.includes('5th service')) return 'Fifth';
+    if (combined.includes('_s6') || combined.includes('sixth service') || combined.includes('6th service')) return 'Sixth';
+    return '';
+  }
+
+  function buildKeerthiReport(data: Record<string, string>[]): Record<string, string>[] {
+    const filtered: Record<string, string>[] = [];
+    for (const row of data) {
+      const resolvedDisp = row.updated_disposition || row.disposition_detail || row.disposition || '';
+      const category = determineLeadCategoryFromDisp(resolvedDisp);
+      if (['Hot - Converted', 'Hot Lead', 'Warm Lead'].includes(category)) {
+        filtered.push({
+          'Name': cellToString(row.person_name),
+          'Phone Number': cellToString(row.phone_number),
+          'Campaign': cellToString(row.campaign_id),
+          'Lead Category': category,
+          'Service Booked?': resolvedDisp.toLowerCase().includes('converted') || resolvedDisp.toLowerCase().includes('vehicle booked for service') ? 'Yes' : 'No',
+          'Vehicle Number': cellToString(row.reg_number),
+          'Vehicle Model': cellToString(row.vehicle_model),
+          'Showroom': cellToString(row.workshop_code),
+          'Service Plan': cellToString(row.service_plan),
+          'Service Due Date': cellToString(row.next_service_due || row.warranty_expiry_date),
+          'Confirmed Date': formatDateMMDDYYYY(row.confirmed_date),
+          'Disposition Detail': cellToString(resolvedDisp),
+          'Call Date': formatDateMMDDYYYY(row.call_date),
+          'Call Summary': cellToString(row.summary)
+        });
+      }
+    }
+    return filtered;
   }
 
   function parseSheet(ab: ArrayBuffer): Record<string, string>[] {
@@ -337,6 +404,7 @@ export default function PostSalesSyncPage() {
             autongage_disposition: sd.disposition || '',
             service_location: dealerKey === 'perfect_riders_service' ? extractPerfectRidersLocation(sd.summary) : '',
             service_type: sd.serviceType || '',
+            service_plan: extractServicePlan(row, sessionRow),
             lead_source: dealerKey === 'perfect_rider_wa' ? get(row, ['lead_source', 'source', 'lead source']) : '',
             conversion: dealerKey === 'perfect_rider_wa' ? (row['conversion'] || '') : '',
             channel: dealerKey === 'perfect_rider_wa' ? (sessionRow['channel'] || '') : '',
@@ -354,8 +422,10 @@ export default function PostSalesSyncPage() {
       }
 
       const qr = buildQualityReport({ leadRows, sessionRows, filteredSessionRows, leads, sessionGroups, output, dealer, dealerKey, roleInfo });
+      processedDataRef.current = output;
       setProcessedData(output);
       setQualityReport(qr);
+      setAiValidated(false);
 
       // Deduplicate preview tables by phone so each lead appears once per category
       const bRows = dedupeByPhone(output.filter(isServiceBooked));
@@ -364,6 +434,7 @@ export default function PostSalesSyncPage() {
       setBookedRows(bRows);
       setCompletedRows(cRows);
       setNotInterestedRows(nRows);
+
       setSessionCount(filteredSessionRows.length);
       setShowResults(true);
       log(`Processing complete: ${output.length} leads (${bRows.length} booked, ${cRows.length} completed, ${nRows.length} not interested)`);
@@ -422,6 +493,140 @@ export default function PostSalesSyncPage() {
       return String(r[k] || '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
     }).join('\t')).join('\n');
     await copyText(data, `Copied ${sorted.length} preview row(s).`);
+  }
+
+  async function copyKeerthiReport() {
+    log('Copying Keerthi report to clipboard');
+    if (!keerthiReportRows.length) return;
+    const keys = ['Name', 'Phone Number', 'Campaign', 'Lead Category', 'Service Booked?', 'Vehicle Number', 'Vehicle Model', 'Showroom', 'Service Plan', 'Service Due Date', 'Confirmed Date', 'Disposition Detail', 'Call Date', 'Call Summary'];
+    const data = keerthiReportRows.map(r => keys.map(k => String(r[k] || '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ')).join('\t')).join('\n');
+    const header = keys.join('\t');
+    await copyText(`${header}\n${data}`, `Copied ${keerthiReportRows.length} Keerthi report row(s).`);
+  }
+
+  function exportKeerthiReport() {
+    if (!keerthiReportRows.length) return;
+    const keys = [
+      'Name',
+      'Phone Number',
+      'Campaign',
+      'Lead Category',
+      'Service Booked?',
+      'Vehicle Number',
+      'Vehicle Model',
+      'Showroom',
+      'Service Plan',
+      'Service Due Date',
+      'Confirmed Date',
+      'Disposition Detail',
+      'Call Date',
+      'Call Summary'
+    ];
+
+    const wsData = [keys];
+    for (const r of keerthiReportRows) {
+      wsData.push(keys.map(k => excelSafe(r[k] || '')));
+    }
+
+    const wb = XLSXStyle.utils.book_new();
+    const ws = XLSXStyle.utils.aoa_to_sheet(wsData);
+
+    const numRows = wsData.length;
+    const numCols = keys.length;
+
+    // Header border style
+    const headerBorder = {
+      top: { style: 'thin', color: { rgb: '103554' } },
+      bottom: { style: 'medium', color: { rgb: '103554' } },
+      left: { style: 'thin', color: { rgb: '2B5B84' } },
+      right: { style: 'thin', color: { rgb: '2B5B84' } }
+    };
+
+    // Data cell border style
+    const cellBorder = {
+      top: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      bottom: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      left: { style: 'thin', color: { rgb: 'D9D9D9' } },
+      right: { style: 'thin', color: { rgb: 'D9D9D9' } }
+    };
+
+    // Apply header style (Navy Blue #1F4E78 with bold white text)
+    for (let c = 0; c < numCols; c++) {
+      const cellRef = XLSXStyle.utils.encode_cell({ r: 0, c });
+      if (ws[cellRef]) {
+        ws[cellRef].s = {
+          fill: { fgColor: { rgb: '1F4E78' } },
+          font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: headerBorder
+        };
+      }
+    }
+
+    // Centered columns set
+    const centerKeys = new Set(['Phone Number', 'Lead Category', 'Service Booked?', 'Vehicle Number', 'Service Plan', 'Service Due Date', 'Confirmed Date', 'Call Date']);
+
+    // Apply data rows style
+    for (let r = 1; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        const cellRef = XLSXStyle.utils.encode_cell({ r, c });
+        if (!ws[cellRef]) continue;
+
+        const key = keys[c];
+        const isCenter = centerKeys.has(key);
+        const isPhone = key === 'Phone Number';
+
+        if (isPhone) {
+          ws[cellRef].t = 's';
+          ws[cellRef].z = '@';
+        }
+
+        ws[cellRef].s = {
+          font: { name: 'Calibri', sz: 10, color: { rgb: '000000' } },
+          alignment: {
+            horizontal: isCenter ? 'center' : 'left',
+            vertical: 'center',
+            wrapText: key === 'Call Summary'
+          },
+          border: cellBorder
+        };
+      }
+    }
+
+    // Row heights (Header: 28pt, Data: 20pt)
+    const rowsHeights = [{ hpt: 28 }];
+    for (let r = 1; r < numRows; r++) {
+      rowsHeights.push({ hpt: 20 });
+    }
+    ws['!rows'] = rowsHeights;
+
+    // Column widths
+    ws['!cols'] = [
+      { wch: 22 }, // Name
+      { wch: 16 }, // Phone Number
+      { wch: 22 }, // Campaign
+      { wch: 18 }, // Lead Category
+      { wch: 16 }, // Service Booked?
+      { wch: 18 }, // Vehicle Number
+      { wch: 20 }, // Vehicle Model
+      { wch: 22 }, // Showroom
+      { wch: 16 }, // Service Plan
+      { wch: 18 }, // Service Due Date
+      { wch: 18 }, // Confirmed Date
+      { wch: 26 }, // Disposition Detail
+      { wch: 16 }, // Call Date
+      { wch: 45 }, // Call Summary
+    ];
+
+    // Enable Excel auto-filter on header
+    const lastColLetter = XLSXStyle.utils.encode_col(numCols - 1);
+    ws['!autofilter'] = { ref: `A1:${lastColLetter}${numRows}` };
+
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Keerthi Report');
+    const iso = new Date().toISOString().slice(0, 10);
+    XLSXStyle.writeFile(wb, `Keerthi_HotWarm_Report_${iso}.xlsx`);
+    setStatusMsg(`Exported ${keerthiReportRows.length} Keerthi leads.`);
+    setStatusType('ok');
   }
 
   async function copyQualityReport() {
@@ -485,9 +690,10 @@ export default function PostSalesSyncPage() {
     log('Reset'); setRawFile1(null); setRawFile2(null);
     setFromDate('');
     setToDate('');
-    setProcessedData([]); setQualityReport(null);
+    processedDataRef.current = [];
+    setProcessedData([]); setQualityReport(null); setKeerthiReportRows([]);
     setBookedRows([]); setCompletedRows([]); setNotInterestedRows([]);
-    setShowResults(false); setSessionCount(0); aiProgress.reset();
+    setShowResults(false); setSessionCount(0); aiProgress.reset(); setAiValidated(false);
     setSortKey(null); setSortDir(null);
     setFile1Status('Drag and drop or click to browse');
     setFile2Status('Drag and drop or click to browse');
@@ -510,6 +716,23 @@ export default function PostSalesSyncPage() {
     if (!processedData.length) return;
     if (aiValidationRef.current) return;
     log('AI validation started, candidates:', processedData.filter(r => r.session_status === 'completed').length);
+
+    const isRerun = force || aiValidated;
+    if (isRerun) {
+      // ponytail: immediately remove 16-column table and reset AI fields for fresh run
+      setKeerthiReportRows([]);
+      setAiValidated(false);
+      const currentRows = processedDataRef.current.length ? processedDataRef.current : processedData;
+      const resetRows = currentRows.map(r => ({
+        ...r,
+        updated_disposition: '',
+        _ai_status: '',
+        ai_reason: '',
+        confirmed_date: '',
+      }));
+      processedDataRef.current = resetRows;
+      setProcessedData(resetRows);
+    }
 
     const dealerCfg = DEALERSHIPS[dealerKey];
     const dealerName = dealerCfg ? dealerCfg.name : 'Unknown Dealership';
@@ -576,8 +799,11 @@ export default function PostSalesSyncPage() {
 
     // Cache check
     const cacheInput = candidates.map(c => `${c.summary}||${c.history}||${c.currentDisp}||${c.callDate}||${c.outcome}||${c.vehicleModel}||${c.campaignId}||${c.dealerName}||${c.supportedLanguages}`).join('|');
-    const cacheKey = 'ps-disp-validate-v11-history-' + hashStr(cacheInput);
-    const cached = force ? null : (typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null);
+    const cacheKey = 'ps-disp-validate-v17-history-' + hashStr(cacheInput);
+    if (isRerun && typeof window !== 'undefined') {
+      try { localStorage.removeItem(cacheKey); } catch { /* ignore */ }
+    }
+    const cached = isRerun ? null : (typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null);
     let cachedParsed: any[] | null = null;
     if (cached) {
       try { cachedParsed = JSON.parse(cached); } catch { /* ignore */ }
@@ -586,12 +812,20 @@ export default function PostSalesSyncPage() {
     if (cachedParsed) {
       // Cache hit — apply directly
       const correctedResults: Record<number, string> = {};
+      const confirmedDates: Record<number, string> = {};
+      const aiReasons: Record<number, string> = {};
       for (const item of cachedParsed) {
         if (item.isCorrect === false && item.correctedDisposition) {
           correctedResults[item.rowIndex] = item.correctedDisposition;
         }
+        if (item.confirmedDate) {
+          confirmedDates[item.rowIndex] = item.confirmedDate;
+        }
+        if (item.reason) {
+          aiReasons[item.rowIndex] = item.reason;
+        }
       }
-      applyCorrections(candidates, correctedResults);
+      applyCorrections(candidates, correctedResults, confirmedDates, aiReasons);
       if (Object.keys(correctedResults).length > 0) aiProgress.markCorrected(Object.keys(correctedResults).length);
       aiProgress.complete(Object.keys(correctedResults).length > 0
         ? `AI validation complete (from cache) — ${Object.keys(correctedResults).length} disposition(s) corrected.`
@@ -601,6 +835,7 @@ export default function PostSalesSyncPage() {
     }
 
     const correctedResults: Record<number, string> = {};
+    const confirmedDates: Record<number, string> = {};
 
     runLlmBatches({
       items: candidates,
@@ -640,7 +875,7 @@ export default function PostSalesSyncPage() {
         };
       },
       parseResponse: (text, batch, batchIndex) => {
-        return parseLlmResponse(text, batchIndex, BATCH_SIZE);
+        return parseLlmResponse(text, batchIndex, BATCH_SIZE, batch);
       },
       onProgress: (done, total, message, pct) => {
         aiProgress.setDone(done, message);
@@ -655,24 +890,42 @@ export default function PostSalesSyncPage() {
       }
 
       // Collect corrections from runner results
+      const aiReasons: Record<number, string> = {};
       for (let ri = 0; ri < candidates.length; ri++) {
         const dec = result.results.get(ri);
-        if (dec && (dec as any).isCorrect === false && (dec as any).correctedDisposition) {
-          correctedResults[candidates[ri].index] = (dec as any).correctedDisposition;
+        if (dec) {
+          if ((dec as any).isCorrect === false && (dec as any).correctedDisposition) {
+            correctedResults[candidates[ri].index] = (dec as any).correctedDisposition;
+          }
+          if ((dec as any).confirmedDate) {
+            confirmedDates[candidates[ri].index] = (dec as any).confirmedDate;
+          }
+          if ((dec as any).reason) {
+            aiReasons[candidates[ri].index] = (dec as any).reason;
+          }
         }
       }
 
       // Save to cache
       const cacheArray = candidates.map((c, idx) => {
         const dec = result.results.get(idx);
-        if (dec && (dec as any).isCorrect === false && (dec as any).correctedDisposition) {
-          return { rowIndex: c.index, isCorrect: false, correctedDisposition: (dec as any).correctedDisposition };
+        let corrected = null;
+        let isCorrect = true;
+        let confirmedDate = null;
+        let reason = '';
+        if (dec) {
+          if ((dec as any).isCorrect === false && (dec as any).correctedDisposition) {
+            isCorrect = false;
+            corrected = (dec as any).correctedDisposition;
+          }
+          confirmedDate = (dec as any).confirmedDate || null;
+          reason = (dec as any).reason || '';
         }
-        return { rowIndex: idx, isCorrect: true, correctedDisposition: null };
+        return { rowIndex: c.index, isCorrect, correctedDisposition: corrected, confirmedDate, reason };
       });
       try { if (typeof window !== 'undefined') localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch { /* ignore */ }
 
-      applyCorrections(candidates, correctedResults);
+      applyCorrections(candidates, correctedResults, confirmedDates, aiReasons);
       const correctedCount = Object.keys(correctedResults).length;
       if (correctedCount > 0) aiProgress.markCorrected(correctedCount);
       aiProgress.complete(correctedCount > 0
@@ -688,35 +941,55 @@ export default function PostSalesSyncPage() {
     });
   }
 
-  function applyCorrections(candidates: { index: number }[], correctedResults: Record<number, string>) {
-    if (Object.keys(correctedResults).length === 0) {
-      // Still mark verified
-      setProcessedData(prev => prev.map((r, idx) => {
-        if (candidates.some(c => c.index === idx) && !r._ai_status) {
-          return { ...r, _ai_status: 'verified' };
-        }
-        return r;
-      }));
-      return;
-    }
+  function applyCorrections(
+    candidates: { index: number }[],
+    correctedResults: Record<number, string>,
+    confirmedDates: Record<number, string>,
+    aiReasons: Record<number, string> = {}
+  ) {
+    const current = processedDataRef.current.length > 0 ? processedDataRef.current : processedData;
+    const updated = current.map((r, idx) => {
+      let newR = { ...r };
+      let modified = false;
 
-    let updated: Record<string, string>[] = [];
-    setProcessedData(prev => {
-      updated = prev.map((r, idx) => {
-        if (correctedResults[idx] !== undefined) {
-          return { ...r, updated_disposition: correctedResults[idx], _ai_status: 'corrected' };
-        }
-        if (candidates.some(c => c.index === idx) && !r._ai_status) {
-          return { ...r, _ai_status: 'verified' };
-        }
-        return r;
-      });
-      return updated;
+      if (correctedResults[idx] !== undefined) {
+        newR.updated_disposition = correctedResults[idx];
+        newR._ai_status = 'corrected';
+        modified = true;
+      } else if (candidates.some(c => c.index === idx) && !newR._ai_status) {
+        newR._ai_status = 'verified';
+        modified = true;
+      }
+
+      if (confirmedDates[idx] !== undefined) {
+        newR.confirmed_date = confirmedDates[idx];
+        modified = true;
+      }
+
+      if (aiReasons[idx] !== undefined) {
+        newR.ai_reason = aiReasons[idx];
+        modified = true;
+      }
+
+      return modified ? newR : r;
     });
+
+    processedDataRef.current = updated;
+    setProcessedData(updated);
+
     // Re-classify preview rows after corrections (deduplicated by phone)
     setBookedRows(dedupeByPhone(updated.filter(isServiceBooked)));
     setCompletedRows(dedupeByPhone(updated.filter(r => !isServiceBooked(r) && isServiceCompleted(r))));
     setNotInterestedRows(dedupeByPhone(updated.filter(r => !isServiceBooked(r) && !isServiceCompleted(r) && isNotInterested(r))));
+
+    if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(dealerKey)) {
+      const kReport = buildKeerthiReport(updated);
+      setKeerthiReportRows(kReport);
+      log(`Generated Keerthi report: ${kReport.length} hot/warm rows`);
+    } else {
+      setKeerthiReportRows([]);
+    }
+    setAiValidated(true);
   }
 
   function handleFile1Change(e: React.ChangeEvent<HTMLInputElement>) {
@@ -725,7 +998,10 @@ export default function PostSalesSyncPage() {
     if (!v.valid) { setFile1Status(v.error!); return; }
     setRawFile1(f); setFile1Status(`Loaded: ${f.name}`); setHasFile1(true);
     setShowResults(false);
+    processedDataRef.current = [];
     setProcessedData([]);
+    setKeerthiReportRows([]);
+    setAiValidated(false);
     setQualityReport(null);
     setBookedRows([]);
     setCompletedRows([]);
@@ -740,7 +1016,10 @@ export default function PostSalesSyncPage() {
     if (!v.valid) { setFile2Status(v.error!); return; }
     setRawFile2(f); setFile2Status(`Loaded: ${f.name}`); setHasFile2(true);
     setShowResults(false);
+    processedDataRef.current = [];
     setProcessedData([]);
+    setKeerthiReportRows([]);
+    setAiValidated(false);
     setQualityReport(null);
     setBookedRows([]);
     setCompletedRows([]);
@@ -835,7 +1114,18 @@ export default function PostSalesSyncPage() {
             <div className={styles['control-group']}>
               <span className={styles['control-label']}>Dealership</span>
               <div className={styles['select-wrapper']}>
-                <select className="custom-select" value={dealerKey} onChange={e => setDealerKey(e.target.value)} style={{ padding: '0.5rem 1.8rem 0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', cursor: 'pointer', appearance: 'none', fontFamily: 'var(--body)' }}>
+                <select className="custom-select" value={dealerKey} onChange={e => {
+                  const newKey = e.target.value;
+                  setDealerKey(newKey);
+                  if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(newKey)) {
+                    if (aiValidated) {
+                      const data = processedDataRef.current.length > 0 ? processedDataRef.current : processedData;
+                      setKeerthiReportRows(buildKeerthiReport(data));
+                    }
+                  } else {
+                    setKeerthiReportRows([]);
+                  }
+                }} style={{ padding: '0.5rem 1.8rem 0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', cursor: 'pointer', appearance: 'none', fontFamily: 'var(--body)' }}>
                   <optgroup label="Post-sales service reminder">
                     <option value="ambal_service">Ambal — Service Reminder</option>
                     <option value="bullmen_service">Bullmen — Service Reminder</option>
@@ -887,7 +1177,7 @@ export default function PostSalesSyncPage() {
               <>
                 <button className={`${styles.btn} ${styles['btn-success']}`} onClick={copyData} disabled={!canExport}>Copy Master Rows</button>
                 <button className={`${styles.btn} ${styles['btn-success']}`} onClick={exportToExcel} disabled={!canExport}>Export Excel</button>
-                <button className={`${styles.btn} ${styles['btn-secondary']}`} onClick={() => validateDispositionsWithLLM()} style={{ display: showResults ? '' : 'none' }}>Validate with AI</button>
+                <button className={`${styles.btn} ${styles['btn-secondary']}`} onClick={() => validateDispositionsWithLLM(aiValidated)} style={{ display: showResults ? '' : 'none' }}>{aiValidated ? 'Re-run AI' : 'Validate with AI'}</button>
                 <button className={`${styles.btn} ${styles['btn-secondary']}`} onClick={resetAll}>Reset</button>
               </>
             )}
@@ -1005,74 +1295,58 @@ export default function PostSalesSyncPage() {
                 </div>
               </div>
 
-              {/* Booked Table */}
-              <div className={styles['table-wrapper']} style={{ display: bookedRows.length ? 'block' : 'none' }}>
-                <div className={styles['table-header']}>
-                  <div><div className={styles['table-title']}>SERVICE BOOKED</div><div className={styles['table-caption']}>{bookedRows.length} rows</div></div>
-                  <button className={`${styles.btn} ${styles['btn-success']}`} onClick={() => copyPreviewRows('booked')}>Copy</button>
+              {/* Keerthi Client Report Table */}
+              {['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(dealerKey) && aiValidated && (
+                <div className={styles['table-wrapper']} style={{ display: 'block' }}>
+                  <div className={styles['table-header']}>
+                    <div>
+                      <div className={styles['table-title']}>HOT/WARM LEADS</div>
+                      <div className={styles['table-caption']}>{keerthiReportRows.length} rows</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className={`${styles.btn} ${styles['btn-success']}`} onClick={copyKeerthiReport} disabled={keerthiReportRows.length === 0}>Copy Report</button>
+                      <button className={`${styles.btn} ${styles['btn-success']}`} onClick={exportKeerthiReport} disabled={keerthiReportRows.length === 0}>Export to Excel</button>
+                    </div>
+                  </div>
+                  {keerthiReportRows.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                      No Hot or Warm leads found after AI validation.
+                    </div>
+                  ) : (
+                    <div className={styles['table-scroll']}>
+                      <table>
+                        <thead>
+                          <tr>
+                            {['Name', 'Phone Number', 'Campaign', 'Lead Category', 'Service Booked?', 'Vehicle Number', 'Vehicle Model', 'Showroom', 'Service Plan', 'Service Due Date', 'Confirmed Date', 'Disposition Detail', 'Call Date', 'Call Summary'].map(k => (
+                              <th key={k}>{k}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {keerthiReportRows.slice(0, previewLimit).map((r, i) => (
+                            <tr key={i}>
+                              <td>{esc(r['Name'])}</td>
+                              <td className={styles['cell-phone']}>{esc(r['Phone Number'])}</td>
+                              <td>{esc(r['Campaign'])}</td>
+                              <td>{esc(r['Lead Category'])}</td>
+                              <td>{esc(r['Service Booked?'])}</td>
+                              <td>{esc(r['Vehicle Number'])}</td>
+                              <td>{esc(r['Vehicle Model'])}</td>
+                              <td>{esc(r['Showroom'])}</td>
+                              <td>{esc(r['Service Plan'])}</td>
+                              <td>{esc(r['Service Due Date'])}</td>
+                              <td>{esc(r['Confirmed Date'])}</td>
+                              <td>{esc(r['Disposition Detail'])}</td>
+                              <td>{esc(r['Call Date'])}</td>
+                              <td>{esc(r['Call Summary'])}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-                <div className={styles['table-scroll']}>
-                  <table><thead><tr><th>PHONE_NUMBER</th><th>VEHICLE_MODEL</th><th>VIN_NUMBER</th><th>DISPOSITION_DETAILS</th><th>LOCATION</th><th>CALL_DATE</th><th>CRE Remarks</th><th>COMMON REMARKS</th></tr></thead>
-                    <tbody>{bookedRows.slice(0, previewLimit).map((r, i) => (
-                      <tr key={i}>
-                        <td className={styles['cell-phone']}>{esc(r.phone_number)}</td>
-                        <td>{esc(r.vehicle_model)}</td>
-                        <td>{esc(r.vin_number)}</td>
-                        <td>{esc(r.updated_disposition || r.disposition_detail || r.disposition || '')}</td>
-                        <td>{esc(dealerKey === 'perfect_riders_service' ? extractPerfectRidersLocation(r.summary || r.updated_disposition || r.disposition_detail) : '')}</td>
-                        <td>{esc(r.call_date)}</td>
-                        <td>{esc(dealerKey === 'perfect_riders_service' ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '')}</td>
-                        <td></td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Completed Table */}
-              <div className={styles['table-wrapper']} style={{ display: completedRows.length ? 'block' : 'none' }}>
-                <div className={styles['table-header']}>
-                  <div><div className={styles['table-title']}>Service Completed</div><div className={styles['table-caption']}>{completedRows.length} rows</div></div>
-                  <button className={`${styles.btn} ${styles['btn-success']}`} onClick={() => copyPreviewRows('completed')}>Copy</button>
-                </div>
-                <div className={styles['table-scroll']}>
-                  <table><thead><tr><th>PHONE_NUMBER</th><th>VEHICLE_MODEL</th><th>VIN_NUMBER</th><th>DISPOSITION_DETAILS</th><th>LOCATION</th><th>CALL_DATE</th><th>CRE Remarks</th></tr></thead>
-                    <tbody>{completedRows.slice(0, previewLimit).map((r, i) => (
-                      <tr key={i}>
-                        <td className={styles['cell-phone']}>{esc(r.phone_number)}</td>
-                        <td>{esc(r.vehicle_model)}</td>
-                        <td>{esc(r.vin_number)}</td>
-                        <td>{esc(r.updated_disposition || r.disposition_detail || r.disposition || '')}</td>
-                        <td>{esc(dealerKey === 'perfect_riders_service' ? extractPerfectRidersLocation(r.summary || r.disposition_detail) : '')}</td>
-                        <td>{esc(r.call_date)}</td>
-                        <td>{esc(dealerKey === 'perfect_riders_service' ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '')}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Not Interested Table */}
-              <div className={styles['table-wrapper']} style={{ display: notInterestedRows.length ? 'block' : 'none' }}>
-                <div className={styles['table-header']}>
-                  <div><div className={styles['table-title']}>Not Interested</div><div className={styles['table-caption']}>{notInterestedRows.length} rows</div></div>
-                  <button className={`${styles.btn} ${styles['btn-success']}`} onClick={() => copyPreviewRows('notInterested')}>Copy</button>
-                </div>
-                <div className={styles['table-scroll']}>
-                  <table><thead><tr><th>PHONE_NUMBER</th><th>VEHICLE_MODEL</th><th>VIN_NUMBER</th><th>SUMMARY</th><th>CALL_DATE</th><th>CRE Remarks</th></tr></thead>
-                    <tbody>{notInterestedRows.slice(0, previewLimit).map((r, i) => (
-                      <tr key={i}>
-                        <td className={styles['cell-phone']}>{esc(r.phone_number)}</td>
-                        <td>{esc(r.vehicle_model)}</td>
-                        <td>{esc(r.vin_number)}</td>
-                        <td>{esc(r.summary)}</td>
-                        <td>{esc(r.call_date)}</td>
-                        <td>{esc(dealerKey === 'perfect_riders_service' ? extractPerfectRidersCRE(r.summary || r.updated_disposition || r.disposition_detail) : '')}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              </div>
+              )}
             </>
           )}
 

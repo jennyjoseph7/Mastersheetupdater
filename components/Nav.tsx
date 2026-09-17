@@ -13,6 +13,7 @@ const ACCENT_MAP: Record<string, { dark: string; light: string; softDark: string
   'campaign-generator':  { dark: '#5eead4', light: '#0d9488', softDark: 'rgba(94,234,212,0.1)', softLight: 'rgba(13,148,136,0.08)' },
   'recording-renamer':   { dark: '#22c55e', light: '#16a34a', softDark: 'rgba(34,197,94,0.13)', softLight: 'rgba(22,163,74,0.1)' },
   'master-lead-matcher': { dark: '#6366f1', light: '#4f46e5', softDark: 'rgba(99,102,241,0.14)', softLight: 'rgba(79,70,229,0.1)' },
+  'session-report':      { dark: '#0ea5e9', light: '#0284c7', softDark: 'rgba(14,165,233,0.13)', softLight: 'rgba(2,132,199,0.1)' },
 };
 
 const LINKS = [
@@ -25,6 +26,7 @@ const LINKS = [
   { href: '/formatter', label: 'Formatter' },
   { href: '/campaign-generator', label: 'Campaign Gen' },
   { href: '/recording-renamer', label: 'Recording Renamer' },
+  { href: '/session-report', label: 'Session Report' },
 ];
 
 export default function Nav() {

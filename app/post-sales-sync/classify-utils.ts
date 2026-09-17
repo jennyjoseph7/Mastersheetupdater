@@ -12,7 +12,7 @@ export const DISPOSITION_RULES: { terms: string[]; outcome: 'Connected' | 'Not C
   { terms: ['not interested', 'refused service', 'service not required', 'already serviced'], outcome: 'Connected', priority: 9, terminal: true },
   { terms: ['wrong number', 'invalid number'], outcome: 'Not Connected', priority: 9, terminal: true },
   { terms: ['dnd', 'do not disturb'], outcome: 'Not Connected', priority: 9, terminal: true },
-  { terms: ['callback requested', 'call back', 'asked to call later'], outcome: 'Connected', priority: 7, terminal: false },
+  { terms: ['callback requested', 'requested a callback', 'call back', 'callback', 'asked to call later'], outcome: 'Connected', priority: 7, terminal: false },
   { terms: ['connected', 'contacted', 'spoken', 'customer answered', 'answered'], outcome: 'Connected', priority: 6, terminal: false },
   { terms: ['not reachable', 'not connected', 'no answer', 'ringing', 'switched off', 'busy', 'user did not speak', 'voicemail'], outcome: 'Not Connected', priority: 3, terminal: false },
 ];

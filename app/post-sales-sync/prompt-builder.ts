@@ -46,10 +46,29 @@ export function buildDispoValidationPrompt(rows: AiValidationRow[], batchIndex: 
   }).join('\n\n---\n\n');
 
   const systemMsg = `You are a fair and accurate disposition auditor for an automotive post-sales (service/feedback) campaign. Your job is to evaluate whether the "Current Disposition" accurately describes the call. You are provided with two evidence sources: 1) a Summary (short description), and 2) a Conversation History (full transcript with timestamps). The Conversation History is the STRONGEST evidence if it is detailed and clear. However, if the Conversation History is empty, extremely short (e.g., just greeting exchange), or inconclusive, you MUST rely on the Summary and Current Disposition — do not flag them as incorrect unless there is a clear contradiction. Be balanced: if the current disposition reasonably fits the call context, mark it as correct (isCorrect: true). Only flag isCorrect: false when there is a clear mismatch, contradiction, or a significantly more accurate disposition available.
+
+IMPORTANT DISPOSITION RULES:
+1. Generic dispositions like "contacted", "connected", "completed", "answered" are raw call statuses, NOT specific dispositions. If the summary or transcript indicates a specific outcome (such as customer requesting a callback, busy, serviced, etc.), you MUST set isCorrect: false and set correctedDisposition to the matching specific disposition (e.g. "Requested Callback").
+2. NEVER classify a call as "Others" if the summary or transcript mentions a callback request, follow-up call, busy customer, service booking, or vehicle serviced. "Others" is strictly for situations with zero relevance to any other category.
 ${INJECTION_GUARD}
 
 VALID DISPOSITIONS:
-${dispDefs}`;
+${dispDefs}
+
+CONFIRMED DATE EXTRACTION & CALENDAR MATH:
+For each row, extract the "confirmedDate" — the specific date the CUSTOMER explicitly states, agrees, or commits to come for service:
+- ONLY dates the customer commits to (e.g., "I'll come on Saturday", "book me for August 5th", "will bring it tomorrow").
+- Do NOT extract the service due date mentioned by the agent (e.g., "your service is due on...").
+- Do NOT extract dates from agent reminders.
+- If the customer says "already serviced" or gives no future commitment date, set confirmedDate to null.
+- RELATIVE DATE RESOLUTION & CALENDAR MATH:
+  Use the row's "Call Date" as the reference base date:
+  * If customer says "tomorrow": calculate (Call Date + 1 day).
+  * If customer says "day after tomorrow": calculate (Call Date + 2 days).
+  * If customer mentions a day of the week (e.g., "Saturday", "this Monday", "Friday"): calculate the exact calendar date of the next upcoming occurrence of that weekday relative to the Call Date.
+    Example: If Call Date is 17/09/2026 (Thursday), and customer says "I will visit on Saturday", calculate Saturday = 09/19/2026.
+  * If customer says "after 3 days": calculate (Call Date + 3 days).
+- Format: mm/dd/yyyy`;
 
   const examples = `Example 1 (CORRECT):
 Transcript: "Customer: Yes, I already serviced my bike at your workshop last Friday. Agent: Great, thank you for confirming."
@@ -104,7 +123,31 @@ Example 9 (KEY PHRASE MATCHING — INCORRECT):
 Transcript: "Customer: I already got the service done at another workshop."
 Current Disposition: "Not Interested"
 → isCorrect: false, correctedDisposition: "Has serviced car in another dealership"
-Reason: The transcript contains KEY PHRASES "I already got the service done at another workshop" which belongs to "Has serviced car in another dealership", not "Not Interested". The KEY PHRASES match is the decisive signal.`;
+Reason: The transcript contains KEY PHRASES "I already got the service done at another workshop" which belongs to "Has serviced car in another dealership", not "Not Interested". The KEY PHRASES match is the decisive signal.
+
+Example 10 (CALLBACK REQUEST IN SUMMARY — GENERIC DISPOSITION "contacted"):
+Summary: "Neha from Keerthi Triumph previously called to speak with the intended customer, who requested a callback at a more convenient time. Neha has initiated a follow-up call from Keerthi."
+Current Disposition: "contacted"
+→ isCorrect: false, correctedDisposition: "Requested Callback"
+Reason: The summary explicitly states that the customer requested a callback at a convenient time. Update generic disposition "contacted" to "Requested Callback", NEVER to "Others".
+
+Example 11 (AGENT DUE DATE REMINDER — NO CONFIRMED DATE):
+Summary: "Neha from Keerthi Triumph Service Centre called Akhilesh Singh to remind him that his vehicle is due for service on August 1, 2026, and asked for a convenient time to visit the workshop."
+Current Disposition: "contacted"
+→ isCorrect: false, correctedDisposition: "Follow Up Required", confirmedDate: null
+Reason: "August 1, 2026" is the agent stating the service due date, NOT a confirmed date by the customer. The customer never committed to or confirmed a visit date. Therefore confirmedDate MUST be null.
+
+Example 12 (PLACED ON HOLD / NO CONVERSATION):
+Summary: "Neha from Keerthi Triumph called to speak with the intended customer, who requested that the call be placed on hold."
+Current Disposition: "Requested Callback"
+→ isCorrect: false, correctedDisposition: "Customer Busy"
+Reason: The customer was busy and put the call on hold. There was no actual request for a callback, and no service discussion took place. "Customer Busy" is the correct disposition.
+
+Example 13 (VISIT PLANNED MISCLASSIFIED AS CALLBACK):
+Summary: "Neha from Keerthi Triumph Service Centre called to remind the customer that their vehicle is due for service on August 1, 2026. The customer indicated they would be available to visit the workshop later this week, possibly on Friday."
+Current Disposition: "Requested Callback"
+→ isCorrect: false, correctedDisposition: "Showroom Visit Planned"
+Reason: The customer explicitly stated they will visit the workshop. This is a strong commitment, so "Showroom Visit Planned" is much more accurate than a generic callback.`;
 
   const userPrompt = `LANGUAGE BARRIER RULE:
 The active dealership is "${dealerContext}". The customer's transcript/summary may be in a language different from the dealership's supported languages. If the customer requested or attempted to speak in a language NOT in the supported languages list for their dealership, the disposition MUST be "Language barrier". Pay close attention to phrases like "I don't understand", "speak [language]", "[language] please", etc. — especially if the requested language is outside the supported set. The supported languages are only those listed for the dealership; any other language the customer requests is a barrier.
@@ -113,7 +156,7 @@ EXAMPLES (learn from these patterns):
 ${examples}
 
 Now evaluate these rows. For EACH row, respond with ONE JSON object:
-{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}
+{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confirmedDate":null,"confidence":"high","reason":"The summary clearly matches the disposition."}
 
 Rows:
 ${USER_DATA_DELIMITER}
@@ -130,17 +173,39 @@ Respond as a JSON array of objects, one per row in the same order. ONLY valid JS
   };
 }
 
-export function parseLlmResponse(text: string, batchIndex: number, batchSize: number): { rowIndex: number; isCorrect: boolean; correctedDisposition: string | null; confidence: string; reason: string }[] {
+export function parseLlmResponse(text: string, batchIndex: number, batchSize: number, batch?: any[]): { rowIndex: number; isCorrect: boolean; correctedDisposition: string | null; confirmedDate: string | null; confidence: string; reason: string }[] {
   // Parse the LLM response text into structured result objects.
   // rowIndex is set to the sequential position in the full candidates array.
-  const parseItems = (items: any[]): { rowIndex: number; isCorrect: boolean; correctedDisposition: string | null; confidence: string; reason: string }[] => {
-    return items.map((item: any, idx: number) => ({
-      rowIndex: (batchIndex * batchSize) + idx,
-      isCorrect: Boolean(item.isCorrect),
-      correctedDisposition: item.correctedDisposition || null,
-      confidence: item.confidence || 'medium',
-      reason: item.reason || '',
-    }));
+  const parseItems = (items: any[]): { rowIndex: number; isCorrect: boolean; correctedDisposition: string | null; confirmedDate: string | null; confidence: string; reason: string }[] => {
+    return items.map((item: any, idx: number) => {
+      let isCorrect = Boolean(item.isCorrect);
+      let correctedDisposition = item.correctedDisposition || null;
+      let confirmedDate = item.confirmedDate || null;
+      let reason = item.reason || '';
+
+      // ponytail: deterministic guard against LLM classifying callback requests as "Others" or keeping generic "contacted"
+      if (batch && batch[idx]) {
+        const row = batch[idx];
+        const combined = `${row.summary || ''} ${row.history || ''}`.toLowerCase();
+        const currentDisp = String(row.currentDisp || '').trim().toLowerCase();
+        const isCallback = /\b(?:requested\s+a\s+callback|requested\s+callback|callback\s+requested|asked\s+for\s+(?:a\s+)?callback|call\s*back\s+at\s+a\s+more\s+convenient\s+time|customer\s+requested\s+(?:a\s+)?call\s*back|initiated\s+a\s+follow-up\s+call)\b/i.test(combined);
+
+        if (isCallback && (correctedDisposition === 'Others' || currentDisp === 'contacted' || currentDisp === 'connected' || isCorrect)) {
+          isCorrect = false;
+          correctedDisposition = 'Requested Callback';
+          if (!reason) reason = 'Summary indicates customer requested a callback; updated to Requested Callback.';
+        }
+      }
+
+      return {
+        rowIndex: (batchIndex * batchSize) + idx,
+        isCorrect,
+        correctedDisposition,
+        confirmedDate,
+        confidence: item.confidence || 'medium',
+        reason,
+      };
+    });
   };
 
   // Try direct JSON parse first
