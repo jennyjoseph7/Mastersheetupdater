@@ -228,6 +228,7 @@ images: { unoptimized: true },                 // No Next.js image optimization
 | 41 | 6 missing dispositions in Post-Sales | Added Service Postponed, Showroom Visit Planned, etc. |
 | 42 | Pre-Sales redirect created | `/pre-sales-sync` → redirects to `/disposition-sync-v2` |
 | 43 | Documentation updated | README, archi.md, freebuff.md rewritten for Next.js |
+| 44 | AutoBot Master Taxonomy Sync | Synchronized pre-sales & post-sales dispositions with `autobot_agents` master taxonomy (`disposition_config.json`); added EMI, car exchange, stock & availability, feedback provided, service already booked, vehicle in center, vehicle sold, moved to another location, disconnected tags; updated priorities, connected sets, and AI deterministic guards |
 
 ---
 
@@ -277,5 +278,22 @@ images: { unoptimized: true },                 // No Next.js image optimization
 
 ---
 
-*Last updated: 2026-06-29*
+## 45. 2026-10-15: Pre-Sales Follow-up Table Consolidation, Model Mapping & CORS Fix
+
+1. **Converted & Follow-up Table Consolidation**:
+   - Replaced separate "Converted Leads Preview" and "Test Drive Completed Preview" with single unified table: `Converted & Follow-up Leads Preview`.
+   - 7 columns: `Phone Number`, `ICRE` (blank), `VEHICLE_MODEL`, `DISPOSITION_DETAILS` (effective: `manual_disposition_detail || disposition_detail`), `SUMMARY`, `CALL_DATE(MM/DD/YYYY)` (formatted as `MM/DD/YYYY`), `LOCATION`.
+   - Dynamic recomputation: auto-refreshes when AI validation completes so AI corrections in `manual_disposition_detail` appear immediately.
+   - Updated copy button (`Copy Converted & Follow-up`) and Excel export (`Converted & Follow-up` sheet).
+2. **Anant Cars Vehicle Model Mapping**:
+   - Added `interested_vehicle_model` to model fallback in `app/disposition-sync-v2/page.tsx`, `disposition-utils.ts`, and `app/reattempt-filter/page.tsx`.
+3. **CORS Dev Proxy Fix**:
+   - Configured dev rewrites in `next.config.ts` for `/gryd/` and `/auth/` to `https://autongagetools.jennyjoseph-k.workers.dev` with `skipTrailingSlashRedirect: true`.
+   - Excluded `/gryd/` and `/auth/` from middleware auth redirect in `proxy.ts`.
+   - Updated `public/jejo-config.js`, `hooks/useAuth.ts`, `lib/ai/ai-config.ts` to use same-origin on localhost dev.
+   - Allowed all localhost ports in `worker/worker.js`.
+
+---
+
+*Last updated: 2026-10-15*
 *Migration complete — Next.js static export on GitHub Pages.*

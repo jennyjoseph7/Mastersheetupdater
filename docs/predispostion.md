@@ -74,6 +74,24 @@ var ALL_DISPOSITIONS = {
 
       "Talk to Human": "The customer asked to speak to a human agent or customer executive instead of the digital assistant. KEY PHRASES: \"I want to talk to a real person\", \"can you connect me to a human executive\", \"I need to speak with a customer service representative\", \"please transfer me to an actual person\", \"I don't want to talk to a machine\", \"connect me to a human agent please\", \"I need to speak with someone who can help directly\", \"can I talk to a live person\", \"I want to speak with a customer care executive\", \"please connect me to your support team\", \"I need a human to help me with this\", \"let me speak to your manager\", \"I want to talk to a real human being\", \"transfer me to a customer service agent\"",
 
-      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\""
+      "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\"",
+
+      // ── Canonical AutoBot Master Pre-Sales Additions ──
+
+      "Feedback Provided": "The customer provides feedback, rating, or review about the vehicle, dealership, or inquiry experience. KEY PHRASES: \"I want to give feedback\", \"service was good\", \"rating is 5 stars\", \"feedback about sales team\", \"overall experience was satisfactory\", \"my review of the dealership\"",
+
+      "Test Drive Booked": "The customer successfully books or confirms a specific test drive slot with date and time. KEY PHRASES: \"test drive booked for tomorrow\", \"book test drive for Saturday 10 AM\", \"I have scheduled a test drive\", \"test drive slot confirmed\", \"booked test drive for this weekend\"",
+
+      "Showroom Visit Booked": "The customer explicitly confirms a showroom visit with both date and time. KEY PHRASES: \"I will visit the showroom tomorrow at 11 AM\", \"booked showroom visit for Saturday\", \"I am coming to the showroom on Friday afternoon\", \"confirmed visit to dealership at 4 PM\", \"schedule visit for tomorrow morning\"",
+
+      "Enquired for EMI": "The customer asked about EMI, down payment, loan schemes, interest rates, or financing options. KEY PHRASES: \"what is the EMI\", \"how much is the down payment\", \"do you have loan options\", \"what is the monthly installment\", \"interest rate on car loan\", \"finance schemes available\", \"what will be the EMI per month\"",
+
+      "Enquired for Car Exchange": "The customer asked about vehicle trade-in, evaluation, or exchange bonus offers. KEY PHRASES: \"can I exchange my old car\", \"do you offer exchange\", \"what is the exchange bonus\", \"I want to trade in my old vehicle\", \"car evaluation for exchange\", \"exchange offer available\", \"value of my old vehicle\"",
+
+      "Enquired for Stock & Availability": "The customer asked about vehicle stock availability, waiting period, or delivery timeline. KEY PHRASES: \"is this model available in stock\", \"what is the waiting period\", \"when can I get delivery\", \"do you have ready stock\", \"which colors are in stock\", \"how long for delivery\"",
+
+      "User Disconnected Call": "Live interaction was established, but the customer disconnected early or hung up abruptly. KEY PHRASES: \"call disconnected by customer\", \"customer hung up\", \"call dropped abruptly\", \"customer disconnected the line\"",
+
+      "Agent Disconnected Call": "The agent or system disconnected early due to flow boundary or silence. KEY PHRASES: \"call ended by agent\", \"system ended call\", \"call timed out\", \"disconnected by system\""
 
     };

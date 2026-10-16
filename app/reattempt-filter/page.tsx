@@ -164,7 +164,7 @@ export default function ReattemptFilterPage() {
   function detectUpdatedDisposition(row: Record<string, string>) { return findCol(row, ['updated_disposition']); }
   function detectSummary(row: Record<string, string>) { return findCol(row, ['summary', 'call_summary', 'conversation_summary', 'notes']); }
   function detectFullName(row: Record<string, string>) { return findCol(row, ['full_name', 'person_name', 'name', 'customer_name']); }
-  function detectModel(row: Record<string, string>) { return findCol(row, ['model', 'model_preference', 'interested_vehicle_name', 'vehicle', 'vehicle_model']); }
+  function detectModel(row: Record<string, string>) { return findCol(row, ['model', 'model_preference', 'interested_vehicle_model', 'interested_vehicle_name', 'vehicle', 'vehicle_model']); }
   function detectSeating(row: Record<string, string>) { return findCol(row, ['seating', 'seating_capacity_preference', 'seating_preference']); }
   function detectCity(row: Record<string, string>) { return findCol(row, ['city', 'location']); }
   function detectPincode(row: Record<string, string>) { return findCol(row, ['pincode', 'pin_code', 'zip', 'postal_code']); }

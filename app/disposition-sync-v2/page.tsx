@@ -43,8 +43,7 @@ export default function DispositionSyncV2Page() {
   const [processing, setProcessing] = useState(false);
   const [processedData, setProcessedData] = useState<Record<string, string>[]>([]);
   const [qualityReport, setQualityReport] = useState<any>(null);
-  const [convertedRows, setConvertedRows] = useState<Record<string, string>[]>([]);
-  const [testDriveRows, setTestDriveRows] = useState<Record<string, string>[]>([]);
+  const [followUpRows, setFollowUpRows] = useState<Record<string, string>[]>([]);
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -59,6 +58,7 @@ export default function DispositionSyncV2Page() {
   // Sort state
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
+  const [showAllRows, setShowAllRows] = useState(false);
 
   const file1Ref = useRef<HTMLInputElement>(null);
   const file2Ref = useRef<HTMLInputElement>(null);
@@ -126,6 +126,62 @@ export default function DispositionSyncV2Page() {
       seen.add(phone);
       return true;
     });
+  }
+
+  // ponytail: format date to MM/DD/YYYY for follow-up table
+  function formatDateMDY(raw: string): string {
+    if (!raw) return '';
+    const parts = raw.trim().split(/[\/\-]/);
+    if (parts.length === 3 && parts[2].length === 4) {
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[2];
+      return `${m}/${d}/${y}`;
+    }
+    const dt = parseAutoEngageDate(raw);
+    if (dt) {
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      const yyyy = dt.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    return raw;
+  }
+
+  // ponytail: check manual_disposition_detail first, then disposition_detail
+  function getEffectiveDisp(r: Record<string, string>): string {
+    return (r.manual_disposition_detail?.trim() || r.updated_disposition?.trim() || r.disposition_detail?.trim() || r.disposition?.trim() || '');
+  }
+
+  function isFollowUpOrConverted(r: Record<string, string>): boolean {
+    const eff = getEffectiveDisp(r).toLowerCase();
+    const disp = (r.disposition || '').toLowerCase();
+    const conv = (r.conversion || '').toLowerCase();
+    return (
+      conv === 'yes' ||
+      disp === 'converted' ||
+      eff.includes('converted') ||
+      eff.includes('follow up') ||
+      eff.includes('follow-up') ||
+      eff.includes('test drive') ||
+      eff.includes('callback') ||
+      eff.includes('call back') ||
+      eff.includes('showroom visit') ||
+      eff.includes('will decide later')
+    );
+  }
+
+  function extractFollowUpRows(data: Record<string, string>[]): Record<string, string>[] {
+    return dedupeByPhone(data.filter(isFollowUpOrConverted)).map(r => ({
+      phone: r.phone || '',
+      icre: '',
+      model: r.model || r.vehicle_model || '',
+      disposition_detail: getEffectiveDisp(r),
+      summary: r.summary || '',
+      call_date: formatDateMDY(r.call_date),
+      location: r.city || '',
+      lead_id: r.lead_id || '',
+    }));
   }
 
   function rowsToTsv(rows: Record<string, string>[], keys: string[]): string {
@@ -291,7 +347,8 @@ export default function DispositionSyncV2Page() {
             dispositionDetail = row['disposition_detail'] || '';
           }
 
-          const model = (row['interested_vehicle_name'] || row['model_preference'] || row['name'] || '').replace(/[\[\]"']/g, '').trim();
+          // ponytail: fallback chain for model column across dealers (Anant Cars uses 'Interested Vehicle Model')
+          const model = (row['interested_vehicle_model'] || row['interested_vehicle_name'] || row['vehicle_model'] || row['model_preference'] || row['model'] || row['existing_vehicle_model'] || row['name'] || '').replace(/[\[\]"']/g, '').trim();
           const seatingRaw = row['seating_capacity_preference'] || '';
           const seating = deriveSeating(seatingRaw, model);
 
@@ -338,7 +395,7 @@ export default function DispositionSyncV2Page() {
             pincode: row['pincode'] || '',
             language: selectedLanguage,
             lead_source: row['lead_source'] || '',
-            vehicle_model: row['vehicle_model'] || row['existing_vehicle_model'] || '',
+            vehicle_model: row['interested_vehicle_model'] || row['vehicle_model'] || row['existing_vehicle_model'] || model || '',
             reg_number: row['reg_number'] || '',
             vin_number: row['vin_number'] || '',
             showroom_code: row['showroom_code'] || row['dealer_map_cd'] || row['dealer_code'] || '',
@@ -382,23 +439,16 @@ export default function DispositionSyncV2Page() {
       setProcessedData(output);
       setQualityReport(qr);
 
-      // Converted leads (deduplicated by phone)
-      const convRows = dedupeByPhone(output.filter(r => r.conversion === 'Yes' || r.disposition.toLowerCase() === 'converted'));
-      setConvertedRows(convRows);
-
-      // Test Drive completed rows (deduplicated by phone)
-      const tdRows = dedupeByPhone(output.filter(r => {
-        const d = r.disposition.toLowerCase();
-        return d.includes('test drive') || r.disposition_detail.toLowerCase().includes('test drive');
-      }));
-      setTestDriveRows(tdRows);
+      // Converted and Follow-up leads (deduplicated by phone)
+      const fuRows = extractFollowUpRows(output);
+      setFollowUpRows(fuRows);
 
       setShowResults(true);
       setPillStep(4);
-      log(`Processing complete: ${output.length} leads, ${convRows.length} converted, ${tdRows.length} test drives`);
+      log(`Processing complete: ${output.length} leads, ${fuRows.length} converted/follow-up`);
       if (startId > 0) localStorage.setItem(`leadIdStart-${dealerKey}`, String(startId + output.length));
-setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
-        setStatusType('ok');
+      setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
+      setStatusType('ok');
     } catch (err: unknown) {
       setStatusMsg('Error processing request.');
       setStatusType('err');
@@ -414,18 +464,13 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     await copyText(rowsToTsv(sorted, keys), 'Copied rows. Paste with Ctrl+V in Zoho.');
   }
 
-  async function copyConvertedData() {
-    if (!convertedRows.length) { setStatusMsg('No converted rows to copy.'); setStatusType('warn'); return; }
-    const keys = ['lead_id', 'full_name', 'phone', 'model', 'language', 'disposition_detail', 'summary', 'call_date', 'city'];
-    const sorted = getSortedData(convertedRows);
-    await copyText(rowsToTsv(sorted, keys), 'Copied converted rows.');
-  }
-
-  async function copyTestDriveData() {
-    if (!testDriveRows.length) { setStatusMsg('No test drive rows to copy.'); setStatusType('warn'); return; }
-    const keys = ['lead_id', 'phone', 'model', 'language', 'call_date', 'summary'];
-    const sorted = getSortedData(testDriveRows);
-    await copyText(rowsToTsv(sorted, keys), 'Copied test drive rows.');
+  async function copyFollowUpData() {
+    if (!followUpRows.length) { setStatusMsg('No converted/follow-up rows to copy.'); setStatusType('warn'); return; }
+    const keys = ['phone', 'icre', 'model', 'disposition_detail', 'summary', 'call_date', 'location'];
+    const sorted = getSortedData(followUpRows);
+    // ponytail: copy row content only (no headers) for direct spreadsheet paste
+    const text = rowsToTsv(sorted, keys);
+    await copyText(text, 'Copied converted & follow-up rows.');
   }
 
   async function copyQualityReport() {
@@ -453,17 +498,14 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataRows), 'Output');
 
-    if (convertedRows.length) {
+    if (followUpRows.length) {
+      const headers = ['Phone Number', 'ICRE', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'SUMMARY', 'CALL_DATE(MM/DD/YYYY)', 'LOCATION'];
+      const keys = ['phone', 'icre', 'model', 'disposition_detail', 'summary', 'call_date', 'location'];
+      const sorted = getSortedData(followUpRows);
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['LEAD_ID', 'PERSON_NAME', 'PHONE_NUMBER', 'VEHICLE_MODEL', 'LANGUAGE', 'DISPOSITION_DETAILS', 'SUMMARY', 'CALL_DATE', 'LOCATION'],
-        ...convertedRows.map(r => [r.lead_id, r.full_name, r.phone, r.model, r.language, r.disposition_detail, r.summary, r.call_date, r.city].map(excelSafe)),
-      ]), 'Converted Leads');
-    }
-    if (testDriveRows.length) {
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-        ['LEAD_ID', 'PHONE_NUMBER', 'VEHICLE_MODEL', 'LANGUAGE', 'CALL_DATE', 'SUMMARY'],
-        ...testDriveRows.map(r => [r.lead_id, r.phone, r.model, r.language, r.call_date, r.summary].map(excelSafe)),
-      ]), 'Test Drive Completed');
+        headers,
+        ...sorted.map(r => keys.map(k => excelSafe(r[k] ?? ''))),
+      ]), 'Converted & Follow-up');
     }
 
     const safeName = dealerCfg.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
@@ -475,7 +517,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     setFromDate('');
     setToDate('');
     setProcessedData([]); setQualityReport(null);
-    setConvertedRows([]); setTestDriveRows([]);
+    setFollowUpRows([]);
     setShowResults(false); aiProgress.reset();
     setSortKey(null); setSortDir(null);
     setFile1Status('Drag & drop or click to browse');
@@ -499,8 +541,9 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
   }
 
   function isAiCandidate(r: Record<string, string>): boolean {
-    const summ = (r.session_summary || '').trim();
-    const d = (r.disposition || '').trim().toLowerCase();
+    // ponytail: check both primary and session fallback columns so valid rows aren't dropped
+    const summ = (r.session_summary || r.summary || '').trim();
+    const d = (r.disposition || r.disposition_detail || '').trim().toLowerCase();
     return !!summ && summ !== 'No Response' && !!d && d !== 'no response';
   }
 
@@ -521,9 +564,9 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     const candidates: { index: number; summary: string; history: string; currentDisp: string; model: string; outcome: string; callDuration: string; leadSource: string }[] = [];
     for (let i = 0; i < processedData.length; i++) {
       const r = processedData[i];
-      const summ = (r.session_summary || '').trim();
+      const summ = (r.session_summary || r.summary || '').trim();
       const hist = (r.session_history || '').trim();
-      const disp = (r.disposition_detail || '').trim();
+      const disp = (r.disposition_detail || r.disposition || '').trim();
       if (isAiCandidate(r)) {
         candidates.push({
           index: i,
@@ -554,7 +597,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
 
     // Cache check
     const cacheInput = candidates.map(c => `${c.summary}||${c.history}||${c.currentDisp}||${c.model}||${c.outcome}||${c.callDuration}||${c.leadSource}`).join('|');
-    const cacheKey = 'disp-validate-v9-history-' + hashStr(cacheInput);
+    const cacheKey = 'disp-validate-v10-history-' + hashStr(cacheInput);
     const cached = force ? null : (typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null);
     let cachedParsed: any[] | null = null;
     if (cached) {
@@ -654,29 +697,24 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
   }
 
   function applyCorrections(candidates: { index: number }[], correctedResults: Record<number, string>, evaluatedIndices?: Set<number>) {
-    if (Object.keys(correctedResults).length === 0 && !evaluatedIndices) {
-      setProcessedData(prev => prev.map((r, idx) => {
-        if (candidates.some(c => c.index === idx) && !r._ai_status) {
+    setProcessedData(prev => {
+      const updated = prev.map((r, idx) => {
+        if (correctedResults[idx] !== undefined) {
+          return { ...r, updated_disposition: correctedResults[idx], manual_disposition_detail: correctedResults[idx], _ai_status: 'corrected' };
+        }
+        if (evaluatedIndices) {
+          if (evaluatedIndices.has(idx) && !r._ai_status) {
+            return { ...r, _ai_status: 'verified' };
+          }
+        } else if (candidates.some(c => c.index === idx) && !r._ai_status) {
           return { ...r, _ai_status: 'verified' };
         }
         return r;
-      }));
-      return;
-    }
-
-    setProcessedData(prev => prev.map((r, idx) => {
-      if (correctedResults[idx] !== undefined) {
-        return { ...r, updated_disposition: correctedResults[idx], manual_disposition_detail: correctedResults[idx], _ai_status: 'corrected' };
-      }
-      if (evaluatedIndices) {
-        if (evaluatedIndices.has(idx) && !r._ai_status) {
-          return { ...r, _ai_status: 'verified' };
-        }
-      } else if (candidates.some(c => c.index === idx) && !r._ai_status) {
-        return { ...r, _ai_status: 'verified' };
-      }
-      return r;
-    }));
+      });
+      // ponytail: recompute follow-up table using updated manual_disposition_detail
+      setFollowUpRows(extractFollowUpRows(updated));
+      return updated;
+    });
   }
 
   // ── File handlers ──────────────────────────────────────────────
@@ -692,8 +730,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
       setShowResults(false);
       setProcessedData([]);
       setQualityReport(null);
-      setConvertedRows([]);
-      setTestDriveRows([]);
+      setFollowUpRows([]);
       setStatusMsg('');
       setStatusType('');
       const rows = parseSheet(ab);
@@ -726,8 +763,7 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
     setShowResults(false);
     setProcessedData([]);
     setQualityReport(null);
-    setConvertedRows([]);
-    setTestDriveRows([]);
+    setFollowUpRows([]);
     setStatusMsg('');
     setStatusType('');
   }
@@ -757,7 +793,9 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
   const outputColumns = dealerCfg.columns;
   const sortedData = getSortedData(processedData);
   const startId = parseInt(leadIdStart, 10) || 0;
-  const previewData = sortedData.slice(0, previewLimit).map((r, i) => ({ ...r, lead_id: `L-${startId > 0 ? startId + i : i + 1}` })) as Record<string, string>[];
+  // ponytail: render full dataset if showAllRows is active, otherwise limit to previewLimit for DOM speed
+  const displayData = showAllRows ? sortedData : sortedData.slice(0, previewLimit);
+  const previewData = displayData.map((r, i) => ({ ...r, lead_id: `L-${startId > 0 ? startId + i : i + 1}` })) as Record<string, string>[];
 
   return (
     <div className="sub-page">
@@ -960,11 +998,26 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
 
               {/* Main output table */}
               <div className={styles['table-wrapper']} style={{ display: 'block' }}>
-                <div className={styles['table-header']}>
+                <div className={styles['table-header']} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div className={styles['table-title']}>Output Preview</div>
-                    <div className={styles['table-caption']}>{processedData.length > previewLimit ? `Showing first ${previewLimit} of ${processedData.length} rows` : `${processedData.length} rows`}</div>
+                    <div className={styles['table-caption']}>
+                      {showAllRows
+                        ? `Showing all ${processedData.length} rows`
+                        : (processedData.length > previewLimit
+                            ? `Showing first ${previewLimit} of ${processedData.length} rows`
+                            : `${processedData.length} rows`)}
+                    </div>
                   </div>
+                  {processedData.length > previewLimit && (
+                    <button
+                      className={`${styles.btn} ${styles['btn-secondary']}`}
+                      onClick={() => setShowAllRows(!showAllRows)}
+                      style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', height: 'auto' }}
+                    >
+                      {showAllRows ? `Show first ${previewLimit}` : `Show all ${processedData.length} rows`}
+                    </button>
+                  )}
                 </div>
                 <div className={styles['table-scroll']}>
                   <table>
@@ -1011,65 +1064,48 @@ setStatusMsg(`${output.length} leads processed. Ready to copy or export.`);
                 </div>
               </div>
 
-              {/* Converted Leads Preview */}
-              {convertedRows.length > 0 && (
+              {/* Converted & Follow-up Leads Preview */}
+              {followUpRows.length > 0 && (
                 <div className={styles['table-wrapper']} style={{ display: 'block', marginTop: '2rem' }}>
-                  <div className={styles['table-header']}>
+                  <div className={styles['table-header']} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div className={styles['table-title']}>Converted Leads Preview</div>
-                      <div className={styles['table-caption']}>{convertedRows.length} rows</div>
+                      <div className={styles['table-title']}>Converted & Follow-up Leads Preview</div>
+                      <div className={styles['table-caption']}>
+                        {showAllRows
+                          ? `${followUpRows.length} rows (showing all)`
+                          : (followUpRows.length > previewLimit
+                              ? `Showing first ${previewLimit} of ${followUpRows.length} rows`
+                              : `${followUpRows.length} rows`)}
+                      </div>
                     </div>
-                    <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={copyConvertedData} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', height: 'auto' }}>Copy Converted</button>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {followUpRows.length > previewLimit && (
+                        <button
+                          className={`${styles.btn} ${styles['btn-secondary']}`}
+                          onClick={() => setShowAllRows(!showAllRows)}
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', height: 'auto' }}
+                        >
+                          {showAllRows ? `Show first ${previewLimit}` : `Show all ${followUpRows.length}`}
+                        </button>
+                      )}
+                      <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={copyFollowUpData} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', height: 'auto' }}>Copy Converted & Follow-up</button>
+                    </div>
                   </div>
                   <div className={styles['table-scroll']}>
                     <table>
                       <thead><tr>
-                        <th>LEAD_ID</th><th>PERSON_NAME</th><th>PHONE_NUMBER</th><th>VEHICLE_MODEL</th><th>LANGUAGE</th><th>DISPOSITION_DETAILS</th><th>SUMMARY</th><th>CALL_DATE</th><th>LOCATION</th>
+                        <th>Phone Number</th><th>ICRE</th><th>VEHICLE_MODEL</th><th>DISPOSITION_DETAILS</th><th>SUMMARY</th><th>CALL_DATE(MM/DD/YYYY)</th><th>LOCATION</th>
                       </tr></thead>
                       <tbody>
-                        {convertedRows.slice(0, previewLimit).map((r, i) => (
+                        {(showAllRows ? followUpRows : followUpRows.slice(0, previewLimit)).map((r, i) => (
                           <tr key={i}>
-                            <td className={styles['cell-phone']}>{esc(r.lead_id)}</td>
-                            <td>{esc(r.full_name)}</td>
                             <td className={styles['cell-phone']}>{esc(r.phone)}</td>
+                            <td>{esc(r.icre)}</td>
                             <td>{esc(r.model)}</td>
-                            <td>{esc(r.language)}</td>
                             <td>{esc(r.disposition_detail)}</td>
                             <td>{esc(r.summary)}</td>
                             <td>{esc(r.call_date)}</td>
-                            <td>{esc(r.city)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Test Drive Completed Preview */}
-              {testDriveRows.length > 0 && (
-                <div className={styles['table-wrapper']} style={{ display: 'block', marginTop: '2rem' }}>
-                  <div className={styles['table-header']}>
-                    <div>
-                      <div className={styles['table-title']}>Test Drive Completed Preview</div>
-                      <div className={styles['table-caption']}>{testDriveRows.length} rows</div>
-                    </div>
-                    <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={copyTestDriveData} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', height: 'auto' }}>Copy Test Drive</button>
-                  </div>
-                  <div className={styles['table-scroll']}>
-                    <table>
-                      <thead><tr>
-                        <th>LEAD_ID</th><th>PHONE_NUMBER</th><th>VEHICLE_MODEL</th><th>LANGUAGE</th><th>CALL_DATE</th><th>SUMMARY</th>
-                      </tr></thead>
-                      <tbody>
-                        {testDriveRows.slice(0, previewLimit).map((r, i) => (
-                          <tr key={i}>
-                            <td className={styles['cell-phone']}>{esc(r.lead_id)}</td>
-                            <td className={styles['cell-phone']}>{esc(r.phone)}</td>
-                            <td>{esc(r.model)}</td>
-                            <td>{esc(r.language)}</td>
-                            <td>{esc(r.call_date)}</td>
-                            <td>{esc(r.summary)}</td>
+                            <td>{esc(r.location)}</td>
                           </tr>
                         ))}
                       </tbody>

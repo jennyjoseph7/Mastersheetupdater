@@ -183,17 +183,37 @@ export function parseLlmResponse(text: string, batchIndex: number, batchSize: nu
       let confirmedDate = item.confirmedDate || null;
       let reason = item.reason || '';
 
-      // ponytail: deterministic guard against LLM classifying callback requests as "Others" or keeping generic "contacted"
+      // ponytail: deterministic guards against LLM misclassifications or keeping generic "contacted"
       if (batch && batch[idx]) {
         const row = batch[idx];
         const combined = `${row.summary || ''} ${row.history || ''}`.toLowerCase();
         const currentDisp = String(row.currentDisp || '').trim().toLowerCase();
         const isCallback = /\b(?:requested\s+a\s+callback|requested\s+callback|callback\s+requested|asked\s+for\s+(?:a\s+)?callback|call\s*back\s+at\s+a\s+more\s+convenient\s+time|customer\s+requested\s+(?:a\s+)?call\s*back|initiated\s+a\s+follow-up\s+call)\b/i.test(combined);
+        const isBooked = /\b(?:service\s+already\s+booked|already\s+booked\s+(?:the\s+)?service|booked\s+(?:my|the)?\s*service|service\s+appointment\s+(?:is\s+)?fixed|appointment\s+is\s+already\s+booked)\b/i.test(combined);
+        const isSold = /\b(?:sold\s+(?:the|my)?\s*(?:car|vehicle|bike)|vehicle\s+sold|no\s+longer\s+own\s+(?:the|this)?\s*(?:car|vehicle))\b/i.test(combined);
+        const isMoved = /\b(?:moved\s+to\s+(?:another|different)\s*(?:city|state|place)|shifted\s+to\s+(?:another|new)\s*(?:city|location)|relocated)\b/i.test(combined);
+        const isAlreadyServiced = /\b(?:already\s+serviced|service\s+(?:was\s+)?already\s+done|got\s+the\s+service\s+done\s+recently)\b/i.test(combined);
 
         if (isCallback && (correctedDisposition === 'Others' || currentDisp === 'contacted' || currentDisp === 'connected' || isCorrect)) {
           isCorrect = false;
           correctedDisposition = 'Requested Callback';
-          if (!reason) reason = 'Summary indicates customer requested a callback; updated to Requested Callback.';
+          if (!reason) reason = 'Summary/transcript indicates customer requested a callback; updated to Requested Callback.';
+        } else if (isBooked && (correctedDisposition === 'Others' || currentDisp === 'contacted' || currentDisp === 'connected')) {
+          isCorrect = false;
+          correctedDisposition = 'Service Already Booked';
+          if (!reason) reason = 'Summary/transcript indicates service was already booked.';
+        } else if (isSold && (correctedDisposition === 'Not Interested' || correctedDisposition === 'Others')) {
+          isCorrect = false;
+          correctedDisposition = 'Vehicle Sold';
+          if (!reason) reason = 'Customer stated vehicle was sold; updated to Vehicle Sold.';
+        } else if (isMoved && (correctedDisposition === 'Not Interested' || correctedDisposition === 'Others')) {
+          isCorrect = false;
+          correctedDisposition = 'Moved to Another Location';
+          if (!reason) reason = 'Customer relocated to another location.';
+        } else if (isAlreadyServiced && (correctedDisposition === 'Not Interested' || correctedDisposition === 'Others')) {
+          isCorrect = false;
+          correctedDisposition = 'Already Serviced';
+          if (!reason) reason = 'Vehicle was already serviced.';
         }
       }
 

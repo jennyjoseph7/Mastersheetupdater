@@ -8,7 +8,23 @@ const nextConfig: NextConfig = {
   basePath: isDev ? '' : '/Mastersheetupdater',
   assetPrefix: isDev ? '' : '/Mastersheetupdater/',
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
   images: { unoptimized: true },
+  // ponytail: dev proxy to bypass browser cross-origin CORS on non-3000 ports
+  ...(isDev ? {
+    async rewrites() {
+      return [
+        {
+          source: '/auth/:path*',
+          destination: 'https://autongagetools.jennyjoseph-k.workers.dev/auth/:path*',
+        },
+        {
+          source: '/gryd/:path*',
+          destination: 'https://autongagetools.jennyjoseph-k.workers.dev/gryd/:path*',
+        },
+      ];
+    },
+  } : {}),
   async headers() {
     return [
       {

@@ -799,7 +799,7 @@ export default function PostSalesSyncPage() {
 
     // Cache check
     const cacheInput = candidates.map(c => `${c.summary}||${c.history}||${c.currentDisp}||${c.callDate}||${c.outcome}||${c.vehicleModel}||${c.campaignId}||${c.dealerName}||${c.supportedLanguages}`).join('|');
-    const cacheKey = 'ps-disp-validate-v17-history-' + hashStr(cacheInput);
+    const cacheKey = 'ps-disp-validate-v18-history-' + hashStr(cacheInput);
     if (isRerun && typeof window !== 'undefined') {
       try { localStorage.removeItem(cacheKey); } catch { /* ignore */ }
     }

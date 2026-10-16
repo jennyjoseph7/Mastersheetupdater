@@ -88,4 +88,23 @@ export const POST_SALES_DISPOSITIONS: Record<string, string> = {
 
   "Interested in another car same dealership": "The customer is interested in a different vehicle model from the same dealership. KEY PHRASES: \"I am interested in a different model\", \"I want to know about another car from your showroom\", \"I am looking for a different vehicle\", \"not this model but I am interested in another one\", \"I want to see the other model you have\", \"I am interested in a different variant\", \"show me another model from your dealership\", \"I am looking for a different car than this one\", \"I want information about another vehicle you sell\", \"I am interested in a different car from your showroom\", \"not this one, I like another model from your brand\" ",
 
+  // ── Canonical AutoBot Master Post-Sales Tags ──
+
+  "Feedback Provided": "The customer provides feedback, ratings, or reviews about the service or workshop experience. KEY PHRASES: \"feedback about service\", \"rating is 5 stars\", \"service experience was good\", \"I want to submit feedback\", \"overall satisfied with workshop\"",
+
+  "Service Already Booked": "The customer states that they have already scheduled their service appointment independently. KEY PHRASES: \"I already booked my service\", \"service already booked\", \"I have an appointment booked\", \"service is already scheduled\", \"appointment already fixed\"",
+
+  "Vehicle in Center": "The customer indicates that their vehicle is currently already at the service center or workshop. KEY PHRASES: \"car is already in the workshop\", \"bike is at the service center right now\", \"vehicle is currently being serviced\", \"already given vehicle to center\", \"it is in your workshop today\"",
+
+  "Vehicle Sold": "The customer states they no longer own the vehicle or sold it. KEY PHRASES: \"I sold the car\", \"vehicle sold\", \"no longer own the vehicle\", \"sold it off\", \"transferred the car to another person\", \"vehicle is not with me\"",
+
+  "Moved to Another Location": "The customer has permanently relocated to a different city or region. KEY PHRASES: \"I moved to another city\", \"relocated to another state\", \"shifted to another place\", \"no longer staying in this location\", \"address changed to another city\"",
+
+  "Postponed": "The service cannot be booked immediately and is deferred to a future timeframe. KEY PHRASES: \"postponed\", \"I will do the service later\", \"postponing service\", \"deferring service to next month\", \"will service later not now\"",
+
+  "User Disconnected Call": "Live interaction was established, but the customer disconnected early or hung up abruptly. KEY PHRASES: \"customer hung up\", \"caller disconnected\", \"call dropped abruptly\", \"disconnected by customer\"",
+
+  "Agent Disconnected Call": "Live interaction was established, but the agent or system disconnected early due to flow boundary or silence. KEY PHRASES: \"agent disconnected\", \"system ended call\", \"call timed out due to silence\"",
+
+  "Enquired for Dealership Details": "The customer independently asks for dealership contact details, address, or service workshop location. KEY PHRASES: \"where is your workshop located\", \"service center address\", \"contact number for workshop\", \"how to reach your service center\"",
 };

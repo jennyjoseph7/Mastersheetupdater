@@ -5,16 +5,17 @@ export interface ClassificationResult {
 }
 
 export const DISPOSITION_RULES: { terms: string[]; outcome: 'Connected' | 'Not Connected'; priority: number; terminal: boolean }[] = [
-  { terms: ['service booked', 'service appointment booked', 'appointment booked', 'booking confirmed', 'slot booked'], outcome: 'Connected', priority: 10, terminal: true },
-  { terms: ['vehicle serviced', 'service completed', 'serviced'], outcome: 'Connected', priority: 10, terminal: true },
-  { terms: ['feedback given', 'feedback received', 'feedback completed', 'feedback captured', 'happy customer'], outcome: 'Connected', priority: 10, terminal: true },
+  // ponytail: canonical post-sales rules recognizing both master tags and legacy sheet labels
+  { terms: ['service booked', 'service appointment booked', 'appointment booked', 'booking confirmed', 'slot booked', 'service already booked', 'vehicle booked for service', 'converted'], outcome: 'Connected', priority: 10, terminal: true },
+  { terms: ['vehicle serviced', 'service completed', 'serviced', 'already serviced', 'has serviced car in another dealership', 'existing dealer contact'], outcome: 'Connected', priority: 10, terminal: true },
+  { terms: ['feedback given', 'feedback received', 'feedback completed', 'feedback captured', 'happy customer', 'feedback provided'], outcome: 'Connected', priority: 10, terminal: true },
   { terms: ['complaint', 'escalation', 'negative feedback', 'unhappy', 'dissatisfied'], outcome: 'Connected', priority: 9, terminal: true },
-  { terms: ['not interested', 'refused service', 'service not required', 'already serviced'], outcome: 'Connected', priority: 9, terminal: true },
-  { terms: ['wrong number', 'invalid number'], outcome: 'Not Connected', priority: 9, terminal: true },
-  { terms: ['dnd', 'do not disturb'], outcome: 'Not Connected', priority: 9, terminal: true },
-  { terms: ['callback requested', 'requested a callback', 'call back', 'callback', 'asked to call later'], outcome: 'Connected', priority: 7, terminal: false },
-  { terms: ['connected', 'contacted', 'spoken', 'customer answered', 'answered'], outcome: 'Connected', priority: 6, terminal: false },
-  { terms: ['not reachable', 'not connected', 'no answer', 'ringing', 'switched off', 'busy', 'user did not speak', 'voicemail'], outcome: 'Not Connected', priority: 3, terminal: false },
+  { terms: ['not interested', 'refused service', 'service not required', 'vehicle sold', 'has sold', 'moved to another location', 'has moved', 'postponed', 'service postponed', 'lost to competition', 'contact fatigue', 'vehicle is commercial', 'vehicle is not being run'], outcome: 'Connected', priority: 9, terminal: true },
+  { terms: ['wrong number', 'invalid number', 'invalid lead', 'wrong contact number'], outcome: 'Not Connected', priority: 9, terminal: true },
+  { terms: ['dnd', 'do not disturb', 'unsubscribed'], outcome: 'Not Connected', priority: 9, terminal: true },
+  { terms: ['callback requested', 'requested a callback', 'call back', 'callback', 'asked to call later', 'requested_callback', 'follow up required', 'follow_up_required'], outcome: 'Connected', priority: 7, terminal: false },
+  { terms: ['connected', 'contacted', 'spoken', 'customer answered', 'answered', 'vehicle in center', 'will call showroom/workshop themselves', 'will call workshop themselves', 'talk to human', 'enquired for dealership details', 'enquired for others', 'looking for a discount', 'price inquiry', 'showroom visit planned'], outcome: 'Connected', priority: 6, terminal: false },
+  { terms: ['not reachable', 'not connected', 'no answer', 'ringing', 'switched off', 'busy', 'customer busy', 'user did not speak', 'voicemail', 'no response', 'user disconnected call', 'agent disconnected call', 'call disconnected', 'audio issue', 'call quality issue', 'connection issue', 'language barrier'], outcome: 'Not Connected', priority: 3, terminal: false },
 ];
 
 export function normalizedText(value: string): string {
@@ -39,24 +40,24 @@ export function classifyDisposition(disposition: string, status: string, summary
 }
 
 export function isServiceBooked(row: Record<string, string>): boolean {
-  const ud = String(row.updated_disposition || '').trim();
-  if (ud === 'Converted' || ud === 'Vehicle Booked for Service') return true;
-  const text = normalizedText(row.disposition_detail || '');
-  return ['service booked', 'service appointment booked', 'appointment booked', 'slot booked', 'booking confirmed', 'converted', 'follow up required', 'follow-up required', 'booked', 'interested'].some(term => text.includes(term));
+  const ud = String(row.updated_disposition || '').trim().toLowerCase();
+  if (ud === 'converted' || ud === 'vehicle booked for service' || ud === 'service already booked') return true;
+  const text = normalizedText(row.disposition_detail || row.disposition || '');
+  return ['service booked', 'service appointment booked', 'appointment booked', 'slot booked', 'booking confirmed', 'converted', 'follow up required', 'follow-up required', 'booked', 'interested', 'service already booked', 'vehicle booked for service'].some(term => text.includes(term));
 }
 
 export function isServiceCompleted(row: Record<string, string>): boolean {
-  const ud = String(row.updated_disposition || '').trim();
-  if (ud === 'Has serviced car in another dealership' || ud === 'Existing Dealer Contact' || ud === 'Already Serviced') return true;
-  const text = normalizedText(row.disposition_detail || '');
-  return ['vehicle serviced', 'service completed', 'has serviced car in another dealership', 'already serviced', 'serviced'].some(term => text.includes(term));
+  const ud = String(row.updated_disposition || '').trim().toLowerCase();
+  if (ud === 'has serviced car in another dealership' || ud === 'existing dealer contact' || ud === 'already serviced') return true;
+  const text = normalizedText(row.disposition_detail || row.disposition || '');
+  return ['vehicle serviced', 'service completed', 'has serviced car in another dealership', 'already serviced', 'serviced', 'existing dealer contact'].some(term => text.includes(term));
 }
 
 export function isNotInterested(row: Record<string, string>): boolean {
-  const ud = String(row.updated_disposition || '').trim();
-  if (ud === 'Not Interested' || ud === 'Invalid Lead' || ud === 'Rejected') return true;
-  const text = normalizedText(row.disposition_detail || '');
-  return ['not interested', 'refused service', 'service not required'].some(term => text.includes(term));
+  const ud = String(row.updated_disposition || '').trim().toLowerCase();
+  if (['not interested', 'invalid lead', 'rejected', 'vehicle sold', 'has sold/given away the car', 'moved to another location', 'has moved to another location', 'postponed', 'service postponed', 'unsubscribed'].includes(ud)) return true;
+  const text = normalizedText(row.disposition_detail || row.disposition || '');
+  return ['not interested', 'refused service', 'service not required', 'vehicle sold', 'has sold', 'moved to another location', 'has moved', 'service postponed', 'postponed', 'unsubscribed'].some(term => text.includes(term));
 }
 
 export function isFeedbackOrEscalation(row: { disposition_detail?: string; summary?: string; session_status?: string }): boolean {
