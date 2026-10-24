@@ -1,0 +1,159 @@
+# PRD: Client Credit Usage Deck
+
+Status: Draft v1
+Companion to: PRD_Credit_Usage_by_Objective.md (the Excel report). The workbook is the data source for this deck.
+Reference deck: Perfect Riders, 5 slides, 2 May to 23 Oct 2026, 210,546 credits.
+
+## 1. Overview
+
+A short client facing PowerPoint that explains where a dealership's bot credits went. It answers four questions in order: how much in total and on which channel, what drove voice spend, what drove WhatsApp spend, and which objectives used the credits. Every number on every slide must reconcile to the source CSV and to the Excel workbook.
+
+## 2. Audience and use
+
+- Reader: the dealership owner or marketing lead, not a technical user.
+- Use: sent or presented in a review call. Slides must make sense without the presenter.
+- Tone: plain statements of fact. No internal working language on the slides ("needs reconciliation", "supplied values").
+
+## 3. Format
+
+- 5 slides, 16:9 (13.333 by 7.5 inches).
+- Light off white background, navy for primary data, mid blue for secondary, light mint for highlight panels. One accent colour family only.
+- Every slide has a small grey eyebrow (client name and section), a bold sentence headline that states the finding, one chart or table, and a grey footer line with the period and basis.
+- Headline is a full sentence with the key number in it, not a topic label.
+- Charts should be native PowerPoint charts so the client or the team can edit them. The reference deck used embedded images, which is a gap (see section 8).
+- Fonts: one sans serif family. Body text no smaller than 12 pt, table text no smaller than 11 pt.
+
+## 4. Data contract
+
+Inputs, all from the pipeline in the companion PRD:
+
+| Input           | Source                                                               |
+| --------------- | -------------------------------------------------------------------- |
+| Debit rows      | Data sheet (one row per billable event)                              |
+| Objective table | Summary sheet (objective, start, end, voice, WhatsApp, total, share) |
+| Stage           | First segment of Description: `pre-sales` or `post-sales`            |
+| Item rates      | Credits Spent divided by Quantity per Item Name                      |
+
+Metric definitions (n = number of rows, q = sum of Quantity, c = sum of Credits Spent):
+
+| Metric                          | Definition                                                  |
+| ------------------------------- | ----------------------------------------------------------- |
+| Total credits                   | c over all rows                                             |
+| Debits                          | n over all rows (all rows have Status `success`)            |
+| Period                          | min and max of Date & Time, shown as `2 May to 23 Oct 2026` |
+| Voice credits, WhatsApp credits | c by Channel column                                         |
+| Channel share                   | channel c divided by total c, from unrounded values         |
+| Call connected                  | n, and c (rate 2 credits per connection)                    |
+| Call completed                  | n, q (duration units), c                                    |
+| Message delivered               | n, c (rate 0.90 per message)                                |
+| Query response                  | n (events), q (billed units), c (rate 0.93 per unit)        |
+| Stage credits                   | c grouped by stage                                          |
+| Objective credits               | c grouped by resolved objective (Summary sheet)             |
+
+Rounding rule: round only at display. Compute every percentage and every total from unrounded values. Display credits as whole numbers on slides and two decimals in the table.
+
+## 5. Slide specifications
+
+### Slide 1: Total and channel split
+
+- Headline: `<Client> used <total> credits across voice and WhatsApp`.
+- Subline: `<debits> successful debits · <period>`.
+- Left: horizontal bar chart, Voice and WhatsApp credits, values labelled.
+- Right: three stacked stat blocks: total credits, voice share with voice credits, WhatsApp share with WhatsApp credits.
+- Below chart: two bullets, one per channel, with credits and share.
+- Reference values: 210,546 total, 99,570 debits, Voice 165,129 (78%), WhatsApp 45,418 (22%).
+- Rule: do not print a footer that says channel figures sum to a different total. The one credit gap in v1 (210,547 against 210,546) is a rounding effect (165,128.81 plus 45,417.57 equals 210,546.38). Show the headline from the exact total and leave the rounding explanation in speaker notes only.
+
+### Slide 2: Voice
+
+- Headline: `Voice: connected calls cost <call connected c>, talk time another <call completed c>`.
+- Chart: horizontal bars, two components, call completed (talk time) and call connected.
+- Right navy panel: total voice credits as large number, then two bullets with counts and rates, then one closing sentence with talk time share of voice spend.
+- Reference values: 25,901 connections at 2 credits each equal 51,802. 23,470 completed calls billed by duration equal 113,327. Total 165,129. Talk time is 68.6%, shown as about 69%.
+- Rule: the talk time share is call completed c divided by total voice c. Do not hardcode the sentence.
+
+### Slide 3: WhatsApp
+
+- Headline: `WhatsApp: delivered messages drive <share>% of its <total> credits`.
+- Left mint panel: large share number, caption, total WhatsApp credits.
+- Chart: vertical bars, message delivered and response to query.
+- Two bullets below the chart with count, rate and credits.
+- Reference values (corrected): 46,652 delivered messages at 0.90 each equal 41,987. 3,689 query response units at 0.93 each equal 3,431. Share from delivered messages is 92%.
+- Correction to v1: the v1 slide printed 3,547 query responses at 0.93 each equal 3,431, which does not multiply out (3,547 times 0.93 is about 3,299). 3,547 is the number of rows. The billed quantity is 3,689 units, and 3,689 times 0.93 is exactly 3,430.77. Use sum of Quantity for the multiplication, and say "responses" only if the count and the billed units match. If they differ, label the figure "billed response units" or show both.
+- Remove the footer text "query response rate needs reconciliation". The discrepancy is resolved.
+
+### Slide 4: Usage by stage
+
+- Headline: `Post sales took <share>% of credits, mostly service reminders`.
+- Chart: horizontal bars by bucket, sorted largest first.
+- Two callout boxes: post sales total with the service reminder part and its voice and WhatsApp split, and pre sales total with the R2 part.
+- Reference stage values: post sales 203,438 (96.6%), pre sales 7,109 (3.4%). Voice in post sales 161,717, WhatsApp 41,721.
+- Bucket definition (required change): buckets must be built from the same resolved objectives as slide 5, not from the raw Description text. In v1 the unresolved `None` rows were left in an "other" bucket on this slide while slide 5 had assigned them to objectives, so the two slides disagreed. Corrected values from the resolved data:
+
+| Bucket                                                        | v1 slide 4         | Resolved (use this) |
+| ------------------------------------------------------------- | ------------------ | ------------------- |
+| Post sales service reminders                                  | 200,160            | 203,434             |
+| Post sales other                                              | 3,277              | 4 (unmapped)        |
+| Pre sales R2 (R2_Pre_sales_WA plus R2_Oct09_Event_WhatsApp)   | 3,845 (first only) | 6,167               |
+| Pre sales other (inbound and a small WhatsApp reminder piece) | 3,264              | 941                 |
+
+- Check: 203,434 plus 4 plus 6,167 plus 941 equals 210,546.
+- Service reminder split on the callout: voice 161,717, WhatsApp 41,717 (resolved), which replaces the v1 figure of 38,443.
+- Decision needed: whether the two R2 objectives are one "R2 pre sales" bucket (recommended, they are both R2 campaigns) or shown separately.
+
+### Slide 5: Objective table
+
+- Title: `Objective wise credits, <period>`.
+- Native table, columns: #, Objective, Start Date, End Date, Voice Credits, WhatsApp Credits, Total Credits, Share of Total.
+- Rows: one per objective in descending total credits, an unmapped row if any, and a Grand Total row in bold.
+- Reference table, 7 objectives plus unmapped, total 210,546.38. Largest: Service Reminder Perfect Riders Yamaha, 158,983.50 credits (75.5%).
+- Layout requirements: numeric columns right aligned, wide enough that no value wraps. In v1 values such as 158,885.19, 158,983.50 and 100.0% wrapped onto two lines. Fix by widening numeric columns, shortening the objective column to about 30% of width, and using 11 pt text.
+- The table must be identical to the Summary sheet, including the objective spelling. In v1 one name gained an extra space ("Service Reminder (Perfect Riders)").
+- Add the eyebrow and footer used on slides 1 to 4 so the slide matches the rest of the deck.
+
+## 6. Speaker notes policy
+
+- Notes are for the presenter, one to three sentences, plain language.
+- Allowed: how a figure was derived, a rounding explanation, the unit of Quantity.
+- Not allowed: unresolved questions to the client, instructions such as "confirm the rate before using it for forecasting".
+
+## 7. Acceptance criteria
+
+1. Total on slide 1 equals the sum of Credits Spent in the CSV, rounded to a whole number.
+2. Voice plus WhatsApp credits equal the total before rounding.
+3. Slide 2 components sum to total voice credits. Slide 3 components sum to total WhatsApp credits.
+4. For every "count times rate equals credits" statement, the arithmetic is correct to the displayed rounding.
+5. Slide 4 buckets sum to the total, and bucket values are consistent with slide 5 rows.
+6. Every number in the slide 5 table matches the Summary sheet exactly.
+7. No text overflow, no wrapped numbers, no footer containing internal working language. Verified by rendering every slide to an image and checking it.
+8. All statements of share use the exact value, and the shares on a slide add to 100% within one point.
+
+## 8. Known defects in the v1 reference deck
+
+| #   | Slide  | Defect                                                           | Fix                               |
+| --- | ------ | ---------------------------------------------------------------- | --------------------------------- |
+| 1   | 3      | 3,547 used as the multiplier, equals row count, not billed units | Use 3,689 billed units            |
+| 2   | 4      | Built from raw Description, disagrees with slide 5               | Build from resolved objectives    |
+| 3   | 1      | Footer says channel figures sum to 210,547                       | Remove, rounding only             |
+| 4   | 3      | Footer says rate needs reconciliation                            | Remove after fix 1                |
+| 5   | 5      | Numbers wrap inside narrow columns                               | Resize columns and font           |
+| 6   | 5      | Objective name spelled differently from the workbook             | Pull names from the Summary sheet |
+| 7   | 5      | No eyebrow or footer, unlike other slides                        | Apply the shared layout           |
+| 8   | 1 to 4 | Charts are pictures, not editable                                | Use native charts                 |
+
+## 9. Implementation notes
+
+- Stack: Python, python-pptx for the deck, pandas for metrics. Use native chart objects for bar charts.
+- Generate every text string from computed values with f strings. No number typed by hand.
+- One layout module with the eyebrow, headline, footer and colour tokens, used by all five slides.
+- Parameters: client name, period, objective list and display name overrides, so Anant Cars and any new client use the same template.
+- QA step: convert the pptx to PDF with LibreOffice, render pages to images, and review them. Then run a script that re reads the deck and compares each number to the metrics.
+- Suggested files: `deck/metrics.py`, `deck/slides.py`, `deck/layout.py`, `deck/qa.py`, `config/clients/<client>.yaml`.
+
+## 10. Open questions
+
+1. Unit of Quantity for completed calls. The credits per unit are 0.1667 and 0.1333, which match 10 and 8 credits per minute if Quantity is seconds. Confirm with the platform team before the deck says "billed by duration" with a unit.
+2. Whether test and demo rows should be flagged or excluded for the client version. They are counted today, which affects totals and objective date ranges.
+3. Whether the client wants internal objective names (for example R2_Pre_sales_WA) or friendly display names.
+4. Slide 4 bucket grouping, as described above.
+5. Whether to add a monthly trend slide, since the period covers about six months.

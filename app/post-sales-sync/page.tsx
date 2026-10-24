@@ -33,6 +33,7 @@ const DEALERSHIPS: Record<string, { name: string; workflow: string; mode: string
   keerthi_triumph: { name: 'KT PSF (Keerthi Triumph)', workflow: 'Post Service Feedback', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   kt_due_overdue: { name: 'KT Due/Overdue', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'next_service_date', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
   kt_expiry_date: { name: 'KT Expiry Date', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'warranty_expiry_date', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
+  kt_both: { name: 'Keerthi Both', workflow: 'Post-Sales Service Reminder', mode: 'post', leadColumns: ['workshop_code', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'vin_number', 'next_service_date', 'warranty_expiry_date', 'campaign_id'], sessionColumns: ['status', 'duration', 'start_time', 'summary', 'call_recording', 'sentiment_score', 'disposition_detail'] },
 };
 
 export default function PostSalesSyncPage() {
@@ -751,6 +752,7 @@ export default function PostSalesSyncPage() {
       keerthi_triumph: ['Kannada', 'English', 'Hindi'],
       kt_due_overdue: ['Kannada', 'English', 'Hindi'],
       kt_expiry_date: ['Kannada', 'English', 'Hindi'],
+      kt_both: ['Kannada', 'English', 'Hindi'],
     };
     const supportedLangs = DEALER_LANGUAGES[dealerKey] || ['English'];
 
@@ -982,7 +984,7 @@ export default function PostSalesSyncPage() {
     setCompletedRows(dedupeByPhone(updated.filter(r => !isServiceBooked(r) && isServiceCompleted(r))));
     setNotInterestedRows(dedupeByPhone(updated.filter(r => !isServiceBooked(r) && !isServiceCompleted(r) && isNotInterested(r))));
 
-    if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(dealerKey)) {
+    if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date', 'kt_both'].includes(dealerKey)) {
       const kReport = buildKeerthiReport(updated);
       setKeerthiReportRows(kReport);
       log(`Generated Keerthi report: ${kReport.length} hot/warm rows`);
@@ -1117,7 +1119,7 @@ export default function PostSalesSyncPage() {
                 <select className="custom-select" value={dealerKey} onChange={e => {
                   const newKey = e.target.value;
                   setDealerKey(newKey);
-                  if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(newKey)) {
+                  if (['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date', 'kt_both'].includes(newKey)) {
                     if (aiValidated) {
                       const data = processedDataRef.current.length > 0 ? processedDataRef.current : processedData;
                       setKeerthiReportRows(buildKeerthiReport(data));
@@ -1136,6 +1138,7 @@ export default function PostSalesSyncPage() {
                     <option value="suryabala_service">Suryabala Honda — Service Reminder</option>
                     <option value="kt_due_overdue">KT Due/Overdue — Keerthi Triumph</option>
                     <option value="kt_expiry_date">KT Expiry Date — Keerthi Triumph</option>
+                    <option value="kt_both">Keerthi Both — Keerthi Triumph</option>
                   </optgroup>
                   <optgroup label="Post-sales feedback reminder">
                     <option value="icare_feedback">Icare — Feedback Reminder</option>
@@ -1296,7 +1299,7 @@ export default function PostSalesSyncPage() {
               </div>
 
               {/* Keerthi Client Report Table */}
-              {['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date'].includes(dealerKey) && aiValidated && (
+              {['keerthi_triumph', 'kt_due_overdue', 'kt_expiry_date', 'kt_both'].includes(dealerKey) && aiValidated && (
                 <div className={styles['table-wrapper']} style={{ display: 'block' }}>
                   <div className={styles['table-header']}>
                     <div>

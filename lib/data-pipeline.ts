@@ -9,7 +9,13 @@ export function cellToString(val: unknown): string {
 
 export function normalizePhone(raw: unknown): string | null {
   if (raw == null) return null;
-  const s = String(raw).replace(/\D/g, '');
+  // Handle scientific notation from XLSX numeric cells (e.g. "9.1234E+11" → 91234000000)
+  let coerced: unknown = raw;
+  if (typeof raw === 'string' && /[eE]/.test(raw)) {
+    const n = Number(raw);
+    if (Number.isFinite(n)) coerced = String(Math.round(n));
+  }
+  const s = String(coerced).replace(/\D/g, '');
   if (!s) return null;
   if (s.length === 10) return s;
   if (s.length === 11 && s[0] === '0') return s.slice(1);

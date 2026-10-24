@@ -130,6 +130,7 @@
 .landing-page .tool-card.pink:hover { border-color: rgba(244,114,182,0.4); box-shadow: 0 24px 70px rgba(244,114,182,0.1); }
 .landing-page .tool-card.indigo:hover { border-color: rgba(99,102,241,0.4); box-shadow: 0 24px 70px rgba(99,102,241,0.1); }
 .landing-page .tool-card.yellow:hover { border-color: rgba(234,179,8,0.4); box-shadow: 0 24px 70px rgba(234,179,8,0.1); }
+.landing-page .tool-card.lime:hover { border-color: rgba(132,204,22,0.4); box-shadow: 0 24px 70px rgba(132,204,22,0.1); }
 
 /* ── TOOL ICON ─────────────────────────────────────────────── */
 .landing-page .tool-icon {
@@ -150,11 +151,13 @@
 .landing-page .tool-icon.pink { background: var(--accent6-soft); border: 1px solid rgba(244,114,182,0.3); color: var(--accent6); }
 .landing-page .tool-icon.indigo { background: rgba(99,102,241,0.14); border: 1px solid rgba(99,102,241,0.3); color: #6366f1; }
 .landing-page .tool-icon.yellow { background: var(--accent3-soft); border: 1px solid rgba(234,179,8,0.3); color: var(--accent3); }
+.landing-page .tool-icon.lime { background: rgba(132,204,22,0.14); border: 1px solid rgba(132,204,22,0.3); color: #84cc16; }
 
 [data-theme="light"] .landing-page .tool-icon.green { border-color: rgba(22,163,74,0.25); }
 [data-theme="light"] .landing-page .tool-icon.pink { border-color: rgba(219,39,119,0.25); }
 [data-theme="light"] .landing-page .tool-icon.blue { border-color: rgba(37,99,235,0.25); }
 [data-theme="light"] .landing-page .tool-icon.teal { border-color: rgba(13,148,136,0.25); }
+[data-theme="light"] .landing-page .tool-icon.lime { border-color: rgba(101,163,13,0.25); color: #65a30d; }
 
 /* ── TOOL NAME / DESC / ARROW ──────────────────────────────── */
 .landing-page .tool-name {
@@ -192,6 +195,7 @@
 .landing-page .tool-card.purple:hover .tool-arrow { color: var(--accent4); }
 .landing-page .tool-card.pink:hover .tool-arrow { color: var(--accent6); }
 .landing-page .tool-card.yellow:hover .tool-arrow { color: var(--accent3); }
+.landing-page .tool-card.lime:hover .tool-arrow { color: #84cc16; }
 
 /* ── FOOTER ────────────────────────────────────────────────── */
 .landing-page footer {

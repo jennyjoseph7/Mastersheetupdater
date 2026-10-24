@@ -32,6 +32,8 @@ export const ALL_DISPOSITIONS: Record<string, string> = {
 
   "Enquired for Pricing": "The customer asked for the price, on-road price, offers, or discounts of the vehicle. KEY PHRASES: \"what is the price of the vehicle\", \"how much does it cost\", \"what is the pricing\", \"I want to know the price\", \"can you tell me the cost\", \"what is the price range\", \"do you have a price list\", \"how much is the car\", \"what is the on-road price\"",
 
+  "Enquired for Offers": "The customer asked about current offers, discounts, festive schemes, or special deals on the vehicle. KEY PHRASES: \"what are the offers\", \"any discounts available\", \"are there any offers\", \"what is the special offer\", \"discount schemes\", \"festive offers available\", \"any cash benefits\"",
+
   "Enquired for EMI": "The customer asked about EMI, down payment, loan schemes, interest rates, or financing options. KEY PHRASES: \"what is the EMI\", \"how much is the down payment\", \"do you have loan options\", \"what is the monthly installment\", \"interest rate on car loan\", \"finance schemes available\", \"what will be the EMI per month\"",
 
   "Enquired for Specifications": "The customer asked for the specifications, mileage, engine, or features of the vehicle. KEY PHRASES: \"what are the specifications\", \"tell me about the features\", \"what is the mileage\", \"what engine does it have\", \"what is the fuel type\", \"does it have automatic transmission\", \"what is the seating capacity\", \"what are the safety features\", \"I want to know the specs\"",
@@ -106,6 +108,7 @@ export interface LlmParseResult {
   rowIndex: number;
   isCorrect: boolean;
   correctedDisposition: string | null;
+  preferredShowroom: string | null;
   confidence: string;
   reason: string;
 }
@@ -206,7 +209,7 @@ Current Disposition: "Not Interested"
 → isCorrect: false, correctedDisposition: "Purchased elsewhere"
 Reason: The transcript contains KEY PHRASES "I already bought a car" and "from a different showroom" which belong to "Purchased elsewhere", not "Not Interested". The KEY PHRASES match is the decisive signal.`;
 
-  const userPrompt = `VALID DISPOSITIONS:\n${dispDefs}\n\nEXAMPLES (learn from these patterns):\n${examples}\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nRows:\n${USER_DATA_DELIMITER}\n${promptLines}\n${USER_DATA_END_DELIMITER}\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.`;
+  const userPrompt = `VALID DISPOSITIONS:\n${dispDefs}\n\nEXAMPLES (learn from these patterns):\n${examples}\n\nNow evaluate these rows. For EACH row, respond with ONE JSON object:\n{"rowIndex":0,"isCorrect":true,"correctedDisposition":null,"preferredShowroom":null,"confidence":"high","reason":"The summary clearly matches the disposition."}\n\nAlso include "preferredShowroom": the customer's preferred dealership showroom or branch location if explicitly mentioned in the summary or conversation transcript (e.g. "Bannerghatta Road", "Marathahalli"). Return null if not mentioned.\n\nRows:\n${USER_DATA_DELIMITER}\n${promptLines}\n${USER_DATA_END_DELIMITER}\n\nRespond as a JSON array of objects, one per row in the same order. ONLY valid JSON.`;
 
   return {
     system: systemMsg,
@@ -222,6 +225,7 @@ export function parseLlmResponse(text: string, batchIndex: number, batchSize: nu
       rowIndex: (batchIndex * batchSize) + idx,
       isCorrect: Boolean(item.isCorrect),
       correctedDisposition: item.correctedDisposition || null,
+      preferredShowroom: item.preferredShowroom || null,
       confidence: item.confidence || 'medium',
       reason: item.reason || '',
     }));
@@ -263,7 +267,7 @@ export function parseLlmResponse(text: string, batchIndex: number, batchSize: nu
     try {
       const parsed = JSON.parse(line.trim());
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        results.push({ rowIndex: (batchIndex * batchSize) + results.length, isCorrect: Boolean(parsed.isCorrect), correctedDisposition: parsed.correctedDisposition || null, confidence: parsed.confidence || 'medium', reason: parsed.reason || '' });
+        results.push({ rowIndex: (batchIndex * batchSize) + results.length, isCorrect: Boolean(parsed.isCorrect), correctedDisposition: parsed.correctedDisposition || null, preferredShowroom: parsed.preferredShowroom || null, confidence: parsed.confidence || 'medium', reason: parsed.reason || '' });
       }
     } catch { /* skip unparseable lines */ }
   }

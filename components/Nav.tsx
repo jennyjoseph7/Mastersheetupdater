@@ -14,6 +14,7 @@ const ACCENT_MAP: Record<string, { dark: string; light: string; softDark: string
   'recording-renamer':   { dark: '#22c55e', light: '#16a34a', softDark: 'rgba(34,197,94,0.13)', softLight: 'rgba(22,163,74,0.1)' },
   'master-lead-matcher': { dark: '#6366f1', light: '#4f46e5', softDark: 'rgba(99,102,241,0.14)', softLight: 'rgba(79,70,229,0.1)' },
   'session-report':      { dark: '#0ea5e9', light: '#0284c7', softDark: 'rgba(14,165,233,0.13)', softLight: 'rgba(2,132,199,0.1)' },
+  'credit-report':       { dark: '#84cc16', light: '#65a30d', softDark: 'rgba(132,204,22,0.14)', softLight: 'rgba(101,163,13,0.1)' },
 };
 
 const LINKS = [
@@ -27,6 +28,7 @@ const LINKS = [
   { href: '/campaign-generator', label: 'Campaign Gen' },
   { href: '/recording-renamer', label: 'Recording Renamer' },
   { href: '/session-report', label: 'Session Report' },
+  { href: '/credit-report', label: 'Credit Report' },
 ];
 
 export default function Nav() {

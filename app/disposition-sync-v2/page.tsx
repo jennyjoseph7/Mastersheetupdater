@@ -128,22 +128,22 @@ export default function DispositionSyncV2Page() {
     });
   }
 
-  // ponytail: format date to MM/DD/YYYY for follow-up table
-  function formatDateMDY(raw: string): string {
+  // ponytail: format date to DD/MM/YYYY for follow-up table
+  function formatDateDMY(raw: string): string {
     if (!raw) return '';
     const parts = raw.trim().split(/[\/\-]/);
     if (parts.length === 3 && parts[2].length === 4) {
       const d = parts[0].padStart(2, '0');
       const m = parts[1].padStart(2, '0');
       const y = parts[2];
-      return `${m}/${d}/${y}`;
+      return `${d}/${m}/${y}`;
     }
     const dt = parseAutoEngageDate(raw);
     if (dt) {
-      const mm = String(dt.getMonth() + 1).padStart(2, '0');
       const dd = String(dt.getDate()).padStart(2, '0');
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
       const yyyy = dt.getFullYear();
-      return `${mm}/${dd}/${yyyy}`;
+      return `${dd}/${mm}/${yyyy}`;
     }
     return raw;
   }
@@ -167,7 +167,13 @@ export default function DispositionSyncV2Page() {
       eff.includes('callback') ||
       eff.includes('call back') ||
       eff.includes('showroom visit') ||
-      eff.includes('will decide later')
+      eff.includes('will decide later') ||
+      eff.includes('pricing') ||
+      eff.includes('price') ||
+      eff.includes('offer') ||
+      disp.includes('pricing') ||
+      disp.includes('price') ||
+      disp.includes('offer')
     );
   }
 
@@ -178,8 +184,8 @@ export default function DispositionSyncV2Page() {
       model: r.model || r.vehicle_model || '',
       disposition_detail: getEffectiveDisp(r),
       summary: r.summary || '',
-      call_date: formatDateMDY(r.call_date),
-      location: r.city || '',
+      call_date: formatDateDMY(r.call_date),
+      location: r.preferred_showroom || r.location || r.city || '',
       lead_id: r.lead_id || '',
     }));
   }
@@ -391,7 +397,8 @@ export default function DispositionSyncV2Page() {
             lead_id: leadId,
             full_name: row['person_name'] || '',
             phone,
-            city: row['city'] || '',
+            city: row['city'] || row['location'] || row['showroom'] || '',
+            location: row['location'] || row['showroom'] || row['branch'] || row['city'] || '',
             pincode: row['pincode'] || '',
             language: selectedLanguage,
             lead_source: row['lead_source'] || '',
@@ -499,7 +506,7 @@ export default function DispositionSyncV2Page() {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataRows), 'Output');
 
     if (followUpRows.length) {
-      const headers = ['Phone Number', 'ICRE', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'SUMMARY', 'CALL_DATE(MM/DD/YYYY)', 'LOCATION'];
+      const headers = ['Phone Number', 'ICRE', 'VEHICLE_MODEL', 'DISPOSITION_DETAILS', 'SUMMARY', 'CALL_DATE(DD/MM/YYYY)', 'LOCATION'];
       const keys = ['phone', 'icre', 'model', 'disposition_detail', 'summary', 'call_date', 'location'];
       const sorted = getSortedData(followUpRows);
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
@@ -597,7 +604,7 @@ export default function DispositionSyncV2Page() {
 
     // Cache check
     const cacheInput = candidates.map(c => `${c.summary}||${c.history}||${c.currentDisp}||${c.model}||${c.outcome}||${c.callDuration}||${c.leadSource}`).join('|');
-    const cacheKey = 'disp-validate-v10-history-' + hashStr(cacheInput);
+    const cacheKey = 'disp-validate-v11-history-' + hashStr(cacheInput);
     const cached = force ? null : (typeof window !== 'undefined' ? localStorage.getItem(cacheKey) : null);
     let cachedParsed: any[] | null = null;
     if (cached) {
@@ -606,12 +613,16 @@ export default function DispositionSyncV2Page() {
 
     if (cachedParsed) {
       const correctedResults: Record<number, string> = {};
+      const locationResults: Record<number, string> = {};
       for (const item of cachedParsed) {
         if (item.isCorrect === false && item.correctedDisposition) {
           correctedResults[item.rowIndex] = item.correctedDisposition;
         }
+        if (item.preferredShowroom) {
+          locationResults[item.rowIndex] = item.preferredShowroom;
+        }
       }
-      applyCorrections(candidates, correctedResults, new Set(candidates.map(c => c.index)));
+      applyCorrections(candidates, correctedResults, locationResults, new Set(candidates.map(c => c.index)));
       const correctedCount = Object.keys(correctedResults).length;
       if (correctedCount > 0) aiProgress.markCorrected(correctedCount);
       aiProgress.complete(correctedCount > 0
@@ -622,6 +633,7 @@ export default function DispositionSyncV2Page() {
     }
 
     const correctedResults: Record<number, string> = {};
+    const locationResults: Record<number, string> = {};
 
     runLlmBatches({
       items: candidates,
@@ -670,18 +682,22 @@ export default function DispositionSyncV2Page() {
         if (dec && (dec as any).isCorrect === false && (dec as any).correctedDisposition) {
           correctedResults[candidates[ri].index] = (dec as any).correctedDisposition;
         }
+        if (dec && (dec as any).preferredShowroom) {
+          locationResults[candidates[ri].index] = (dec as any).preferredShowroom;
+        }
       }
 
       const cacheArray = candidates.map((c, idx) => {
         const dec = result.results.get(idx);
+        const showroom = dec ? (dec as any).preferredShowroom || null : null;
         if (dec && (dec as any).isCorrect === false && (dec as any).correctedDisposition) {
-          return { rowIndex: c.index, isCorrect: false, correctedDisposition: (dec as any).correctedDisposition };
+          return { rowIndex: c.index, isCorrect: false, correctedDisposition: (dec as any).correctedDisposition, preferredShowroom: showroom };
         }
-        return { rowIndex: c.index, isCorrect: true, correctedDisposition: null };
+        return { rowIndex: c.index, isCorrect: true, correctedDisposition: null, preferredShowroom: showroom };
       });
       try { if (typeof window !== 'undefined') localStorage.setItem(cacheKey, JSON.stringify(cacheArray)); } catch { /* ignore */ }
 
-      applyCorrections(candidates, correctedResults, evaluatedIndices);
+      applyCorrections(candidates, correctedResults, locationResults, evaluatedIndices);
       const correctedCount = Object.keys(correctedResults).length;
       if (correctedCount > 0) aiProgress.markCorrected(correctedCount);
       aiProgress.complete(correctedCount > 0
@@ -696,22 +712,23 @@ export default function DispositionSyncV2Page() {
     });
   }
 
-  function applyCorrections(candidates: { index: number }[], correctedResults: Record<number, string>, evaluatedIndices?: Set<number>) {
+  function applyCorrections(candidates: { index: number }[], correctedResults: Record<number, string>, locationResults: Record<number, string>, evaluatedIndices?: Set<number>) {
     setProcessedData(prev => {
       const updated = prev.map((r, idx) => {
+        const showroom = locationResults[idx];
         if (correctedResults[idx] !== undefined) {
-          return { ...r, updated_disposition: correctedResults[idx], manual_disposition_detail: correctedResults[idx], _ai_status: 'corrected' };
+          return { ...r, updated_disposition: correctedResults[idx], manual_disposition_detail: correctedResults[idx], _ai_status: 'corrected', ...(showroom ? { preferred_showroom: showroom } : {}) };
         }
         if (evaluatedIndices) {
           if (evaluatedIndices.has(idx) && !r._ai_status) {
-            return { ...r, _ai_status: 'verified' };
+            return { ...r, _ai_status: 'verified', ...(showroom ? { preferred_showroom: showroom } : {}) };
           }
         } else if (candidates.some(c => c.index === idx) && !r._ai_status) {
-          return { ...r, _ai_status: 'verified' };
+          return { ...r, _ai_status: 'verified', ...(showroom ? { preferred_showroom: showroom } : {}) };
         }
-        return r;
+        return showroom ? { ...r, preferred_showroom: showroom } : r;
       });
-      // ponytail: recompute follow-up table using updated manual_disposition_detail
+      // ponytail: recompute follow-up table using updated manual_disposition_detail + preferred_showroom
       setFollowUpRows(extractFollowUpRows(updated));
       return updated;
     });
@@ -1094,7 +1111,7 @@ export default function DispositionSyncV2Page() {
                   <div className={styles['table-scroll']}>
                     <table>
                       <thead><tr>
-                        <th>Phone Number</th><th>ICRE</th><th>VEHICLE_MODEL</th><th>DISPOSITION_DETAILS</th><th>SUMMARY</th><th>CALL_DATE(MM/DD/YYYY)</th><th>LOCATION</th>
+                        <th>Phone Number</th><th>ICRE</th><th>VEHICLE_MODEL</th><th>DISPOSITION_DETAILS</th><th>SUMMARY</th><th>CALL_DATE(DD/MM/YYYY)</th><th>LOCATION</th>
                       </tr></thead>
                       <tbody>
                         {(showAllRows ? followUpRows : followUpRows.slice(0, previewLimit)).map((r, i) => (
@@ -1103,7 +1120,7 @@ export default function DispositionSyncV2Page() {
                             <td>{esc(r.icre)}</td>
                             <td>{esc(r.model)}</td>
                             <td>{esc(r.disposition_detail)}</td>
-                            <td>{esc(r.summary)}</td>
+                            <td title={r.summary} style={{maxWidth:'220px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor:'help'}}>{esc(r.summary)}</td>
                             <td>{esc(r.call_date)}</td>
                             <td>{esc(r.location)}</td>
                           </tr>

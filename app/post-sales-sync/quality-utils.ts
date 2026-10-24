@@ -305,6 +305,20 @@ export function getOutputColumnsForDealer(dealerKey: string): OutputColumn[] {
       { header: 'INTERESTED', key: 'interested' }, { header: 'ORIGIN', key: 'origin' },
       { header: 'LEAD_TIMELINE', key: 'lead_timeline' }, { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
     ],
+    kt_both: [
+      { header: 'WORKSHOP_CODE', key: 'workshop_code' }, { header: 'PERSON_NAME', key: 'person_name' },
+      { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'REG_NUMBER', key: 'reg_number' },
+      { header: 'VEHICLE_MODEL', key: 'vehicle_model' }, { header: 'VIN_NUMBER', key: 'vin_number' },
+      { header: 'STATUS', key: 'session_status' }, { header: 'SUMMARY', key: 'summary' },
+      { header: 'DISPOSITION_DETAILS', key: 'disposition' }, { header: 'UPDATED_DISPOSITION', key: 'updated_disposition' },
+      { header: 'NEXT_SERVICE_DATE', key: 'next_service_due' },
+      { header: 'WARRANTY_EXPIRY_DATE', key: 'warranty_expiry_date' },
+      { header: 'CALL_DATE', key: 'call_date' }, { header: 'SENTIMENT', key: 'sentiment_score' },
+      { header: 'RECORDINGS', key: 'call_recording' }, { header: 'DURATION', key: 'duration' },
+      { header: 'CAMPAIGN_ID', key: 'campaign_id' }, { header: 'SESSION_ID', key: 'last_session_id' },
+      { header: 'INTERESTED', key: 'interested' }, { header: 'ORIGIN', key: 'origin' },
+      { header: 'LEAD_TIMELINE', key: 'lead_timeline' }, { header: 'NUMBER_OF_ATTEMPTS', key: 'number_of_attempts' },
+    ],
   };
   return schemas[dealerKey] || [
     { header: 'PHONE_NUMBER', key: 'phone_number' }, { header: 'SUMMARY', key: 'summary' },
@@ -500,8 +514,13 @@ function getOutputFieldChecks(dealerKey: string, output: Record<string, string>[
   if (keys.has('vin_number')) checks.push({ key: 'vin_number', label: 'VIN number', level: 'warn', count: 0 });
   if (keys.has('workshop_code')) checks.push({ key: 'workshop_code', label: 'Workshop code', level: 'warn', count: 0 });
   if (keys.has('last_service_date')) checks.push({ key: 'last_service_date', label: 'Last service date', level: 'warn', count: 0 });
-  if (keys.has('next_service_due')) checks.push({ key: 'next_service_due', label: 'Next service date', level: 'warn', count: 0 });
-  if (keys.has('warranty_expiry_date')) checks.push({ key: 'warranty_expiry_date', label: 'Warranty expiry date', level: 'warn', count: 0 });
+  if (dealerKey === 'kt_both') {
+    const missingBoth = output.filter(row => !clean(row['next_service_due']) && !clean(row['warranty_expiry_date'])).length;
+    if (missingBoth > 0) checks.push({ key: 'next_service_due', label: 'Next service date or Warranty expiry date', level: 'warn', count: missingBoth });
+  } else {
+    if (keys.has('next_service_due')) checks.push({ key: 'next_service_due', label: 'Next service date', level: 'warn', count: 0 });
+    if (keys.has('warranty_expiry_date')) checks.push({ key: 'warranty_expiry_date', label: 'Warranty expiry date', level: 'warn', count: 0 });
+  }
   return checks.map(c => ({ ...c, count: output.filter(row => !clean(row[c.key])).length })).filter(c => c.count > 0);
 }
 
@@ -534,7 +553,15 @@ export function buildQualityReport(params: {
   const matched = output.filter(r => r._matched === 'true').length;
   const unmatched = output.filter(r => r._matched !== 'true');
   const unknownRows = output.filter(r => r.outcome === 'Unknown');
-  const missingLeadCols = missingColumns(leadRows, dealer.leadColumns);
+  const missingLeadCols = missingColumns(leadRows, dealer.leadColumns).filter(col => {
+    if (dealerKey === 'kt_both' && (col === 'next_service_date' || col === 'warranty_expiry_date')) {
+      const cols = new Set(Object.keys(leadRows[0] || {}).filter(k => k !== '__raw'));
+      const hasDue = cols.has('next_service_date') || cols.has('next_service_due') || cols.has('service_due_date') || cols.has('next_due_date');
+      const hasExpiry = cols.has('warranty_expiry_date') || cols.has('warranty_expiry') || cols.has('warranty_date') || cols.has('ew_expiry_date') || cols.has('expiry_date');
+      if (hasDue || hasExpiry) return false;
+    }
+    return true;
+  });
   const missingSessionCols = missingColumns(sessionRows, dealer.sessionColumns);
   const sessionsWithoutPhone = sessionRows.filter(row => !detectPhones(row).length).length;
   const sessionOnlyPhones = sessionPhones.filter(phone => !leadPhoneSet.has(phone));

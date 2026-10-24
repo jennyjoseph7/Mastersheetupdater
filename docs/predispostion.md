@@ -88,6 +88,8 @@ var ALL_DISPOSITIONS = {
 
       "Enquired for Car Exchange": "The customer asked about vehicle trade-in, evaluation, or exchange bonus offers. KEY PHRASES: \"can I exchange my old car\", \"do you offer exchange\", \"what is the exchange bonus\", \"I want to trade in my old vehicle\", \"car evaluation for exchange\", \"exchange offer available\", \"value of my old vehicle\"",
 
+      "Enquired for Offers": "The customer asked about current offers, discounts, festive schemes, or special deals on the vehicle. KEY PHRASES: \"what are the offers\", \"any discounts available\", \"are there any offers\", \"what is the special offer\", \"discount schemes\", \"festive offers available\", \"any cash benefits\"",
+
       "Enquired for Stock & Availability": "The customer asked about vehicle stock availability, waiting period, or delivery timeline. KEY PHRASES: \"is this model available in stock\", \"what is the waiting period\", \"when can I get delivery\", \"do you have ready stock\", \"which colors are in stock\", \"how long for delivery\"",
 
       "User Disconnected Call": "Live interaction was established, but the customer disconnected early or hung up abruptly. KEY PHRASES: \"call disconnected by customer\", \"customer hung up\", \"call dropped abruptly\", \"customer disconnected the line\"",

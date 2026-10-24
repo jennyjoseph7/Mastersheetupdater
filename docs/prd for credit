@@ -1,0 +1,146 @@
+# PRD: Credit Usage by Objective Report
+
+Status: Draft v1
+Scope: Dealership clients on the voice and WhatsApp bot platform (first runs: Anant Cars, Perfect Riders)
+
+## 1. Overview
+
+The platform exports billing data as a CSV of credit debits. Each row is one billable event (a call, a message, a reply). The Description column packs several fields into one string, and the objective name is mixed in with campaign and set names. This product turns that CSV into a client ready Excel workbook that shows credit spend per objective, split into Voice and WhatsApp, with the date range of each objective.
+
+## 2. Problem
+
+- The raw export has no clean objective field. It sits inside Description, next to campaign names, set names, provider and phone number.
+- Some rows have no objective at all (the text reads `None`).
+- Objective names are inconsistent, for example `Friendship Day Sale` in the data versus `Friendship Day Sale - Anant Cars - WhatsApp` in the client's naming.
+- Clients want a simple view: what did each objective cost, on which channel, and when did it run.
+
+## 3. Goals
+
+1. One row per objective, with Voice credits and WhatsApp credits shown separately.
+2. Start date and end date for each objective.
+3. Every source row is counted. Nothing is excluded, including test and demo rows.
+4. Totals reconcile exactly with the source file.
+5. The workbook recalculates from a Data sheet, so numbers are traceable.
+
+## 4. Non goals
+
+- Cost in currency. Output stays in credits.
+- Cleaning test traffic out of client totals (see Open Questions).
+- Campaign or set level reporting. That is a future extension.
+
+## 5. Input specification
+
+File: CSV, one row per debit.
+
+| Column           | Notes                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| Billing ID       | Unique row id                                                                                            |
+| Date & Time      | Text, format `15 Oct 2026, 08:15 pm`. Some rows use `Sept` instead of `Sep`, so normalise before parsing |
+| Transaction Type | Only `debit` seen                                                                                        |
+| Item Name        | `call_connected`, `call_completed`, `message_delivered`, `response_to_query`                             |
+| Channel          | `voice_phone` or `whatsapp_chat`. This is the source of truth for the Voice/WhatsApp split               |
+| Description      | Packed string, see section 6                                                                             |
+| Quantity         | Numeric. For `call_completed` it looks like call duration in seconds (unverified)                        |
+| Credits Spent    | Numeric                                                                                                  |
+| Status           | Only `success` seen                                                                                      |
+
+Optional second input: a client supplied objective list (ordered), used as the final display names.
+
+## 6. Description grammar
+
+Fields are joined with `-` (space hyphen space):
+
+```
+<stage> - <objective> - <campaign or set> - <channel> - <provider> - <phone>
+```
+
+- `stage` is `pre-sales` or `post-sales`.
+- WhatsApp rows often end with `unknown - Rml - None` or `unknown - Airtel - None` instead of a phone number.
+- Names that themselves contain `-` shift the segment positions. Do not rely on fixed indexes for the tail. Use the objective position and the campaign text between the objective and the channel token.
+- Special case seen in Perfect Riders: when segment 1 is `Perfect Riders`, the real objective is segments 1 to 3 joined (`Perfect Riders - Service Reminder - WhatsApp`) and the campaign is what follows.
+- Rows with `None` in the objective position carry the campaign name in the next segment. Example: `post-sales - None - Inbound Lead Handling - whatsapp_chat - airtel - 9188...`.
+
+## 7. Objective resolution
+
+Applied in this order. The first rule that matches wins, and the rule used is written to an Objective Source column.
+
+1. **Alias map (client list).** Map the raw objective text to the client's display name. Examples: `Friendship Day Sale` to `Friendship Day Sale - Anant Cars - WhatsApp`, `Varalakshmi Offer` to `Varalakshmi Offer - Anant Cars - WhatsApp`, `Varalakshmi Special Offer for Anant Cars` to `Varalakshmi Special Offer for Anant Cars - WhatApp`.
+2. **Own name.** If the raw objective is not in the client list, keep the raw name (for example `Insurance Renewal`). Mark it as not in the list.
+3. **Campaign lookup.** For `None` rows, look up the campaign name among rows that do have an objective, and take the most common objective for that campaign.
+4. **Keyword fallback.** Match on campaign text, for example `monsoon`, `inbound`, `insurance`, `varalakshmi`, `festive`, `PRWA` prefix, `PR_WA` prefix.
+5. **Unmapped.** Everything else goes to `Unmapped (no objective in description)`. It stays in totals and is shown last.
+
+Objective Source values: `Description`, `Description (not in your list)`, `Inferred from campaign name`, `Inferred from campaign name keyword`, `Not identifiable`.
+
+When no client list exists (Perfect Riders), objectives are the raw names, ordered by credits spent, highest first.
+
+## 8. Channel segmentation
+
+Voice = `voice_phone`, WhatsApp = `whatsapp_chat`, taken only from the Channel column. The Description text can disagree with Channel (a WhatsApp named objective can contain voice rows), and Channel wins.
+
+## 9. Output specification
+
+One Excel file, Arial throughout, four sheets.
+
+**Summary** (first sheet)
+
+| #   | Objective | Start Date | End Date | Voice Credits | WhatsApp Credits | Total Credits | Share of Total |
+| --- | --------- | ---------- | -------- | ------------- | ---------------- | ------------- | -------------- |
+
+- Client list objectives first, in the client's order. Other objectives next (shaded grey), Unmapped last. Grand Total row at the bottom.
+- Start Date and End Date are the first and last billing date for the objective (MINIFS and MAXIFS over Data). Grand Total shows the overall range.
+- Voice and WhatsApp credits link to the Voice and WhatsApp sheets.
+
+**Voice**: Calls Connected qty and credits, Call Completed qty and credits, Total Voice Credits, per objective.
+
+**WhatsApp**: Messages Delivered qty and credits, Responses to Query qty and credits, Total WhatsApp Credits, per objective.
+
+**Data**: every source row with Billing ID, Date & Time (real datetime), Item Name, Channel (Voice or WhatsApp), Objective, Campaign, Quantity, Credits Spent, Objective Source. Header frozen, filter on.
+
+All figures on Summary, Voice and WhatsApp are SUMIFS formulas over Data, not pasted values. MINIFS and MAXIFS must be written with the `_xlfn.` prefix when generated through openpyxl. After saving, recalculate with LibreOffice and require zero formula errors.
+
+## 10. Acceptance criteria
+
+1. Data sheet row count equals CSV row count.
+2. Summary Grand Total credits equals the sum of Credits Spent in the CSV, and Voice plus WhatsApp totals equal the per channel sums in the CSV.
+3. Zero formula errors after recalculation.
+4. Every objective with rows has a Start Date and End Date, and Start is not after End.
+5. Rows not in the client list are visibly marked, and the Unmapped count is reported to the requester.
+
+## 11. Results from the first two runs
+
+| Client         | Rows   | Total credits | Voice       | WhatsApp  | `None` rows | Inferred | Unmapped             |
+| -------------- | ------ | ------------- | ----------- | --------- | ----------- | -------- | -------------------- |
+| Anant Cars     | 84,155 | 182,732.989   | 159,211.759 | 23,521.23 | 1,520       | 1,246    | 274 (296.67 credits) |
+| Perfect Riders | 99,570 | 210,546.382   | 165,128.812 | 45,417.57 | 3,547       | 3,543    | 4 (3.72 credits)     |
+
+Anant Cars used a 17 item client objective list. Perfect Riders had none, so raw names were used (7 objectives plus Unmapped).
+
+## 12. Implementation notes
+
+- Stack: Python, pandas for parsing and mapping, openpyxl for the workbook, LibreOffice headless for recalculation.
+- Suggested repo layout:
+  - `config/objectives_<client>.yaml` holding the ordered client list and the alias map
+  - `credit_report/parse.py` for the Description parser
+  - `credit_report/resolve.py` for the objective resolution rules
+  - `credit_report/workbook.py` for the Excel build
+  - `credit_report/validate.py` for the acceptance checks
+  - `tests/` with a few real Description strings per pattern
+- Keep rule order and the Objective Source column. They are what make the output explainable to a client.
+- Treat the objective list and alias map as config, so a new client needs no code change.
+
+## 13. Risks and open questions
+
+1. **Test rows are counted.** They inflate totals and widen date ranges (for example a campaign can show a start date weeks before launch because of test sends). Decide with the client whether to flag test rows with a column and offer a "live only" view. Start and End Date could then ignore test rows.
+2. **Campaign lookup is a majority vote.** Generic names like `TEST` appear under several objectives, so some inferred assignments for test rows are approximate. Inferred rows are labelled, but this should be reviewed.
+3. **Alias gaps.** New campaigns need new aliases. Unmapped rows are the signal that the config needs an update.
+4. **Quantity units.** Confirm what Quantity means per Item Name before showing it to clients as seconds or messages.
+5. **Naming.** Raw names such as `R2_Pre_sales_WA` are internal. Clients may want display names via config.
+6. **Voice rows under WhatsApp named objectives.** Correct per the Channel rule, but worth a footnote on the client deliverable.
+
+## 14. Future extensions
+
+- Campaign and set level drilldown sheet.
+- Day by day or week by week credit trend per objective.
+- Test row flag and a client view that excludes it.
+- CLI: `python -m credit_report --csv file.csv --client anantcars --objectives config/objectives_anantcars.yaml`.
