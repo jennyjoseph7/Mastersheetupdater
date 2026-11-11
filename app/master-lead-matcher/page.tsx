@@ -107,8 +107,8 @@ export default function MasterLeadMatcherPage() {
   const masterFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) router.push('/login');
-  }, [loading, isAuthenticated, router]);
+    router.replace('/');
+  }, [router]);
 
   if (!isAuthenticated && !loading) return null;
 
@@ -492,6 +492,7 @@ export default function MasterLeadMatcherPage() {
               <input
                 ref={clientFileInputRef}
                 type="file"
+                aria-label="Upload Client Lead File"
                 accept=".xlsx,.xls,.csv"
                 style={{ display: 'none' }}
                 onChange={e => {
@@ -561,6 +562,7 @@ export default function MasterLeadMatcherPage() {
               <input
                 ref={masterFileInputRef}
                 type="file"
+                aria-label="Upload Processed Master Sheet File"
                 accept=".xlsx,.xls,.csv"
                 style={{ display: 'none' }}
                 onChange={e => {

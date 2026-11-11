@@ -21,6 +21,17 @@ Before presenting any completed change to the user:
 
 - **Git Etiquette**: NEVER stage files or commits (e.g., `git add`) without the user's explicit permission.
 
+## Implementation Workflow (Mandatory)
+
+1. **Explain Understanding**: First explain what you understood from the task using `what-the` (who, what, where, why, when).
+2. **Pre-Planning Gate (Triad)**: Before drafting the implementation plan, explicitly apply these three skills:
+   - **`andrej-karpathy-skills`**: Think before coding, surface unstated assumptions, enforce simplicity, define surgical boundaries and clear verification goals.
+   - **`ponytail`**: Lazy senior dev check (YAGNI). Can standard library or native platform do it? Can it be 1 line? Zero unrequested abstractions or boilerplate.
+   - **`elephant-goldfish-model`**: Elephant drafts technical approach with full repo context; Goldfish reviews draft with zero conversational bias to audit blind spots and edge cases.
+3. **Implementation Plan**: Present hardened plan (`make-plan`) with step-by-step verification checks.
+4. **Wait for Approval**: ONLY start implementing after the user explicitly approves ("proceed").
+5. **Execution & Verification**: Implement minimal diffs, execute pre-acceptance verification gate before presenting finished work.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

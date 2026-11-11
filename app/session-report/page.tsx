@@ -797,7 +797,7 @@ export default function SessionReportPage() {
                 search_term · reg_number · next_service_due · workshop_name
               </div>
               <div className={`${styles['dz-status']} ${hasFile1 ? styles.ok : ''}`}>{file1Status}</div>
-              <input ref={file1Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
+              <input ref={file1Ref} type="file" aria-label="Upload Audience & Leads Export File" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
             </div>
 
             {/* File 2: Sessions */}
@@ -820,7 +820,7 @@ export default function SessionReportPage() {
                 disposition · disposition_detail
               </div>
               <div className={`${styles['dz-status']} ${hasFile2 ? styles.ok : ''}`}>{file2Status}</div>
-              <input ref={file2Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
+              <input ref={file2Ref} type="file" aria-label="Upload Sessions Export File" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
             </div>
           </div>
 

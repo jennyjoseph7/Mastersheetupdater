@@ -126,7 +126,8 @@ export function rowsToTsv(rows: Record<string, unknown>[], keys: string[]): stri
 
 // ── File Validation ──────────────────────────────────────────────
 
-export const MAX_UPLOAD_SIZE_MB = 50;
+// ponytail: raised to 200MB to allow large Zoho master sheets (>75MB)
+export const MAX_UPLOAD_SIZE_MB = 200;
 export const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
 const ALLOWED_EXTENSIONS = new Set(['.csv', '.xlsx', '.xls', '.tsv']);

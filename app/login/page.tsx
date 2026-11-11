@@ -25,6 +25,7 @@ export default function LoginPage() {
   const [flashSuccess, setFlashSuccess] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      document.title = 'Sign In — AutoNage Lead Operations';
       const t = localStorage.getItem('jejo-theme') || 'dark';
       document.documentElement.setAttribute('data-theme', t);
     }

@@ -16,9 +16,13 @@ export function toggleTheme(): void {
   applyTheme(next);
 }
 
+const PREFIX = process.env.NODE_ENV === 'development' ? '' : '/Mastersheetupdater';
+
 function syncBrandLogo(theme: 'dark' | 'light'): void {
-  const img = document.querySelector('.brand-mark img') as HTMLImageElement | null;
-  if (img) {
-    img.src = theme === 'dark' ? '/images/AN Dark.png' : '/images/AN.png';
-  }
+  const imgs = document.querySelectorAll('.brand-mark img');
+  imgs.forEach(el => {
+    const img = el as HTMLImageElement;
+    if (img.classList.contains('login-logo')) return;
+    img.src = theme === 'dark' ? `${PREFIX}/images/AN Dark.png` : `${PREFIX}/images/AN.png`;
+  });
 }

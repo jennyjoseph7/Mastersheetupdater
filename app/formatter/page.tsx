@@ -469,7 +469,7 @@ export default function FormatterPage() {
               </div>
             </div>
             <div className={`${styles.status} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</div>
-            <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
+            <input ref={fileInputRef} type="file" aria-label="Upload Client Data File" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
           </div>
 
           <div className={`${styles.hint} ${styles.mono}`}>{mappingHint}</div>

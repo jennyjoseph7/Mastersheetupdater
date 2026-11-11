@@ -375,8 +375,8 @@ export default function CampaignGeneratorPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) router.push('/login');
-  }, [loading, isAuthenticated, router]);
+    router.replace('/');
+  }, [router]);
   if (!isAuthenticated && !loading) return null;
 
   function getValue(key: string): string {
@@ -1166,6 +1166,26 @@ export default function CampaignGeneratorPage() {
       </header>
 
       <main className={styles.main}>
+        {/* Sticky Step Navigation */}
+        <nav className={styles['sticky-step-nav']} aria-label="Campaign sections navigation">
+          {[
+            { step: 1, label: 'Family' },
+            { step: 2, label: 'Basic Info' },
+            { step: 3, label: 'Why' },
+            { step: 4, label: 'Flow' },
+            { step: 5, label: 'Guardrails' },
+            { step: 6, label: 'Tags' },
+            { step: 7, label: 'Computed' },
+            { step: 8, label: 'Variants' },
+            { step: 9, label: 'Export' },
+          ].map(s => (
+            <a key={s.step} href={`#step-${s.step}`} className={styles['step-nav-pill']}>
+              <span className={styles['step-nav-num']}>{s.step}</span>
+              <span className={styles['step-nav-text']}>{s.label}</span>
+            </a>
+          ))}
+        </nav>
+
         {/* AI Quick Generate Panel */}
         <section className={`${styles['ai-panel']} ${styles['fade-up']} ${styles['stagger-1']}`}>
           <div className={styles['ai-panel-title']}>AI Generate</div>
@@ -1219,7 +1239,7 @@ export default function CampaignGeneratorPage() {
               <span className={styles['tpl-section-header-right']}>
                 <span className={styles['tpl-import-link']} onClick={() => store.importFileRef.current?.click()}>Import</span>
                 {store.count > 0 && <span className={styles['tpl-import-link']} onClick={clearTemplates} style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>Clear All</span>}
-                <input ref={store.importFileRef} type="file" accept=".json" onChange={importTemplate} style={{ display: 'none' }} />
+                <input ref={store.importFileRef} type="file" aria-label="Import Template JSON File" accept=".json" onChange={importTemplate} style={{ display: 'none' }} />
               </span>
             </div>
             <div className={styles['tpl-section-body']} onDragOver={handleBodyDragOver}>
@@ -1309,7 +1329,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 1: Campaign Family */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-2']}`}>
+        <section id="step-1" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-2']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>1</span>
             <div className={styles['section-title']}>Campaign Family</div>
@@ -1412,7 +1432,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 2: Basic Info */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-3']}`}>
+        <section id="step-2" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-3']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>2</span>
             <div className={styles['section-title']}>Basic Information</div>
@@ -1462,7 +1482,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 3: Why */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-4']}`}>
+        <section id="step-3" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-4']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>3</span>
             <div className={styles['section-title']}>Why</div>
@@ -1491,7 +1511,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 4: Conversation Flow */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-5']}`}>
+        <section id="step-4" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-5']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>4</span>
             <div className={styles['section-title']}>Conversation Flow</div>
@@ -1526,7 +1546,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 5: Guardrails */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-6']}`}>
+        <section id="step-5" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-6']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>5</span>
             <div className={styles['section-title']}>Guardrails &amp; Configuration</div>
@@ -1569,7 +1589,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 6: Tags & Attributes */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-7']}`}>
+        <section id="step-6" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-7']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>6</span>
             <div className={styles['section-title']}>Tags &amp; Attributes</div>
@@ -1610,7 +1630,7 @@ export default function CampaignGeneratorPage() {
         </section>
 
         {/* Step 7: Auto-generated Fields */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-8']}`}>
+        <section id="step-7" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-8']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>7</span>
             <div className={styles['section-title']}>Auto-generated Fields</div>
@@ -1659,7 +1679,7 @@ export default function CampaignGeneratorPage() {
 
         {/* Step 8: Language & Channel Variants */}
         {selectedSeedId && (
-          <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-9']}`}>
+          <section id="step-8" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-9']}`}>
             <div className={styles['section-header']}>
               <span className={styles['step-badge']}>8</span>
               <div className={styles['section-title']}>Language &amp; Channel Variants</div>
@@ -1715,7 +1735,7 @@ export default function CampaignGeneratorPage() {
         )}
 
         {/* Step 9: Preview & Export */}
-        <section className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-10']}`}>
+        <section id="step-9" className={`${styles.panel} ${styles['fade-up']} ${styles['stagger-10']}`}>
           <div className={styles['section-header']}>
             <span className={styles['step-badge']}>9</span>
             <div className={styles['section-title']}>Preview &amp; Export</div>

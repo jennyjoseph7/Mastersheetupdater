@@ -211,14 +211,16 @@ export default function CreditReportPage() {
         <Nav />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <ThemeToggle />
-          <button
-            onClick={logout}
-            className="btn-secondary"
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
-            title="Sign out"
-          >
-            Sign out
-          </button>
+          {isAuthenticated && (
+            <button
+              onClick={logout}
+              className="btn-secondary"
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
+              title="Sign out"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </header>
 
@@ -250,6 +252,7 @@ export default function CreditReportPage() {
             <input
               ref={fileInputRef}
               type="file"
+              aria-label="Upload Credit Billing File"
               accept=".csv,.xlsx,.xls"
               style={{ display: 'none' }}
               onChange={e => {

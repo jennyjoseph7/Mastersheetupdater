@@ -855,7 +855,7 @@ export default function DispositionSyncV2Page() {
               <div className={styles['dz-sublabel']}>AutoEngage → Audience & Leads export</div>
               <div className={styles['dz-cols']}>person_name · phone_number · city · campaign_id<br />lead_source · disposition · updated · model_preference<br />seating_capacity_preference · disposition_detail</div>
               <div className={`${styles['dz-status']} ${hasFile1 ? styles['ok'] : ''}`}>{file1Status}</div>
-              <input ref={file1Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
+              <input ref={file1Ref} type="file" aria-label="Upload Audience & Leads Export File" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
             </div>
             <div
               className={`${styles['drop-zone']} ${dragOver2 ? styles['drag-over'] : ''} ${hasFile2 ? styles['has-file'] : ''}`}
@@ -869,7 +869,7 @@ export default function DispositionSyncV2Page() {
               <div className={styles['dz-sublabel']}>AutoEngage → Sessions export</div>
               <div className={styles['dz-cols']}>phone_number · created · start_time<br />summary · history · call_recording · sentiment_score</div>
               <div className={`${styles['dz-status']} ${hasFile2 ? styles['ok'] : ''}`}>{file2Status}</div>
-              <input ref={file2Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
+              <input ref={file2Ref} type="file" aria-label="Upload Sessions Export File" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
             </div>
           </div>
 

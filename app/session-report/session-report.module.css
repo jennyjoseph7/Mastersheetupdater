@@ -1,13 +1,13 @@
-/* Keerthi Session Report — Indigo Theme matching disposition-sync-v2 & post-sales-sync */
+/* Session Report — Sky Blue Theme (#0ea5e9) */
 :global([data-theme="dark"]) {
-  --accent-p: #6366f1;
-  --accent-soft-p: rgba(99, 102, 241, 0.14);
-  --accent-dim-p: #4f46e5;
+  --accent-p: #0ea5e9;
+  --accent-soft-p: rgba(14, 165, 233, 0.14);
+  --accent-dim-p: #0284c7;
 }
 :global([data-theme="light"]) {
-  --accent-p: #4f46e5;
-  --accent-soft-p: rgba(79, 70, 229, 0.1);
-  --accent-dim-p: #4338ca;
+  --accent-p: #0284c7;
+  --accent-soft-p: rgba(2, 132, 199, 0.1);
+  --accent-dim-p: #0369a1;
 }
 
 /* ── Panels with glass effect ───────────────────────────── */

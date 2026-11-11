@@ -706,7 +706,7 @@ export default function CallAnalysisPage() {
                 <small id="fileMeta">{fileMeta || 'Drop file here or click to browse.'}</small>
               </div>
               <span className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</span>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.csv,.tsv" onChange={handleFileChange} style={{ display: 'none' }} />
+              <input ref={fileInputRef} type="file" aria-label="Upload Disposition Sync File" accept=".xlsx,.csv,.tsv" onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
 
             <button className={styles['btn-generate']} onClick={copySummaryText} disabled={copyBtnDisabled}>

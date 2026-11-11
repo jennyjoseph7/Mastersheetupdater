@@ -1,10 +1,10 @@
 /* Master Lead Matcher — Indigo Accent Tool Theme */
 :global([data-theme="dark"]) {
-  --accent-p: #6366f1;
-  --accent-soft-p: rgba(99, 102, 241, 0.14);
-  --accent-dim-p: #4f46e5;
-  --accent-r: #6366f1;
-  --accent-soft-r: rgba(99, 102, 241, 0.14);
+  --accent-p: #7679f5;
+  --accent-soft-p: rgba(118, 121, 245, 0.14);
+  --accent-dim-p: #6366f1;
+  --accent-r: #7679f5;
+  --accent-soft-r: rgba(118, 121, 245, 0.14);
 }
 :global([data-theme="light"]) {
   --accent-p: #4f46e5;
@@ -127,7 +127,7 @@
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
   background: var(--accent-soft-p);
-  color: var(--accent-p);
+  color: var(--text-dim);
   font-weight: 600;
 }
 
@@ -176,7 +176,7 @@
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
   background: var(--accent-soft-p);
-  color: var(--accent-p);
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -595,7 +595,7 @@
 
 .statLabel {
   font-size: 0.68rem;
-  color: var(--text-muted);
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;

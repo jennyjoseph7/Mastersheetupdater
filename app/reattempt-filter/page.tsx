@@ -579,7 +579,7 @@ export default function ReattemptFilterPage() {
             <div className={styles['dz-sublabel']}>Upload filtered multi-day data as CSV or Excel</div>
             <div className={styles['dz-cols']}>Lead_Id · Full_Name · Phone · City · Pincode · Language · Lead_Source<br />Cohort · Campaign_ID · Call Triggered · Outcome · Disposition<br />SUMMARY · Conversion · Call_Date · Number of attempts · Model · Seating</div>
             <div className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</div>
-            <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
+            <input ref={fileInputRef} type="file" aria-label="Upload Zoho Master Sheet Export File" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
           </div>
 
           <div className={styles['action-bar']}>

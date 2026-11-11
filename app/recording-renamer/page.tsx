@@ -612,7 +612,7 @@ export default function RecordingRenamerPage() {
               <div className={styles['dz-sublabel']}>Upload the output file from Pre-Sales Sync.</div>
               <div className={styles['dz-cols']}>Phone | Call_Date | Recordings</div>
               <div className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{dataStatus}</div>
-              <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.tsv" onChange={handleFileChange} style={{ display: 'none' }} />
+              <input ref={fileInputRef} type="file" aria-label="Upload Processed File for Recording Renamer" accept=".csv,.xlsx,.xls,.tsv" onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
           </div>
 

@@ -27,7 +27,7 @@
   --danger: #ff6b6b;
   --text: #f4f0e8;
   --text-dim: #aeb8c3;
-  --text-muted: #6f7b88;
+  --text-muted: #7e8a97;
   --sans: 'Manrope', 'Inter', sans-serif;
   --body: 'Inter', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
@@ -50,8 +50,8 @@
   --accent-soft: rgba(220,38,38,0.1);
   --accent2: #ea580c;
   --accent2-soft: rgba(234,88,12,0.08);
-  --accent3: #ca8a04;
-  --accent3-soft: rgba(202,138,4,0.08);
+  --accent3: #8a6d05;
+  --accent3-soft: rgba(138,109,5,0.12);
   --accent4: #7c3aed;
   --accent4-soft: rgba(124,58,237,0.08);
   --accent5: #16a34a;
@@ -76,12 +76,13 @@
 
 /* 4. CSS Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: clip; }
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--body);
   min-height: 100vh;
+  overflow-x: clip;
   transition: background-color 0.35s ease, color 0.35s ease;
 }
 
@@ -155,17 +156,30 @@ html[data-theme="dark"] .icon-sun { display: none; }
 .signout-btn:hover { background: var(--surface2); }
 
 /* ── Sub-page shared styles (tool pages) ──────────────────── */
-.sub-page { min-height: 100vh; }
+.sub-page { min-height: 100vh; overflow-x: clip; }
 .sub-page header { padding: 1.75rem 2rem 1.5rem; }
 .sub-page h1 { font-size: 1.5rem; font-weight: 800; }
 .sub-page .brand-mark { width: 210px; height: 42px; border-radius: 13px; overflow: hidden; box-shadow: 0 8px 26px color-mix(in srgb, var(--accent-p, var(--accent)) 30%, transparent); display: flex; align-items: center; justify-content: center; }
 .sub-page .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
-.sub-page .theme-toggle { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s; }
+.sub-page .theme-toggle { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s; flex-shrink: 0; }
 .sub-page .theme-toggle:hover { color: var(--accent-p, var(--accent)); border-color: var(--accent-p, var(--accent)); }
-.sub-page .nav-link { padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); font-size: 0.75rem; font-weight: 700; text-decoration: none; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+.sub-page .nav-link { padding: 0.45rem 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); font-size: 0.75rem; font-weight: 700; text-decoration: none; transition: border-color 0.2s, color 0.2s, background 0.2s; white-space: nowrap; }
 .sub-page .nav-link:hover { border-color: color-mix(in srgb, var(--accent-p, var(--accent)) 35%, transparent); color: var(--accent-p, var(--accent)); background: var(--accent-soft-p, var(--accent-soft)); }
 .sub-page .nav-link.active { border-color: color-mix(in srgb, var(--accent-p, var(--accent)) 35%, transparent); color: var(--accent-p, var(--accent)); background: var(--accent-soft-p, var(--accent-soft)); }
 [data-theme="light"] .sub-page header { background: var(--surface); border-bottom: 1px solid var(--border); }
+
+@media (max-width: 640px) {
+  .sub-page header { padding: 0.75rem 1rem; }
+  .sub-page .header-inner { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+  .sub-page .header-left { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .sub-page .header-left > div h1 { font-size: 1.15rem; }
+  .sub-page .header-left > div .header-sub { font-size: 0.75rem; }
+  .sub-page .brand-mark { width: 140px; height: 30px; flex-shrink: 0; }
+  .sub-page .header-right { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; min-width: 0; }
+  .sub-page .header-nav { display: flex; gap: 0.3rem; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding: 0.25rem 0.1rem; flex: 1; min-width: 0; border: none; background: transparent; scrollbar-width: thin; }
+  .sub-page .nav-link { padding: 0.35rem 0.55rem; font-size: 0.7rem; flex-shrink: 0; }
+  .sub-page main { padding: 1rem 0.75rem !important; }
+}
 
 /* ── Landing Page shared styles ────────────────────────────── */
 .landing-page {

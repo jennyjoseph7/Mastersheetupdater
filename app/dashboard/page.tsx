@@ -105,8 +105,8 @@ export default function DashboardPage() {
   const aiCancelRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) router.push('/login');
-  }, [loading, isAuthenticated, router]);
+    router.replace('/');
+  }, [router]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -732,7 +732,7 @@ export default function DashboardPage() {
                 <small>Drop file here or click to browse</small>
               </div>
               <span className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</span>
-              <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
+              <input ref={fileInputRef} type="file" aria-label="Upload Zoho Master Sheet File" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
             <button className={styles['btn-generate']} onClick={generateDashboard} disabled={!rows.length || processing}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>

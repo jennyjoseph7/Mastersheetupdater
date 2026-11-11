@@ -1091,7 +1091,7 @@ export default function PostSalesSyncPage() {
               <div className={styles['dz-sublabel']}>Post-sales service reminder or feedback lead export</div>
               <div className={styles['dz-cols']}>{dealer.leadColumns.join(' · ')}</div>
               <div className={`${styles['dz-status']} ${hasFile1 ? styles.ok : ''}`}>{file1Status}</div>
-              <input ref={file1Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
+              <input ref={file1Ref} type="file" aria-label="Upload Post-Sales Leads Export File" accept=".csv,.xlsx,.xls" onChange={handleFile1Change} style={{ display: 'none' }} />
             </div>
             <div
               className={`${styles['drop-zone']} ${dragOver2 ? styles['drag-over'] : ''} ${hasFile2 ? styles['has-file'] : ''}`}
@@ -1105,7 +1105,7 @@ export default function PostSalesSyncPage() {
               <div className={styles['dz-sublabel']}>AutoEngage sessions export for the same campaign batch</div>
               <div className={styles['dz-cols']}>{dealer.sessionColumns.join(' · ')}</div>
               <div className={`${styles['dz-status']} ${hasFile2 ? styles.ok : ''}`}>{file2Status}</div>
-              <input ref={file2Ref} type="file" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
+              <input ref={file2Ref} type="file" aria-label="Upload Post-Sales Sessions Export File" accept=".csv,.xlsx,.xls" onChange={handleFile2Change} style={{ display: 'none' }} />
             </div>
           </div>
 
