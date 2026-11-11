@@ -23,7 +23,7 @@ export default function BatchProgressBar({ state, onDismiss, onRetry, onCancel, 
       padding: '0.65rem 0.85rem',
       border: `1px solid ${isErr ? 'rgba(239,68,68,0.2)' : isOk ? 'rgba(99,214,163,0.2)' : 'var(--border)'}`,
       borderRadius: '12px',
-      background: isErr ? 'rgba(239,68,68,0.04)' : isOk ? 'rgba(99,214,163,0.04)' : 'var(--accent-soft)',
+      background: isErr ? 'rgba(239,68,68,0.04)' : isOk ? 'rgba(99,214,163,0.04)' : 'var(--accent-soft-p, var(--accent-soft))',
       marginBottom: '1rem',
       fontFamily: 'var(--body)',
     }}>
@@ -85,7 +85,7 @@ export default function BatchProgressBar({ state, onDismiss, onRetry, onCancel, 
             ? '#ef4444'
             : isOk
               ? 'linear-gradient(90deg, #63d6a3, #4ade80)'
-              : 'linear-gradient(90deg, var(--accent), var(--accent-dim))',
+              : 'linear-gradient(90deg, var(--accent-p, var(--accent)), var(--accent-dim-p, var(--accent-dim)))',
           transition: 'width 0.3s ease',
         }} />
       </div>
@@ -100,7 +100,7 @@ export default function BatchProgressBar({ state, onDismiss, onRetry, onCancel, 
             <button onClick={onDismiss} style={btnStyle('var(--text-muted)')}>Dismiss</button>
           )}
           {(state.aborted || state.completed) && onRetry && (
-            <button onClick={onRetry} style={{ ...btnStyle('var(--accent)'), background: 'var(--accent-soft)' }}>
+            <button onClick={onRetry} style={{ ...btnStyle('var(--accent-p, var(--accent))'), background: 'var(--accent-soft-p, var(--accent-soft))' }}>
               {retryLabel}
             </button>
           )}

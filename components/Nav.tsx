@@ -2,6 +2,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { useTheme } from './ThemeProvider';
 
 const ACCENT_MAP: Record<string, { dark: string; light: string; softDark: string; softLight: string }> = {
   'disposition-sync-v2': { dark: '#ef4444', light: '#dc2626', softDark: 'rgba(239,68,68,0.13)', softLight: 'rgba(220,38,38,0.1)' },
@@ -20,25 +21,29 @@ const ACCENT_MAP: Record<string, { dark: string; light: string; softDark: string
 const LINKS = [
   { href: '/disposition-sync-v2', label: 'Pre-Sales Sync' },
   { href: '/post-sales-sync', label: 'Post-Sales Sync' },
-  { href: '/reattempt-filter', label: 'Re-Attempt Filter' },
   { href: '/call-analysis', label: 'Call Summary' },
   { href: '/formatter', label: 'Formatter' },
   { href: '/recording-renamer', label: 'Recording Renamer' },
-  { href: '/session-report', label: 'Session Report' },
   { href: '/credit-report', label: 'Credit Report' },
 ];
 
 export default function Nav() {
   const pathname = usePathname();
   const pageKey = pathname.replace(/^\//, '');
+  const { theme } = useTheme();
 
   useEffect(() => {
     const c = ACCENT_MAP[pageKey];
     if (!c) return;
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    document.documentElement.style.setProperty('--accent-p', isDark ? c.dark : c.light);
-    document.documentElement.style.setProperty('--accent-soft-p', isDark ? c.softDark : c.softLight);
-  }, [pageKey]);
+    const isDark = theme !== 'light';
+    const accent = isDark ? c.dark : c.light;
+    const soft = isDark ? c.softDark : c.softLight;
+
+    document.documentElement.style.setProperty('--accent', accent);
+    document.documentElement.style.setProperty('--accent-soft', soft);
+    document.documentElement.style.setProperty('--accent-p', accent);
+    document.documentElement.style.setProperty('--accent-soft-p', soft);
+  }, [pageKey, theme]);
 
   useEffect(() => {
     const link = LINKS.find(l => l.href === pathname);

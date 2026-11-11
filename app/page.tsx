@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/components/ThemeProvider';
 import BrandLogo from '@/components/BrandLogo';
 import ThemeToggle from '@/components/ThemeToggle';
 import './index.css';
@@ -19,12 +20,6 @@ const TOOLS = [
     desc: 'Process service and feedback reminder batches, then export post-sales Zoho Master Sheet rows.',
     color: 'orange',
     icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m2 7H7a2 2 0 01-2-2V7a2 2 0 012-2h3l2 2h5a2 2 0 012 2v3" /><path strokeLinecap="round" strokeLinejoin="round" d="M17 14l2 2 4-4" /></svg>,
-  },
-  {
-    href: '/reattempt-filter', name: 'Re-Attempt Filter',
-    desc: 'Filter connected leads from Zoho data to generate clean AutoEngage re-attempt lists.',
-    color: 'pink',
-    icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
   },
   {
     href: '/formatter', name: 'Formatter',
@@ -45,12 +40,6 @@ const TOOLS = [
     icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>,
   },
   {
-    href: '/session-report', name: 'Session Report',
-    desc: 'Audit caller performance, connectivity rates, and session durations across campaigns.',
-    color: 'sky',
-    icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
-  },
-  {
     href: '/credit-report', name: 'Credit Report',
     desc: 'Upload bot credit billing CSV to generate objective-wise Voice and WhatsApp spend workbooks.',
     color: 'lime',
@@ -63,10 +52,18 @@ export default function LandingPage() {
   log('Page mounted');
   const { isAuthenticated, loading, logout } = useAuth();
   const router = useRouter();
+  const { theme } = useTheme();
 
   useEffect(() => {
     document.title = 'Lead Operations Hub — AutoNage Lead Operations';
-  }, []);
+    const isDark = theme !== 'light';
+    const defAccent = isDark ? '#ef4444' : '#dc2626';
+    const defSoft = isDark ? 'rgba(239,68,68,0.13)' : 'rgba(220,38,38,0.1)';
+    document.documentElement.style.setProperty('--accent', defAccent);
+    document.documentElement.style.setProperty('--accent-soft', defSoft);
+    document.documentElement.style.setProperty('--accent-p', defAccent);
+    document.documentElement.style.setProperty('--accent-soft-p', defSoft);
+  }, [theme]);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/login');

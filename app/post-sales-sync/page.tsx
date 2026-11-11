@@ -1170,11 +1170,11 @@ export default function PostSalesSyncPage() {
             </div>
             <div className={styles['control-group']}>
               <span className={styles['control-label']}>From</span>
-              <input type="date" className={styles['lead-id-input']} value={fromDate} onChange={e => setFromDate(e.target.value)} style={{ fontFamily: 'var(--body)', fontSize: '0.85rem' }} />
+              <input type="date" className={styles['date-input']} value={fromDate} onChange={e => setFromDate(e.target.value)} />
             </div>
             <div className={styles['control-group']}>
               <span className={styles['control-label']}>To</span>
-              <input type="date" className={styles['lead-id-input']} value={toDate} onChange={e => setToDate(e.target.value)} style={{ fontFamily: 'var(--body)', fontSize: '0.85rem' }} />
+              <input type="date" className={styles['date-input']} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
             {showResults && (
               <>
@@ -1354,7 +1354,7 @@ export default function PostSalesSyncPage() {
           )}
 
           {!showResults && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'center', padding: '1rem 1.1rem', marginBottom: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--accent-soft)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'center', padding: '1rem 1.1rem', marginBottom: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--accent-soft-p, var(--accent-soft))' }}>
               <div>
                 <strong style={{ display: 'block', marginBottom: '0.2rem', fontFamily: 'var(--sans)', fontSize: '1rem' }}>Waiting for data</strong>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem' }}>Upload leads and sessions files then click Process Files. Results will appear here.</p>

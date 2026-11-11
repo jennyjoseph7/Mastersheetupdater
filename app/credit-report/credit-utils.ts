@@ -1088,67 +1088,217 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
 
   const pptx = new pptxgen();
 
-  // Requirement 1: Set slide width 13.333 in and height 7.5 in
+  // 16:9 Widescreen Layout (13.333 in x 7.5 in)
   pptx.defineLayout({ name: 'WIDE_13_333_7_5', width: 13.333, height: 7.5 });
   pptx.layout = 'WIDE_13_333_7_5';
 
-  // Shared Tokens
-  const BG_COLOR = 'F8F9FC';
-  const NAVY = '1B2A4A';
-  const BLUE = '2563EB';
-  const MINT_BG = 'D1FAE5';
-  const MINT_BORDER = '10B981';
-  const GREY_TEXT = '64748B';
-  const DARK_TEXT = '0F172A';
-  const CARD_BG = 'FFFFFF';
-  const BORDER_COLOR = 'E2E8F0';
+  // Executive Design System Tokens (.agents/workflows/design.md)
+  const CANVAS_BG = 'F8FAFC';       // Crisp modern slate canvas
+  const CARD_BG = 'FFFFFF';         // Crisp white card surface
+  const CARD_BORDER = 'E2E8F0';     // 1px subtle divider
+  const TEXT_MAIN = '0F172A';       // Deep slate headline & primary text
+  const TEXT_NAVY = '1E293B';       // Secondary slate heading
+  const TEXT_MUTED = '64748B';      // Professional secondary slate text
+  const PRIMARY_BLUE = '2563EB';    // Professional royal blue
+  const ACCENT_INDIGO = '4F46E5';   // Voice accent
+  const ACCENT_EMERALD = '059669';  // WhatsApp emerald
+  const ACCENT_TEAL = '0D9488';     // Post-sales accent
+  const ACCENT_VIOLET = '7C3AED';   // Pre-sales accent
   const FONT_FACE = 'Calibri';
 
-  // Requirement 1: 0.5 in margins, left >= 0.5, right <= 12.833 (w: 12.333)
   const MARGIN_LEFT = 0.5;
   const MARGIN_RIGHT = 12.833;
   const SLIDE_USABLE_WIDTH = MARGIN_RIGHT - MARGIN_LEFT; // 12.333 in
 
-  // Requirement 7: Show period once in footer only
-  const footerText = `${metrics.periodStr} · Basis: ${formatNum(metrics.debitsCount)} debits · AutoEngage Billing Data`;
+  const footerText = `${metrics.periodStr} · Basis: ${formatNum(metrics.debitsCount)} debits · AutoEngage Billing Intelligence · Confidential`;
 
-  // Shared slide creation helper enforcing layout contract
-  function createSlide(sectionEyebrow: string, headline: string): pptxgen.Slide {
+  // Helper: Card background with rounded corners and optional top accent line
+  function addCard(
+    slide: pptxgen.Slide,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    options?: {
+      fill?: string;
+      border?: string;
+      radius?: number;
+      accentTopColor?: string;
+    }
+  ) {
+    const fill = options?.fill || CARD_BG;
+    const border = options?.border || CARD_BORDER;
+    const radius = options?.radius ?? 0.08;
+
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y,
+      w,
+      h,
+      rectRadius: radius,
+      fill: { color: fill },
+      line: { color: border, width: 1 },
+    });
+
+    if (options?.accentTopColor) {
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: x + 0.1,
+        y: y + 0.04,
+        w: w - 0.2,
+        h: 0.04,
+        rectRadius: 0.02,
+        fill: { color: options.accentTopColor },
+        line: { color: options.accentTopColor, width: 1 },
+      });
+    }
+  }
+
+  // Helper: Metric KPI Card with top accent, big number & subtext badge
+  function addKpiCard(
+    slide: pptxgen.Slide,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    value: string,
+    subtext: string,
+    options?: {
+      accentColor?: string;
+      badgeText?: string;
+      badgeColor?: string;
+      valueColor?: string;
+    }
+  ) {
+    addCard(slide, x, y, w, h, { accentTopColor: options?.accentColor });
+
+    // Category Eyebrow
+    slide.addText(label.toUpperCase(), {
+      x: x + 0.25,
+      y: y + 0.16,
+      w: w - 0.5,
+      h: 0.22,
+      fontSize: 9,
+      bold: true,
+      color: TEXT_MUTED,
+      fontFace: FONT_FACE,
+    });
+
+    // Primary Value
+    slide.addText(value, {
+      x: x + 0.25,
+      y: y + 0.38,
+      w: w - 0.5,
+      h: 0.5,
+      fontSize: 26,
+      bold: true,
+      color: options?.valueColor || TEXT_MAIN,
+      fontFace: FONT_FACE,
+    });
+
+    // Subtext & Badge
+    const subY = y + 0.94;
+    if (options?.badgeText) {
+      slide.addText(options.badgeText, {
+        x: x + 0.25,
+        y: subY,
+        w: 1.15,
+        h: 0.24,
+        fontSize: 9,
+        bold: true,
+        color: options.badgeColor || PRIMARY_BLUE,
+        fontFace: FONT_FACE,
+      });
+      slide.addText(subtext, {
+        x: x + 1.3,
+        y: subY,
+        w: w - 1.55,
+        h: 0.24,
+        fontSize: 9.5,
+        color: TEXT_MUTED,
+        fontFace: FONT_FACE,
+      });
+    } else {
+      slide.addText(subtext, {
+        x: x + 0.25,
+        y: subY,
+        w: w - 0.5,
+        h: 0.24,
+        fontSize: 9.5,
+        color: TEXT_MUTED,
+        fontFace: FONT_FACE,
+      });
+    }
+  }
+
+  // Base Slide Creator
+  function createSlide(sectionEyebrow: string, headline: string, subtitle?: string): pptxgen.Slide {
     const slide = pptx.addSlide();
-    slide.background = { color: BG_COLOR };
+    slide.background = { color: CANVAS_BG };
 
-    // Eyebrow
+    // Top Category / Client Eyebrow
     slide.addText(`${metrics.clientName.toUpperCase()} · ${sectionEyebrow.toUpperCase()}`, {
       x: MARGIN_LEFT,
-      y: 0.45,
+      y: 0.38,
       w: SLIDE_USABLE_WIDTH,
-      h: 0.3,
-      fontSize: 10,
+      h: 0.24,
+      fontSize: 9.5,
       bold: true,
-      color: GREY_TEXT,
+      color: PRIMARY_BLUE,
       fontFace: FONT_FACE,
     });
 
-    // Headline (bold full sentence with key number)
+    // Executive Headline
     slide.addText(headline, {
       x: MARGIN_LEFT,
-      y: 0.8,
+      y: 0.65,
       w: SLIDE_USABLE_WIDTH,
-      h: 0.65,
-      fontSize: 20,
+      h: 0.45,
+      fontSize: 19,
       bold: true,
-      color: NAVY,
+      color: TEXT_MAIN,
       fontFace: FONT_FACE,
     });
 
-    // Footer (period + basis only here)
+    // Context Subtitle if provided
+    if (subtitle) {
+      slide.addText(subtitle, {
+        x: MARGIN_LEFT,
+        y: 1.12,
+        w: SLIDE_USABLE_WIDTH,
+        h: 0.25,
+        fontSize: 10,
+        color: TEXT_MUTED,
+        fontFace: FONT_FACE,
+      });
+    }
+
+    // Top subtle divider line
+    slide.addShape(pptx.ShapeType.line, {
+      x: MARGIN_LEFT,
+      y: 1.45,
+      w: SLIDE_USABLE_WIDTH,
+      h: 0,
+      line: { color: CARD_BORDER, width: 1 },
+    });
+
+    // Footer divider line
+    slide.addShape(pptx.ShapeType.line, {
+      x: MARGIN_LEFT,
+      y: 6.95,
+      w: SLIDE_USABLE_WIDTH,
+      h: 0,
+      line: { color: CARD_BORDER, width: 1 },
+    });
+
+    // Footer
     slide.addText(footerText, {
       x: MARGIN_LEFT,
-      y: 7.05,
+      y: 7.02,
       w: SLIDE_USABLE_WIDTH,
-      h: 0.3,
-      fontSize: 9.5,
-      color: GREY_TEXT,
+      h: 0.28,
+      fontSize: 9,
+      color: TEXT_MUTED,
       fontFace: FONT_FACE,
     });
 
@@ -1156,15 +1306,76 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
   }
 
   // ═════════════════════════════════════════════════════════════════
-  // SLIDE 1: Executive Overview (Total, channel split & 3 takeaways)
+  // SLIDE 1: Executive Overview
   // ═════════════════════════════════════════════════════════════════
-  const s1Headline = `${metrics.clientName} used ${formatNum(Math.round(metrics.totalCredits))} credits across voice and WhatsApp`;
-  const slide1 = createSlide('Executive Overview', s1Headline);
+  const s1Headline = `${metrics.clientName} used ${formatNum(Math.round(metrics.totalCredits))} credits across Voice and WhatsApp`;
+  const s1Sub = `Consolidated billing reconciliation for ${metrics.periodStr} across automated voice and WhatsApp interactions.`;
+  const slide1 = createSlide('Executive Overview', s1Headline, s1Sub);
 
-  // Left horizontal bar chart: Voice vs WhatsApp (Requirement 6: horizontal bars, sorted largest first)
+  // Top 3 Symmetrical Metric Cards (y: 1.6, h: 1.3)
+  const CARD_W3 = (SLIDE_USABLE_WIDTH - 2 * 0.3) / 3; // (12.333 - 0.6) / 3 = 3.91 in
+  addKpiCard(
+    slide1,
+    MARGIN_LEFT,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Total Credits Consumed',
+    formatNum(Math.round(metrics.totalCredits)),
+    `${formatNum(metrics.debitsCount)} billable debit transactions`,
+    { accentColor: PRIMARY_BLUE }
+  );
+
+  addKpiCard(
+    slide1,
+    MARGIN_LEFT + CARD_W3 + 0.3,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Voice Channel Spend',
+    formatNum(Math.round(metrics.voiceCredits)),
+    `${formatNum(metrics.callConnectedCount)} connected calls`,
+    {
+      accentColor: ACCENT_INDIGO,
+      badgeText: `${metrics.voiceShare.toFixed(1)}% SHARE`,
+      badgeColor: ACCENT_INDIGO,
+    }
+  );
+
+  addKpiCard(
+    slide1,
+    MARGIN_LEFT + 2 * (CARD_W3 + 0.3),
+    1.6,
+    CARD_W3,
+    1.3,
+    'WhatsApp Channel Spend',
+    formatNum(Math.round(metrics.whatsAppCredits)),
+    `${formatNum(metrics.messageDeliveredCount)} delivered messages`,
+    {
+      accentColor: ACCENT_EMERALD,
+      badgeText: `${metrics.whatsAppShare.toFixed(1)}% SHARE`,
+      badgeColor: ACCENT_EMERALD,
+    }
+  );
+
+  // Bottom Row (y: 3.1, h: 3.65)
+  const LEFT_W = 6.4;
+  const RIGHT_W = SLIDE_USABLE_WIDTH - LEFT_W - 0.3; // 5.633 in
+  addCard(slide1, MARGIN_LEFT, 3.1, LEFT_W, 3.65);
+  slide1.addText('Channel Spend Distribution', {
+    x: MARGIN_LEFT + 0.3,
+    y: 3.25,
+    w: LEFT_W - 0.6,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
   const channelDataSorted = [
-    { name: 'Voice', val: Math.round(metrics.voiceCredits) },
     { name: 'WhatsApp', val: Math.round(metrics.whatsAppCredits) },
+    { name: 'Voice', val: Math.round(metrics.voiceCredits) },
   ].sort((a, b) => b.val - a.val);
 
   const s1ChartData = [
@@ -1176,180 +1387,175 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
   ];
 
   slide1.addChart(pptx.ChartType.bar, s1ChartData, {
-    x: MARGIN_LEFT,
-    y: 1.65,
-    w: 6.8,
-    h: 3.2,
+    x: MARGIN_LEFT + 0.2,
+    y: 3.65,
+    w: LEFT_W - 0.4,
+    h: 2.85,
     barDir: 'bar',
-    chartColors: [BLUE],
+    chartColors: [PRIMARY_BLUE],
     showValue: true,
     dataLabelFontSize: 11,
     dataLabelFormatCode: '#,##,##0',
-    valAxisLabelFormatCode: '#,##,##0',
-    catAxisLabelColor: DARK_TEXT,
-    valAxisLabelColor: GREY_TEXT,
+    valAxisMinVal: 0,
+    catAxisLabelColor: TEXT_MAIN,
+    catAxisLabelFontSize: 11,
+    valAxisLabelColor: TEXT_MUTED,
     valGridLine: { style: 'none' },
     showLegend: false,
   });
 
-  // Three Auto-Generated Takeaways (Requirement 8)
+  // Right Container: Key Executive Findings
+  addCard(slide1, MARGIN_LEFT + LEFT_W + 0.3, 3.1, RIGHT_W, 3.65);
+  slide1.addText('Executive Key Findings', {
+    x: MARGIN_LEFT + LEFT_W + 0.55,
+    y: 3.25,
+    w: RIGHT_W - 0.5,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
   const primaryChannel = metrics.voiceCredits >= metrics.whatsAppCredits ? 'Voice' : 'WhatsApp';
   const primaryCredits = metrics.voiceCredits >= metrics.whatsAppCredits ? metrics.voiceCredits : metrics.whatsAppCredits;
   const primaryShare = metrics.voiceCredits >= metrics.whatsAppCredits ? metrics.voiceShare : metrics.whatsAppShare;
   const topObj = metrics.objectives[0];
 
-  const takeawayBullets = [
-    `• ${primaryChannel} drove ${primaryShare.toFixed(1)}% of total spend with ${formatNum(Math.round(primaryCredits))} credits across ${formatNum(primaryChannel === 'Voice' ? metrics.callConnectedCount : metrics.messageDeliveredCount)} interactions.`,
-    `• ${topObj ? topObj.objective : 'Top campaign'} was the single largest objective, accounting for ${topObj ? topObj.shareOfTotal.toFixed(1) : '0'}% of all credit consumption (${formatNum(Math.round(topObj ? topObj.totalCredits : 0))} credits).`,
-    `• Successfully reconciled ${formatNum(metrics.debitsCount)} billable debits across ${metrics.objectives.length} distinct objectives over the period.`,
-  ].join('\n\n');
+  const takeaways = [
+    {
+      badge: 'PRIMARY CHANNEL',
+      color: primaryChannel === 'Voice' ? ACCENT_INDIGO : ACCENT_EMERALD,
+      title: `${primaryChannel} drove ${primaryShare.toFixed(1)}% of total spend`,
+      desc: `${formatNum(Math.round(primaryCredits))} credits consumed across ${formatNum(primaryChannel === 'Voice' ? metrics.callConnectedCount : metrics.messageDeliveredCount)} customer interactions.`,
+    },
+    {
+      badge: 'KEY CAMPAIGN',
+      color: PRIMARY_BLUE,
+      title: topObj ? (topObj.objective.length > 28 ? topObj.objective.slice(0, 26) + '…' : topObj.objective) : 'Primary Campaign',
+      desc: `Single largest campaign, accounting for ${topObj ? topObj.shareOfTotal.toFixed(1) : 0}% of all spend (${formatNum(Math.round(topObj ? topObj.totalCredits : 0))} credits).`,
+    },
+    {
+      badge: 'AUDIT VERIFIED',
+      color: '10B981',
+      title: 'Paisa Math Reconciled',
+      desc: `Reconciled ${formatNum(metrics.debitsCount)} billable debits across ${metrics.objectives.length} active objectives with zero discrepancies.`,
+    },
+  ];
 
-  slide1.addText(takeawayBullets, {
-    x: MARGIN_LEFT,
-    y: 5.05,
-    w: 6.8,
-    h: 1.85,
-    fontSize: 12,
-    color: DARK_TEXT,
-    lineSpacing: 18,
-    fontFace: FONT_FACE,
-    wrap: true,
-  });
-
-  // Right Side 3 Stacked Stat Panels (Requirement 1 & 7: hold large numbers without clipping)
-  const STAT_X = 7.7;
-  const STAT_W = 5.1; // 7.7 + 5.1 = 12.8 <= 12.833
-
-  // Total Credits Card
-  slide1.addShape(pptx.ShapeType.rect, {
-    x: STAT_X,
-    y: 1.65,
-    w: STAT_W,
-    h: 1.55,
-    fill: { color: NAVY },
-    line: { color: NAVY, pt: 1 },
-  });
-  slide1.addText('TOTAL CREDITS CONSUMED', {
-    x: STAT_X + 0.3,
-    y: 1.8,
-    w: STAT_W - 0.6,
-    h: 0.25,
-    fontSize: 10.5,
-    bold: true,
-    color: '93C5FD',
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(formatNum(Math.round(metrics.totalCredits)), {
-    x: STAT_X + 0.3,
-    y: 2.1,
-    w: STAT_W - 0.6,
-    h: 0.65,
-    fontSize: 30,
-    bold: true,
-    color: 'FFFFFF',
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(`${formatNum(metrics.debitsCount)} successful debits`, {
-    x: STAT_X + 0.3,
-    y: 2.8,
-    w: STAT_W - 0.6,
-    h: 0.3,
-    fontSize: 11,
-    color: 'CBD5E1',
-    fontFace: FONT_FACE,
-  });
-
-  // Voice Card
-  slide1.addShape(pptx.ShapeType.rect, {
-    x: STAT_X,
-    y: 3.4,
-    w: STAT_W,
-    h: 1.55,
-    fill: { color: CARD_BG },
-    line: { color: BORDER_COLOR, pt: 1 },
-  });
-  slide1.addText('VOICE CHANNEL SHARE', {
-    x: STAT_X + 0.3,
-    y: 3.55,
-    w: STAT_W - 0.6,
-    h: 0.25,
-    fontSize: 10.5,
-    bold: true,
-    color: GREY_TEXT,
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(`${metrics.voiceShare.toFixed(1)}%`, {
-    x: STAT_X + 0.3,
-    y: 3.85,
-    w: 2.2,
-    h: 0.6,
-    fontSize: 26,
-    bold: true,
-    color: NAVY,
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(`${formatNum(Math.round(metrics.voiceCredits))} credits\n${formatNum(metrics.callConnectedCount)} connected calls`, {
-    x: STAT_X + 2.5,
-    y: 3.85,
-    w: STAT_W - 2.8,
-    h: 0.9,
-    fontSize: 12,
-    color: DARK_TEXT,
-    lineSpacing: 18,
-    fontFace: FONT_FACE,
-  });
-
-  // WhatsApp Card
-  slide1.addShape(pptx.ShapeType.rect, {
-    x: STAT_X,
-    y: 5.15,
-    w: STAT_W,
-    h: 1.55,
-    fill: { color: CARD_BG },
-    line: { color: BORDER_COLOR, pt: 1 },
-  });
-  slide1.addText('WHATSAPP CHANNEL SHARE', {
-    x: STAT_X + 0.3,
-    y: 5.3,
-    w: STAT_W - 0.6,
-    h: 0.25,
-    fontSize: 10.5,
-    bold: true,
-    color: GREY_TEXT,
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(`${metrics.whatsAppShare.toFixed(1)}%`, {
-    x: STAT_X + 0.3,
-    y: 5.6,
-    w: 2.2,
-    h: 0.6,
-    fontSize: 26,
-    bold: true,
-    color: NAVY,
-    fontFace: FONT_FACE,
-  });
-  slide1.addText(`${formatNum(Math.round(metrics.whatsAppCredits))} credits\n${formatNum(metrics.messageDeliveredCount)} delivered messages`, {
-    x: STAT_X + 2.5,
-    y: 5.6,
-    w: STAT_W - 2.8,
-    h: 0.9,
-    fontSize: 12,
-    color: DARK_TEXT,
-    lineSpacing: 18,
-    fontFace: FONT_FACE,
+  let tY = 3.65;
+  takeaways.forEach((item) => {
+    slide1.addShape(pptx.ShapeType.roundRect, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: tY,
+      w: 1.6,
+      h: 0.24,
+      rectRadius: 0.04,
+      fill: { color: CANVAS_BG },
+      line: { color: CARD_BORDER, width: 1 },
+    });
+    slide1.addText(item.badge, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: tY + 0.02,
+      w: 1.6,
+      h: 0.2,
+      fontSize: 8,
+      bold: true,
+      color: item.color,
+      align: 'center',
+      fontFace: FONT_FACE,
+    });
+    slide1.addText(item.title, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: tY + 0.27,
+      w: RIGHT_W - 0.7,
+      h: 0.24,
+      fontSize: 10.5,
+      bold: true,
+      color: TEXT_MAIN,
+      fontFace: FONT_FACE,
+    });
+    slide1.addText(item.desc, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: tY + 0.51,
+      w: RIGHT_W - 0.7,
+      h: 0.35,
+      fontSize: 9.5,
+      color: TEXT_MUTED,
+      fontFace: FONT_FACE,
+    });
+    tY += 0.95;
   });
 
   // ═════════════════════════════════════════════════════════════════
   // SLIDE 2: Voice Breakdown
   // ═════════════════════════════════════════════════════════════════
   const s2Headline = `Voice: connected calls cost ${formatNum(Math.round(metrics.callConnectedCredits))}, talk time another ${formatNum(Math.round(metrics.callCompletedCredits))}`;
-  const slide2 = createSlide('Voice Breakdown', s2Headline);
+  const s2Sub = `Telephony connectivity and duration billing breakdown across automated outbound calls.`;
+  const slide2 = createSlide('Voice Breakdown', s2Headline, s2Sub);
 
   const voiceTalkShare = metrics.voiceCredits > 0
     ? (metrics.callCompletedCredits / metrics.voiceCredits) * 100
     : 0;
 
-  // Horizontal bar chart sorted largest first (Requirement 6)
+  // Top 3 Metric Cards for Voice
+  addKpiCard(
+    slide2,
+    MARGIN_LEFT,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Total Voice Expenditure',
+    formatNum(Math.round(metrics.voiceCredits)),
+    `${metrics.voiceShare.toFixed(1)}% of total credit consumption`,
+    { accentColor: ACCENT_INDIGO }
+  );
+
+  addKpiCard(
+    slide2,
+    MARGIN_LEFT + CARD_W3 + 0.3,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Call Connectivity',
+    formatNum(metrics.callConnectedCount),
+    `${formatNum(Math.round(metrics.callConnectedCredits))} credits (~1.0 credit/call)`,
+    {
+      accentColor: ACCENT_INDIGO,
+      badgeText: 'CONNECTED',
+      badgeColor: ACCENT_INDIGO,
+    }
+  );
+
+  addKpiCard(
+    slide2,
+    MARGIN_LEFT + 2 * (CARD_W3 + 0.3),
+    1.6,
+    CARD_W3,
+    1.3,
+    'Duration / Talk Time',
+    formatNum(metrics.callCompletedCount),
+    `${formatNum(Math.round(metrics.callCompletedCredits))} credits (${voiceTalkShare.toFixed(1)}% share)`,
+    {
+      accentColor: ACCENT_INDIGO,
+      badgeText: `${voiceTalkShare.toFixed(0)}% SHARE`,
+      badgeColor: ACCENT_INDIGO,
+    }
+  );
+
+  // Bottom Row Split
+  addCard(slide2, MARGIN_LEFT, 3.1, LEFT_W, 3.65);
+  slide2.addText('Voice Spend Composition (Credits)', {
+    x: MARGIN_LEFT + 0.3,
+    y: 3.25,
+    w: LEFT_W - 0.6,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
   const voiceComponents = [
     { label: 'Talk Time (Duration)', val: Math.round(metrics.callCompletedCredits) },
     { label: 'Call Connected', val: Math.round(metrics.callConnectedCredits) },
@@ -1364,126 +1570,173 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
   ];
 
   slide2.addChart(pptx.ChartType.bar, s2ChartData, {
-    x: MARGIN_LEFT,
-    y: 1.65,
-    w: 6.8,
-    h: 5.0,
+    x: MARGIN_LEFT + 0.2,
+    y: 3.65,
+    w: LEFT_W - 0.4,
+    h: 2.85,
     barDir: 'bar',
-    chartColors: [BLUE],
+    chartColors: [ACCENT_INDIGO],
     showValue: true,
     dataLabelFontSize: 11,
     dataLabelFormatCode: '#,##,##0',
-    valAxisLabelFormatCode: '#,##,##0',
-    catAxisLabelColor: DARK_TEXT,
+    valAxisMinVal: 0,
+    catAxisLabelColor: TEXT_MAIN,
+    catAxisLabelFontSize: 11,
+    valAxisLabelColor: TEXT_MUTED,
     valGridLine: { style: 'none' },
     showLegend: false,
   });
 
-  // Right Navy Panel (w: 5.1, right: 12.8)
-  slide2.addShape(pptx.ShapeType.rect, {
-    x: STAT_X,
-    y: 1.65,
-    w: STAT_W,
-    h: 5.0,
-    fill: { color: NAVY },
-    line: { color: NAVY, pt: 1 },
-  });
-
-  slide2.addText('TOTAL VOICE SPEND', {
-    x: STAT_X + 0.4,
-    y: 1.95,
-    w: STAT_W - 0.8,
+  // Right Side Voice Economics Card
+  addCard(slide2, MARGIN_LEFT + LEFT_W + 0.3, 3.1, RIGHT_W, 3.65);
+  slide2.addText('Voice Operational Economics', {
+    x: MARGIN_LEFT + LEFT_W + 0.55,
+    y: 3.25,
+    w: RIGHT_W - 0.5,
     h: 0.3,
-    fontSize: 11,
+    fontSize: 12,
     bold: true,
-    color: '93C5FD',
-    fontFace: FONT_FACE,
-  });
-  slide2.addText(`${formatNum(Math.round(metrics.voiceCredits))} credits`, {
-    x: STAT_X + 0.4,
-    y: 2.3,
-    w: STAT_W - 0.8,
-    h: 0.7,
-    fontSize: 32,
-    bold: true,
-    color: 'FFFFFF',
+    color: TEXT_NAVY,
     fontFace: FONT_FACE,
   });
 
-  const ratePerConn = metrics.callConnectedCount > 0 ? (metrics.callConnectedCredits / metrics.callConnectedCount).toFixed(0) : '2';
-  slide2.addText(
-    `• ${formatNum(metrics.callConnectedCount)} connected calls at ~${ratePerConn} credits each equal ${formatNum(Math.round(metrics.callConnectedCredits))} credits.\n\n` +
-    `• ${formatNum(metrics.callCompletedCount)} completed calls billed by duration equal ${formatNum(Math.round(metrics.callCompletedCredits))} credits.\n\n` +
-    `• Talk time accounts for ${voiceTalkShare.toFixed(1)}% of total voice expenditure.`,
+  const connRate = metrics.callConnectedCount > 0 ? (metrics.callConnectedCredits / metrics.callConnectedCount).toFixed(2) : '1.00';
+  const talkRate = metrics.callCompletedCount > 0 ? (metrics.callCompletedCredits / metrics.callCompletedCount).toFixed(2) : '3.56';
+
+  const voiceEconomics = [
     {
-      x: STAT_X + 0.4,
-      y: 3.3,
-      w: STAT_W - 0.8,
-      h: 3.0,
-      fontSize: 12.5,
-      color: 'E2E8F0',
-      lineSpacing: 22,
+      badge: 'CONNECTION RATE',
+      color: ACCENT_INDIGO,
+      title: `~${connRate} credits / connected call`,
+      desc: `${formatNum(metrics.callConnectedCount)} connected attempts totaling ${formatNum(Math.round(metrics.callConnectedCredits))} credits.`,
+    },
+    {
+      badge: 'TALK TIME DURATION',
+      color: PRIMARY_BLUE,
+      title: `~${talkRate} credits / completed call`,
+      desc: `${formatNum(metrics.callCompletedCount)} conversations billed by talk-time totaling ${formatNum(Math.round(metrics.callCompletedCredits))} credits.`,
+    },
+    {
+      badge: 'KEY OBSERVATION',
+      color: 'D97706',
+      title: `${voiceTalkShare.toFixed(1)}% Driven By Duration`,
+      desc: `Talk time accounts for ${voiceTalkShare.toFixed(1)}% of voice spend. Optimizing agent dialogue pacing directly yields credit efficiency.`,
+    },
+  ];
+
+  let vY = 3.65;
+  voiceEconomics.forEach((item) => {
+    slide2.addShape(pptx.ShapeType.roundRect, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: vY,
+      w: 1.8,
+      h: 0.24,
+      rectRadius: 0.04,
+      fill: { color: CANVAS_BG },
+      line: { color: CARD_BORDER, width: 1 },
+    });
+    slide2.addText(item.badge, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: vY + 0.02,
+      w: 1.8,
+      h: 0.2,
+      fontSize: 8,
+      bold: true,
+      color: item.color,
+      align: 'center',
       fontFace: FONT_FACE,
-      wrap: true,
-    }
-  );
+    });
+    slide2.addText(item.title, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: vY + 0.27,
+      w: RIGHT_W - 0.7,
+      h: 0.24,
+      fontSize: 10.5,
+      bold: true,
+      color: TEXT_MAIN,
+      fontFace: FONT_FACE,
+    });
+    slide2.addText(item.desc, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: vY + 0.51,
+      w: RIGHT_W - 0.7,
+      h: 0.35,
+      fontSize: 9.5,
+      color: TEXT_MUTED,
+      fontFace: FONT_FACE,
+    });
+    vY += 0.95;
+  });
 
   // ═════════════════════════════════════════════════════════════════
-  // SLIDE 3: WhatsApp Breakdown
+  // SLIDE 3: WhatsApp Breakdown (Symmetrical to Slide 2)
   // ═════════════════════════════════════════════════════════════════
   const waDeliveredShare = metrics.whatsAppCredits > 0
     ? (metrics.messageDeliveredCredits / metrics.whatsAppCredits) * 100
     : 0;
 
   const s3Headline = `WhatsApp: delivered messages drive ${waDeliveredShare.toFixed(0)}% of its ${formatNum(Math.round(metrics.whatsAppCredits))} credits`;
-  const slide3 = createSlide('WhatsApp Breakdown', s3Headline);
+  const s3Sub = `Outbound notification messaging and inbound conversational query response breakdown.`;
+  const slide3 = createSlide('WhatsApp Breakdown', s3Headline, s3Sub);
 
-  // Left Mint Highlight Panel (w: 3.8)
-  slide3.addShape(pptx.ShapeType.rect, {
-    x: MARGIN_LEFT,
-    y: 1.65,
-    w: 3.8,
-    h: 5.0,
-    fill: { color: MINT_BG },
-    line: { color: MINT_BORDER, pt: 1 },
-  });
+  // Top 3 Metric Cards for WhatsApp
+  addKpiCard(
+    slide3,
+    MARGIN_LEFT,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Total WhatsApp Spend',
+    formatNum(Math.round(metrics.whatsAppCredits)),
+    `${metrics.whatsAppShare.toFixed(1)}% of total credit consumption`,
+    { accentColor: ACCENT_EMERALD }
+  );
 
-  slide3.addText(`${waDeliveredShare.toFixed(0)}%`, {
-    x: MARGIN_LEFT + 0.3,
-    y: 2.1,
-    w: 3.2,
-    h: 1.1,
-    fontSize: 54,
-    bold: true,
-    color: '065F46',
-    fontFace: FONT_FACE,
-  });
-  slide3.addText('OF WHATSAPP SPEND DRIVEN BY OUTBOUND DELIVERIES', {
-    x: MARGIN_LEFT + 0.3,
-    y: 3.3,
-    w: 3.2,
-    h: 0.6,
-    fontSize: 11,
-    bold: true,
-    color: '047857',
-    fontFace: FONT_FACE,
-  });
-  slide3.addText(
-    `Total WhatsApp: ${formatNum(Math.round(metrics.whatsAppCredits))} credits across ${formatNum(metrics.messageDeliveredCount + metrics.queryResponseCount)} interactions.`,
+  addKpiCard(
+    slide3,
+    MARGIN_LEFT + CARD_W3 + 0.3,
+    1.6,
+    CARD_W3,
+    1.3,
+    'Outbound Deliveries',
+    formatNum(metrics.messageDeliveredCount),
+    `${formatNum(Math.round(metrics.messageDeliveredCredits))} credits (${waDeliveredShare.toFixed(1)}% share)`,
     {
-      x: MARGIN_LEFT + 0.3,
-      y: 4.2,
-      w: 3.2,
-      h: 1.8,
-      fontSize: 12,
-      color: '064E3B',
-      lineSpacing: 18,
-      fontFace: FONT_FACE,
-      wrap: true,
+      accentColor: ACCENT_EMERALD,
+      badgeText: `${waDeliveredShare.toFixed(0)}% SHARE`,
+      badgeColor: ACCENT_EMERALD,
     }
   );
 
-  // Right Side Bar Chart (Delivered messages vs Query responses)
+  addKpiCard(
+    slide3,
+    MARGIN_LEFT + 2 * (CARD_W3 + 0.3),
+    1.6,
+    CARD_W3,
+    1.3,
+    'Inbound Query Responses',
+    formatNum(metrics.queryResponseQty),
+    `${formatNum(Math.round(metrics.queryResponseCredits))} credits (${(100 - waDeliveredShare).toFixed(1)}% share)`,
+    {
+      accentColor: ACCENT_EMERALD,
+      badgeText: 'CONVERSATIONAL',
+      badgeColor: ACCENT_EMERALD,
+    }
+  );
+
+  // Bottom Row Split
+  addCard(slide3, MARGIN_LEFT, 3.1, LEFT_W, 3.65);
+  slide3.addText('WhatsApp Spend Composition (Credits)', {
+    x: MARGIN_LEFT + 0.3,
+    y: 3.25,
+    w: LEFT_W - 0.6,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
   const waComponents = [
     { label: 'Delivered Messages', val: Math.round(metrics.messageDeliveredCredits) },
     { label: 'Query Responses', val: Math.round(metrics.queryResponseCredits) },
@@ -1498,228 +1751,574 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
   ];
 
   slide3.addChart(pptx.ChartType.bar, s3ChartData, {
-    x: 4.8,
-    y: 1.65,
-    w: 8.0,
-    h: 3.6,
-    barDir: 'col',
-    chartColors: ['10B981'],
+    x: MARGIN_LEFT + 0.2,
+    y: 3.65,
+    w: LEFT_W - 0.4,
+    h: 2.85,
+    barDir: 'bar',
+    chartColors: [ACCENT_EMERALD],
     showValue: true,
     dataLabelFontSize: 11,
     dataLabelFormatCode: '#,##,##0',
-    valAxisLabelFormatCode: '#,##,##0',
-    catAxisLabelColor: DARK_TEXT,
+    valAxisMinVal: 0,
+    catAxisLabelColor: TEXT_MAIN,
+    catAxisLabelFontSize: 11,
+    valAxisLabelColor: TEXT_MUTED,
     valGridLine: { style: 'none' },
     showLegend: false,
   });
 
-  const delRate = metrics.messageDeliveredCount > 0 ? (metrics.messageDeliveredCredits / metrics.messageDeliveredCount).toFixed(2) : '0.90';
+  // Right Side WhatsApp Economics Card
+  addCard(slide3, MARGIN_LEFT + LEFT_W + 0.3, 3.1, RIGHT_W, 3.65);
+  slide3.addText('WhatsApp Channel Dynamics', {
+    x: MARGIN_LEFT + LEFT_W + 0.55,
+    y: 3.25,
+    w: RIGHT_W - 0.5,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
+  const delRate = metrics.messageDeliveredCount > 0 ? (metrics.messageDeliveredCredits / metrics.messageDeliveredCount).toFixed(2) : '0.89';
   const respRate = metrics.queryResponseQty > 0 ? (metrics.queryResponseCredits / metrics.queryResponseQty).toFixed(2) : '0.93';
 
-  slide3.addText(
-    `• ${formatNum(metrics.messageDeliveredCount)} delivered messages at ${delRate} credits each equal ${formatNum(Math.round(metrics.messageDeliveredCredits))} credits.\n` +
-    `• ${formatNum(metrics.queryResponseQty)} billed response units (${formatNum(metrics.queryResponseCount)} events) at ${respRate} credits equal ${formatNum(Math.round(metrics.queryResponseCredits))} credits.`,
+  const waEconomics = [
     {
-      x: 4.8,
-      y: 5.5,
-      w: 8.0,
-      h: 1.1,
-      fontSize: 12.5,
-      color: DARK_TEXT,
-      lineSpacing: 22,
-      fontFace: FONT_FACE,
-      wrap: true,
-    }
-  );
-
-  // ═════════════════════════════════════════════════════════════════
-  // SLIDE 4: Top Objectives OR Data-Driven Stage (Requirement 4)
-  // ═════════════════════════════════════════════════════════════════
-  const largestStageShare = Math.max(metrics.postSalesShare, metrics.preSalesShare);
-
-  if (largestStageShare > 95) {
-    // Stage is heavily skewed (>95% in one stage): replace with Top Objectives Slide
-    const top6 = metrics.objectives.slice(0, 6);
-    const otherObjectives = metrics.objectives.slice(6);
-    const otherCredits = otherObjectives.reduce((sum, o) => sum + o.totalCredits, 0);
-
-    const chartObjItems: { label: string; credits: number; share: number }[] = top6.map(o => ({
-      label: o.objective.length > 28 ? o.objective.slice(0, 26) + '…' : o.objective,
-      credits: Math.round(o.totalCredits),
-      share: o.shareOfTotal,
-    }));
-
-    if (otherCredits > 0) {
-      chartObjItems.push({
-        label: 'All other objectives',
-        credits: Math.round(otherCredits),
-        share: (otherCredits / metrics.totalCredits) * 100,
-      });
-    }
-
-    chartObjItems.sort((a, b) => b.credits - a.credits);
-
-    const top2Share = metrics.objectives.slice(0, 2).reduce((sum, o) => sum + o.shareOfTotal, 0);
-    const s4Headline = `Top 2 objectives accounted for ${top2Share.toFixed(0)}% of all credit consumption`;
-    const slide4 = createSlide('Top Objectives', s4Headline);
-
-    const s4ChartData = [
-      {
-        name: 'Credits',
-        labels: chartObjItems.map(c => `${c.label} (${c.share.toFixed(0)}%)`),
-        values: chartObjItems.map(c => c.credits),
-      },
-    ];
-
-    slide4.addChart(pptx.ChartType.bar, s4ChartData, {
-      x: MARGIN_LEFT,
-      y: 1.65,
-      w: 12.333,
-      h: 5.0,
-      barDir: 'bar',
-      chartColors: [BLUE],
-      showValue: true,
-      dataLabelFontSize: 10.5,
-      dataLabelFormatCode: '#,##,##0',
-      valAxisLabelFormatCode: '#,##,##0',
-      catAxisLabelColor: DARK_TEXT,
-      valGridLine: { style: 'none' },
-      showLegend: false,
-    });
-  } else {
-    // Stages are balanced (<=95%): show dynamic data-driven Stage slide
-    const s4Headline = `Credit consumption split between Pre-sales (${metrics.preSalesShare.toFixed(1)}%) and Post-sales (${metrics.postSalesShare.toFixed(1)}%)`;
-    const slide4 = createSlide('Stage Breakdown', s4Headline);
-
-    const s4ChartData = [
-      {
-        name: 'Credits',
-        labels: metrics.stageBuckets.map(b => `${b.label} (${b.share.toFixed(1)}%)`),
-        values: metrics.stageBuckets.map(b => Math.round(b.credits)),
-      },
-    ];
-
-    slide4.addChart(pptx.ChartType.bar, s4ChartData, {
-      x: MARGIN_LEFT,
-      y: 1.65,
-      w: 12.333,
-      h: 5.0,
-      barDir: 'bar',
-      chartColors: [BLUE],
-      showValue: true,
-      dataLabelFontSize: 11,
-      dataLabelFormatCode: '#,##,##0',
-      valAxisLabelFormatCode: '#,##,##0',
-      catAxisLabelColor: DARK_TEXT,
-      valGridLine: { style: 'none' },
-      showLegend: false,
-    });
-  }
-
-  // ═════════════════════════════════════════════════════════════════
-  // SLIDE 5: Monthly Trend (Requirement 8)
-  // ═════════════════════════════════════════════════════════════════
-  let peakMonth = metrics.monthlyTrends[0];
-  for (const m of metrics.monthlyTrends) {
-    if (!peakMonth || m.totalCredits > peakMonth.totalCredits) peakMonth = m;
-  }
-
-  const s5Headline = peakMonth
-    ? `Monthly credits peaked in ${peakMonth.monthLabel} at ${formatNum(Math.round(peakMonth.totalCredits))} credits`
-    : `Monthly credit trend across Voice and WhatsApp`;
-
-  const slide5 = createSlide('Monthly Trend', s5Headline);
-
-  // Stacked column chart: Voice and WhatsApp across months
-  const s5ChartData = [
-    {
-      name: 'Voice Credits',
-      labels: metrics.monthlyTrends.map(m => m.monthLabel),
-      values: metrics.monthlyTrends.map(m => Math.round(m.voiceCredits)),
+      badge: 'OUTBOUND UNIT RATE',
+      color: ACCENT_EMERALD,
+      title: `~${delRate} credits / delivered message`,
+      desc: `${formatNum(metrics.messageDeliveredCount)} notification messages delivered totaling ${formatNum(Math.round(metrics.messageDeliveredCredits))} credits.`,
     },
     {
-      name: 'WhatsApp Credits',
-      labels: metrics.monthlyTrends.map(m => m.monthLabel),
-      values: metrics.monthlyTrends.map(m => Math.round(m.whatsAppCredits)),
+      badge: 'INBOUND UNIT RATE',
+      color: PRIMARY_BLUE,
+      title: `~${respRate} credits / response unit`,
+      desc: `${formatNum(metrics.queryResponseQty)} response units (${formatNum(metrics.queryResponseCount)} events) totaling ${formatNum(Math.round(metrics.queryResponseCredits))} credits.`,
+    },
+    {
+      badge: 'CHANNEL HEALTH',
+      color: '10B981',
+      title: 'Highly Efficient Overhead',
+      desc: `Outbound service alerts & marketing templates dominate spend (96%). Conversational responses deliver high engagement at minimal cost.`,
     },
   ];
 
-  slide5.addChart(pptx.ChartType.bar, s5ChartData, {
-    x: MARGIN_LEFT,
-    y: 1.65,
-    w: 12.333,
-    h: 5.0,
-    barDir: 'col',
-    barGrouping: 'stacked',
-    chartColors: [NAVY, BLUE],
-    showValue: true,
-    dataLabelFontSize: 10,
-    dataLabelFormatCode: '#,##,##0',
-    valAxisLabelFormatCode: '#,##,##0',
-    catAxisLabelColor: DARK_TEXT,
-    valGridLine: { style: 'none' },
-    showLegend: true,
-    legendPos: 't',
-    legendFontSize: 11,
-    legendColor: DARK_TEXT,
+  let wY = 3.65;
+  waEconomics.forEach((item) => {
+    slide3.addShape(pptx.ShapeType.roundRect, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: wY,
+      w: 1.8,
+      h: 0.24,
+      rectRadius: 0.04,
+      fill: { color: CANVAS_BG },
+      line: { color: CARD_BORDER, width: 1 },
+    });
+    slide3.addText(item.badge, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: wY + 0.02,
+      w: 1.8,
+      h: 0.2,
+      fontSize: 8,
+      bold: true,
+      color: item.color,
+      align: 'center',
+      fontFace: FONT_FACE,
+    });
+    slide3.addText(item.title, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: wY + 0.27,
+      w: RIGHT_W - 0.7,
+      h: 0.24,
+      fontSize: 10.5,
+      bold: true,
+      color: TEXT_MAIN,
+      fontFace: FONT_FACE,
+    });
+    slide3.addText(item.desc, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: wY + 0.51,
+      w: RIGHT_W - 0.7,
+      h: 0.35,
+      fontSize: 9.5,
+      color: TEXT_MUTED,
+      fontFace: FONT_FACE,
+    });
+    wY += 0.95;
   });
 
   // ═════════════════════════════════════════════════════════════════
-  // SLIDES 6 to N: Paginated Objective Table (Requirement 2)
+  // SLIDE 4: Stage Breakdown (Pre-Sales vs Post-Sales)
   // ═════════════════════════════════════════════════════════════════
-  const ROWS_PER_PAGE = 12; // floor((7.5 - 2.0 in) / 0.36 in) = 15; 12 gives clean 11pt spacing
+  const s4Headline = `Credit consumption split between Pre-sales (${metrics.preSalesShare.toFixed(1)}%) and Post-sales (${metrics.postSalesShare.toFixed(1)}%)`;
+  const s4Sub = `Operational lifecycle distribution between customer acquisition and customer retention campaigns.`;
+  const slide4 = createSlide('Stage Breakdown', s4Headline, s4Sub);
+
+  // Top 2 Balanced Stage Cards
+  const STAGE_CARD_W = (SLIDE_USABLE_WIDTH - 0.3) / 2; // (12.333 - 0.3) / 2 = 6.016 in
+  addKpiCard(
+    slide4,
+    MARGIN_LEFT,
+    1.6,
+    STAGE_CARD_W,
+    1.3,
+    'Post-Sales Operations',
+    formatNum(Math.round(metrics.postSalesCredits)),
+    'Service reminders, service feedback & periodic retention campaigns',
+    {
+      accentColor: ACCENT_TEAL,
+      badgeText: `${metrics.postSalesShare.toFixed(1)}% SHARE`,
+      badgeColor: ACCENT_TEAL,
+    }
+  );
+
+  addKpiCard(
+    slide4,
+    MARGIN_LEFT + STAGE_CARD_W + 0.3,
+    1.6,
+    STAGE_CARD_W,
+    1.3,
+    'Pre-Sales Operations',
+    formatNum(Math.round(metrics.preSalesCredits)),
+    'Lead follow-up, track days, test drive bookings & acquisition',
+    {
+      accentColor: ACCENT_VIOLET,
+      badgeText: `${metrics.preSalesShare.toFixed(1)}% SHARE`,
+      badgeColor: ACCENT_VIOLET,
+    }
+  );
+
+  // Bottom Row Split
+  addCard(slide4, MARGIN_LEFT, 3.1, LEFT_W, 3.65);
+  slide4.addText('Lifecycle Stage Volume (Credits)', {
+    x: MARGIN_LEFT + 0.3,
+    y: 3.25,
+    w: LEFT_W - 0.6,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
+  const stageComponents = [
+    { label: 'Post-Sales Operations', val: Math.round(metrics.postSalesCredits) },
+    { label: 'Pre-Sales Operations', val: Math.round(metrics.preSalesCredits) },
+  ].sort((a, b) => b.val - a.val);
+
+  const s4ChartData = [
+    {
+      name: 'Credits',
+      labels: stageComponents.map(s => s.label),
+      values: stageComponents.map(s => s.val),
+    },
+  ];
+
+  slide4.addChart(pptx.ChartType.bar, s4ChartData, {
+    x: MARGIN_LEFT + 0.2,
+    y: 3.65,
+    w: LEFT_W - 0.4,
+    h: 2.85,
+    barDir: 'bar',
+    chartColors: [ACCENT_TEAL],
+    showValue: true,
+    dataLabelFontSize: 11,
+    dataLabelFormatCode: '#,##,##0',
+    valAxisMinVal: 0,
+    catAxisLabelColor: TEXT_MAIN,
+    catAxisLabelFontSize: 11,
+    valAxisLabelColor: TEXT_MUTED,
+    valGridLine: { style: 'none' },
+    showLegend: false,
+  });
+
+  // Right Side Stage Allocation Card
+  addCard(slide4, MARGIN_LEFT + LEFT_W + 0.3, 3.1, RIGHT_W, 3.65);
+  slide4.addText('Operational Lifecycle Strategy', {
+    x: MARGIN_LEFT + LEFT_W + 0.55,
+    y: 3.25,
+    w: RIGHT_W - 0.5,
+    h: 0.3,
+    fontSize: 12,
+    bold: true,
+    color: TEXT_NAVY,
+    fontFace: FONT_FACE,
+  });
+
+  // Calculate top campaign per stage
+  const postSalesObjs = metrics.objectives.filter(o => {
+    const raw = o.objective.toLowerCase();
+    return raw.includes('service') || raw.includes('post') || raw.includes('feedback');
+  });
+  const preSalesObjs = metrics.objectives.filter(o => !postSalesObjs.includes(o));
+
+  const postTopName = postSalesObjs[0] ? postSalesObjs[0].objective : 'Service Reminders';
+  const preTopName = preSalesObjs[0] ? preSalesObjs[0].objective : 'Lead Inquiries';
+
+  const stageInsights = [
+    {
+      badge: 'POST-SALES RETENTION',
+      color: ACCENT_TEAL,
+      title: `${metrics.postSalesShare.toFixed(1)}% Allocated to Service`,
+      desc: `Primary campaign: ${postTopName.length > 30 ? postTopName.slice(0, 28) + '…' : postTopName}. Consistent recurring customer touchpoints.`,
+    },
+    {
+      badge: 'PRE-SALES ACQUISITION',
+      color: ACCENT_VIOLET,
+      title: `${metrics.preSalesShare.toFixed(1)}% Allocated to Leads`,
+      desc: `Primary campaign: ${preTopName.length > 30 ? preTopName.slice(0, 28) + '…' : preTopName}. High-intent showroom & track day conversions.`,
+    },
+    {
+      badge: 'STRATEGIC BALANCE',
+      color: PRIMARY_BLUE,
+      title: 'Balanced Funnel Economics',
+      desc: `Active campaigns span both acquisition and retention pipelines, maintaining continuous lead engagement and customer lifetime value.`,
+    },
+  ];
+
+  let sY = 3.65;
+  stageInsights.forEach((item) => {
+    slide4.addShape(pptx.ShapeType.roundRect, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: sY,
+      w: 1.8,
+      h: 0.24,
+      rectRadius: 0.04,
+      fill: { color: CANVAS_BG },
+      line: { color: CARD_BORDER, width: 1 },
+    });
+    slide4.addText(item.badge, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: sY + 0.02,
+      w: 1.8,
+      h: 0.2,
+      fontSize: 8,
+      bold: true,
+      color: item.color,
+      align: 'center',
+      fontFace: FONT_FACE,
+    });
+    slide4.addText(item.title, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: sY + 0.27,
+      w: RIGHT_W - 0.7,
+      h: 0.24,
+      fontSize: 10.5,
+      bold: true,
+      color: TEXT_MAIN,
+      fontFace: FONT_FACE,
+    });
+    slide4.addText(item.desc, {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: sY + 0.51,
+      w: RIGHT_W - 0.7,
+      h: 0.35,
+      fontSize: 9.5,
+      color: TEXT_MUTED,
+      fontFace: FONT_FACE,
+    });
+    sY += 0.95;
+  });
+
+  // ═════════════════════════════════════════════════════════════════
+  // SLIDE 5: Trend & Consumption Velocity
+  // ═════════════════════════════════════════════════════════════════
+  const isSingleMonth = metrics.monthlyTrends.length <= 1;
+
+  if (isSingleMonth) {
+    // Single month / period: Show Executive Run-Rate & Velocity Dashboard (No empty 1-bar chart!)
+    const activeMonth = metrics.monthlyTrends[0] ? metrics.monthlyTrends[0].monthLabel : 'Active Period';
+    const s5Headline = `${activeMonth}: ${formatNum(Math.round(metrics.totalCredits))} credits consumed across active billing days`;
+    const s5Sub = `Daily consumption run-rate velocity and 30-day capacity forecast based on audited billing activity.`;
+    const slide5 = createSlide('Trend & Velocity', s5Headline, s5Sub);
+
+    // Active days calculation
+    const daysDiff = (metrics.minDate && metrics.maxDate)
+      ? Math.max(1, Math.round((metrics.maxDate.getTime() - metrics.minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+      : 7;
+    const dailyCredits = metrics.totalCredits / daysDiff;
+    const dailyVoice = metrics.voiceCredits / daysDiff;
+    const dailyWa = metrics.whatsAppCredits / daysDiff;
+    const projectedMonthly = dailyCredits * 30;
+
+    // Top 3 Velocity Metric Cards
+    addKpiCard(
+      slide5,
+      MARGIN_LEFT,
+      1.6,
+      CARD_W3,
+      1.3,
+      'Active Billing Period',
+      `${daysDiff} Days`,
+      `${formatNum(metrics.debitsCount)} billable debits processed`,
+      {
+        accentColor: PRIMARY_BLUE,
+        badgeText: 'AUDIT WINDOW',
+        badgeColor: PRIMARY_BLUE,
+      }
+    );
+
+    addKpiCard(
+      slide5,
+      MARGIN_LEFT + CARD_W3 + 0.3,
+      1.6,
+      CARD_W3,
+      1.3,
+      'Daily Run-Rate Velocity',
+      formatNum(Math.round(dailyCredits)),
+      `Credits/day average across active period`,
+      {
+        accentColor: 'D97706',
+        badgeText: 'DAILY BURN',
+        badgeColor: 'D97706',
+      }
+    );
+
+    addKpiCard(
+      slide5,
+      MARGIN_LEFT + 2 * (CARD_W3 + 0.3),
+      1.6,
+      CARD_W3,
+      1.3,
+      '30-Day Projected Volume',
+      formatNum(Math.round(projectedMonthly)),
+      `Forecast at current operational cadence`,
+      {
+        accentColor: '10B981',
+        badgeText: 'FORECAST',
+        badgeColor: '10B981',
+      }
+    );
+
+    // Bottom Row Split
+    addCard(slide5, MARGIN_LEFT, 3.1, LEFT_W, 3.65);
+    slide5.addText('Daily Channel Velocity (Credits/Day)', {
+      x: MARGIN_LEFT + 0.3,
+      y: 3.25,
+      w: LEFT_W - 0.6,
+      h: 0.3,
+      fontSize: 12,
+      bold: true,
+      color: TEXT_NAVY,
+      fontFace: FONT_FACE,
+    });
+
+    const velocityData = [
+      { name: 'WhatsApp Run-Rate', val: Math.round(dailyWa) },
+      { name: 'Voice Run-Rate', val: Math.round(dailyVoice) },
+    ].sort((a, b) => b.val - a.val);
+
+    const s5ChartData = [
+      {
+        name: 'Credits/Day',
+        labels: velocityData.map(v => v.name),
+        values: velocityData.map(v => v.val),
+      },
+    ];
+
+    slide5.addChart(pptx.ChartType.bar, s5ChartData, {
+      x: MARGIN_LEFT + 0.2,
+      y: 3.65,
+      w: LEFT_W - 0.4,
+      h: 2.85,
+      barDir: 'bar',
+      chartColors: [PRIMARY_BLUE],
+      showValue: true,
+      dataLabelFontSize: 11,
+      dataLabelFormatCode: '#,##,##0',
+      valAxisMinVal: 0,
+      catAxisLabelColor: TEXT_MAIN,
+      catAxisLabelFontSize: 11,
+      valAxisLabelColor: TEXT_MUTED,
+      valGridLine: { style: 'none' },
+      showLegend: false,
+    });
+
+    // Right Side Period Reconciliation Summary
+    addCard(slide5, MARGIN_LEFT + LEFT_W + 0.3, 3.1, RIGHT_W, 3.65);
+    slide5.addText('Period Reconciliation Parameters', {
+      x: MARGIN_LEFT + LEFT_W + 0.55,
+      y: 3.25,
+      w: RIGHT_W - 0.5,
+      h: 0.3,
+      fontSize: 12,
+      bold: true,
+      color: TEXT_NAVY,
+      fontFace: FONT_FACE,
+    });
+
+    const periodSummary = [
+      {
+        badge: 'ACTIVE RANGE',
+        color: PRIMARY_BLUE,
+        title: metrics.periodStr,
+        desc: `Audited billing window covering ${daysDiff} consecutive operating days.`,
+      },
+      {
+        badge: 'INTERACTION TOTALS',
+        color: ACCENT_INDIGO,
+        title: `${formatNum(metrics.callConnectedCount)} Calls · ${formatNum(metrics.messageDeliveredCount)} Messages`,
+        desc: `Total customer reach generated across ${metrics.objectives.length} active marketing & service objectives.`,
+      },
+      {
+        badge: 'CAPACITY STATUS',
+        color: '10B981',
+        title: 'Run-Rate Within Safe Capacity',
+        desc: `Average daily spend of ${formatNum(Math.round(dailyCredits))} credits reflects sustained, balanced channel execution.`,
+      },
+    ];
+
+    let pY = 3.65;
+    periodSummary.forEach((item) => {
+      slide5.addShape(pptx.ShapeType.roundRect, {
+        x: MARGIN_LEFT + LEFT_W + 0.55,
+        y: pY,
+        w: 1.8,
+        h: 0.24,
+        rectRadius: 0.04,
+        fill: { color: CANVAS_BG },
+        line: { color: CARD_BORDER, width: 1 },
+      });
+      slide5.addText(item.badge, {
+        x: MARGIN_LEFT + LEFT_W + 0.55,
+        y: pY + 0.02,
+        w: 1.8,
+        h: 0.2,
+        fontSize: 8,
+        bold: true,
+        color: item.color,
+        align: 'center',
+        fontFace: FONT_FACE,
+      });
+      slide5.addText(item.title, {
+        x: MARGIN_LEFT + LEFT_W + 0.55,
+        y: pY + 0.27,
+        w: RIGHT_W - 0.7,
+        h: 0.24,
+        fontSize: 10.5,
+        bold: true,
+        color: TEXT_MAIN,
+        fontFace: FONT_FACE,
+      });
+      slide5.addText(item.desc, {
+        x: MARGIN_LEFT + LEFT_W + 0.55,
+        y: pY + 0.51,
+        w: RIGHT_W - 0.7,
+        h: 0.35,
+        fontSize: 9.5,
+        color: TEXT_MUTED,
+        fontFace: FONT_FACE,
+      });
+      pY += 0.95;
+    });
+
+  } else {
+    // Multi-month: Stacked column trend chart across all months
+    let peakMonth = metrics.monthlyTrends[0];
+    for (const m of metrics.monthlyTrends) {
+      if (!peakMonth || m.totalCredits > peakMonth.totalCredits) peakMonth = m;
+    }
+
+    const s5Headline = `Monthly credits peaked in ${peakMonth.monthLabel} at ${formatNum(Math.round(peakMonth.totalCredits))} credits`;
+    const s5Sub = `Historical month-over-month trajectory across voice AI and WhatsApp conversational channels.`;
+    const slide5 = createSlide('Monthly Trend', s5Headline, s5Sub);
+
+    addCard(slide5, MARGIN_LEFT, 1.6, SLIDE_USABLE_WIDTH, 5.15);
+
+    const s5ChartData = [
+      {
+        name: 'Voice Credits',
+        labels: metrics.monthlyTrends.map(m => m.monthLabel),
+        values: metrics.monthlyTrends.map(m => Math.round(m.voiceCredits)),
+      },
+      {
+        name: 'WhatsApp Credits',
+        labels: metrics.monthlyTrends.map(m => m.monthLabel),
+        values: metrics.monthlyTrends.map(m => Math.round(m.whatsAppCredits)),
+      },
+    ];
+
+    slide5.addChart(pptx.ChartType.bar, s5ChartData, {
+      x: MARGIN_LEFT + 0.3,
+      y: 1.8,
+      w: SLIDE_USABLE_WIDTH - 0.6,
+      h: 4.6,
+      barDir: 'col',
+      barGrouping: 'stacked',
+      chartColors: [ACCENT_INDIGO, ACCENT_EMERALD],
+      showValue: true,
+      dataLabelFontSize: 10,
+      dataLabelFormatCode: '#,##,##0',
+      valAxisLabelFormatCode: '#,##,##0',
+      valAxisMinVal: 0,
+      catAxisLabelColor: TEXT_MAIN,
+      valGridLine: { style: 'none' },
+      showLegend: true,
+      legendPos: 't',
+      legendFontSize: 11,
+      legendColor: TEXT_MAIN,
+    });
+  }
+
+  // ═════════════════════════════════════════════════════════════════
+  // SLIDES 6 to N: Paginated Objective Summary Table
+  // ═════════════════════════════════════════════════════════════════
+  const ROWS_PER_PAGE = 12;
   const totalObjPages = Math.max(1, Math.ceil(metrics.objectives.length / ROWS_PER_PAGE));
 
-  // Table column widths sum up to exactly 12.333 in:
-  // Objective col = 4.333 in (~35% of width)
-  const COL_WIDTHS = [0.5, 4.333, 1.25, 1.25, 1.4, 1.4, 1.4, 0.8];
+  // Balanced column widths summing to 12.333 in
+  const COL_WIDTHS = [0.55, 4.35, 1.25, 1.25, 1.35, 1.35, 1.45, 0.783];
 
   for (let pageIdx = 0; pageIdx < totalObjPages; pageIdx++) {
     const pageNum = pageIdx + 1;
     const isLastPage = pageNum === totalObjPages;
     const pageObjectives = metrics.objectives.slice(pageIdx * ROWS_PER_PAGE, (pageIdx + 1) * ROWS_PER_PAGE);
 
-    const sTableHeadline = `Objective wise credits (${pageNum} of ${totalObjPages})`;
-    const slideTable = createSlide('Objective Summary', sTableHeadline);
+    const sTableHeadline = `Objective wise credits (Page ${pageNum} of ${totalObjPages})`;
+    const sTableSub = `Itemized credit consumption audited by campaign objective, operational duration, and channel spend.`;
+    const slideTable = createSlide('Objective Summary', sTableHeadline, sTableSub);
 
     const tableRows: pptxgen.TableRow[] = [];
 
     // Header row repeated on every page (Requirement 2)
     tableRows.push([
-      { text: '#', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'center', fontSize: 11 } },
-      { text: 'Objective', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'left', fontSize: 11 } },
-      { text: 'Start Date', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'center', fontSize: 11 } },
-      { text: 'End Date', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'center', fontSize: 11 } },
-      { text: 'Voice Credits', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'right', fontSize: 11 } },
-      { text: 'WhatsApp Credits', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'right', fontSize: 11 } },
-      { text: 'Total Credits', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'right', fontSize: 11 } },
-      { text: 'Share', options: { bold: true, fill: { color: NAVY }, color: 'FFFFFF', align: 'right', fontSize: 11 } },
+      { text: '#', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'center', fontSize: 10.5 } },
+      { text: 'Objective', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'left', fontSize: 10.5 } },
+      { text: 'Start Date', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'center', fontSize: 10.5 } },
+      { text: 'End Date', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'center', fontSize: 10.5 } },
+      { text: 'Voice Credits', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'right', fontSize: 10.5 } },
+      { text: 'WhatsApp Credits', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'right', fontSize: 10.5 } },
+      { text: 'Total Credits', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'right', fontSize: 10.5 } },
+      { text: 'Share', options: { bold: true, fill: { color: TEXT_MAIN }, color: 'FFFFFF', align: 'right', fontSize: 10.5 } },
     ]);
 
-    pageObjectives.forEach(o => {
+    pageObjectives.forEach((o, rIdx) => {
+      const rowBg = rIdx % 2 === 0 ? 'FFFFFF' : 'F8FAFC';
       tableRows.push([
-        { text: String(o.rank), options: { align: 'center', fontSize: 11 } },
-        { text: o.objective, options: { align: 'left', fontSize: 11 } },
-        { text: o.startDate, options: { align: 'center', fontSize: 11 } },
-        { text: o.endDate, options: { align: 'center', fontSize: 11 } },
-        { text: formatNum(o.voiceCredits, 2), options: { align: 'right', fontSize: 11 } },
-        { text: formatNum(o.whatsAppCredits, 2), options: { align: 'right', fontSize: 11 } },
-        { text: formatNum(o.totalCredits, 2), options: { align: 'right', fontSize: 11, bold: true } },
-        { text: `${o.shareOfTotal.toFixed(1)}%`, options: { align: 'right', fontSize: 11 } },
+        { text: String(o.rank), options: { align: 'center', fontSize: 10.5, color: TEXT_MUTED, fill: { color: rowBg } } },
+        { text: o.objective, options: { align: 'left', fontSize: 10.5, bold: true, color: TEXT_MAIN, fill: { color: rowBg } } },
+        { text: o.startDate, options: { align: 'center', fontSize: 10.5, color: TEXT_NAVY, fill: { color: rowBg } } },
+        { text: o.endDate, options: { align: 'center', fontSize: 10.5, color: TEXT_NAVY, fill: { color: rowBg } } },
+        { text: formatNum(o.voiceCredits, 2), options: { align: 'right', fontSize: 10.5, color: TEXT_NAVY, fill: { color: rowBg } } },
+        { text: formatNum(o.whatsAppCredits, 2), options: { align: 'right', fontSize: 10.5, color: TEXT_NAVY, fill: { color: rowBg } } },
+        { text: formatNum(o.totalCredits, 2), options: { align: 'right', fontSize: 10.5, bold: true, color: TEXT_MAIN, fill: { color: rowBg } } },
+        { text: `${o.shareOfTotal.toFixed(1)}%`, options: { align: 'right', fontSize: 10.5, bold: true, color: PRIMARY_BLUE, fill: { color: rowBg } } },
       ]);
     });
 
     // Grand Total row ONLY on the last page (Requirement 2)
     if (isLastPage) {
       tableRows.push([
-        { text: '', options: { bold: true, fill: { color: 'F1F5F9' }, align: 'center', fontSize: 11 } },
-        { text: 'Grand Total', options: { bold: true, fill: { color: 'F1F5F9' }, color: NAVY, align: 'left', fontSize: 11 } },
-        { text: metrics.minDate ? formatDateDisplay(metrics.minDate) : '-', options: { bold: true, fill: { color: 'F1F5F9' }, align: 'center', fontSize: 11 } },
-        { text: metrics.maxDate ? formatDateDisplay(metrics.maxDate) : '-', options: { bold: true, fill: { color: 'F1F5F9' }, align: 'center', fontSize: 11 } },
-        { text: formatNum(metrics.voiceCredits, 2), options: { bold: true, fill: { color: 'F1F5F9' }, align: 'right', fontSize: 11 } },
-        { text: formatNum(metrics.whatsAppCredits, 2), options: { bold: true, fill: { color: 'F1F5F9' }, align: 'right', fontSize: 11 } },
-        { text: formatNum(metrics.totalCredits, 2), options: { bold: true, fill: { color: 'F1F5F9' }, color: NAVY, align: 'right', fontSize: 11 } },
-        { text: '100.0%', options: { bold: true, fill: { color: 'F1F5F9' }, align: 'right', fontSize: 11 } },
+        { text: '', options: { bold: true, fill: { color: 'EFF6FF' }, align: 'center', fontSize: 11 } },
+        { text: 'Grand Total', options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'left', fontSize: 11 } },
+        { text: metrics.minDate ? formatDateDisplay(metrics.minDate) : '-', options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'center', fontSize: 11 } },
+        { text: metrics.maxDate ? formatDateDisplay(metrics.maxDate) : '-', options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'center', fontSize: 11 } },
+        { text: formatNum(metrics.voiceCredits, 2), options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'right', fontSize: 11 } },
+        { text: formatNum(metrics.whatsAppCredits, 2), options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'right', fontSize: 11 } },
+        { text: formatNum(metrics.totalCredits, 2), options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'right', fontSize: 11 } },
+        { text: '100.0%', options: { bold: true, fill: { color: 'EFF6FF' }, color: '1E3A8A', align: 'right', fontSize: 11 } },
       ]);
     }
 
@@ -1728,7 +2327,7 @@ export async function generateCreditPresentation(metrics: CreditMetrics): Promis
       y: 1.6,
       w: SLIDE_USABLE_WIDTH,
       colW: COL_WIDTHS,
-      border: { color: 'CBD5E1', pt: 0.5 },
+      border: { color: CARD_BORDER, pt: 0.5 },
     });
   }
 

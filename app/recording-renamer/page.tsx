@@ -580,12 +580,10 @@ export default function RecordingRenamerPage() {
 
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem' }}>
         <section className={styles['workflow-panel']}>
-          <div className={styles['section-head']}>
-            <div>
-              <div className={styles.eyebrow}>Inputs</div>
-              <div className={styles['section-title']}>Load processed data</div>
-            </div>
-            <div className={styles['section-note']}>The processed file must contain Phone, Call_Date, and Recordings.</div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 1</span>
+            <h3 className={styles['section-title']}>Upload Processed Sync Export</h3>
+            <span className={styles['card-desc']}>Processed spreadsheet with Phone, Call_Date, and Recordings.</span>
           </div>
 
           <div className={styles['upload-grid']}>
@@ -605,12 +603,14 @@ export default function RecordingRenamerPage() {
                 }
               }}
             >
-              <div className={styles['dz-icon']}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              <div className={styles['dz-icon-wrap']}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
               </div>
-              <div className={styles['dz-label']}>Processed CSV/XLSX</div>
-              <div className={styles['dz-sublabel']}>Upload the output file from Pre-Sales Sync.</div>
-              <div className={styles['dz-cols']}>Phone | Call_Date | Recordings</div>
+              <div className={styles['dz-label']}>Processed Sync Export (.xlsx / .csv)</div>
+              <div className={styles['dz-sublabel']}>Upload the output file from Pre-Sales Sync or Post-Sales Sync.</div>
+              <div>
+                <span className={styles['dz-cols-chip']}>Phone · Call_Date · Recordings</span>
+              </div>
               <div className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{dataStatus}</div>
               <input ref={fileInputRef} type="file" aria-label="Upload Processed File for Recording Renamer" accept=".csv,.xlsx,.xls,.tsv" onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
@@ -651,15 +651,26 @@ export default function RecordingRenamerPage() {
         </section>
 
         <section className={styles['results-panel']}>
-          <div className={styles['section-head']}>
-            <div>
-              <div className={styles.eyebrow}>Output</div>
-              <div className={styles['section-title']}>Review downloads</div>
-            </div>
-            <div className={styles['section-note']}>Renamed files use the format <span className={styles.mono}>9035937158_2May.mp3</span>.</div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 2</span>
+            <h3 className={styles['section-title']}>Matched Audio & Downloads</h3>
+            <span className={styles['card-desc']}>Renamed files use pattern: phone_date.mp3</span>
           </div>
 
-          {!showResults && <div className={styles['empty-state']}>Waiting for inputs.</div>}
+          {!showResults && (
+            <div className={styles['empty-banner']}>
+              <div>
+                <div className={styles['empty-banner-title']}>Waiting for processed export</div>
+                <div className={styles['empty-banner-sub']}>Upload a processed sync spreadsheet containing recording URLs to generate download matches.</div>
+              </div>
+              <div className={styles['empty-banner-steps']}>
+                <span className={styles['empty-banner-step']}>Upload Processed</span>
+                <span className={styles['empty-banner-step']}>Process</span>
+                <span className={styles['empty-banner-step']}>Match Audio</span>
+                <span className={styles['empty-banner-step']}>Download ZIP</span>
+              </div>
+            </div>
+          )}
 
           <div className={styles['stats-grid']} style={{ display: showResults ? 'grid' : 'none' }}>
             <div className={styles['stat-card']}><div className={styles['stat-label']}>Rows Read</div><div className={`${styles['stat-val']} ${styles.blue}`}>{statsRows}</div></div>

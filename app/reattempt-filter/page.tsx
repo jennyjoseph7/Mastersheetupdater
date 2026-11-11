@@ -577,86 +577,95 @@ export default function ReattemptFilterPage() {
             <div className={styles['dz-icon']}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg></div>
             <div className={styles['dz-label']}>Zoho Master Sheet Export</div>
             <div className={styles['dz-sublabel']}>Upload filtered multi-day data as CSV or Excel</div>
-            <div className={styles['dz-cols']}>Lead_Id · Full_Name · Phone · City · Pincode · Language · Lead_Source<br />Cohort · Campaign_ID · Call Triggered · Outcome · Disposition<br />SUMMARY · Conversion · Call_Date · Number of attempts · Model · Seating</div>
+            <div className={styles['dz-cols-chip']}>
+              <span>Lead_Id</span> · <span>Phone</span> · <span>Disposition</span> · <span>Call Triggered</span> · <span>Call_Date</span> · <span>Outcome</span> (+12 columns)
+            </div>
             <div className={`${styles['dz-status']} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</div>
             <input ref={fileInputRef} type="file" aria-label="Upload Zoho Master Sheet Export File" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
           </div>
 
           <div className={styles['action-bar']}>
-            <div className={styles['control-group']}>
-              <span className={styles['control-label']}>Dealership</span>
-              <div className={styles['select-wrapper']}>
-                <select className={styles['custom-select']} value={dealershipKey} onChange={e => setDealershipKey(e.target.value)}>
-                  <optgroup label="Pre-Sales">
-                    <option value="anant_cars">Anant Cars (Sales)</option>
-                    <option value="singhal">Singhal (Sales)</option>
-                    <option value="fortune_hyryder">Fortune Hyryder (Sales)</option>
-                  </optgroup>
-                  <optgroup label="Post-Sales">
-                    <option value="perfect_riders">Perfect Riders (Service)</option>
-                    <option value="ambal_service">Ambal (Service)</option>
-                    <option value="bullmen_service">Bullmen (Service)</option>
-                    <option value="fortune_service">Fortune Toyota (Service)</option>
-                    <option value="suryabala_service">Suryabala Honda (Service)</option>
-                    <option value="icare_feedback">Icare (Feedback)</option>
-                    <option value="keerthi_triumph">KT PSF — Keerthi Triumph</option>
-                  </optgroup>
-                </select>
+            <div className={styles['controls-group-left']}>
+              <div className={styles['control-group']}>
+                <span className={styles['control-label']}>Dealership</span>
+                <div className={styles['select-wrapper']}>
+                  <select className={styles['custom-select']} value={dealershipKey} onChange={e => setDealershipKey(e.target.value)}>
+                    <optgroup label="Pre-Sales">
+                      <option value="anant_cars">Anant Cars (Sales)</option>
+                      <option value="singhal">Singhal (Sales)</option>
+                      <option value="fortune_hyryder">Fortune Hyryder (Sales)</option>
+                    </optgroup>
+                    <optgroup label="Post-Sales">
+                      <option value="perfect_riders">Perfect Riders (Service)</option>
+                      <option value="ambal_service">Ambal (Service)</option>
+                      <option value="bullmen_service">Bullmen (Service)</option>
+                      <option value="fortune_service">Fortune Toyota (Service)</option>
+                      <option value="suryabala_service">Suryabala Honda (Service)</option>
+                      <option value="icare_feedback">Icare (Feedback)</option>
+                      <option value="keerthi_triumph">KT PSF — Keerthi Triumph</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <label className={styles['toggle-group']} htmlFor="chkExcludeTerminal">
+                <input type="checkbox" id="chkExcludeTerminal" checked={excludeTerminal} onChange={e => setExcludeTerminal(e.target.checked)} />
+                <span>Exclude terminal dispositions</span>
+              </label>
+
+              <div className={styles['format-chip']} title="Detected Date Parsing Format">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Format: {dateParseOrder === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}</span>
               </div>
             </div>
 
-            <div className={styles['toggle-group']}>
-              <input type="checkbox" id="chkExcludeTerminal" checked={excludeTerminal} onChange={e => setExcludeTerminal(e.target.checked)} />
-              <label htmlFor="chkExcludeTerminal">Exclude terminal dispositions</label>
+            <div className={styles['controls-group-right']}>
+              <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={processFileAction} disabled={!rawFile || processing}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4v5h.582m15.356 2A8 8 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8 8 0 01-15.357-2m15.357 2H15"/></svg>
+                Filter Re-Attempt Leads
+              </button>
+
+              {showResults && (
+                <>
+                  {allIncludedLeads.length > 0 && (
+                    <div className={styles['dispo-filter-wrapper']} style={{ display: 'inline-flex' }}>
+                      <button className={`${styles['btn-dispo-filter']} ${activeDispoFilter.size > 0 ? styles['active'] : ''}`} onClick={() => setDispoFilterVisible(!dispoFilterVisible)}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        Disposition
+                        {activeDispoFilter.size > 0 && <span className={styles['dispo-filter-badge']}>{activeDispoFilter.size}</span>}
+                      </button>
+                      {dispoFilterVisible && (
+                        <div ref={dispoDropdownRef} className={styles['dispo-filter-dropdown']} style={{ display: 'block' }}>
+                          <div className={styles['dispo-filter-header']}>Filter by disposition</div>
+                          <div className={`${styles['dispo-filter-count']} ${activeDispoFilter.size === 0 ? styles['muted'] : ''}`}>
+                            {activeDispoFilter.size > 0 ? `${includedLeads.length} of ${allIncludedLeads.length} leads match` : `All ${allIncludedLeads.length} leads (no filter)`}
+                          </div>
+                          {DISPOSITION_FILTER_VALUES.map(val => (
+                            <label key={val} className={styles['dispo-filter-option']}>
+                              <input type="checkbox" checked={activeDispoFilter.has(val)} onChange={() => {
+                                const next = new Set(activeDispoFilter);
+                                if (next.has(val)) next.delete(val); else next.add(val);
+                                setActiveDispoFilter(next);
+                                applyDispoFilter(next);
+                              }} />
+                              {val === '__blanks__' ? 'Blanks' : val.charAt(0).toUpperCase() + val.slice(1)}
+                            </label>
+                          ))}
+                          <div className={styles['dispo-filter-actions']}>
+                            <button className={`${styles.btn} ${styles['btn-sm']}`} onClick={() => { const empty = new Set<string>(); setActiveDispoFilter(empty); applyDispoFilter(empty); }}>Clear</button>
+                            <button className={`${styles.btn} ${styles['btn-sm']} ${styles['btn-primary']}`} onClick={() => setDispoFilterVisible(false)}>Done</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <button className={`${styles.btn} ${styles['btn-success']}`} onClick={downloadOutput} disabled={!includedLeads.length}>Export Batches</button>
+                  <button className={`${styles.btn} ${styles['btn-secondary']}`} onClick={copyOutputData} disabled={!includedLeads.length}>Copy TSV</button>
+                  <button className={`${styles.btn} ${styles['btn-danger-outline']}`} onClick={resetAll}>Reset</button>
+                </>
+              )}
+              {statusMsg && <span className={`${styles['status-msg']} ${statusType ? styles[statusType] : ''}`}>{statusMsg}</span>}
             </div>
-
-            <button className={`${styles.btn} ${styles['btn-primary']}`} onClick={processFileAction} disabled={!rawFile || processing}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 4v5h.582m15.356 2A8 8 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8 8 0 01-15.357-2m15.357 2H15"/></svg>
-              Filter Re-Attempt Leads
-            </button>
-
-            <span className={styles['date-parser-note']}>Format: {dateParseOrder === 'MDY' ? 'MM/DD/YYYY' : 'DD/MM/YYYY'}</span>
-
-            {showResults && (
-              <>
-                {allIncludedLeads.length > 0 && (
-                  <div className={styles['dispo-filter-wrapper']} style={{ display: 'inline-flex' }}>
-                    <button className={`${styles['btn-dispo-filter']} ${activeDispoFilter.size > 0 ? styles['active'] : ''}`} onClick={() => setDispoFilterVisible(!dispoFilterVisible)}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                      Disposition
-                      {activeDispoFilter.size > 0 && <span className={styles['dispo-filter-badge']}>{activeDispoFilter.size}</span>}
-                    </button>
-                    {dispoFilterVisible && (
-                      <div ref={dispoDropdownRef} className={styles['dispo-filter-dropdown']} style={{ display: 'block' }}>
-                        <div className={styles['dispo-filter-header']}>Filter by disposition</div>
-                        <div className={`${styles['dispo-filter-count']} ${activeDispoFilter.size === 0 ? styles['muted'] : ''}`}>
-                          {activeDispoFilter.size > 0 ? `${includedLeads.length} of ${allIncludedLeads.length} leads match` : `All ${allIncludedLeads.length} leads (no filter)`}
-                        </div>
-                        {DISPOSITION_FILTER_VALUES.map(val => (
-                          <label key={val} className={styles['dispo-filter-option']}>
-                            <input type="checkbox" checked={activeDispoFilter.has(val)} onChange={() => {
-                              const next = new Set(activeDispoFilter);
-                              if (next.has(val)) next.delete(val); else next.add(val);
-                              setActiveDispoFilter(next);
-                              applyDispoFilter(next);
-                            }} />
-                            {val === '__blanks__' ? 'Blanks' : val.charAt(0).toUpperCase() + val.slice(1)}
-                          </label>
-                        ))}
-                        <div className={styles['dispo-filter-actions']}>
-                          <button className={`${styles.btn} ${styles['btn-sm']}`} onClick={() => { const empty = new Set<string>(); setActiveDispoFilter(empty); applyDispoFilter(empty); }}>Clear</button>
-                          <button className={`${styles.btn} ${styles['btn-sm']} ${styles['btn-primary']}`} onClick={() => setDispoFilterVisible(false)}>Done</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <button className={`${styles.btn} ${styles['btn-success']}`} onClick={downloadOutput} disabled={!includedLeads.length}>Export Batches</button>
-                <button className={`${styles.btn} ${styles['btn-secondary']}`} onClick={copyOutputData} disabled={!includedLeads.length}>Copy TSV</button>
-                <button className={`${styles.btn} ${styles['btn-danger-outline']}`} onClick={resetAll}>Reset</button>
-              </>
-            )}
-            <span className={`${styles['status-msg']} ${statusType ? styles[statusType] : ''}`}>{statusMsg}</span>
           </div>
         </section>
 
@@ -698,9 +707,17 @@ export default function ReattemptFilterPage() {
           </div>
 
           {!showResults && (
-            <div className={styles['empty-state']}>
-              <div><strong>Waiting for data</strong><p>Upload a Zoho Master Sheet export and click Filter.</p></div>
-              <div className={styles['empty-steps']}><span>Upload</span><span>Filter</span><span>Review</span><span>Download</span></div>
+            <div className={styles['empty-banner']}>
+              <div>
+                <strong className={styles['empty-banner-title']}>Waiting for data</strong>
+                <p className={styles['empty-banner-desc']}>Upload your Zoho Master Sheet export above and click Filter Re-Attempt Leads. Clean lists and deduplication stats will appear here.</p>
+              </div>
+              <div className={styles['empty-banner-steps']} aria-hidden="true">
+                <span>Upload</span>
+                <span>Filter</span>
+                <span>Review</span>
+                <span>Download</span>
+              </div>
             </div>
           )}
 

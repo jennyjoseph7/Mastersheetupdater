@@ -653,7 +653,11 @@ export default function CallAnalysisPage() {
 
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem' }}>
         <section className={styles['upload-section']}>
-          <div className={styles['section-title']}>Upload Processed Sync Export</div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 1</span>
+            <h3 className={styles['section-title']}>Upload Processed Sync Export</h3>
+            <span className={styles['card-desc']}>Choose campaign mode, dealership, and drop the sync export.</span>
+          </div>
           <div className={styles['upload-controls']}>
             <span className={styles['mode-label']}>Campaign mode</span>
             <select className={styles['mode-select']} value={campaignMode} onChange={e => { setCampaignMode(e.target.value); if (importedRows.length) renderSummary(importedRows); }}>
@@ -716,9 +720,16 @@ export default function CallAnalysisPage() {
           </div>
         </section>
 
-        {showResults && (
-          <>
-            <div className={styles['summary-bar']}>
+        <section className={styles.card} style={{ marginTop: '1.5rem' }}>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 2</span>
+            <h3 className={styles['section-title']}>Summary & Analytics</h3>
+            <span className={styles['card-desc']}>Review KPIs, conversion rates, and call outcomes.</span>
+          </div>
+
+          {showResults ? (
+            <div style={{ marginTop: '1rem' }}>
+              <div className={styles['summary-bar']}>
               <div className={styles['campaign-info']}>
                 <div className={styles['campaign-name']}>{summaryTitle}</div>
                 <div className={styles['campaign-subtitle']}>{fileMeta || 'Import sync export data'}</div>
@@ -839,18 +850,22 @@ export default function CallAnalysisPage() {
                 </div>
               )}
             </div>
-          </>
-        )}
-
-        {!showResults && (
-          <div className={styles['empty-state']}>
-            <div className={styles['empty-icon']}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 17v-6m4 6V7m4 10v-4M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            </div>
-            <h2>Upload a Processed File to See the Summary</h2>
-            <p>Use the Excel export from Pre-Sales Sync or Post-Sales Disposition Sync. Choose campaign mode or Auto Detect.</p>
           </div>
-        )}
+        ) : (
+            <div className={styles['empty-banner']}>
+              <div>
+                <div className={styles['empty-banner-title']}>Waiting for processed data</div>
+                <div className={styles['empty-banner-sub']}>Upload the Excel export from Pre-Sales Sync or Post-Sales Sync to generate summary.</div>
+              </div>
+              <div className={styles['empty-banner-steps']}>
+                <span className={styles['empty-banner-step']}>Upload</span>
+                <span className={styles['empty-banner-step']}>Mode</span>
+                <span className={styles['empty-banner-step']}>Generate</span>
+                <span className={styles['empty-banner-step']}>Summary</span>
+              </div>
+            </div>
+          )}
+        </section>
       </main>
 
       <footer>AutoNage — Call Analysis Summary</footer>

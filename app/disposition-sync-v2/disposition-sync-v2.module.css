@@ -41,6 +41,21 @@
 .lead-id-input:hover, .lead-id-input:focus { border-color: var(--accent-p); }
 :global(.sub-page) select option { background: var(--surface); color: var(--text); }
 .lead-id-input { width: 100px; font-family: var(--mono); }
+.date-input {
+  min-width: 142px;
+  width: 142px;
+  padding: 0.48rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: var(--body);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.date-input:hover, .date-input:focus { border-color: var(--accent-p); }
 
 .btn { padding: 0.6rem 1.2rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 0.5rem; border: none; font-family: var(--body); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }

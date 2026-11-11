@@ -765,14 +765,10 @@ export default function SessionReportPage() {
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem' }}>
         {/* Step 1 Workflow Panel */}
         <section className={styles['workflow-panel']}>
-          <div className={styles['section-head']}>
-            <div>
-              <div className={styles.eyebrow}>Step 1</div>
-              <div className={styles['section-title']}>Prepare the report batch</div>
-            </div>
-            <div className={styles['section-note']}>
-              Drop the Lead File and Session File, verify column mapping, then process.
-            </div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 1</span>
+            <h3 className={styles['section-title']}>Prepare the report batch</h3>
+            <span className={styles['card-desc']}>Drop Audience & Leads and Sessions exports, then process.</span>
           </div>
 
           {/* Upload Grid */}
@@ -901,14 +897,10 @@ export default function SessionReportPage() {
 
         {/* Step 2 Results Panel */}
         <section className={styles['results-panel']}>
-          <div className={styles['section-head']}>
-            <div>
-              <div className={styles.eyebrow}>Step 2</div>
-              <div className={styles['section-title']}>Review and hand off</div>
-            </div>
-            <div className={styles['section-note']}>
-              After processing, use the stats and preview tables for spot checks before copying or exporting.
-            </div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 2</span>
+            <h3 className={styles['section-title']}>Review and hand off</h3>
+            <span className={styles['card-desc']}>Spot-check stats and preview tables before copying or exporting.</span>
           </div>
 
           {showResults ? (
@@ -1093,8 +1085,17 @@ export default function SessionReportPage() {
               </div>
             </>
           ) : (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-              No processed batch yet. Upload both exports in Step 1 and click &ldquo;Process Both Files&rdquo;.
+            <div className={styles['empty-banner']}>
+              <div>
+                <div className={styles['empty-banner-title']}>Waiting for processed batch</div>
+                <div className={styles['empty-banner-sub']}>Upload both Audience Leads and Sessions exports in Step 1 and click Process Both Files.</div>
+              </div>
+              <div className={styles['empty-banner-steps']}>
+                <span className={styles['empty-banner-step']}>Leads Export</span>
+                <span className={styles['empty-banner-step']}>Sessions Export</span>
+                <span className={styles['empty-banner-step']}>Process</span>
+                <span className={styles['empty-banner-step']}>Download Report</span>
+              </div>
             </div>
           )}
         </section>

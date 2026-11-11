@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import Nav from '@/components/Nav';
@@ -11,11 +11,14 @@ import XLSXStyle from 'xlsx-js-style';
 const XLSX: any = XLSXStyle && (XLSXStyle as any).utils ? XLSXStyle : ((XLSXStyle as any).default || XLSXStyle);
 import {
   CreditMetrics,
+  ObjectiveSummary,
   processCreditData,
   generateCreditWorkbook,
   generateCreditPresentation,
   formatNum,
+  formatDateDisplay,
   repairEncoding,
+  runDeckQA,
 } from './credit-utils';
 import styles from './credit-report.module.css';
 
@@ -31,6 +34,33 @@ export default function CreditReportPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState<'ok' | 'err' | 'warn' | ''>('');
   const [metrics, setMetrics] = useState<CreditMetrics | null>(null);
+  // User-tweaked objectives: keyed by objective name. Overrides the parsed values
+  // for voice credits, WhatsApp credits, start date, end date.
+  const [edits, setEdits] = useState<Record<string, Partial<ObjectiveSummary>>>({});
+  // Currently editing row index (for inline editing UI)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<{
+    rank: string;
+    startDate: string;
+    endDate: string;
+    voiceCredits: string;
+    whatsAppCredits: string;
+    totalCredits: string;
+    share: string;
+  }>({
+    rank: '',
+    startDate: '',
+    endDate: '',
+    voiceCredits: '',
+    whatsAppCredits: '',
+    totalCredits: '',
+    share: '',
+  });
+  // Selected rows for batch removal
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  // Drag and drop state for row reordering
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -115,6 +145,9 @@ export default function CreditReportPage() {
         setClientName(processedMetrics.clientName);
       }
 
+      setEdits({});
+      setEditingIdx(null);
+      setSelectedRows(new Set());
       setMetrics(processedMetrics);
       setStatusType('ok');
       setStatusMsg(
@@ -142,14 +175,15 @@ export default function CreditReportPage() {
   }
 
   function handleExportExcel() {
-    if (!metrics) return;
+    const m = effectiveMetrics;
+    if (!m) return;
     try {
       setProcessing(true);
       setProcessingText('Generating Excel workbook...');
-      const cleanClient = (clientName || metrics.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const cleanClient = (clientName || m.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
       const workbookBytes = generateCreditWorkbook({
-        ...metrics,
-        clientName: clientName || metrics.clientName,
+        ...m,
+        clientName: clientName || m.clientName,
       });
       const filename = `Credit_Usage_${cleanClient}_Report.xlsx`;
       downloadBlob(
@@ -169,14 +203,15 @@ export default function CreditReportPage() {
   }
 
   async function handleExportPptx() {
-    if (!metrics) return;
+    const m = effectiveMetrics;
+    if (!m) return;
     try {
       setProcessing(true);
-      setProcessingText('Building 5-slide PowerPoint deck...');
-      const cleanClient = (clientName || metrics.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
+      setProcessingText('Building PowerPoint deck...');
+      const cleanClient = (clientName || m.clientName || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
       const pptxBytes = await generateCreditPresentation({
-        ...metrics,
-        clientName: clientName || metrics.clientName,
+        ...m,
+        clientName: clientName || m.clientName,
       });
       const filename = `Credit_Usage_${cleanClient}_Presentation.pptx`;
       downloadBlob(
@@ -198,9 +233,301 @@ export default function CreditReportPage() {
   function handleReset() {
     setFile(null);
     setMetrics(null);
+    setEdits({});
+    setEditingIdx(null);
+    setSelectedRows(new Set());
     setStatusMsg('');
     setStatusType('');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  // ── Effective objectives: parsed values merged with user edits ──
+  const effectiveObjectives = useMemo<ObjectiveSummary[]>(() => {
+    if (!metrics) return [];
+    const merged = metrics.objectives.map((o) => {
+      const e = edits[o.objective];
+      const voice = typeof e?.voiceCredits === 'number' ? e.voiceCredits : o.voiceCredits;
+      const wa = typeof e?.whatsAppCredits === 'number' ? e.whatsAppCredits : o.whatsAppCredits;
+      const total = Number((voice + wa).toFixed(2));
+      return {
+        ...o,
+        voiceCredits: voice,
+        whatsAppCredits: wa,
+        totalCredits: total,
+        startDate: e?.startDate !== undefined ? e.startDate : o.startDate,
+        endDate: e?.endDate !== undefined ? e.endDate : o.endDate,
+      };
+    });
+
+    const grandTotal = merged.reduce((s, o) => s + o.totalCredits, 0);
+
+    return merged.map((o, idx) => ({
+      ...o,
+      rank: idx + 1,
+      shareOfTotal: grandTotal > 0 ? Number(((o.totalCredits / grandTotal) * 100).toFixed(2)) : 0,
+    }));
+  }, [metrics, edits]);
+
+  // Recompute derived totals from effective objectives (keeps table, Excel & PPTX consistent)
+  const effectiveMetrics = useMemo<CreditMetrics | null>(() => {
+    if (!metrics) return null;
+    const totalCredits = Number(effectiveObjectives.reduce((s, o) => s + o.totalCredits, 0).toFixed(2));
+    const voiceCredits = Number(effectiveObjectives.reduce((s, o) => s + o.voiceCredits, 0).toFixed(2));
+    const whatsAppCredits = Number(effectiveObjectives.reduce((s, o) => s + o.whatsAppCredits, 0).toFixed(2));
+    const base: CreditMetrics = {
+      ...metrics,
+      objectives: effectiveObjectives,
+      totalCredits,
+      voiceCredits,
+      whatsAppCredits,
+      voiceShare: totalCredits > 0 ? (voiceCredits / totalCredits) * 100 : 0,
+      whatsAppShare: totalCredits > 0 ? (whatsAppCredits / totalCredits) * 100 : 0,
+    };
+    base.qaReport = runDeckQA(base);
+    return base;
+  }, [metrics, effectiveObjectives]);
+
+  function toggleSelect(idx: number) {
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!effectiveObjectives.length) return;
+    if (selectedRows.size === effectiveObjectives.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(effectiveObjectives.map((_, i) => i)));
+    }
+  }
+
+  function removeSelectedRows() {
+    if (!metrics || selectedRows.size === 0) return;
+    const removedNames = new Set(
+      effectiveObjectives.filter((_, i) => selectedRows.has(i)).map(o => o.objective)
+    );
+    setMetrics(prev => {
+      if (!prev) return prev;
+      const next: CreditMetrics = {
+        ...prev,
+        objectives: prev.objectives.filter(o => !removedNames.has(o.objective)),
+      };
+      next.qaReport = runDeckQA(next);
+      return next;
+    });
+    setEdits(prev => {
+      const next = { ...prev };
+      for (const name of removedNames) delete next[name];
+      return next;
+    });
+    const count = selectedRows.size;
+    setSelectedRows(new Set());
+    setEditingIdx(null);
+    setStatusType('ok');
+    setStatusMsg(`Removed ${count} objective(s). Totals, Excel, and PPTX downloads updated.`);
+  }
+
+  function removeSingleRow(idx: number) {
+    if (!metrics) return;
+    const targetObj = effectiveObjectives[idx];
+    if (!targetObj) return;
+    setMetrics(prev => {
+      if (!prev) return prev;
+      const next: CreditMetrics = {
+        ...prev,
+        objectives: prev.objectives.filter(o => o.objective !== targetObj.objective),
+      };
+      next.qaReport = runDeckQA(next);
+      return next;
+    });
+    setEdits(prev => {
+      const next = { ...prev };
+      delete next[targetObj.objective];
+      return next;
+    });
+    setSelectedRows(new Set());
+    if (editingIdx === idx) setEditingIdx(null);
+    setStatusType('ok');
+    setStatusMsg(`Removed "${targetObj.objective}". Totals, Excel, and PPTX downloads updated.`);
+  }
+
+  function handleDragStart(e: React.DragEvent, idx: number) {
+    if (editingIdx !== null) return;
+    setDraggedIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e: React.DragEvent, idx: number) {
+    e.preventDefault();
+    if (editingIdx !== null) return;
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== idx) setDragOverIdx(idx);
+  }
+
+  function handleDragEnd() {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+  }
+
+  function handleDropRow(targetIdx: number) {
+    if (editingIdx !== null) return;
+    if (draggedIdx === null || draggedIdx === targetIdx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    setMetrics(prev => {
+      if (!prev) return prev;
+      const list = [...prev.objectives];
+      const [moved] = list.splice(draggedIdx, 1);
+      list.splice(targetIdx, 0, moved);
+      const next = { ...prev, objectives: list };
+      next.qaReport = runDeckQA(next);
+      return next;
+    });
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    setStatusType('ok');
+    setStatusMsg('Reordered objectives. Excel and PPTX will export in this order.');
+  }
+
+  function startEditRow(idx: number, o: ObjectiveSummary) {
+    setEditingIdx(idx);
+    setEditForm({
+      rank: String(o.rank),
+      startDate: o.startDate || '',
+      endDate: o.endDate || '',
+      voiceCredits: String(o.voiceCredits),
+      whatsAppCredits: String(o.whatsAppCredits),
+      totalCredits: String(o.totalCredits),
+      share: String(o.shareOfTotal.toFixed(1)),
+    });
+  }
+
+  function handleVoiceCreditsChange(idx: number, val: string) {
+    const v = parseFloat(val) || 0;
+    const w = parseFloat(editForm.whatsAppCredits) || 0;
+    const tot = Number((v + w).toFixed(2));
+    const otherSum = effectiveObjectives.reduce((s, row, i) => i === idx ? s : s + row.totalCredits, 0);
+    const newGrandTotal = otherSum + tot;
+    const sh = newGrandTotal > 0 ? ((tot / newGrandTotal) * 100).toFixed(1) : '0.0';
+    setEditForm(prev => ({
+      ...prev,
+      voiceCredits: val,
+      totalCredits: String(tot),
+      share: sh,
+    }));
+  }
+
+  function handleWhatsAppCreditsChange(idx: number, val: string) {
+    const w = parseFloat(val) || 0;
+    const v = parseFloat(editForm.voiceCredits) || 0;
+    const tot = Number((v + w).toFixed(2));
+    const otherSum = effectiveObjectives.reduce((s, row, i) => i === idx ? s : s + row.totalCredits, 0);
+    const newGrandTotal = otherSum + tot;
+    const sh = newGrandTotal > 0 ? ((tot / newGrandTotal) * 100).toFixed(1) : '0.0';
+    setEditForm(prev => ({
+      ...prev,
+      whatsAppCredits: val,
+      totalCredits: String(tot),
+      share: sh,
+    }));
+  }
+
+  function handleTotalCreditsChange(idx: number, val: string) {
+    const tot = parseFloat(val) || 0;
+    let v = parseFloat(editForm.voiceCredits) || 0;
+    let w = parseFloat(editForm.whatsAppCredits) || 0;
+    if (tot < v) {
+      v = tot;
+      w = 0;
+    } else {
+      w = Math.max(0, Number((tot - v).toFixed(2)));
+    }
+    const otherSum = effectiveObjectives.reduce((s, row, i) => i === idx ? s : s + row.totalCredits, 0);
+    const newGrandTotal = otherSum + tot;
+    const sh = newGrandTotal > 0 ? ((tot / newGrandTotal) * 100).toFixed(1) : '0.0';
+    setEditForm(prev => ({
+      ...prev,
+      totalCredits: val,
+      voiceCredits: String(v),
+      whatsAppCredits: String(w),
+      share: sh,
+    }));
+  }
+
+  function handleShareChange(idx: number, val: string) {
+    const shVal = parseFloat(val) || 0;
+    const otherSum = effectiveObjectives.reduce((s, row, i) => i === idx ? s : s + row.totalCredits, 0);
+    const pct = Math.min(99.9, Math.max(0, shVal)) / 100;
+    const tot = pct < 1 && (1 - pct) > 0 ? Number(((pct * otherSum) / (1 - pct)).toFixed(2)) : otherSum;
+    const v = parseFloat(editForm.voiceCredits) || 0;
+    let newV = v;
+    let newW = 0;
+    if (tot < v) {
+      newV = tot;
+      newW = 0;
+    } else {
+      newW = Math.max(0, Number((tot - v).toFixed(2)));
+    }
+    setEditForm(prev => ({
+      ...prev,
+      share: val,
+      totalCredits: String(tot),
+      voiceCredits: String(newV),
+      whatsAppCredits: String(newW),
+    }));
+  }
+
+  function cancelEditRow() {
+    setEditingIdx(null);
+  }
+
+  function saveEditRow(idx: number, o: ObjectiveSummary) {
+    const v = parseFloat(editForm.voiceCredits);
+    const w = parseFloat(editForm.whatsAppCredits);
+    if (isNaN(v) || v < 0 || isNaN(w) || w < 0) {
+      setStatusType('err');
+      setStatusMsg('Credits must be valid non-negative numbers.');
+      return;
+    }
+    
+    // Check if slot rank changed
+    const targetRank = parseInt(editForm.rank, 10);
+    const currentRank = idx + 1;
+    
+    // Save updated values
+    setEdits(prev => ({
+      ...prev,
+      [o.objective]: {
+        startDate: editForm.startDate.trim() || o.startDate,
+        endDate: editForm.endDate.trim() || o.endDate,
+        voiceCredits: Number(v.toFixed(2)),
+        whatsAppCredits: Number(w.toFixed(2)),
+      },
+    }));
+
+    // If rank changed, move objective in array
+    if (!isNaN(targetRank) && targetRank !== currentRank && metrics) {
+      const clampedTarget = Math.max(0, Math.min(metrics.objectives.length - 1, targetRank - 1));
+      setMetrics(prev => {
+        if (!prev) return prev;
+        const list = [...prev.objectives];
+        const [moved] = list.splice(idx, 1);
+        list.splice(clampedTarget, 0, moved);
+        const next = { ...prev, objectives: list };
+        next.qaReport = runDeckQA(next);
+        return next;
+      });
+    }
+
+    setEditingIdx(null);
+    setStatusType('ok');
+    setStatusMsg(`Saved changes to "${o.objective}". Excel and PPTX downloads updated.`);
   }
 
   return (
@@ -225,17 +552,13 @@ export default function CreditReportPage() {
       </header>
 
       {/* Main Content */}
-      <main className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+      <main className="main-content" style={{ maxWidth: '1580px', width: '96%', margin: '0 auto', padding: '1.5rem 1rem' }}>
         {/* Upload & Setup Workflow Panel */}
         <div className={styles['workflow-panel']}>
-          <div className={styles['section-head']}>
-            <div>
-              <div className={styles.eyebrow}>Bot Billing Analytics</div>
-              <h1 className={styles['section-title']}>Credit Usage Report & Deck Generator</h1>
-              <p className={styles['section-note']}>
-                Upload AutoEngage platform billing debits CSV. Generates an objective-wise Excel workbook (Summary, Voice, WhatsApp, Data) and a 5-slide client PowerPoint presentation.
-              </p>
-            </div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 1</span>
+            <h3 className={styles['section-title']}>Upload Billing Debits</h3>
+            <span className={styles['card-desc']}>AutoEngage platform billing debits CSV or Excel export.</span>
           </div>
 
           {/* Upload Drop Zone */}
@@ -347,29 +670,36 @@ export default function CreditReportPage() {
         )}
 
         {/* Results Panel */}
-        {metrics && (
-          <div className={styles['results-panel']}>
-            {/* Top KPI Cards */}
+        <div className={styles['results-panel']}>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 2</span>
+            <h3 className={styles['section-title']}>Credit Consumption & Decks</h3>
+            <span className={styles['card-desc']}>KPI audit, objective breakdown, and client deck exports.</span>
+          </div>
+
+          {metrics ? (
+            <>
+              {/* Top KPI Cards — reflect live edits */}
             <div className={styles['kpi-grid']}>
               <div className={styles['kpi-card']}>
                 <div className={styles['kpi-label']}>Total Credits Consumed</div>
-                <div className={styles['kpi-value']}>{formatNum(Math.round(metrics.totalCredits))}</div>
+                <div className={styles['kpi-value']}>{formatNum(Math.round(effectiveMetrics!.totalCredits))}</div>
                 <div className={styles['kpi-sub']}>{formatNum(metrics.debitsCount)} debits ({metrics.periodStr})</div>
               </div>
 
               <div className={styles['kpi-card']}>
                 <div className={styles['kpi-label']}>Voice Spend</div>
-                <div className={styles['kpi-value']}>{formatNum(Math.round(metrics.voiceCredits))}</div>
+                <div className={styles['kpi-value']}>{formatNum(Math.round(effectiveMetrics!.voiceCredits))}</div>
                 <div className={styles['kpi-sub']}>
-                  {metrics.voiceShare.toFixed(1)}% share · {formatNum(metrics.callConnectedCount)} connected calls
+                  {effectiveMetrics!.voiceShare.toFixed(1)}% share · {formatNum(metrics.callConnectedCount)} connected calls
                 </div>
               </div>
 
               <div className={styles['kpi-card']}>
                 <div className={styles['kpi-label']}>WhatsApp Spend</div>
-                <div className={styles['kpi-value']}>{formatNum(Math.round(metrics.whatsAppCredits))}</div>
+                <div className={styles['kpi-value']}>{formatNum(Math.round(effectiveMetrics!.whatsAppCredits))}</div>
                 <div className={styles['kpi-sub']}>
-                  {metrics.whatsAppShare.toFixed(1)}% share · {formatNum(metrics.messageDeliveredCount)} delivered
+                  {effectiveMetrics!.whatsAppShare.toFixed(1)}% share · {formatNum(metrics.messageDeliveredCount)} delivered
                 </div>
               </div>
 
@@ -383,34 +713,38 @@ export default function CreditReportPage() {
             </div>
 
             {/* QA Verification Suite Banner (Requirement 9) */}
-            {metrics.qaReport && (
-              <div className={styles['qa-box']}>
-                <div className={styles['qa-header']}>
-                  <div className={styles['qa-title']}>
-                    <span>QA Deck Verification & Audit</span>
-                    <span className={metrics.qaReport.passed ? styles['qa-badge-pass'] : styles['qa-badge-fail']}>
-                      {metrics.qaReport.passed ? 'All Checks Passed (5/5)' : 'Verification Failed'}
+            {(() => {
+              const qaReport = effectiveMetrics?.qaReport || metrics.qaReport;
+              if (!qaReport) return null;
+              return (
+                <div className={styles['qa-box']}>
+                  <div className={styles['qa-header']}>
+                    <div className={styles['qa-title']}>
+                      <span>QA Deck Verification & Audit</span>
+                      <span className={qaReport.passed ? styles['qa-badge-pass'] : styles['qa-badge-fail']}>
+                        {qaReport.passed ? 'All Checks Passed (5/5)' : 'Verification Failed'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Deck: {qaReport.slideCount} slides · {qaReport.rowsShown} objectives ({qaReport.unmappedCount} unmapped)
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Deck: {metrics.qaReport.slideCount} slides · {metrics.qaReport.rowsShown} objectives ({metrics.qaReport.unmappedCount} unmapped)
-                  </span>
-                </div>
-                <div className={styles['qa-grid']}>
-                  {metrics.qaReport.checks.map((chk, i) => (
-                    <div key={i} className={styles['qa-item']}>
-                      <span className={chk.passed ? styles['qa-icon-pass'] : styles['qa-icon-fail']}>
-                        {chk.passed ? '✓' : '✗'}
-                      </span>
-                      <div>
-                        <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '0.15rem' }}>{chk.name}</strong>
-                        <span>{chk.details}</span>
+                  <div className={styles['qa-grid']}>
+                    {qaReport.checks.map((chk, i) => (
+                      <div key={i} className={styles['qa-item']}>
+                        <span className={chk.passed ? styles['qa-icon-pass'] : styles['qa-icon-fail']}>
+                          {chk.passed ? '✓' : '✗'}
+                        </span>
+                        <div>
+                          <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '0.15rem' }}>{chk.name}</strong>
+                          <span>{chk.details}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Export Downloads Action Bar */}
             <div className={styles['download-bar']}>
@@ -450,12 +784,27 @@ export default function CreditReportPage() {
 
             {/* Objective Breakdown Summary Table Preview */}
             <div style={{ marginTop: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
-                  Objective Wise Credits ({metrics.objectives.length} Objectives)
-                </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>
+                    Objective Wise Credits ({effectiveObjectives.length} Objectives)
+                  </h2>
+                  {selectedRows.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={removeSelectedRows}
+                      className={styles['btn-remove-selected']}
+                      title="Remove checked objectives from report"
+                    >
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remove Selected ({selectedRows.size})
+                    </button>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Period: {metrics.periodStr}
+                  Period: {effectiveMetrics?.periodStr || metrics.periodStr}
                 </span>
               </div>
 
@@ -463,50 +812,257 @@ export default function CreditReportPage() {
                 <table className={styles['data-table']}>
                   <thead>
                     <tr>
-                      <th className={styles['text-center']}>#</th>
+                      <th style={{ width: '38px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          aria-label="Select all objectives"
+                          checked={effectiveObjectives.length > 0 && selectedRows.size === effectiveObjectives.length}
+                          onChange={toggleSelectAll}
+                          className={styles['row-checkbox']}
+                        />
+                      </th>
+                      <th className={styles['text-center']} style={{ width: '45px' }}>#</th>
                       <th>Objective</th>
-                      <th className={styles['text-center']}>Start Date</th>
-                      <th className={styles['text-center']}>End Date</th>
-                      <th className={styles['text-right']}>Voice Credits</th>
-                      <th className={styles['text-right']}>WhatsApp Credits</th>
-                      <th className={styles['text-right']}>Total Credits</th>
-                      <th className={styles['text-right']}>Share</th>
+                      <th className={styles['text-center']} style={{ width: '130px' }}>Start Date</th>
+                      <th className={styles['text-center']} style={{ width: '130px' }}>End Date</th>
+                      <th className={styles['text-right']} style={{ width: '130px' }}>Voice Credits</th>
+                      <th className={styles['text-right']} style={{ width: '140px' }}>WhatsApp Credits</th>
+                      <th className={styles['text-right']} style={{ width: '120px' }}>Total Credits</th>
+                      <th className={styles['text-right']} style={{ width: '75px' }}>Share</th>
+                      <th className={styles['text-center']} style={{ width: '110px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metrics.objectives.map(o => (
-                      <tr key={o.objective}>
-                        <td className={styles['text-center']}>{o.rank}</td>
-                        <td>
-                          {o.objective}
-                          {o.isUnmapped && <span className={styles['badge-unmapped']}>Unmapped</span>}
+                    {effectiveObjectives.map((o, idx) => {
+                      const isEditing = editingIdx === idx;
+                      if (isEditing) {
+                        return (
+                          <tr key={o.objective} className={styles['row-editing']}>
+                            <td className={styles['text-center']}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.has(idx)}
+                                onChange={() => toggleSelect(idx)}
+                                className={styles['row-checkbox']}
+                              />
+                            </td>
+                            <td className={styles['text-center']}>
+                              <input
+                                type="number"
+                                min={1}
+                                max={effectiveObjectives.length}
+                                className={styles['inline-input-slot']}
+                                value={editForm.rank}
+                                onChange={e => setEditForm(prev => ({ ...prev, rank: e.target.value }))}
+                                title="Slot position (1..N)"
+                              />
+                            </td>
+                            <td>
+                              <strong>{o.objective}</strong>
+                              {o.isUnmapped && <span className={styles['badge-unmapped']}>Unmapped</span>}
+                            </td>
+                            <td className={styles['text-center']}>
+                              <input
+                                type="text"
+                                className={styles['inline-input']}
+                                value={editForm.startDate}
+                                onChange={e => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
+                                placeholder="e.g. 5 Nov 2026"
+                              />
+                            </td>
+                            <td className={styles['text-center']}>
+                              <input
+                                type="text"
+                                className={styles['inline-input']}
+                                value={editForm.endDate}
+                                onChange={e => setEditForm(prev => ({ ...prev, endDate: e.target.value }))}
+                                placeholder="e.g. 11 Nov 2026"
+                              />
+                            </td>
+                            <td className={styles['text-right']}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className={styles['inline-input-num']}
+                                value={editForm.voiceCredits}
+                                onChange={e => handleVoiceCreditsChange(idx, e.target.value)}
+                                title="Voice credits"
+                              />
+                            </td>
+                            <td className={styles['text-right']}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className={styles['inline-input-num']}
+                                value={editForm.whatsAppCredits}
+                                onChange={e => handleWhatsAppCreditsChange(idx, e.target.value)}
+                                title="WhatsApp credits"
+                              />
+                            </td>
+                            <td className={styles['text-right']}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className={styles['inline-input-num']}
+                                value={editForm.totalCredits}
+                                onChange={e => handleTotalCreditsChange(idx, e.target.value)}
+                                title="Total credits"
+                              />
+                            </td>
+                            <td className={styles['text-right']}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', justifyContent: 'flex-end' }}>
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  max="100"
+                                  className={styles['inline-input-num']}
+                                  style={{ width: '56px' }}
+                                  value={editForm.share}
+                                  onChange={e => handleShareChange(idx, e.target.value)}
+                                  title="Share % of total"
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>%</span>
+                              </div>
+                            </td>
+                            <td className={styles['text-center']}>
+                              <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => saveEditRow(idx, o)}
+                                  className={styles['btn-save-inline']}
+                                  title="Save changes"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditRow}
+                                  className={styles['btn-cancel-inline']}
+                                  title="Cancel editing"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr
+                          key={o.objective}
+                          draggable={editingIdx === null}
+                          onDragStart={e => handleDragStart(e, idx)}
+                          onDragOver={e => handleDragOver(e, idx)}
+                          onDragEnd={handleDragEnd}
+                          onDrop={() => handleDropRow(idx)}
+                          className={`${draggedIdx === idx ? styles['row-dragging'] : ''} ${dragOverIdx === idx ? styles['row-drag-over'] : ''}`}
+                        >
+                          <td className={styles['text-center']}>
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.has(idx)}
+                              onChange={() => toggleSelect(idx)}
+                              className={styles['row-checkbox']}
+                            />
+                          </td>
+                          <td className={styles['text-center']}>
+                            <div className={styles['slot-cell']}>
+                              <span className={styles['drag-handle']} title="Drag up or down to reorder">⋮⋮</span>
+                              <span className={styles['slot-badge']}>{o.rank}</span>
+                              <button
+                                type="button"
+                                onClick={() => startEditRow(idx, o)}
+                                className={styles['btn-slot-edit']}
+                                title={`Edit slot #${o.rank} and values`}
+                              >
+                                ✎
+                              </button>
+                            </div>
+                          </td>
+                          <td>
+                            {o.objective}
+                            {o.isUnmapped && <span className={styles['badge-unmapped']}>Unmapped</span>}
+                          </td>
+                          <td className={styles['text-center']}>{o.startDate}</td>
+                          <td className={styles['text-center']}>{o.endDate}</td>
+                          <td className={styles['text-right']}>{formatNum(o.voiceCredits, 2)}</td>
+                          <td className={styles['text-right']}>{formatNum(o.whatsAppCredits, 2)}</td>
+                          <td className={styles['text-right']} style={{ fontWeight: 600 }}>
+                            {formatNum(o.totalCredits, 2)}
+                          </td>
+                          <td className={styles['text-right']}>{o.shareOfTotal.toFixed(1)}%</td>
+                          <td className={styles['text-center']}>
+                            <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => startEditRow(idx, o)}
+                                className={styles['btn-edit-inline']}
+                                title="Edit credits and dates"
+                              >
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeSingleRow(idx)}
+                                className={styles['btn-delete-inline']}
+                                title={`Remove "${o.objective}"`}
+                              >
+                                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {effectiveObjectives.length === 0 && (
+                      <tr>
+                        <td colSpan={10} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+                          All objectives removed. Use Reset above or re-process to restore.
                         </td>
-                        <td className={styles['text-center']}>{o.startDate}</td>
-                        <td className={styles['text-center']}>{o.endDate}</td>
-                        <td className={styles['text-right']}>{formatNum(o.voiceCredits, 2)}</td>
-                        <td className={styles['text-right']}>{formatNum(o.whatsAppCredits, 2)}</td>
-                        <td className={styles['text-right']} style={{ fontWeight: 600 }}>
-                          {formatNum(o.totalCredits, 2)}
-                        </td>
-                        <td className={styles['text-right']}>{o.shareOfTotal.toFixed(1)}%</td>
                       </tr>
-                    ))}
+                    )}
                     <tr className={styles['total-row']}>
                       <td className={styles['text-center']}>—</td>
+                      <td className={styles['text-center']}>—</td>
                       <td>Grand Total</td>
-                      <td className={styles['text-center']}>{metrics.minDate ? metrics.objectives[0]?.startDate : '-'}</td>
-                      <td className={styles['text-center']}>{metrics.maxDate ? metrics.objectives[0]?.endDate : '-'}</td>
-                      <td className={styles['text-right']}>{formatNum(metrics.voiceCredits, 2)}</td>
-                      <td className={styles['text-right']}>{formatNum(metrics.whatsAppCredits, 2)}</td>
-                      <td className={styles['text-right']}>{formatNum(metrics.totalCredits, 2)}</td>
+                      <td className={styles['text-center']}>{effectiveMetrics?.objectives[0]?.startDate || '-'}</td>
+                      <td className={styles['text-center']}>{effectiveMetrics?.objectives[0]?.endDate || '-'}</td>
+                      <td className={styles['text-right']}>{formatNum(effectiveMetrics?.voiceCredits || 0, 2)}</td>
+                      <td className={styles['text-right']}>{formatNum(effectiveMetrics?.whatsAppCredits || 0, 2)}</td>
+                      <td className={styles['text-right']}>{formatNum(effectiveMetrics?.totalCredits || 0, 2)}</td>
                       <td className={styles['text-right']}>100.0%</td>
+                      <td className={styles['text-center']}>—</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
+          </>
+        ) : (
+          <div className={styles['empty-banner']}>
+            <div>
+              <div className={styles['empty-banner-title']}>Waiting for billing data</div>
+              <div className={styles['empty-banner-sub']}>Upload an AutoEngage billing debits export to generate KPI audit, breakdown workbook, and PowerPoint deck.</div>
+            </div>
+            <div className={styles['empty-banner-steps']}>
+              <span className={styles['empty-banner-step']}>Upload CSV</span>
+              <span className={styles['empty-banner-step']}>Process</span>
+              <span className={styles['empty-banner-step']}>Audit KPIs</span>
+              <span className={styles['empty-banner-step']}>Download Deck</span>
+            </div>
           </div>
         )}
+      </div>
       </main>
 
       {/* Processing Loader */}

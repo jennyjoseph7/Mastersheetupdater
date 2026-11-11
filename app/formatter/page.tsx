@@ -442,8 +442,11 @@ export default function FormatterPage() {
       </header>
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem' }}>
         <section className={styles.panel}>
-          <div className={styles['section-title']}>Step 1 — Template and file</div>
-          <div className={styles['step-note']}>1) Choose template 2) Upload Sheet 3) Click Format File</div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 1</span>
+            <h3 className={styles['section-title']}>Template & Client File</h3>
+            <span className={styles['card-desc']}>Choose template, drop client spreadsheet, and format to schema.</span>
+          </div>
           <div className={styles.controls}>
             <select className={styles.select} value={templateId} onChange={e => handleTemplateChange(e.target.value)}>
               {Object.entries(TEMPLATES).map(([key, tpl]) => (
@@ -463,10 +466,11 @@ export default function FormatterPage() {
             onClick={() => fileInputRef.current?.click()}
           >
             <div className={styles['upload-row']}>
-              <div>
-                <div className={styles['dz-label']}>Upload client CSV/XLSX</div>
-                <div className={styles['dz-sub']}>Use Upload Sheet button above, or drag and drop file.</div>
+              <div className={styles['dz-icon-wrap']}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
               </div>
+              <div className={styles['dz-label']}>Upload client CSV/XLSX</div>
+              <div className={styles['dz-sub']}>Use Upload Sheet button above, or drag and drop file.</div>
             </div>
             <div className={`${styles.status} ${hasFile ? styles['ok'] : ''}`}>{fileStatus}</div>
             <input ref={fileInputRef} type="file" aria-label="Upload Client Data File" accept=".csv,.xlsx,.xls" onChange={handleFileChange} style={{ display: 'none' }} />
@@ -534,40 +538,62 @@ export default function FormatterPage() {
         </section>
 
         <section className={styles.panel}>
-          <div className={styles['section-title']}>Step 2 — Output preview</div>
-          <div className={styles.stats}>
-            <div className={styles.stat}><div className={styles['stat-label']}>Input Rows</div><div className={styles['stat-value']}>{inputRowCount}</div></div>
-            <div className={styles.stat}><div className={styles['stat-label']}>Output Rows</div><div className={styles['stat-value']}>{outputRows.length}</div></div>
-            <div className={styles.stat}><div className={styles['stat-label']}>Mapped Cells</div><div className={styles['stat-value']}>{mappedCells}</div></div>
-            <div className={styles.stat}><div className={styles['stat-label']}>Default Cells</div><div className={styles['stat-value']}>{defaultCells}</div></div>
+          <div className={styles['card-header']}>
+            <span className={styles['step-badge']}>STEP 2</span>
+            <h3 className={styles['section-title']}>Output Preview & Export</h3>
+            <span className={styles['card-desc']}>Spot-check converted rows and audit mapping quality.</span>
           </div>
 
-          {audit && (
-            <div className={styles['audit-card']} style={{ display: 'block' }}>
-              <div className={styles['audit-title']}>{audit.hasWarnings ? 'Mapping audit — review before download' : 'Mapping audit — ready'}</div>
-              <div className={styles['audit-grid']}>
-                {audit.sections.map((s, i) => (
-                  <div key={i} className={`${styles['audit-item']} ${styles[s.level]}`}>
-                    <strong>{s.title}</strong>
-                    {s.rows.map((r, j) => <div key={j}>{r}</div>)}
+          {outputRows.length > 0 ? (
+            <>
+              <div className={styles.stats}>
+                <div className={styles.stat}><div className={styles['stat-label']}>Input Rows</div><div className={styles['stat-value']}>{inputRowCount}</div></div>
+                <div className={styles.stat}><div className={styles['stat-label']}>Output Rows</div><div className={styles['stat-value']}>{outputRows.length}</div></div>
+                <div className={styles.stat}><div className={styles['stat-label']}>Mapped Cells</div><div className={styles['stat-value']}>{mappedCells}</div></div>
+                <div className={styles.stat}><div className={styles['stat-label']}>Default Cells</div><div className={styles['stat-value']}>{defaultCells}</div></div>
+              </div>
+
+              {audit && (
+                <div className={styles['audit-card']} style={{ display: 'block' }}>
+                  <div className={styles['audit-title']}>{audit.hasWarnings ? 'Mapping audit — review before download' : 'Mapping audit — ready'}</div>
+                  <div className={styles['audit-grid']}>
+                    {audit.sections.map((s, i) => (
+                      <div key={i} className={`${styles['audit-item']} ${styles[s.level]}`}>
+                        <strong>{s.title}</strong>
+                        {s.rows.map((r, j) => <div key={j}>{r}</div>)}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              <div className={styles['table-wrap']} style={{ display: sortedRows.length ? 'block' : 'none' }}>
+                <div className={styles['table-scroll']}>
+                  <table>
+                    <thead><tr>{template.outputOrder.map(h => <th key={h}>{esc(h)}</th>)}</tr></thead>
+                    <tbody>
+                      {sortedRows.map((row, i) => (
+                        <tr key={i}>{template.outputOrder.map(h => <td key={h}>{esc(row[h])}</td>)}</tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className={styles['empty-banner']}>
+              <div>
+                <div className={styles['empty-banner-title']}>Waiting for file formatting</div>
+                <div className={styles['empty-banner-sub']}>Select a schema template and upload a client spreadsheet to review mapping and export batches.</div>
+              </div>
+              <div className={styles['empty-banner-steps']}>
+                <span className={styles['empty-banner-step']}>1. Template</span>
+                <span className={styles['empty-banner-step']}>2. Upload</span>
+                <span className={styles['empty-banner-step']}>3. Format</span>
+                <span className={styles['empty-banner-step']}>4. Export</span>
               </div>
             </div>
           )}
-
-          <div className={styles['table-wrap']} style={{ display: sortedRows.length ? 'block' : 'none' }}>
-            <div className={styles['table-scroll']}>
-              <table>
-                <thead><tr>{template.outputOrder.map(h => <th key={h}>{esc(h)}</th>)}</tr></thead>
-                <tbody>
-                  {sortedRows.map((row, i) => (
-                    <tr key={i}>{template.outputOrder.map(h => <td key={h}>{esc(row[h])}</td>)}</tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </section>
       </main>
       <footer>AutoNage — AutoEngage Formatter</footer>
