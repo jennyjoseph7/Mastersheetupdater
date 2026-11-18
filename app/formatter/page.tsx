@@ -8,7 +8,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import ProcessingOverlay from '@/components/ProcessingOverlay';
 import { readFileAsArrayBuffer, esc, excelSafe, validateFileSync } from '@/lib/data-pipeline';
 import * as XLSX from 'xlsx';
-import { TEMPLATES, FormatterTemplate, buildTargetSources, normalizeHeader, normalizeToyotaVehicleModel, normalizeMahindraVehicleName, canonicalHeader } from './templates';
+import { TEMPLATES, FormatterTemplate, buildTargetSources, normalizeHeader, normalizeToyotaVehicleModel, normalizeMahindraVehicleName, canonicalHeader, cleanPhoneNumber } from './templates';
 import styles from './formatter.module.css';
 
 const AE_BATCH_STORAGE_KEY = 'jejo-ae-batch-export-v1';
@@ -48,9 +48,7 @@ export default function FormatterPage() {
   const [processing, setProcessing] = useState(false);
   const [startLead, setStartLead] = useState(1);
   const [numBatches, setNumBatches] = useState(1);
-  const [batchSize, setBatchSize] = useState(() => {
-    try { return parseInt(localStorage.getItem(AE_BATCH_SIZE_KEY) || '100', 10) || 100; } catch { return 100; }
-  });
+  const [batchSize, setBatchSize] = useState(100);
   const [audit, setAudit] = useState<MappingAudit | null>(null);
   const [fileDragOver, setFileDragOver] = useState(false);
   const [hasFile, setHasFile] = useState(false);
@@ -59,6 +57,16 @@ export default function FormatterPage() {
   const batchFingerprintRef = useRef('');
   const batchInputRowCountRef = useRef(0);
   const batchTemplateIdRef = useRef('');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(AE_BATCH_SIZE_KEY);
+      if (saved) {
+        const v = parseInt(saved, 10);
+        if (v > 0) setBatchSize(v);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) router.push('/login');
@@ -140,7 +148,7 @@ export default function FormatterPage() {
   }
 
   function parseSheet(ab: ArrayBuffer, tmpl: FormatterTemplate): ParsedResult {
-    const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false });
+    const wb = XLSX.read(ab, { type: 'array', raw: true, cellText: false, cellDates: false, codepage: 65001 });
     const targetSources = buildTargetSources(tmpl);
     const allTargetKeys = new Set<string>();
     for (const keys of Object.values(targetSources)) keys.forEach(k => allTargetKeys.add(k));
@@ -264,7 +272,7 @@ export default function FormatterPage() {
           const keys = targetSources[key];
           const rawVal = keys?.length ? firstMappedCell(inputRow, keys) : '';
           if (rawVal !== '') {
-            out[key] = rawVal;
+            out[key] = key.includes('phone') ? cleanPhoneNumber(rawVal) : rawVal;
             mappedCount++;
           } else if (template.defaults[key] !== undefined) {
             out[key] = template.defaults[key];

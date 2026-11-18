@@ -246,6 +246,56 @@ export const TEMPLATES: Record<string, FormatterTemplate> = {
       lead_source: 'UIO Data',
     },
   },
+  amrit_honda: {
+    label: 'Amrit Honda - Sales / Lead Campaign',
+    sourceToTarget: {
+      'Showroom Code': 'showroom_code',
+      'Person Name': 'person_name',
+      'Phone Number': 'phone_number',
+      'Interested Vehicle Name': 'interested_vehicle_name',
+      'Interested Brand Name': 'interested_brand_name',
+      'City': 'city',
+      'Pincode': 'pincode',
+    },
+    multiSource: {
+      showroom_code: ['Showroom Code', 'Showroom', 'SHOWROOM', 'Branch', 'BRANCH CODE', 'Location Name', 'DEALER CODE', 'Dealer Code'],
+      person_name: ['Person Name', 'Customer Name', 'CUSTOMER NAME', 'CUSTOMERNAME', 'Customer', 'Name', 'Full Name', 'NAMES', 'ENQUIRY NAME'],
+      phone_number: ['Phone Number', 'Phone', 'PHONE NUMBER', 'Mobile Number', 'Mobile', 'MOBILE NUMBER', 'Contact Number', 'CONTACT NUMBER', 'Mobile No', 'MOBILE NO', 'Contact', 'CONTACT NO', 'PHONE'],
+      interested_vehicle_name: ['Interested Vehicle Name', 'Model', 'Vehicle Model', 'Model Name', 'MODEL', 'Product', 'Interested Vehicle', 'interested_vehicle_name', 'interested_vehicle_name '],
+      interested_brand_name: ['Interested Brand Name', 'Brand', 'Make', 'BRAND', 'interested_brand _name', 'interested_brand_name', 'Brand Name', 'Vehicle Brand'],
+      city: ['City', 'CITY', 'Address', 'ADDRESS', 'Location'],
+      pincode: ['Pincode', 'Pin Code', 'PIN', 'PINCODE', 'PIN_CD', 'PIN CODE'],
+    },
+    outputOrder: ['showroom_code', 'person_name', 'phone_number', 'interested_vehicle_name', 'interested_brand_name', 'city', 'pincode'],
+    defaults: {
+      interested_brand_name: 'Honda',
+    },
+  },
+  sky_automobiles: {
+    label: 'Sky Automobiles',
+    sourceToTarget: {
+      'Customer Name': 'person_name',
+      'Vehicle Registration Number': 'reg_number',
+      'vehicle Model': 'vehicle_model',
+      'SALE': 'phone_number',
+      'Next Service Due': 'next_service_due',
+      'Service Plan Type': 'service_plan_type',
+      'Workshop Code': 'workshop_code',
+    },
+    multiSource: {
+      person_name: ['Customer Name', 'CUSTOMER NAME', 'Customer', 'Name', 'Full Name', 'Person Name', 'CUST NAME'],
+      reg_number: ['Vehicle Registration Number', 'register_name', 'Registration Number', 'Reg Number', 'Reg No', 'Registration No', 'Registration No.', 'REG NUMBER', 'VEHICLE NUMBER'],
+      vehicle_model: ['vehicle Model', 'Vehicle Model', 'Interested Vehicle', 'Model', 'MODEL', 'Model Name', 'MODEL NAME'],
+      phone_number: ['SALE', 'Sale', 'Phone Number', 'Phone', 'Mobile Number', 'Mobile', 'Mobile No', 'Customer Mobile', 'Contact Number', 'CONTACT NUMBER', 'PHONE NUMBER'],
+      next_service_due: ['next_service_due', 'Next Service Due', 'Service Due Date', 'Next Service Date', 'Due Date', 'Service Due'],
+      service_plan_type: ['service_plan_type', 'Service Plan Type', 'Service Type', 'Plan Type', 'Predicted Service Type'],
+      workshop_code: ['workshop_code', 'Workshop Code', 'Workshop', 'Dealer Code', 'Branch', 'Location Name'],
+    },
+    outputOrder: ['next_service_due', 'service_plan_type', 'person_name', 'phone_number', 'reg_number', 'vehicle_model', 'workshop_code'],
+    defaults: {
+      service_plan_type: 'PMS',
+    },
+  },
 };
 
 /** Fortune Toyota model normalization */
@@ -342,4 +392,22 @@ export function normalizeHeader(text: string): string {
 
 export function canonicalHeader(h: unknown): string {
   return normalizeHeader(String(h ?? ''));
+}
+
+/**
+ * Normalizes phone numbers by removing country/trunk prefixes (11, 12, or 13 digits)
+ * and keeping the clean 10-digit number.
+ */
+export function cleanPhoneNumber(raw: unknown): string {
+  if (raw == null) return '';
+  let val: unknown = raw;
+  if (typeof raw === 'string' && /[eE]/.test(raw)) {
+    const n = Number(raw);
+    if (Number.isFinite(n)) val = String(Math.round(n));
+  }
+  const digits = String(val).replace(/\D/g, '');
+  if (!digits) return '';
+  // ponytail: slice(-10) strips 11/12/13-digit country & trunk prefixes (e.g. 1..., 91..., 091...)
+  if (digits.length > 10) return digits.slice(-10);
+  return digits;
 }
