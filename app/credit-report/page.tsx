@@ -721,7 +721,7 @@ export default function CreditReportPage() {
             <div className={styles['api-form-panel']}>
               <div className={styles['api-grid-2col']}>
                 <div className={styles['field-group']}>
-                  <label className={styles['field-label']}>Dealership Tenant ID *</label>
+                  <label className={styles['field-label']}>Dealership ID *</label>
                   <input
                     type="text"
                     list="dealership-suggestions"
