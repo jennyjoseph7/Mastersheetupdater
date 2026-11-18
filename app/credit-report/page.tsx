@@ -850,7 +850,7 @@ export default function CreditReportPage() {
                     border: '1px solid var(--border)',
                   }}>
                     <div className={styles['field-group']}>
-                      <label className={styles['field-label']}>Dealership IDX-GRYD-TOKEN</label>
+                      <label className={styles['field-label']}>X-GRYD-TOKEN</label>
                       <input
                         type="password"
                         className={styles['field-input']}
