@@ -19,8 +19,15 @@ const ALLOWED_ORIGINS = [
 ];
 
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const GRYD_ENDPOINT = 'https://autobot-webapp-dev.gryd.in';
+const GRYD_PROD_ENDPOINT = 'https://api.autongage.com';
+const GRYD_DEV_ENDPOINT = 'https://autobot-webapp-dev.gryd.in';
 const DEFAULT_UPSTREAM_TIMEOUT_MS = 90_000;
+
+function getUpstreamGrydEndpoint(request, env) {
+  const reqEnv = request.headers.get('x-gryd-env')?.toLowerCase();
+  if (reqEnv === 'dev') return env?.GRYD_DEV_ENDPOINT || GRYD_DEV_ENDPOINT;
+  return env?.GRYD_PROD_ENDPOINT || env?.GRYD_ENDPOINT || GRYD_PROD_ENDPOINT;
+}
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
 const rateLimitMap = new Map();
@@ -81,15 +88,17 @@ export default {
       const token = request.headers.get('X-GRYD-TOKEN');
       if (!token) return jsonResponse(401, { error: 'Unauthorized', message: 'No token' }, origin);
       try {
-        const resp = await fetch(GRYD_ENDPOINT + '/gryd/execute/get_llm_response/ai_service', {
-          method: 'POST',
+        const upstreamEndpoint = getUpstreamGrydEndpoint(request, env);
+        const resp = await fetch(upstreamEndpoint + '/gryd/db/objects/dealership?page_number=1&page_size=1', {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/json', 'Accept': 'application/json',
-            'x-gryd-enterprise-id': 'autocrm', 'x-gryd-application-id': 'autocrm',
+            'Accept': 'application/json',
+            'x-gryd-enterprise-id': request.headers.get('X-GRYD-ENTERPRISE-ID') || 'autocrm',
+            'x-gryd-role': request.headers.get('X-GRYD-ROLE') || 'agent',
             'x-gryd-token': token,
             'x-gryd-session-id': request.headers.get('X-GRYD-SESSION-ID') || '',
+            'x-gryd-env': request.headers.get('X-GRYD-ENV') || 'prod',
           },
-          body: JSON.stringify({ kwargs: { user_query: 'ping', system_prompt: 'respond with OK', model_identifier: 'gcp-gemini-3.1-flash-lite-preview' } }),
           signal: AbortSignal.timeout(10000),
         });
         if (resp.status === 401 || resp.status === 403) {
@@ -105,7 +114,6 @@ export default {
     }
 
     // ── Health check & Root ───────────────────────────────────────────
-    // ponytail: return 200 on / and /health for quick dashboard/browser availability checks
     if (method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
       return jsonResponse(200, { status: 'ok', proxy: 'autonage-cloudflare' }, origin);
     }
@@ -159,7 +167,8 @@ export default {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 90000);
       try {
-        const upstream = await fetch(GRYD_ENDPOINT + '/gryd/execute/get_llm_response/ai_service', {
+        const upstreamEndpoint = getUpstreamGrydEndpoint(request, env);
+        const upstream = await fetch(upstreamEndpoint + '/gryd/execute/get_llm_response/ai_service', {
           method: 'POST', headers: grydHeaders, body: grydBody, signal: controller.signal,
         });
         clearTimeout(timeout);
@@ -216,8 +225,8 @@ export default {
             return jsonResponse(413, { error: 'Payload Too Large', message: 'Request body exceeds 1 MB limit.' }, origin);
           }
         }
-        // ponytail: preserve method, query string, and omit body on GET/HEAD for Gryd DB queries
-        const upstream = await fetch(GRYD_ENDPOINT + url.pathname + url.search, {
+        const upstreamEndpoint = getUpstreamGrydEndpoint(request, env);
+        const upstream = await fetch(upstreamEndpoint + url.pathname + url.search, {
           method,
           headers: grydHeaders,
           body: reqBody,
@@ -225,7 +234,6 @@ export default {
         });
         clearTimeout(timeout);
         const text = await upstream.text();
-        // ponytail: never forward 526/5xx as-is — map to 502 JSON with CORS so frontend gets usable error
         if (upstream.status === 526 || upstream.status === 525 || upstream.status === 520) {
           return jsonResponse(502, { error: 'Bad Gateway', message: 'Gryd origin cert expired (526). Gryd infra must renew *.gryd.in on 34.14.184.212.', upstreamStatus: upstream.status }, origin);
         }
