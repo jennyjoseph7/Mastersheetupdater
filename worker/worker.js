@@ -104,8 +104,9 @@ export default {
       }
     }
 
-    // ── Health check ───────────────────────────────────────────────────
-    if (method === 'GET' && url.pathname === '/health') {
+    // ── Health check & Root ───────────────────────────────────────────
+    // ponytail: return 200 on / and /health for quick dashboard/browser availability checks
+    if (method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
       return jsonResponse(200, { status: 'ok', proxy: 'autonage-cloudflare' }, origin);
     }
 
