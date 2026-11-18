@@ -44,8 +44,8 @@ function corsHeaders(origin) {
   const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Handshake-Token, X-GRYD-ENTERPRISE-ID, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-SIGNUP-TOKEN, X-GRYD-APPLICATION-ID, Accept',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET, PUT, DELETE',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Handshake-Token, X-GRYD-ENTERPRISE-ID, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-SIGNUP-TOKEN, X-GRYD-APPLICATION-ID, X-GRYD-ROLE, X-GRYD-ENV, Accept',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
@@ -105,15 +105,8 @@ export default {
     }
 
     // ── Health check ───────────────────────────────────────────────────
-    if (method === 'GET') {
-      if (url.pathname !== '/health') {
-        return jsonResponse(404, { error: 'Not found. Use GET /health' }, origin);
-      }
+    if (method === 'GET' && url.pathname === '/health') {
       return jsonResponse(200, { status: 'ok', proxy: 'autonage-cloudflare' }, origin);
-    }
-
-    if (method !== 'POST') {
-      return jsonResponse(404, { error: 'Use POST' }, origin);
     }
 
     // ── Rate limit ────────────────────────────────────────────────────
@@ -126,7 +119,7 @@ export default {
 
     // ── GRYD LLM TRANSLATION ROUTE ─────────────────────────────────────
     // Translates NVIDIA-format chat requests to gryd's LLM endpoint
-    if (url.pathname === '/gryd/v1/chat/completions') {
+    if (url.pathname === '/gryd/v1/chat/completions' && method === 'POST') {
       const body = await request.text();
       let nvidiaReq;
       try { nvidiaReq = JSON.parse(body); } catch { return jsonResponse(400, { error: 'Invalid JSON' }, origin); }
@@ -190,7 +183,7 @@ export default {
       }
     }
 
-    // ── GRYD PROXY ROUTE (login, etc.) ───────────────────────────────
+    // ── GRYD PROXY ROUTE (login, billing, db objects, etc.) ─────────
     // Forwards /gryd/* requests to gryd backend, strips browser origin.
     // Signup token is injected from Worker env (GRYD_SIGNUP_TOKEN) so the
     // frontend never needs to expose it.
@@ -200,9 +193,11 @@ export default {
         'Accept': 'application/json',
       };
 
-      for (const h of ['x-gryd-enterprise-id', 'x-gryd-token', 'x-gryd-session-id', 'x-gryd-signup-token', 'x-gryd-application-id']) {
-        const val = request.headers.get(h);
-        if (val) grydHeaders[h] = val;
+      // Forward all x-gryd-* headers (e.g. enterprise-id, token, role, env, session-id)
+      for (const [key, val] of request.headers.entries()) {
+        if (key.toLowerCase().startsWith('x-gryd-')) {
+          grydHeaders[key.toLowerCase()] = val;
+        }
       }
       // Inject signup token from Worker env if frontend didn't send one
       if (!grydHeaders['x-gryd-signup-token'] && env.GRYD_SIGNUP_TOKEN) {
@@ -213,12 +208,19 @@ export default {
       const timeout = setTimeout(() => controller.abort(), 30000);
 
       try {
-        const body = await request.text();
-        if (body.length > 1024 * 1024) {
-          return jsonResponse(413, { error: 'Payload Too Large', message: 'Request body exceeds 1 MB limit.' }, origin);
+        let reqBody = undefined;
+        if (method !== 'GET' && method !== 'HEAD') {
+          reqBody = await request.text();
+          if (reqBody.length > 1024 * 1024) {
+            return jsonResponse(413, { error: 'Payload Too Large', message: 'Request body exceeds 1 MB limit.' }, origin);
+          }
         }
-        const upstream = await fetch(GRYD_ENDPOINT + url.pathname, {
-          method: 'POST', headers: grydHeaders, body, signal: controller.signal,
+        // ponytail: preserve method, query string, and omit body on GET/HEAD for Gryd DB queries
+        const upstream = await fetch(GRYD_ENDPOINT + url.pathname + url.search, {
+          method,
+          headers: grydHeaders,
+          body: reqBody,
+          signal: controller.signal,
         });
         clearTimeout(timeout);
         const text = await upstream.text();
@@ -240,6 +242,11 @@ export default {
         if (err.name === 'AbortError') return jsonResponse(504, { error: 'Gateway Timeout', message: 'Gryd backend timed out.' }, origin);
         return jsonResponse(502, { error: 'Bad Gateway', message: 'Upstream gryd request failed.' }, origin);
       }
+    }
+
+    // ── Method check for non-gryd routes (NVIDIA proxy) ───────────────
+    if (method !== 'POST') {
+      return jsonResponse(404, { error: 'Use POST' }, origin);
     }
 
     // ── NVIDIA PROXY ────────────────────────────────────────────────────
