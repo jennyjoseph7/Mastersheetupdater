@@ -8,6 +8,13 @@
       "skillPath": "SKILL.md",
       "computedHash": "cedbbc28e3c2d3b876912f2fd0108801ff6340f62d83e0afbc9a2f423c880833"
     },
+    "security-audit": {
+      "source": "cloudflare/security-audit-skill",
+      "commit": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
+      "sourceType": "github",
+      "skillPath": "skills/security-audit/SKILL.md",
+      "computedHash": "8513eb3b2c39b8d05ef4f47b32ef4d18280b93a5efb91d8df6272f7435034af5"
+    },
     "stageshow": {
       "source": "benjitaylor/skills",
       "commit": "299140fafd08df55a9c234e610c3f64af3f45531",

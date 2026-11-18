@@ -53,6 +53,7 @@ export default function CreditReportPage() {
   const [statusMsg, setStatusMsg] = useState('');
   const [statusType, setStatusType] = useState<'ok' | 'err' | 'warn' | ''>('');
   const [metrics, setMetrics] = useState<CreditMetrics | null>(null);
+  const [rawApiRows, setRawApiRows] = useState<Record<string, any>[] | null>(null);
   // User-tweaked objectives: keyed by objective name. Overrides the parsed values
   // for voice credits, WhatsApp credits, start date, end date.
   const [edits, setEdits] = useState<Record<string, Partial<ObjectiveSummary>>>({});
@@ -168,6 +169,7 @@ export default function CreditReportPage() {
       setEditingIdx(null);
       setSelectedRows(new Set());
       setMetrics(processedMetrics);
+      setRawApiRows(null);
       setStatusType('ok');
       setStatusMsg(
         `Successfully processed ${formatNum(processedMetrics.debitsCount)} debits totaling ${formatNum(Math.round(processedMetrics.totalCredits))} credits across ${processedMetrics.objectives.length} objectives.`
@@ -249,9 +251,37 @@ export default function CreditReportPage() {
     }
   }
 
+  function handleDownloadRawExcel() {
+    if (!rawApiRows || rawApiRows.length === 0) return;
+    try {
+      setProcessing(true);
+      setProcessingText('Exporting raw billing debits...');
+      const cleanDealer = dealershipId.trim().replace(/[^a-zA-Z0-9_-]/g, '_') || 'billing';
+      const ws = XLSX.utils.json_to_sheet(rawApiRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Raw_Debits');
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const filename = `Raw_Billing_${cleanDealer}_${datePreset}.xlsx`;
+      downloadBlob(
+        new Uint8Array(wbout),
+        filename,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      setStatusType('ok');
+      setStatusMsg(`Downloaded ${filename} (${rawApiRows.length.toLocaleString()} records)`);
+    } catch (err: any) {
+      console.error('Raw Excel export error:', err);
+      setStatusType('err');
+      setStatusMsg(`Raw Excel export failed: ${err?.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   function handleReset() {
     setFile(null);
     setMetrics(null);
+    setRawApiRows(null);
     setEdits({});
     setEditingIdx(null);
     setSelectedRows(new Set());
@@ -315,6 +345,7 @@ export default function CreditReportPage() {
       const processed = processCreditData(result.rows, derivedClientName);
       processed.qaReport = runDeckQA(processed);
       setMetrics(processed);
+      setRawApiRows(result.rows);
       setEdits({});
       setEditingIdx(null);
       setSelectedRows(new Set());
@@ -1095,11 +1126,27 @@ export default function CreditReportPage() {
               <div className={styles['download-info']}>
                 <div className={styles['download-title']}>Export Deliverables</div>
                 <div className={styles['download-subtitle']}>
-                  Client-ready Excel workbook & native PowerPoint presentation deck
+                  {inputMode === 'api' && rawApiRows && rawApiRows.length > 0
+                    ? 'Raw debit transactions ledger, reconciled Excel workbook & client PowerPoint presentation deck'
+                    : 'Client-ready Excel workbook & native PowerPoint presentation deck'}
                 </div>
               </div>
 
               <div className={styles['download-buttons']}>
+                {inputMode === 'api' && rawApiRows && rawApiRows.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadRawExcel}
+                    className={styles['btn-export-excel']}
+                    title="Download raw billing debits from API as Excel"
+                  >
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Raw Debits (.xlsx)
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={handleExportExcel}

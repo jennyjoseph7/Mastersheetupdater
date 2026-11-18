@@ -96,13 +96,11 @@ export default {
           return jsonResponse(401, { error: 'Session expired', message: 'Token rejected by gryd.' }, origin);
         }
         if (resp.status === 526 || resp.status === 525 || resp.status === 520 || resp.status >= 500) {
-          // ponytail: gryd origin down/cert expired — don't kill session, trust client
-          return jsonResponse(200, { valid: true, degraded: true, upstreamStatus: resp.status }, origin);
+          return jsonResponse(502, { error: 'Bad Gateway', valid: false, degraded: true, upstreamStatus: resp.status }, origin);
         }
         return jsonResponse(200, { valid: true }, origin);
       } catch {
-        // If gryd is unreachable, trust the token (degraded mode)
-        return jsonResponse(200, { valid: true, degraded: true }, origin);
+        return jsonResponse(502, { error: 'Bad Gateway', valid: false, degraded: true }, origin);
       }
     }
 
@@ -119,7 +117,10 @@ export default {
     }
 
     // ── Rate limit ────────────────────────────────────────────────────
-    if (!checkRateLimit(clientIP)) {
+    if (env.RATE_LIMITER) {
+      const { success } = await env.RATE_LIMITER.limit({ key: clientIP });
+      if (!success) return jsonResponse(429, { error: 'Too Many Requests', message: 'Rate limit exceeded.' }, origin);
+    } else if (!checkRateLimit(clientIP)) {
       return jsonResponse(429, { error: 'Too Many Requests', message: 'Rate limit exceeded.' }, origin);
     }
 
@@ -243,11 +244,9 @@ export default {
 
     // ── NVIDIA PROXY ────────────────────────────────────────────────────
     const HANDSHAKE_TOKEN = env.HANDSHAKE_TOKEN;
-    if (HANDSHAKE_TOKEN) {
-      const token = request.headers.get('X-Handshake-Token');
-      if (!token || token !== HANDSHAKE_TOKEN) {
-        return jsonResponse(401, { error: 'Unauthorized', message: 'Missing or invalid handshake token.' }, origin);
-      }
+    const token = request.headers.get('X-Handshake-Token');
+    if (!HANDSHAKE_TOKEN || !token || token !== HANDSHAKE_TOKEN) {
+      return jsonResponse(401, { error: 'Unauthorized', message: 'Missing or invalid handshake token.' }, origin);
     }
     if (!NVIDIA_API_KEY) {
       return jsonResponse(500, { error: 'Server Error', message: 'NVIDIA_API_KEY not configured on the Worker.' }, origin);

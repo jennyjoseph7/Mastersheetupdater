@@ -13,16 +13,14 @@ interface AuthState {
 
 function storage(key: string): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem(key) || localStorage.getItem(key);
+  return sessionStorage.getItem(key);
 }
 function setStorage(key: string, value: string | null) {
   if (typeof window === 'undefined') return;
   if (value) {
     sessionStorage.setItem(key, value);
-    try { localStorage.setItem(key, value); } catch {}
   } else {
     sessionStorage.removeItem(key);
-    try { localStorage.removeItem(key); } catch {}
   }
 }
 
