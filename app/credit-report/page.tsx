@@ -653,7 +653,7 @@ export default function CreditReportPage() {
         {/* Ingestion & Setup Workflow Panel */}
         <div className={styles['workflow-panel']}>
           <div className={styles['card-header']}>
-            <span className={styles['step-badge']}>STEP 1</span>
+            <span className={styles['step-badge']}>1</span>
             <h3 className={styles['section-title']}>Data Ingestion & Setup</h3>
             <span className={styles['card-desc']}>Direct API streaming or offline CSV/Excel billing debit export.</span>
           </div>
@@ -862,51 +862,74 @@ export default function CreditReportPage() {
             </div>
           ) : (
             <>
-              {/* Upload Drop Zone */}
-              <div
-                className={`${styles['drop-zone']} ${dragOver ? styles['drag-over'] : ''} ${file ? styles['has-file'] : ''}`}
-                onDragOver={e => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  aria-label="Upload Credit Billing File"
-                  accept=".csv,.xlsx,.xls"
-                  style={{ display: 'none' }}
-                  onChange={e => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileSelect(e.target.files[0]);
-                    }
-                  }}
-                />
-
-                <div className={styles['drop-icon']}>
-                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                </div>
-
-                {file ? (
-                  <>
-                    <div className={styles['file-pill']}>
-                      <span>📄 {file.name}</span>
-                      <span>({(file.size / 1024).toFixed(1)} KB)</span>
+              {/* Upload Drop Zone / Compact File Strip */}
+              {file ? (
+                <div className={styles['file-loaded-strip']}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    aria-label="Upload Credit Billing File"
+                    accept=".csv,.xlsx,.xls"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileSelect(e.target.files[0]);
+                      }
+                    }}
+                  />
+                  <div className={styles['file-loaded-info']}>
+                    <div className={styles['file-loaded-icon']}>
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
                     </div>
-                    <div className={styles['drop-sub']}>Click or drop another file to replace</div>
-                  </>
-                ) : (
-                  <>
-                    <div className={styles['drop-title']}>Drag & drop platform billing CSV or click to browse</div>
-                    <div className={styles['drop-sub']}>Supports raw debit exports (.csv, .xlsx)</div>
-                  </>
-                )}
-              </div>
+                    <div>
+                      <div className={styles['file-loaded-name']}>{file.name}</div>
+                      <div className={styles['file-loaded-size']}>{(file.size / 1024).toFixed(1)} KB · Ready to process</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={styles['btn-replace-file']}
+                  >
+                    Replace File
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className={`${styles['drop-zone']} ${dragOver ? styles['drag-over'] : ''}`}
+                  onDragOver={e => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    aria-label="Upload Credit Billing File"
+                    accept=".csv,.xlsx,.xls"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileSelect(e.target.files[0]);
+                      }
+                    }}
+                  />
+
+                  <div className={styles['drop-icon']}>
+                    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+
+                  <div className={styles['drop-title']}>Upload platform billing CSV or Excel</div>
+                  <div className={styles['drop-sub']}>Drag & drop raw debit export (.csv, .xlsx) or click to browse</div>
+                </div>
+              )}
 
               {/* Control Bar */}
               <div className={styles['controls-bar']}>
@@ -1000,7 +1023,7 @@ export default function CreditReportPage() {
         {/* Results Panel */}
         <div className={styles['results-panel']}>
           <div className={styles['card-header']}>
-            <span className={styles['step-badge']}>STEP 2</span>
+            <span className={styles['step-badge']}>2</span>
             <h3 className={styles['section-title']}>Credit Consumption & Decks</h3>
             <span className={styles['card-desc']}>KPI audit, objective breakdown, and client deck exports.</span>
           </div>
@@ -1040,34 +1063,27 @@ export default function CreditReportPage() {
               </div>
             </div>
 
-            {/* QA Verification Suite Banner (Requirement 9) */}
+            {/* QA Verification Suite Bar */}
             {(() => {
               const qaReport = effectiveMetrics?.qaReport || metrics.qaReport;
               if (!qaReport) return null;
               return (
-                <div className={styles['qa-box']}>
-                  <div className={styles['qa-header']}>
-                    <div className={styles['qa-title']}>
-                      <span>QA Deck Verification & Audit</span>
-                      <span className={qaReport.passed ? styles['qa-badge-pass'] : styles['qa-badge-fail']}>
-                        {qaReport.passed ? 'All Checks Passed (5/5)' : 'Verification Failed'}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <div className={`${styles['qa-audit-bar']} ${!qaReport.passed ? styles['qa-audit-bar-fail'] : ''}`}>
+                  <div className={styles['qa-audit-left']}>
+                    <span className={qaReport.passed ? styles['qa-icon-pass'] : styles['qa-icon-fail']}>
+                      {qaReport.passed ? '✓' : '✗'}
+                    </span>
+                    <span>{qaReport.passed ? 'QA Verification Passed (5/5 checks)' : 'QA Verification Warnings'}</span>
+                    <span className={styles['qa-audit-sub']}>
                       Deck: {qaReport.slideCount} slides · {qaReport.rowsShown} objectives ({qaReport.unmappedCount} unmapped)
                     </span>
                   </div>
-                  <div className={styles['qa-grid']}>
+                  <div className={styles['qa-audit-chips']}>
                     {qaReport.checks.map((chk, i) => (
-                      <div key={i} className={styles['qa-item']}>
-                        <span className={chk.passed ? styles['qa-icon-pass'] : styles['qa-icon-fail']}>
-                          {chk.passed ? '✓' : '✗'}
-                        </span>
-                        <div>
-                          <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '0.15rem' }}>{chk.name}</strong>
-                          <span>{chk.details}</span>
-                        </div>
-                      </div>
+                      <span key={i} className={styles['qa-chip']} title={chk.details}>
+                        <span className={chk.passed ? styles['qa-dot-pass'] : styles['qa-dot-fail']}>●</span>
+                        {chk.name}
+                      </span>
                     ))}
                   </div>
                 </div>
