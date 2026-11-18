@@ -850,7 +850,7 @@ export default function CreditReportPage() {
                     border: '1px solid var(--border)',
                   }}>
                     <div className={styles['field-group']}>
-                      <label className={styles['field-label']}>X-GRYD-TOKEN Override</label>
+                      <label className={styles['field-label']}>Dealership IDX-GRYD-TOKEN</label>
                       <input
                         type="password"
                         className={styles['field-input']}
@@ -860,7 +860,7 @@ export default function CreditReportPage() {
                       />
                     </div>
                     <div className={styles['field-group']}>
-                      <label className={styles['field-label']}>X-GRYD-SESSION-ID Override</label>
+                      <label className={styles['field-label']}>X-GRYD-SESSION-ID </label>
                       <input
                         type="password"
                         className={styles['field-input']}
