@@ -46,12 +46,16 @@ const rawApiItem = {
 };
 
 const norm = normalizeBillingItem(rawApiItem);
-assert(norm['billing_id'] === '2c777ead-dee6-322c-a18d-9ecb66f2fc61', 'billing_id preserved');
-assert(norm['credits_spent'] === 3.325, 'credits_spent numeric match');
-assert(norm['quantity'] === 25.0, 'quantity numeric match');
-assert(norm['channel'] === 'voice_phone', 'channel preserved');
-assert(norm['item_name'] === 'call_completed', 'item_name preserved');
-assert(norm['description'].includes('victoris special campaign'), 'description preserved');
+assert(Object.keys(norm).length === 9, 'Exact 9 columns emitted (no duplicate aliases)');
+assert(norm['Billing ID'] === '2c777ead-dee6-322c-a18d-9ecb66f2fc61', 'Billing ID matches');
+assert(norm['Date & Time'] === '2026-11-13T13:59:24.819813+0000', 'Date & Time matches');
+assert(norm['Transaction Type'] === 'debit', 'Transaction Type matches');
+assert(norm['Item Name'] === 'call_completed', 'Item Name matches');
+assert(norm['Channel'] === 'voice_phone', 'Channel matches');
+assert(norm['Description'].includes('victoris special campaign'), 'Description matches');
+assert(norm['Quantity'] === 25.0, 'Quantity numeric match');
+assert(norm['Credits Spent'] === 3.325, 'Credits Spent numeric match');
+assert(norm['Status'] === 'success', 'Status matches');
 
 // 3. Compatibility with processCreditData
 const metrics = processCreditData([norm], 'Shenbaka');

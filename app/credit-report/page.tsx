@@ -353,7 +353,9 @@ export default function CreditReportPage() {
       // Check for abnormally long calls (>1800s / 30 mins)
       let longCalls = 0;
       for (const r of result.rows) {
-        if (r['item_name'] === 'call_completed' && Number(r['quantity']) > 1800) {
+        const item = String(r['Item Name'] || r['item_name'] || '').toLowerCase();
+        const qty = Number(r['Quantity'] || r['quantity']) || 0;
+        if (item === 'call_completed' && qty > 1800) {
           longCalls++;
         }
       }

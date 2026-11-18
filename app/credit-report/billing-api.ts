@@ -1,5 +1,4 @@
-// ponytail: route through grydEndpoint worker proxy (same as useAuth) so api.autongage.com
-// never sees Origin: http://localhost:3000 — the worker makes the upstream call server-side.
+// Route through worker proxy so api.autongage.com makes the upstream call server-side.
 export type EnvironmentMode = 'prod' | 'dev';
 
 export type DatePreset = 'today' | 'yesterday' | 'this_week' | 'last_week' | 'month_to_date' | 'custom';
@@ -35,7 +34,7 @@ function getBillingBaseUrl(environment: EnvironmentMode): string {
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   if (isLocalhost) {
-    // ponytail: relative path → Next.js dev rewrite → api.autongage.com / dev gryd (server-side, no browser Origin)
+    // Relative path for dev rewrite
     return environment === 'dev' ? '/api-proxy/billing-dev' : '/api-proxy/billing';
   }
 
@@ -102,38 +101,29 @@ export function getDatePresetBounds(preset: DatePreset, customStart?: string, cu
 }
 
 /**
- * Normalizes raw API response item into standard row dictionary consumed by processCreditData().
- * ponytail: preserves column aliases expected by existing 2300-line credit-utils parser.
+ * Normalizes raw API response item into standard 9-column AutoEngage debits format.
  */
 export function normalizeBillingItem(item: any): Record<string, any> {
   const billingId = item.billing_id || '';
   const dateRaw = item.transaction_date || (item.created ? new Date(item.created * 1000).toISOString() : '');
+  const transactionType = item.transaction_type || 'debit';
   const itemName = item.item_name || '';
   const channel = item.channel || '';
   const description = item.item_description || '';
   const quantity = Number(item.item_quantity) || 0;
   const creditsSpent = Number(item.item_total) || 0;
   const status = item.status || 'success';
-  const dealershipId = item.dealership_id || '';
 
   return {
-    'billing id': billingId,
-    'billing_id': billingId,
-    'date & time': dateRaw,
-    'date and time': dateRaw,
-    'transaction_date': dateRaw,
-    'item name': itemName,
-    'item_name': itemName,
-    'channel': channel,
-    'description': description,
-    'desc': description,
-    'quantity': quantity,
-    'credits spent': creditsSpent,
-    'credits_spent': creditsSpent,
-    'credit': creditsSpent,
-    'status': status,
-    'dealership_id': dealershipId,
-    'created': item.created,
+    'Billing ID': billingId,
+    'Date & Time': dateRaw,
+    'Transaction Type': transactionType,
+    'Item Name': itemName,
+    'Channel': channel,
+    'Description': description,
+    'Quantity': quantity,
+    'Credits Spent': creditsSpent,
+    'Status': status,
   };
 }
 
@@ -160,7 +150,7 @@ export async function fetchBillingDebits(
   const pageSize = params.pageSize || 100;
   let pageNumber = 1;
   let totalServerCount = 0;
-  // ponytail: cap computed dynamically after first page response (ceil(total/pageSize) + 1),
+  // Cap computed dynamically after first page response (ceil(total/pageSize) + 1),
   // fallback hard ceiling of 500 pages (50,000 records) to prevent infinite loops
   let maxPages = 500;
 
@@ -188,7 +178,7 @@ export async function fetchBillingDebits(
       queryParams.set('created', `${startSec},${endSec}`);
     }
 
-    // ponytail: dev proxy path is the full URL already; prod appends gryd path
+    // Dev proxy path is the full URL already; prod appends gryd path
     const isDevProxy = baseUrl.startsWith('/api-proxy/');
     const requestUrl = isDevProxy
       ? `${baseUrl}?${queryParams.toString()}`
