@@ -35,7 +35,7 @@ function addSecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('X-Frame-Options', 'DENY');
   res.headers.set('Content-Security-Policy', 
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' https://frontend-cdn.perplexity.ai; img-src 'self' data:; connect-src 'self' https://autongagetools.jennyjoseph-k.workers.dev https://autobot-webapp-dev.gryd.in; form-action 'self'; base-uri 'self'; object-src 'none';"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' https://frontend-cdn.perplexity.ai; img-src 'self' data:; connect-src 'self' https://autongagetools.jennyjoseph-k.workers.dev https://autobot-webapp-dev.gryd.in https://api.autongage.com https://*.autongage.com https://*.gryd.in; form-action 'self'; base-uri 'self'; object-src 'none';"
   );
   return res;
 }

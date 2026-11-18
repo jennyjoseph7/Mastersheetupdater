@@ -20,11 +20,30 @@ import {
   repairEncoding,
   runDeckQA,
 } from './credit-utils';
+import {
+  fetchBillingDebits,
+  getDatePresetBounds,
+  DatePreset,
+  EnvironmentMode,
+} from './billing-api';
 import styles from './credit-report.module.css';
 
 export default function CreditReportPage() {
-  const { isAuthenticated, loading, logout } = useAuth();
+  const { isAuthenticated, loading, logout, token, sessionId, enterpriseId } = useAuth();
   const router = useRouter();
+
+  const [inputMode, setInputMode] = useState<'api' | 'file'>('api');
+  // API Ingestion Form States
+  const [dealershipId, setDealershipId] = useState('rng-automobiles-private-limited-india');
+  const [environment, setEnvironment] = useState<EnvironmentMode>('prod');
+  const [datePreset, setDatePreset] = useState<DatePreset>('this_week');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [channelFilter, setChannelFilter] = useState<'all' | 'voice_phone' | 'whatsapp_chat'>('all');
+  const [overrideToken, setOverrideToken] = useState('');
+  const [overrideSessionId, setOverrideSessionId] = useState('');
+  const [showAdvancedAuth, setShowAdvancedAuth] = useState(false);
+  const [callDurationWarnings, setCallDurationWarnings] = useState<number>(0);
 
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -238,7 +257,85 @@ export default function CreditReportPage() {
     setSelectedRows(new Set());
     setStatusMsg('');
     setStatusType('');
+    setCallDurationWarnings(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleApiFetch() {
+    const trimmedDealer = dealershipId.trim();
+    if (!trimmedDealer) {
+      setStatusType('err');
+      setStatusMsg('Please enter a Dealership ID.');
+      return;
+    }
+
+    const activeToken = overrideToken.trim() || token || '';
+    const activeSession = overrideSessionId.trim() || sessionId || '';
+    if (!activeToken) {
+      setStatusType('err');
+      setStatusMsg('Authentication token missing. Please sign in or provide a token under Advanced Auth.');
+      return;
+    }
+
+    setProcessing(true);
+    setProcessingText('Connecting to Autobot Billing API...');
+    setStatusMsg('');
+
+    try {
+      const bounds = getDatePresetBounds(datePreset, customStart, customEnd);
+      const result = await fetchBillingDebits(
+        {
+          dealershipId: trimmedDealer,
+          environment,
+          token: activeToken,
+          sessionId: activeSession,
+          enterpriseId: enterpriseId || 'autocrm',
+          startDate: bounds.startDate,
+          endDate: bounds.endDate,
+          channel: channelFilter,
+        },
+        (info) => {
+          setProcessingText(`Fetching billing debits: page ${info.page} (${info.fetched} / ${info.total || '...'} records)...`);
+        }
+      );
+
+      if (result.rows.length === 0) {
+        setProcessing(false);
+        setStatusType('warn');
+        setStatusMsg(`No debit transactions found for dealership "${trimmedDealer}" in period "${bounds.label}".`);
+        return;
+      }
+
+      // Auto-populate client display name if empty
+      const derivedClientName = clientName.trim() || trimmedDealer.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      if (!clientName) {
+        setClientName(derivedClientName);
+      }
+
+      const processed = processCreditData(result.rows, derivedClientName);
+      processed.qaReport = runDeckQA(processed);
+      setMetrics(processed);
+      setEdits({});
+      setEditingIdx(null);
+      setSelectedRows(new Set());
+
+      // Check for abnormally long calls (>1800s / 30 mins)
+      let longCalls = 0;
+      for (const r of result.rows) {
+        if (r['item_name'] === 'call_completed' && Number(r['quantity']) > 1800) {
+          longCalls++;
+        }
+      }
+      setCallDurationWarnings(longCalls);
+
+      setStatusType('ok');
+      setStatusMsg(`Successfully loaded ${result.rows.length} billing records (${result.totalCount} ledger total) for ${derivedClientName}.`);
+    } catch (err: any) {
+      setStatusType('err');
+      setStatusMsg(err.message || 'Failed to fetch billing data from API.');
+    } finally {
+      setProcessing(false);
+    }
   }
 
   // ── Effective objectives: parsed values merged with user edits ──
@@ -553,94 +650,325 @@ export default function CreditReportPage() {
 
       {/* Main Content */}
       <main className="main-content" style={{ maxWidth: '1580px', width: '96%', margin: '0 auto', padding: '1.5rem 1rem' }}>
-        {/* Upload & Setup Workflow Panel */}
+        {/* Ingestion & Setup Workflow Panel */}
         <div className={styles['workflow-panel']}>
           <div className={styles['card-header']}>
             <span className={styles['step-badge']}>STEP 1</span>
-            <h3 className={styles['section-title']}>Upload Billing Debits</h3>
-            <span className={styles['card-desc']}>AutoEngage platform billing debits CSV or Excel export.</span>
+            <h3 className={styles['section-title']}>Data Ingestion & Setup</h3>
+            <span className={styles['card-desc']}>Direct API streaming or offline CSV/Excel billing debit export.</span>
           </div>
 
-          {/* Upload Drop Zone */}
-          <div
-            className={`${styles['drop-zone']} ${dragOver ? styles['drag-over'] : ''} ${file ? styles['has-file'] : ''}`}
-            onDragOver={e => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              aria-label="Upload Credit Billing File"
-              accept=".csv,.xlsx,.xls"
-              style={{ display: 'none' }}
-              onChange={e => {
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelect(e.target.files[0]);
-                }
-              }}
-            />
-
-            <div className={styles['drop-icon']}>
-              <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            </div>
-
-            {file ? (
-              <>
-                <div className={styles['file-pill']}>
-                  <span>📄 {file.name}</span>
-                  <span>({(file.size / 1024).toFixed(1)} KB)</span>
-                </div>
-                <div className={styles['drop-sub']}>Click or drop another file to replace</div>
-              </>
-            ) : (
-              <>
-                <div className={styles['drop-title']}>Drag & drop platform billing CSV or click to browse</div>
-                <div className={styles['drop-sub']}>Supports raw debit exports (.csv, .xlsx)</div>
-              </>
-            )}
-          </div>
-
-          {/* Control Bar */}
-          <div className={styles['controls-bar']}>
-            <div className={styles['client-input-wrap']}>
-              <label className={styles['client-label']}>Client / Dealership Name:</label>
-              <input
-                type="text"
-                className={styles['client-input']}
-                placeholder="e.g. Perfect Riders / Anant Cars"
-                value={clientName}
-                onChange={e => setClientName(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              {file && (
-                <button type="button" onClick={handleReset} className={styles['btn-secondary']}>
-                  Reset
-                </button>
-              )}
+          {/* Mode Switcher Tabs */}
+          <div className={styles['source-switch-wrap']}>
+            <div className={styles['source-tabs']}>
               <button
                 type="button"
-                onClick={handleProcess}
-                disabled={!file || processing}
-                className={styles['btn-primary']}
+                className={`${styles['tab-btn']} ${inputMode === 'api' ? styles['tab-btn-active'] : ''}`}
+                onClick={() => setInputMode('api')}
               >
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                {metrics ? 'Re-Process Data' : 'Process Credit Report'}
+                Direct API Ingestion
+              </button>
+              <button
+                type="button"
+                className={`${styles['tab-btn']} ${inputMode === 'file' ? styles['tab-btn-active'] : ''}`}
+                onClick={() => setInputMode('file')}
+              >
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                File Upload (Legacy)
               </button>
             </div>
           </div>
+
+          {inputMode === 'api' ? (
+            <div className={styles['api-form-panel']}>
+              <div className={styles['api-grid-2col']}>
+                <div className={styles['field-group']}>
+                  <label className={styles['field-label']}>Dealership Tenant ID *</label>
+                  <input
+                    type="text"
+                    list="dealership-suggestions"
+                    className={styles['field-input']}
+                    placeholder="e.g. anant_cars or rng-automobiles-private-limited-india"
+                    value={dealershipId}
+                    onChange={e => setDealershipId(e.target.value)}
+                  />
+                  <datalist id="dealership-suggestions">
+                    <option value="anant_cars" />
+                    <option value="rng-automobiles-private-limited-india" />
+                    <option value="perfect_riders" />
+                  </datalist>
+                </div>
+
+                <div className={styles['field-group']}>
+                  <label className={styles['field-label']}>Autobot Environment</label>
+                  <select
+                    className={styles['field-select']}
+                    value={environment}
+                    onChange={e => setEnvironment(e.target.value as EnvironmentMode)}
+                  >
+                    <option value="prod">Production (api.autongage.com)</option>
+                    <option value="dev">Development (autobot-webapp-dev.gryd.in)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles['field-group']}>
+                <label className={styles['field-label']}>Billing Date Range Filter (Created Timestamp)</label>
+                <div className={styles['preset-wrap']}>
+                  {(['today', 'yesterday', 'this_week', 'last_week', 'month_to_date', 'custom'] as DatePreset[]).map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`${styles['preset-pill']} ${datePreset === preset ? styles['preset-pill-active'] : ''}`}
+                      onClick={() => setDatePreset(preset)}
+                    >
+                      {preset === 'today' && 'Today'}
+                      {preset === 'yesterday' && 'Yesterday'}
+                      {preset === 'this_week' && 'This Week'}
+                      {preset === 'last_week' && 'Last Week'}
+                      {preset === 'month_to_date' && 'Month to Date'}
+                      {preset === 'custom' && 'Custom Range'}
+                    </button>
+                  ))}
+                </div>
+
+                {datePreset === 'custom' && (
+                  <div className={styles['custom-date-inputs']}>
+                    <input
+                      type="date"
+                      className={styles['field-input']}
+                      value={customStart}
+                      onChange={e => setCustomStart(e.target.value)}
+                      title="Start Date"
+                    />
+                    <span style={{ color: 'var(--text-muted)' }}>to</span>
+                    <input
+                      type="date"
+                      className={styles['field-input']}
+                      value={customEnd}
+                      onChange={e => setCustomEnd(e.target.value)}
+                      title="End Date"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className={styles['api-grid-2col']}>
+                <div className={styles['field-group']}>
+                  <label className={styles['field-label']}>Channel Filter</label>
+                  <select
+                    className={styles['field-select']}
+                    value={channelFilter}
+                    onChange={e => setChannelFilter(e.target.value as any)}
+                  >
+                    <option value="all">All Channels (Voice + WhatsApp)</option>
+                    <option value="voice_phone">Voice Phone Only (voice_phone)</option>
+                    <option value="whatsapp_chat">WhatsApp Chat Only (whatsapp_chat)</option>
+                  </select>
+                </div>
+
+                <div className={styles['field-group']}>
+                  <label className={styles['field-label']}>Report Client Display Name</label>
+                  <input
+                    type="text"
+                    className={styles['field-input']}
+                    placeholder="e.g. Anant Cars (leave blank to auto-detect)"
+                    value={clientName}
+                    onChange={e => setClientName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Advanced Auth Settings Toggle */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedAuth(!showAdvancedAuth)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-dim)',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    padding: 0,
+                  }}
+                >
+                  <span>{showAdvancedAuth ? '▼' : '►'}</span>
+                  <span>Advanced: Custom Auth Credentials {token ? '(Session Active)' : '(Not Signed In)'}</span>
+                </button>
+
+                {showAdvancedAuth && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.75rem',
+                    marginTop: '0.6rem',
+                    padding: '0.75rem',
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                  }}>
+                    <div className={styles['field-group']}>
+                      <label className={styles['field-label']}>X-GRYD-TOKEN Override</label>
+                      <input
+                        type="password"
+                        className={styles['field-input']}
+                        placeholder={token ? 'Active Session Token' : 'Enter Gryd Token'}
+                        value={overrideToken}
+                        onChange={e => setOverrideToken(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles['field-group']}>
+                      <label className={styles['field-label']}>X-GRYD-SESSION-ID Override</label>
+                      <input
+                        type="password"
+                        className={styles['field-input']}
+                        placeholder={sessionId ? 'Active Session ID' : 'Enter Session ID'}
+                        value={overrideSessionId}
+                        onChange={e => setOverrideSessionId(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Button */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                {metrics && (
+                  <button type="button" onClick={handleReset} className={styles['btn-secondary']}>
+                    Clear Results
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleApiFetch}
+                  disabled={processing}
+                  className={styles['btn-primary']}
+                >
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {processing ? 'Fetching API Data...' : (metrics ? 'Re-Fetch & Analyze' : 'Fetch via API & Analyze')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Upload Drop Zone */}
+              <div
+                className={`${styles['drop-zone']} ${dragOver ? styles['drag-over'] : ''} ${file ? styles['has-file'] : ''}`}
+                onDragOver={e => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  aria-label="Upload Credit Billing File"
+                  accept=".csv,.xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileSelect(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                <div className={styles['drop-icon']}>
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+
+                {file ? (
+                  <>
+                    <div className={styles['file-pill']}>
+                      <span>📄 {file.name}</span>
+                      <span>({(file.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <div className={styles['drop-sub']}>Click or drop another file to replace</div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles['drop-title']}>Drag & drop platform billing CSV or click to browse</div>
+                    <div className={styles['drop-sub']}>Supports raw debit exports (.csv, .xlsx)</div>
+                  </>
+                )}
+              </div>
+
+              {/* Control Bar */}
+              <div className={styles['controls-bar']}>
+                <div className={styles['client-input-wrap']}>
+                  <label className={styles['client-label']}>Client / Dealership Name:</label>
+                  <input
+                    type="text"
+                    className={styles['client-input']}
+                    placeholder="e.g. Perfect Riders / Anant Cars"
+                    value={clientName}
+                    onChange={e => setClientName(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  {file && (
+                    <button type="button" onClick={handleReset} className={styles['btn-secondary']}>
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleProcess}
+                    disabled={!file || processing}
+                    className={styles['btn-primary']}
+                  >
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {metrics ? 'Re-Process Data' : 'Process Credit Report'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Audit & Parity Banners */}
+        {metrics && (
+          <div className={styles['audit-banner-wrap']}>
+            <div className={`${styles['audit-pill']} ${styles['audit-pill-info']}`}>
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                <strong>Audit Parity Check:</strong> {formatNum(metrics.totalCredits)} credits debited across {metrics.debitsCount} events. Scope: {dealershipId || clientName}.
+              </span>
+            </div>
+
+            {callDurationWarnings > 0 && (
+              <div className={`${styles['audit-pill']} ${styles['audit-pill-warn']}`}>
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>
+                  <strong>Call Duration Audit:</strong> {callDurationWarnings} completed call(s) exceeded 1,800 seconds (30 mins). Review duration credits for sanity.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Status Notification */}
         {statusMsg && (

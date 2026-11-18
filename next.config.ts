@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
           source: '/gryd/:path*',
           destination: 'https://autongagetools.jennyjoseph-k.workers.dev/gryd/:path*',
         },
+        // ponytail: proxy billing API through server-side so Origin header is not localhost:3000
+        {
+          source: '/api-proxy/billing',
+          destination: 'https://api.autongage.com/gryd/db/objects/billing',
+        },
+        {
+          source: '/api-proxy/billing-dev',
+          destination: 'https://autobot-webapp-dev.gryd.in/gryd/db/objects/billing',
+        },
       ];
     },
   } : {}),
