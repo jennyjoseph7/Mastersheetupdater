@@ -2,9 +2,7 @@
  * AutoNage Proxy — Cloudflare Worker
  *
  * Features:
- *   - Proxies /gryd/* POST requests to gryd backend (with CORS + origin stripping)
- *   - Proxies /v1/chat/completions to NVIDIA API
- *   - Handshake token auth for NVIDIA routes
+ *   - Proxies /gryd/* requests to Gryd staging / production
  *   - CORS with origin whitelist
  *   - Rate limiting
  */
@@ -18,15 +16,17 @@ const ALLOWED_ORIGINS = [
   'http://192.168.1.4:3000',
 ];
 
-const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const GRYD_PROD_ENDPOINT = 'https://api.autongage.com';
 const GRYD_DEV_ENDPOINT = 'https://autobot-webapp-dev.gryd.in';
 const DEFAULT_UPSTREAM_TIMEOUT_MS = 90_000;
 
 function getUpstreamGrydEndpoint(request, env) {
+  const url = new URL(request.url);
   const reqEnv = request.headers.get('x-gryd-env')?.toLowerCase();
-  if (reqEnv === 'dev') return env?.GRYD_DEV_ENDPOINT || GRYD_DEV_ENDPOINT;
-  return env?.GRYD_PROD_ENDPOINT || env?.GRYD_ENDPOINT || GRYD_PROD_ENDPOINT;
+  if (url.pathname.startsWith('/gryd/db/objects/billing') && reqEnv === 'prod') {
+    return env?.GRYD_PROD_ENDPOINT || GRYD_PROD_ENDPOINT;
+  }
+  return env?.GRYD_DEV_ENDPOINT || env?.GRYD_ENDPOINT || GRYD_DEV_ENDPOINT;
 }
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
@@ -52,7 +52,7 @@ function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Methods': 'POST, OPTIONS, GET, PUT, DELETE',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Handshake-Token, X-GRYD-ENTERPRISE-ID, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-SIGNUP-TOKEN, X-GRYD-APPLICATION-ID, X-GRYD-ROLE, X-GRYD-ENV, Accept',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-GRYD-ENTERPRISE-ID, X-GRYD-TOKEN, X-GRYD-SESSION-ID, X-GRYD-SIGNUP-TOKEN, X-GRYD-APPLICATION-ID, X-GRYD-ROLE, X-GRYD-ENV, Accept',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin',
   };
@@ -74,7 +74,6 @@ export default {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin') || '';
 
-    const NVIDIA_API_KEY = env.NVIDIA_API_KEY;
     const UPSTREAM_TIMEOUT_MS = Number(env.UPSTREAM_TIMEOUT_MS) > 0
       ? Number(env.UPSTREAM_TIMEOUT_MS) : DEFAULT_UPSTREAM_TIMEOUT_MS;
 
@@ -88,17 +87,15 @@ export default {
       const token = request.headers.get('X-GRYD-TOKEN');
       if (!token) return jsonResponse(401, { error: 'Unauthorized', message: 'No token' }, origin);
       try {
-        const upstreamEndpoint = getUpstreamGrydEndpoint(request, env);
-        const resp = await fetch(upstreamEndpoint + '/gryd/db/objects/dealership?page_number=1&page_size=1', {
-          method: 'GET',
+        const resp = await fetch(GRYD_DEV_ENDPOINT + '/gryd/execute/get_llm_response/ai_service', {
+          method: 'POST',
           headers: {
-            'Accept': 'application/json',
-            'x-gryd-enterprise-id': request.headers.get('X-GRYD-ENTERPRISE-ID') || 'autocrm',
-            'x-gryd-role': request.headers.get('X-GRYD-ROLE') || 'agent',
+            'Content-Type': 'application/json', 'Accept': 'application/json',
+            'x-gryd-enterprise-id': 'autocrm', 'x-gryd-application-id': 'autocrm',
             'x-gryd-token': token,
             'x-gryd-session-id': request.headers.get('X-GRYD-SESSION-ID') || '',
-            'x-gryd-env': request.headers.get('X-GRYD-ENV') || 'prod',
           },
+          body: JSON.stringify({ kwargs: { user_query: 'ping', system_prompt: 'respond with OK', model_identifier: 'gcp-gemini-3.1-flash-lite-preview' } }),
           signal: AbortSignal.timeout(10000),
         });
         if (resp.status === 401 || resp.status === 403) {
@@ -167,8 +164,7 @@ export default {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 90000);
       try {
-        const upstreamEndpoint = getUpstreamGrydEndpoint(request, env);
-        const upstream = await fetch(upstreamEndpoint + '/gryd/execute/get_llm_response/ai_service', {
+        const upstream = await fetch(GRYD_DEV_ENDPOINT + '/gryd/execute/get_llm_response/ai_service', {
           method: 'POST', headers: grydHeaders, body: grydBody, signal: controller.signal,
         });
         clearTimeout(timeout);
@@ -253,59 +249,6 @@ export default {
       }
     }
 
-    // ── Method check for non-gryd routes (NVIDIA proxy) ───────────────
-    if (method !== 'POST') {
-      return jsonResponse(404, { error: 'Use POST' }, origin);
-    }
-
-    // ── NVIDIA PROXY ────────────────────────────────────────────────────
-    const HANDSHAKE_TOKEN = env.HANDSHAKE_TOKEN;
-    const token = request.headers.get('X-Handshake-Token');
-    if (!HANDSHAKE_TOKEN || !token || token !== HANDSHAKE_TOKEN) {
-      return jsonResponse(401, { error: 'Unauthorized', message: 'Missing or invalid handshake token.' }, origin);
-    }
-    if (!NVIDIA_API_KEY) {
-      return jsonResponse(500, { error: 'Server Error', message: 'NVIDIA_API_KEY not configured on the Worker.' }, origin);
-    }
-
-    try {
-      const contentLength = parseInt(request.headers.get('Content-Length') || '0', 10);
-      if (contentLength > 1024 * 1024) {
-        return jsonResponse(413, { error: 'Payload Too Large', message: 'Request body exceeds 1 MB limit.' }, origin);
-      }
-      const body = await request.text();
-      if (body.length > 1024 * 1024) {
-        return jsonResponse(413, { error: 'Payload Too Large', message: 'Request body exceeds 1 MB limit.' }, origin);
-      }
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-
-      const nvResponse = await fetch(NVIDIA_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      const responseText = await nvResponse.text();
-      const contentType = nvResponse.headers.get('content-type') || 'application/json';
-      const durationMs = String(Date.now() - startedAt);
-
-      return new Response(responseText, {
-        status: nvResponse.status,
-        headers: { ...corsHeaders(origin), 'Content-Type': contentType, 'X-AutoNage-Upstream-Duration-Ms': durationMs },
-      });
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        return jsonResponse(504, { error: 'Gateway Timeout', message: `NVIDIA API did not respond within ${Math.round(UPSTREAM_TIMEOUT_MS / 1000)} seconds.` }, origin);
-      }
-      return jsonResponse(502, { error: 'Bad Gateway', message: 'Failed to reach NVIDIA API.' }, origin);
-    }
+    return jsonResponse(404, { error: 'Not found' }, origin);
   },
 };
