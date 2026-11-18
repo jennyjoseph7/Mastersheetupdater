@@ -39,10 +39,8 @@ function getBillingBaseUrl(environment: EnvironmentMode): string {
     return environment === 'dev' ? '/api-proxy/billing-dev' : '/api-proxy/billing';
   }
 
-  // Prod static export: direct fetch, deployed origin is trusted by api.autongage.com
-  return environment === 'dev'
-    ? 'https://autobot-webapp-dev.gryd.in'
-    : 'https://api.autongage.com';
+  // Prod static export on GitHub Pages: route through Cloudflare Worker proxy to bypass browser 412 Origin restriction
+  return 'https://autongagetools.jennyjoseph-k.workers.dev';
 }
 
 /**
@@ -211,6 +209,7 @@ export async function fetchBillingDebits(
             'X-GRYD-ROLE': 'agent',
             'X-GRYD-TOKEN': params.token,
             'X-GRYD-SESSION-ID': params.sessionId || '',
+            'X-GRYD-ENV': params.environment,
           },
           signal,
         });
