@@ -158,7 +158,8 @@ html[data-theme="dark"] .icon-sun { display: none; }
 .signout-btn:hover { background: var(--surface2); }
 
 /* ── Sub-page shared styles (tool pages) ──────────────────── */
-.sub-page { min-height: 100vh; overflow-x: clip; }
+.sub-page { min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip; }
+.sub-page main { flex: 1; width: 100%; box-sizing: border-box; }
 .sub-page header { padding: 1.75rem 2rem 1.5rem; }
 .sub-page h1 { font-size: 1.5rem; font-weight: 800; }
 .sub-page .brand-mark { width: 210px; height: 42px; border-radius: 13px; overflow: hidden; box-shadow: 0 8px 26px color-mix(in srgb, var(--accent-p, var(--accent)) 30%, transparent); display: flex; align-items: center; justify-content: center; }
@@ -234,6 +235,13 @@ html[data-theme="dark"] .icon-sun { display: none; }
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .session-info { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); font-family: var(--mono); }
 
-/* ── Global Footer ── */
-.sub-page footer { text-align: center; padding: 1.5rem; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 2rem; }
+/* ── Global Footer (pinned to bottom without off-page overflow) ── */
+.sub-page footer {
+  margin-top: auto;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
 

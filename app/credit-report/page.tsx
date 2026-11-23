@@ -661,28 +661,26 @@ export default function CreditReportPage() {
   }
 
   return (
-    <div className="app-container">
+    <div className="sub-page">
       {/* Top Header */}
-      <header className="app-header">
-        <BrandLogo />
-        <Nav />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <ThemeToggle />
-          {isAuthenticated && (
-            <button
-              onClick={logout}
-              className="btn-secondary"
-              style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
-              title="Sign out"
-            >
-              Sign out
-            </button>
-          )}
+      <header>
+        <div className="header-inner">
+          <div className="header-left">
+            <BrandLogo />
+            <div>
+              <h1>Credit Report</h1>
+              <div className="header-sub">Bot Credit Consumption & Spend Analytics</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <Nav />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="main-content" style={{ maxWidth: '1580px', width: '96%', margin: '0 auto', padding: '1.5rem 1rem' }}>
+      <main style={{ maxWidth: '1580px', width: '96%', margin: '0 auto', padding: '1.5rem 1rem' }}>
         {/* Ingestion & Setup Workflow Panel */}
         <div className={styles['workflow-panel']}>
           <div className={styles['card-header']}>
@@ -1460,6 +1458,8 @@ export default function CreditReportPage() {
 
       {/* Processing Loader */}
       <ProcessingOverlay show={processing} message={processingText} />
+
+      <footer>AutoNage — Credit Report &amp; Consumption Analytics</footer>
     </div>
   );
 }

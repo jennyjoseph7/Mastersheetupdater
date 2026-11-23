@@ -1,13 +1,13 @@
 /* Credit Report — Lime Theme (#84cc16) */
 :global([data-theme="dark"]) {
-  --accent-cr: #84cc16;
-  --accent-soft-cr: rgba(132, 204, 22, 0.12);
-  --accent-dim-cr: #65a30d;
+  --accent-cr: var(--accent-p, #84cc16);
+  --accent-soft-cr: var(--accent-soft-p, rgba(132, 204, 22, 0.12));
+  --accent-dim-cr: var(--accent-dim-p, #65a30d);
 }
 :global([data-theme="light"]) {
-  --accent-cr: #65a30d;
-  --accent-soft-cr: rgba(101, 163, 13, 0.1);
-  --accent-dim-cr: #4d7c0f;
+  --accent-cr: var(--accent-p, #65a30d);
+  --accent-soft-cr: var(--accent-soft-p, rgba(101, 163, 13, 0.1));
+  --accent-dim-cr: var(--accent-dim-p, #4d7c0f);
 }
 
 .workflow-panel {

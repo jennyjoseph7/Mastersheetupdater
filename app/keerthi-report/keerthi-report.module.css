@@ -1,13 +1,13 @@
-/* Keerthi Report — Amber Theme (#f59e0b / #d97706) */
+/* Keerthi Report — Electric Cyan Theme (#06b6d4 / #0891b2) */
 :global([data-theme="dark"]) {
-  --accent-p: #f59e0b;
-  --accent-soft-p: rgba(245, 158, 11, 0.14);
-  --accent-dim-p: #d97706;
+  --accent-p: #06b6d4;
+  --accent-soft-p: rgba(6, 182, 212, 0.14);
+  --accent-dim-p: #0891b2;
 }
 :global([data-theme="light"]) {
-  --accent-p: #d97706;
-  --accent-soft-p: rgba(217, 119, 6, 0.1);
-  --accent-dim-p: #b45309;
+  --accent-p: #0891b2;
+  --accent-soft-p: rgba(8, 145, 178, 0.1);
+  --accent-dim-p: #0e7490;
 }
 
 .panel {

@@ -240,7 +240,7 @@ export default function KeerthiReportPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem' }}>
+      <main style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '1.5rem' }}>
         {/* Upload & Setup Panel */}
         <section className={styles.panel}>
           <div className={styles.sectionHead}>
@@ -484,6 +484,8 @@ export default function KeerthiReportPage() {
           )}
         </section>
       </main>
+
+      <footer>AutoNage — Keerthi Post-Sales Campaign Report</footer>
     </div>
   );
 }
