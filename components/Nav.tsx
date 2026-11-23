@@ -16,11 +16,13 @@ const ACCENT_MAP: Record<string, { dark: string; light: string; softDark: string
   'master-lead-matcher': { dark: '#7679f5', light: '#4f46e5', softDark: 'rgba(118,121,245,0.14)', softLight: 'rgba(79,70,229,0.1)' },
   'session-report':      { dark: '#0ea5e9', light: '#0284c7', softDark: 'rgba(14,165,233,0.13)', softLight: 'rgba(2,132,199,0.1)' },
   'credit-report':       { dark: '#84cc16', light: '#65a30d', softDark: 'rgba(132,204,22,0.14)', softLight: 'rgba(101,163,13,0.1)' },
+  'keerthi-report':      { dark: '#f59e0b', light: '#d97706', softDark: 'rgba(245,158,11,0.14)', softLight: 'rgba(217,119,6,0.1)' },
 };
 
 const LINKS = [
   { href: '/disposition-sync-v2', label: 'Pre-Sales Sync' },
   { href: '/post-sales-sync', label: 'Post-Sales Sync' },
+  { href: '/keerthi-report', label: 'Keerthi Report' },
   { href: '/call-analysis', label: 'Call Summary' },
   { href: '/formatter', label: 'Formatter' },
   { href: '/recording-renamer', label: 'Recording Renamer' },
