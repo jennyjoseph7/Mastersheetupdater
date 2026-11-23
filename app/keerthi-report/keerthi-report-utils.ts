@@ -647,6 +647,29 @@ export function processKeerthiReport(
 }
 
 // -------------------------------------------------------------------------
+// Executive Summary Chat Message Formatter
+// -------------------------------------------------------------------------
+
+export function formatCampaignSummaryMessage(dataset: KeerthiReportDataset): string {
+  let title = '🔹 Service Due (Voice)';
+  if (dataset.meta.type === 'expiry') {
+    title = '🔹 Service Expiry (Voice)';
+  } else if (dataset.meta.type === 'checkup') {
+    title = '💬 Check-up (WhatsApp)';
+  } else if (dataset.meta.type === 'paid') {
+    title = '💬 Annual / Paid Service (WhatsApp)';
+  }
+
+  const triggers = dataset.totalTriggers.toLocaleString('en-IN');
+  const failed = dataset.failedCount.toLocaleString('en-IN');
+  const delivered = dataset.deliveredCount.toLocaleString('en-IN');
+  const hotWarm = dataset.hotWarmTotal.toLocaleString('en-IN');
+  const conversions = dataset.hotCount.toLocaleString('en-IN');
+
+  return `${title}\n* Triggers: ${triggers}\n* Failed/Undelivered: ${failed}\n* Delivered: ${delivered}\n* Hot & Warm Leads: ${hotWarm}\n* Hot Conversions: ${conversions}`;
+}
+
+// -------------------------------------------------------------------------
 // Styled Excel Workbook Generator (All 4 Sheets)
 // -------------------------------------------------------------------------
 
