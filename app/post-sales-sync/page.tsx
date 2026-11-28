@@ -724,13 +724,18 @@ export default function PostSalesSyncPage() {
       setKeerthiReportRows([]);
       setAiValidated(false);
       const currentRows = processedDataRef.current.length ? processedDataRef.current : processedData;
-      const resetRows = currentRows.map(r => ({
-        ...r,
-        updated_disposition: '',
-        _ai_status: '',
-        ai_reason: '',
-        confirmed_date: '',
-      }));
+      const resetRows = currentRows.map(r => {
+        const next: Record<string, string> = {
+          ...r,
+          ...(r._orig_disposition !== undefined ? { disposition: r._orig_disposition, disposition_detail: r._orig_disposition } : {}),
+          updated_disposition: '',
+          _ai_status: '',
+          ai_reason: '',
+          confirmed_date: '',
+        };
+        delete next._orig_disposition;
+        return next;
+      });
       processedDataRef.current = resetRows;
       setProcessedData(resetRows);
     }
@@ -929,9 +934,10 @@ export default function PostSalesSyncPage() {
 
       applyCorrections(candidates, correctedResults, confirmedDates, aiReasons);
       const correctedCount = Object.keys(correctedResults).length;
+      const isWaDealer = dealerKey === 'fortune_toyota_wa' || dealerKey === 'perfect_rider_wa';
       if (correctedCount > 0) aiProgress.markCorrected(correctedCount);
       aiProgress.complete(correctedCount > 0
-        ? `AI validation complete — ${correctedCount} disposition(s) corrected. Check the Updated Disposition column.`
+        ? `AI validation complete — ${correctedCount} disposition(s) corrected. Check the ${isWaDealer ? 'Disposition' : 'Updated Disposition'} column.`
         : 'AI validation complete — all dispositions appear correct.');
       log('AI validation done, corrected:', correctedCount);
       aiValidationRef.current = false;
@@ -950,11 +956,17 @@ export default function PostSalesSyncPage() {
     aiReasons: Record<number, string> = {}
   ) {
     const current = processedDataRef.current.length > 0 ? processedDataRef.current : processedData;
+    const isWaDealer = dealerKey === 'fortune_toyota_wa' || dealerKey === 'perfect_rider_wa';
     const updated = current.map((r, idx) => {
       let newR = { ...r };
       let modified = false;
 
       if (correctedResults[idx] !== undefined) {
+        if (isWaDealer) {
+          if (newR._orig_disposition === undefined) newR._orig_disposition = newR.disposition || '';
+          newR.disposition = correctedResults[idx];
+          newR.disposition_detail = correctedResults[idx];
+        }
         newR.updated_disposition = correctedResults[idx];
         newR._ai_status = 'corrected';
         modified = true;
@@ -1282,7 +1294,7 @@ export default function PostSalesSyncPage() {
                               const href = safeRecordingHref(val);
                               return href ? <td key={col.key}><a className={styles['cell-url']} href={href} target="_blank" rel="noopener noreferrer">Recording</a></td> : <td key={col.key}>{esc(val)}</td>;
                             }
-                            if (col.key === 'updated_disposition') {
+                            if (col.key === 'updated_disposition' || ((dealerKey === 'fortune_toyota_wa' || dealerKey === 'perfect_rider_wa') && col.key === 'disposition' && r._ai_status)) {
                               const st = r._ai_status || '';
                               let badge = '<span class="' + (styles['ai-badge'] || 'ai-badge') + ' ' + (styles.pending || 'pending') + '">—</span>';
                               if (st === 'corrected') badge = '<span class="' + (styles['ai-badge'] || 'ai-badge') + ' ' + (styles.corrected || 'corrected') + '">✎ </span>';
